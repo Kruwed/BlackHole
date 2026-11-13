@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using SkiaSharp;
 using WalletWasabi.Helpers;
 using Xunit;
@@ -13,15 +12,10 @@ namespace WalletWasabi.Tests.UnitTests.QrDecode;
 public class QrCodeDecodingTests
 {
 	private string CommonPartialPath { get; } = Path.Combine(EnvironmentHelpers.GetFullBaseDirectory(), "UnitTests", "QrDecode", "QrResources");
-	private bool IsWindows { get; } = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
 	[Fact]
 	public void GetCorrectAddressFromImages()
 	{
-		if (!IsWindows)
-		{
-			return;
-		}
 		QRCodeReader decoder = new();
 
 		string expectedAddress = "tb1ql27ya3gufs5h0ptgjhjd0tm52fq6q0xrav7xza";
@@ -43,10 +37,6 @@ public class QrCodeDecodingTests
 	[Fact]
 	public void DecodePictureTakenByPhone()
 	{
-		if (!IsWindows)
-		{
-			return;
-		}
 		QRCodeReader decoder = new();
 		string expectedOutput = "tb1qutgpgraaze3hqnvt2xyw5acsmd3urprk3ff27d";
 
@@ -59,10 +49,6 @@ public class QrCodeDecodingTests
 	[Fact]
 	public void DecodeDifficultPictureTakenByPhone()
 	{
-		if (!IsWindows)
-		{
-			return;
-		}
 		QRCodeReader decoder = new();
 		string expectedOutput = "Let's see a Zebra.";
 
@@ -74,10 +60,6 @@ public class QrCodeDecodingTests
 	[Fact]
 	public void DecodePictureWithImageInsideTheQR()
 	{
-		if (!IsWindows)
-		{
-			return;
-		}
 		QRCodeReader decoder = new();
 		string expectedOutput = "https://twitter.com/SimonHearne";
 

@@ -7,14 +7,10 @@ RegTest is a local network in which users can generate blocks and coins for test
 ## Bitcoin Core Setup
 
 1. Install Bitcoin Core from the [Official Website](https://bitcoincore.org/en/download/) or [GitHub](https://github.com/bitcoin/bitcoin/releases/) on your computer. Verify the PGP signatures. Check the security advisories [here](https://bitcoincore.org/en/security-advisories/).
-2. Start Bitcoin Core with: `bitcoin-qt.exe -regtest` then select Bitcoin data directory or leave it as the default. If you use the `-datadir` parameter, make sure the directory exists.
+2. Start Bitcoin Core with: `bitcoin-qt -regtest` then select Bitcoin data directory or leave it as the default. If you use the `-datadir` parameter, make sure the directory exists.
 
     `-datadir` using example:
 
-    Windows:
-    ```
-    "C:\Program Files\Bitcoin\bitcoin-qt.exe" -regtest -blockfilterindex -txindex -datadir=C:\Bitcoin
-    ```
     macOS:
     ```
     "/Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt" -regtest -blockfilterindex -txindex -datadir=$HOME/Library/Application Support/Bitcoin"
@@ -30,10 +26,6 @@ RegTest is a local network in which users can generate blocks and coins for test
 
     Defaults:
 
-    Windows:
-    ```
-    %APPDATA%\Bitcoin\
-    ```
     macOS:
     ```
     $HOME/Library/Application Support/Bitcoin/
@@ -58,7 +50,7 @@ RegTest is a local network in which users can generate blocks and coins for test
     regtest.blockfilterindex = 1
     ```
 5. Save it.
-6. Close Bitcoin Core to confirm changes and open it again with: `bitcoin-qt.exe -regtest`.
+6. Close Bitcoin Core to confirm changes and open it again with: `bitcoin-qt -regtest`.
 7. Do not worry about "Syncing Headers" just press the Hide button. Because you run on Regtest, no Mainnet blocks will be downloaded.
 8. Go to menu *File / Create* and create a wallet with the name you prefer. Use the default options.
 9. Go to menu *Window / Console*.
@@ -84,7 +76,6 @@ Here you will have to build from source, follow [these instructions here](https:
 4. Stop the application if it is still running with CTRL-C.
 5. Go to the Coordinator folder:
     ```
-    Windows: "C:\Users\{your username}\AppData\Roaming\WalletWasabi\Coordinator"
     macOS: "/Users/{your username}/.walletwasabi/coordinator"
     Linux: "/home/{your username}/.walletwasabi/coordinator"
     ```

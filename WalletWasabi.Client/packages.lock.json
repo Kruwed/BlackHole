@@ -198,7 +198,6 @@
           "Microsoft.Extensions.Caching.Abstractions": "[10.0.15, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.15, )",
           "Microsoft.Extensions.Http": "[10.0.15, )",
-          "Microsoft.Win32.SystemEvents": "[10.0.15, )",
           "NBitcoin": "[10.0.21, )",
           "NNostr.Client": "[0.0.55, )",
           "System.Linq.Async": "[7.0.1, )",
@@ -251,12 +250,6 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.15",
           "Microsoft.Extensions.Options": "10.0.15"
         }
-      },
-      "Microsoft.Win32.SystemEvents": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.15, )",
-        "resolved": "10.0.15",
-        "contentHash": "kisX7LaeY4exvIgeyRfIp+xUmz2JoL+2n7pZv4W6na115P8659zw6vfB7IxD4sk6g9YZHwJ+vMzgS3Y5GMJqkA=="
       },
       "NBitcoin": {
         "type": "CentralTransitive",

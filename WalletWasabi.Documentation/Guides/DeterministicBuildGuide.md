@@ -14,13 +14,12 @@ Every release artifact is produced by [`Contrib/release.sh`](../../Contrib/relea
 | --- | --- | --- | --- |
 | `debian-package-and-zips` | `ubuntu-latest` | `sudo bash -x ./Contrib/release.sh debian` | `Wasabi-<version>.deb`, `Wasabi-<version>-arm64.deb`, `Wasabi-<version>-linux-{x64,arm64}.{tar.gz,zip}` |
 | `appimage-package` | `ubuntu-latest` | `sudo bash -x ./Contrib/release.sh appimage` | `Wasabi-<version>.AppImage`, `Wasabi-<version>-arm64.AppImage` |
-| `installer-for-windows` | `windows-latest` | `./Contrib/release.sh wininstaller` | `Wasabi-<version>.msi`, `Wasabi-<version>-win-x64.zip` |
 | `macos-packages-and-zips` | `macos-latest` | `./Contrib/release.sh dmg` | `Wasabi-<version>.dmg`, `Wasabi-<version>-arm64.dmg`, `Wasabi-<version>-macOS-{x64,arm64}.zip` |
 | `sign-all-packages` | `ubuntu-latest` | `bash -x ./Contrib/release.sh gpgsign` | `SHA256SUMS.asc` (used in section 4) |
 
 To reproduce a release, run **that release's own** `Contrib/release.sh`, checked out from the release tag.
 
-The rest of this guide covers the Linux packages, which are the ones that reproduce byte for byte. Windows and macOS are discussed in section 4.
+The rest of this guide covers the Linux packages, which are the ones that reproduce byte for byte. macOS is discussed in section 4.
 
 ## 2. Assert correct environment
 
@@ -108,14 +107,6 @@ diff -r official built
 * **`.deb`: byte-identical.** [WalletScrutiny](https://walletscrutiny.com/) rebuilt `Wasabi-<version>.deb` from tag `v<version>`
 * **`.tar.gz`: byte-identical.** The tarball is created with `--sort=name`, `--mtime=@$SOURCE_DATE_EPOCH`, `--owner=0 --group=0 --numeric-owner` and the atime/ctime PAX headers removed.
 * **`.zip`: differs**, because `zip -r` stores the files' modification times (see *Timestamps* above); it contains the same files that go into the `.tar.gz`.
-
-### Windows
-
-`Wasabi-<version>.msi` is Authenticode-signed after it is built, so the installer file itself cannot match a rebuild. The files it installs can be compared: install it, build the `wininstaller` target on Windows, and diff your `build\win-x64` directory against the installation directory:
-
-```sh
-git diff --no-index build\win-x64 "C:\Program Files\WasabiWallet"
-```
 
 ### macOS
 

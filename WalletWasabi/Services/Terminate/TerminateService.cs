@@ -1,6 +1,3 @@
-using Microsoft.Win32;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +19,6 @@ public class TerminateService
 	{
 		_terminateApplicationAsync = terminateApplicationAsync;
 		_terminateApplication = terminateApplication;
-		IsSystemEventsSubscribed = false;
 		CancellationToken = _terminationCts.Token;
 		Instance = this;
 	}
@@ -43,8 +39,6 @@ public class TerminateService
 	/// <remarks>Assigned once so that there are no issues with <see cref="_terminationCts"/> being disposed.</remarks>
 	public CancellationToken CancellationToken { get; }
 
-	private bool IsSystemEventsSubscribed { get; set; }
-
 	/// <summary>In case of an unrecoverable exception, SignalGracefulCrash will store here the exception to pass down to the CrashReporter.</summary>
 	public Exception? GracefulCrashException { get; private set; }
 
@@ -54,14 +48,6 @@ public class TerminateService
 		Console.CancelKeyPress += Console_CancelKeyPress;
 		AssemblyLoadContext.Default.Unloading += Default_Unloading;
 		AppDomain.CurrentDomain.DomainUnload += CurrentDomain_DomainUnload;
-
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !Debugger.IsAttached)
-		{
-			// If the debugger is attached and you subscribe to SystemEvents, then on quit Wasabi gracefully stops but never returns from console.
-			Logger.LogDebug($"{nameof(TerminateService)} subscribed to SystemEvents");
-			SystemEvents.SessionEnding += Windows_SystemEvents_SessionEnding;
-			IsSystemEventsSubscribed = true;
-		}
 	}
 
 	private void CurrentDomain_DomainUnload(object? sender, EventArgs e)
@@ -73,20 +59,6 @@ public class TerminateService
 	private void Default_Unloading(AssemblyLoadContext obj)
 	{
 		Logger.LogInfo("Process context unloading requested by the OS.");
-		Terminate();
-	}
-
-	private void Windows_SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
-	{
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			// This event will only be triggered if you run Wasabi from the published package.
-			Logger.LogInfo($"Process termination was requested by the OS, reason '{e.Reason}'.");
-			e.Cancel = true;
-		}
-
-		// This must be a blocking call because after this the OS will terminate the Wasabi process if it exists.
-		// The process will be killed by the OS after ~7 seconds, even with e.Cancel = true.
 		Terminate();
 	}
 
@@ -180,11 +152,6 @@ public class TerminateService
 		Console.CancelKeyPress -= Console_CancelKeyPress;
 		AssemblyLoadContext.Default.Unloading -= Default_Unloading;
 		AppDomain.CurrentDomain.DomainUnload -= CurrentDomain_DomainUnload;
-
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && IsSystemEventsSubscribed)
-		{
-			SystemEvents.SessionEnding -= Windows_SystemEvents_SessionEnding;
-		}
 
 		// Indicate that the termination procedure finished. So other callers can return.
 		Interlocked.Exchange(ref _terminateStatus, TerminateStatusFinished);

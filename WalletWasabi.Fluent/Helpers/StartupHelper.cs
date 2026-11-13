@@ -12,11 +12,7 @@ public static class StartupHelper
 	{
 		try
 		{
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-			{
-				WindowsStartupHelper.AddOrRemoveRegistryKey(runOnSystemStartup);
-			}
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 			{
 				await LinuxStartupHelper.AddOrRemoveDesktopFileAsync(runOnSystemStartup).ConfigureAwait(false);
 			}

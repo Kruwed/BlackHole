@@ -19,9 +19,7 @@ public partial class QrCodeReader
 {
 	private readonly QRCodeReader _decoder = new();
 
-	public bool IsPlatformSupported =>
-		RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ||
-		RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+	public bool IsPlatformSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
 	public IObservable<(string decoded, Bitmap bitmap)> Read()
 	{
@@ -31,7 +29,6 @@ public partial class QrCodeReader
 				var devices = new CaptureDevices();
 				var device = devices
 					.EnumerateDescriptors()
-					.Where(static d => d is not VideoForWindowsDeviceDescriptor)
 					.SelectMany(static d => d.Characteristics, static (d, c) => new { d, c })
 					.FirstOrDefault() ?? throw new InvalidOperationException("Could not find a device.");
 

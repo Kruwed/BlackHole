@@ -8,35 +8,25 @@ namespace WalletWasabi.Fluent.Desktop.Extensions;
 
 public static class AppBuilderExtension
 {
+	/// <summary>Selects the windowing backend of the current operating system and the Skia renderer.</summary>
+	public static AppBuilder UsePlatformBackend(this AppBuilder appBuilder) =>
+		RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+			? appBuilder.UseX11().UseSkia()
+			: appBuilder.UseAvaloniaNative().UseSkia();
+
 	public static AppBuilder SetupAppBuilder(this AppBuilder appBuilder, bool enableGpu)
 	{
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		appBuilder.UsePlatformBackend();
+
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
-			appBuilder
-				.UseWin32()
-				.UseSkia();
-		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-		{
-			appBuilder.UsePlatformDetect()
-				.UseManagedSystemDialogs<Window>();
-		}
-		else
-		{
-			appBuilder.UsePlatformDetect();
+			appBuilder.UseManagedSystemDialogs<Window>();
 		}
 
 		return appBuilder
 			.WithInterFont()
 			.With(new FontManagerOptions { DefaultFamilyName = "fonts:Inter#Inter, $Default" })
 			.With(new SkiaOptions { MaxGpuResourceSizeBytes = 2560 * 1600 * 4 * 12 })
-			.With(new Win32PlatformOptions
-			{
-				RenderingMode = enableGpu
-					? new[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Software }
-					: new[] { Win32RenderingMode.Software },
-				CompositionMode = new[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.RedirectionSurface }
-			})
 			.With(new X11PlatformOptions
 			{
 				RenderingMode = enableGpu

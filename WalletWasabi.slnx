@@ -31,11 +31,6 @@
   <Project Path="WalletWasabi.IntegrationTests/WalletWasabi.IntegrationTests.csproj">
     <BuildType Solution="Release|x64" Project="Debug" />
   </Project>
-  <Project Path="WalletWasabi.WindowsInstaller/WalletWasabi.WindowsInstaller.wixproj">
-    <BuildType Solution="Debug|x64" Project="Release" />
-    <Platform Project="x64" />
-    <Build Solution="Release|x64" />
-  </Project>
   <Project Path="WalletWasabi/WalletWasabi.csproj">
     <BuildType Solution="Release|x64" Project="Debug" />
   </Project>

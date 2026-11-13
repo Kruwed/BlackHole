@@ -53,27 +53,6 @@
                            Margin="5" />
     </DataTemplate>
 
-    <DataTemplate x:Key="WindowsLayout">
-      <Grid DataContext="{Binding $parent.DataContext}">
-
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="82" />
-          <ColumnDefinition Width="70" />
-          <ColumnDefinition Width="1*" />
-          <ColumnDefinition Width="3*" MaxWidth="400" />
-          <ColumnDefinition Width="1*" />
-          <ColumnDefinition Width="140" />
-        </Grid.ColumnDefinitions>
-
-        <ContentControl ContentTemplate="{StaticResource WasabiLogo}" />
-
-        <ContentControl Grid.Column="3" ContentTemplate="{StaticResource SearchBar}" />
-
-        <shell:NetworkBadge VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 8 0" Grid.Column="4" />
-
-      </Grid>
-    </DataTemplate>
-
     <DataTemplate x:Key="LinuxLayout">
       <Grid DataContext="{Binding $parent.DataContext}">
 
@@ -113,6 +92,6 @@
   <Panel>
     <Border x:Name="Hitbox" Background="Transparent" IsVisible="{Binding #UserControl.SearchResultsPopup.IsOpen}" />
     <ContentControl
-      ContentTemplate="{OnPlatform {StaticResource WindowsLayout}, Linux={StaticResource LinuxLayout}, macOS={StaticResource MacOSLayout}}" />
+      ContentTemplate="{OnPlatform {StaticResource LinuxLayout}, macOS={StaticResource MacOSLayout}}" />
   </Panel>
 </UserControl>

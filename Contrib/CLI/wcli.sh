@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 
-# $HOME is not correct on Windows, so we need to use $APPDATA instead.
-if [ -n "$APPDATA" ]; then
-    CONFIG="$APPDATA/WalletWasabi/Client/Config.json"
-else
-    CONFIG="$HOME/.walletwasabi/client/Config.json"
-fi
+CONFIG="$HOME/.walletwasabi/client/Config.json"
 
 function config_extract() {
   jq -r "$1" "$CONFIG"

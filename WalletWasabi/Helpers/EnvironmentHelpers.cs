@@ -19,32 +19,13 @@ public static class EnvironmentHelpers
 			return dataDir;
 		}
 
-		string directory;
+		var home = Environment.GetEnvironmentVariable("HOME");
+		if (string.IsNullOrEmpty(home))
+		{
+			throw new DirectoryNotFoundException("Could not find suitable datadir.");
+		}
 
-		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			var home = Environment.GetEnvironmentVariable("HOME");
-			if (!string.IsNullOrEmpty(home))
-			{
-				directory = Path.Combine(home, "." + appName.ToLowerInvariant());
-			}
-			else
-			{
-				throw new DirectoryNotFoundException("Could not find suitable datadir.");
-			}
-		}
-		else
-		{
-			var localAppData = Environment.GetEnvironmentVariable("APPDATA");
-			if (!string.IsNullOrEmpty(localAppData))
-			{
-				directory = Path.Combine(localAppData, appName);
-			}
-			else
-			{
-				throw new DirectoryNotFoundException("Could not find suitable datadir.");
-			}
-		}
+		string directory = Path.Combine(home, "." + appName.ToLowerInvariant());
 
 		if (Directory.Exists(directory))
 		{
@@ -61,12 +42,8 @@ public static class EnvironmentHelpers
 
 	// This method removes the path and file extension.
 	//
-	// Given Wasabi releases are currently built using Windows, the generated assemblies contain
-	// the hard coded "C:\Users\User\Desktop\WalletWasabi\.......\FileName.cs" string because that
-	// is the real path of the file, it doesn't matter what OS was targeted.
-	// In Windows and Linux that string is a valid path and that means Path.GetFileNameWithoutExtension
-	// can extract the file name but in the case of OSX the same string is not a valid path so, it assumes
-	// the whole string is the file name.
+	// The compiler embeds the source path as it was on the build machine, so both
+	// separator styles are handled regardless of the OS the application runs on.
 	public static string ExtractFileName(string callerFilePath)
 	{
 		var lastSeparatorIndex = callerFilePath.LastIndexOf('\\');
@@ -91,12 +68,9 @@ public static class EnvironmentHelpers
 	{
 		var fullBaseDirectory = Path.GetFullPath(AppContext.BaseDirectory);
 
-		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		if (!fullBaseDirectory.StartsWith('/'))
 		{
-			if (!fullBaseDirectory.StartsWith('/'))
-			{
-				fullBaseDirectory = fullBaseDirectory.Insert(0, "/");
-			}
+			fullBaseDirectory = fullBaseDirectory.Insert(0, "/");
 		}
 
 		return fullBaseDirectory;
@@ -106,37 +80,24 @@ public static class EnvironmentHelpers
 	{
 		var fullBaseDir = GetFullBaseDirectory();
 		var wassabeeFileName = Path.Combine(fullBaseDir, Constants.ExecutableName);
-		wassabeeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $"{wassabeeFileName}.exe" : $"{wassabeeFileName}";
 		if (File.Exists(wassabeeFileName))
 		{
 			return wassabeeFileName;
 		}
 		var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name ?? throw new NullReferenceException("Assembly or Assembly's Name was null.");
-		var fluentExecutable = Path.Combine(fullBaseDir, assemblyName);
-		return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $"{fluentExecutable}.exe" : $"{fluentExecutable}";
+		return Path.Combine(fullBaseDir, assemblyName);
 	}
 
 	public static string GetDefaultBitcoinDataDir()
 	{
 		string directory = "";
 
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		var home = Environment.GetEnvironmentVariable("HOME");
+		if (!string.IsNullOrEmpty(home))
 		{
-			var localAppData = Environment.GetEnvironmentVariable("APPDATA");
-			if (!string.IsNullOrEmpty(localAppData))
-			{
-				directory = Path.Combine(localAppData, "Bitcoin");
-			}
-		}
-		else
-		{
-			var home = Environment.GetEnvironmentVariable("HOME");
-			if (!string.IsNullOrEmpty(home))
-			{
-				directory = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-					? Path.Combine(home, "Library", "Application Support", "Bitcoin")
-					: Path.Combine(home, ".bitcoin"); // Linux
-			}
+			directory = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+				? Path.Combine(home, "Library", "Application Support", "Bitcoin")
+				: Path.Combine(home, ".bitcoin"); // Linux
 		}
 
 		return directory;
@@ -145,7 +106,6 @@ public static class EnvironmentHelpers
 
 public enum OS
 {
-	Windows,
 	Linux,
 	OSX,
 	FreeBSD
@@ -155,11 +115,6 @@ public static class PlatformInformation
 {
 	public static OS GetOsPlatform()
 	{
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			return OS.Windows;
-		}
-
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 		{
 			return OS.OSX;

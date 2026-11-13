@@ -36,16 +36,13 @@ public class TorProcessManager(EventBus eventBus)
 			WorkingDirectory = settings.TorBinaryDir
 		};
 
-		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			var env = startInfo.EnvironmentVariables;
+		var env = startInfo.EnvironmentVariables;
 
-			env["LD_LIBRARY_PATH"] = !env.ContainsKey("LD_LIBRARY_PATH") || string.IsNullOrEmpty(env["LD_LIBRARY_PATH"])
-				? settings.TorBinaryDir
-				: settings.TorBinaryDir + Path.PathSeparator + env["LD_LIBRARY_PATH"];
+		env["LD_LIBRARY_PATH"] = !env.ContainsKey("LD_LIBRARY_PATH") || string.IsNullOrEmpty(env["LD_LIBRARY_PATH"])
+			? settings.TorBinaryDir
+			: settings.TorBinaryDir + Path.PathSeparator + env["LD_LIBRARY_PATH"];
 
-			Logger.LogDebug($"Environment variable 'LD_LIBRARY_PATH' set to: '{env["LD_LIBRARY_PATH"]}'.");
-		}
+		Logger.LogDebug($"Environment variable 'LD_LIBRARY_PATH' set to: '{env["LD_LIBRARY_PATH"]}'.");
 
 		Logger.LogInfo($"Starting Tor from folder '{settings.TorBinaryDir}' with arguments '{arguments}'…");
 

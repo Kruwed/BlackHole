@@ -48,11 +48,5 @@ public static class AvaloniaExtensions
 				window.Show();
 			}
 		}
-
-		if (OperatingSystem.IsWindows())
-		{
-			window.Topmost = !window.Topmost;
-			window.Topmost = !window.Topmost;
-		}
 	}
 }

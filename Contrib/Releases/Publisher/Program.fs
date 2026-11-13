@@ -37,12 +37,10 @@ let buildMessageTags version baseUri =
         $"Wasabi-{version}-linux-x64.zip"; $"Wasabi-{version}-linux-x64.zip.asc";
         $"Wasabi-{version}-macOS-arm64.zip"; $"Wasabi-{version}-macOS-arm64.zip.asc";
         $"Wasabi-{version}-macOS-x64.zip"; $"Wasabi-{version}-macOS-x64.zip.asc";
-        $"Wasabi-{version}-win-x64.zip"; $"Wasabi-{version}-win-x64.zip.asc";
         $"Wasabi-{version}.deb"; $"Wasabi-{version}.deb.asc";
         $"Wasabi-{version}.Appimage"; $"Wasabi-{version}.Appimage.asc";
         $"Wasabi-{version}-arm64.Appimage"; $"Wasabi-{version}-arm64.Appimage.asc";
-        $"Wasabi-{version}.dmg"; $"Wasabi-{version}.dmg.asc";
-        $"Wasabi-{version}.msi"; $"Wasabi-{version}.msi.asc"
+        $"Wasabi-{version}.dmg"; $"Wasabi-{version}.dmg.asc"
     ] |> List.map (fun file -> file, [$"{baseUri}/{file}"])
 
 

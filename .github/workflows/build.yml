@@ -37,8 +37,6 @@ jobs:
         include:
           - os: ubuntu-24.04
             runtime: linux-x64
-          - os: windows-2025
-            runtime: win-x64
           - os: macos-15-intel
             runtime: osx-x64
           - os: macos-15

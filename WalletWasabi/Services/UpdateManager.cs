@@ -269,7 +269,6 @@ public static class ReleaseDownloader
 	internal static string GetInstallerName(Version version, OS platform, Architecture architecture, bool isDebianBased) =>
 		(platform, architecture, isDebianBased) switch
 		{
-			(OS.Windows, _, _) => $"Wasabi-{version}.msi",
 			(OS.OSX, Architecture.Arm64, _) => $"Wasabi-{version}-arm64.dmg",
 			(OS.OSX, _, _) => $"Wasabi-{version}.dmg",
 			(OS.Linux, _, true) => $"Wasabi-{version}.deb",

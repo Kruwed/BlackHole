@@ -185,21 +185,10 @@ public class Program
 	{
 		var result = AppBuilder
 			.Configure(() => new CrashReportApp(serializableException))
-			.UseReactiveUI();
-
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			result
-				.UseWin32()
-				.UseSkia();
-		}
-		else
-		{
-			result.UsePlatformDetect();
-		}
+			.UseReactiveUI()
+			.UsePlatformBackend();
 
 		return result
-			.With(new Win32PlatformOptions { RenderingMode = new[] { Win32RenderingMode.Software } })
 			.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software }, WmClass = "Wasabi Wallet Crash Report" })
 			.With(new AvaloniaNativePlatformOptions { RenderingMode = new[] { AvaloniaNativeRenderingMode.Software } })
 			.With(new MacOSPlatformOptions { ShowInDock = true })

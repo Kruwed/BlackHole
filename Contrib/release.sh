@@ -9,9 +9,8 @@
 #  package and AppImage for Linux.                                                   #
 #                                                                                    #
 #  The automatic release process have to take these generated assets and upload them #
-#  to the CI assets repository so they can be used by other jobs that can generate   #
-#  and sign the installers for windows (win ci job) and generate and sign the one    #
-#  for macOS (osx job).                                                              #
+#  to the CI assets repository so they can be used by the job that generates and     #
+#  signs the installer for macOS (osx job).                                          #
 #------------------------------------------------------------------------------------#
 set -xe
 
@@ -52,31 +51,12 @@ PACKAGES_DIR="$ROOT_DIR/packages"
 # Common name for all packages
 PACKAGE_FILE_NAME_PREFIX="Wasabi-$VERSION"
 
-if [[ "$RUNNER_OS" == "Windows" ]]; then
-  ZIP="7z.exe a"
-else
-  ZIP="zip -r"
-fi
+ZIP="zip -r"
+SOURCE_ROOT=$(pwd -P)
 
-if [[ "$RUNNER_OS" == "Windows" ]]; then
-  SOURCE_ROOT=$(cygpath -w "$(pwd -P)")  # PathMap expects native path on Windows (e.g. C:\WalletWasabi, not /c/WalletWasabi)
-else
-  SOURCE_ROOT=$(pwd -P)
-fi
-
-if [ "$1" = "wininstaller" ]; then
-  # Supported platforms
-  PLATFORMS=("win-x64")
-  CREATE_WINDOWS_INSTALLER="yes"
-  CREATE_DEBIAN_PACKAGE="no"
-  RELEASE_NOTE="no"
-  SIGN_PGP="no"
-  CREATE_OSX_DMG="no"
-  PACKAGE_COORDINATOR="no"
-elif [ "$1" = "debian" ]; then
+if [ "$1" = "debian" ]; then
   # Supported platforms
   PLATFORMS=("linux-x64" "linux-arm64")
-  CREATE_WINDOWS_INSTALLER="no"
   CREATE_DEBIAN_PACKAGE="yes"
   CREATE_APPIMAGE="no"
   RELEASE_NOTE="no"
@@ -86,7 +66,6 @@ elif [ "$1" = "debian" ]; then
 elif [ "$1" = "appimage" ]; then
   # Supported platforms
   PLATFORMS=("linux-x64" "linux-arm64")
-  CREATE_WINDOWS_INSTALLER="no"
   CREATE_DEBIAN_PACKAGE="no"
   CREATE_APPIMAGE="yes"
   RELEASE_NOTE="no"
@@ -95,7 +74,6 @@ elif [ "$1" = "appimage" ]; then
   PACKAGE_COORDINATOR="no"
 elif [ "$1" = "dmg" ]; then
   PLATFORMS=("osx-x64" "osx-arm64")
-  CREATE_WINDOWS_INSTALLER="no"
   CREATE_DEBIAN_PACKAGE="no"
   RELEASE_NOTE="no"
   SIGN_PGP="no"
@@ -103,7 +81,6 @@ elif [ "$1" = "dmg" ]; then
   PACKAGE_COORDINATOR="no"
 elif [ "$1" = "releasenote" ]; then
   PLATFORMS=()
-  CREATE_WINDOWS_INSTALLER="no"
   CREATE_DEBIAN_PACKAGE="no"
   RELEASE_NOTE="yes"
   SIGN_PGP="no"
@@ -111,7 +88,6 @@ elif [ "$1" = "releasenote" ]; then
   PACKAGE_COORDINATOR="no"
 elif [ "$1" = "gpgsign" ]; then
   PLATFORMS=()
-  CREATE_WINDOWS_INSTALLER="no"
   CREATE_DEBIAN_PACKAGE="no"
   RELEASE_NOTE="no"
   SIGN_PGP="yes"
@@ -164,18 +140,13 @@ for PLATFORM in "${PLATFORMS[@]}"; do
             /clp:ErrorsOnly
   done
 
-  # Determine executable file extension based on platform
-  EXE_FILE_EXTENSION=''
   PLATFORM_PREFIX="${PLATFORM:0:3}"
-  if [[ "$PLATFORM_PREFIX" == "win" ]]; then
-    EXE_FILE_EXTENSION=".exe"
-  fi
 
   # Rename executables as wassabee and wassabeed
-  mv $OUTPUT_DIR/{$DESKTOP,${EXECUTABLE_NAME}}$EXE_FILE_EXTENSION
-  mv $OUTPUT_DIR/{$DAEMON,${EXECUTABLE_NAME}d}$EXE_FILE_EXTENSION
+  mv $OUTPUT_DIR/{$DESKTOP,${EXECUTABLE_NAME}}
+  mv $OUTPUT_DIR/{$DAEMON,${EXECUTABLE_NAME}d}
   if [[ "$PACKAGE_COORDINATOR" == "yes" ]]; then
-    mv $OUTPUT_DIR/{$COORDINATOR,${COORDINATOR_EXECUTABLE_NAME}}$EXE_FILE_EXTENSION
+    mv $OUTPUT_DIR/{$COORDINATOR,${COORDINATOR_EXECUTABLE_NAME}}
   fi
 
   # Remove bundled app binaries for other platforms
@@ -185,7 +156,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     # Tor is universal and lives in osx64 for both macOS architectures.
     find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "osx64" -exec rm -rf {} +
   else
-    # For other platforms, the bundled binaries are stored in a folder with the same name as the platform (e.g. linux-x64, linux-arm64 and win-x64).
+    # For other platforms, the bundled binaries are stored in a folder with the same name as the platform (e.g. linux-x64 and linux-arm64).
     find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "$PLATFORM" -exec rm -rf {} +
   fi
 
@@ -490,58 +461,6 @@ APPIMAGE_FILE_NAME="${PACKAGE_FILE_NAME_PREFIX}${APPIMAGE_ARCH_NAME}.AppImage"
 ARCH="$APPIMAGE_ARCH" "$APPIMAGETOOL" --runtime-file "$APPIMAGETOOL_DIR/runtime-$APPIMAGE_ARCH" "$APPDIR" "$PACKAGES_DIR/$APPIMAGE_FILE_NAME"
 
 done
-fi
-
-#------------------------------------------------------------------------------------#
-# CREATE WINDOWS INSTALLER                                                           #
-#------------------------------------------------------------------------------------#
-if [ "$CREATE_WINDOWS_INSTALLER" = "yes" ]; then
-WIX_BIN_DIR="$WIX/bin"
-WINDOWS_INSTALLER_DIR="WalletWasabi.WindowsInstaller"
-CANDLE_EXE="$WIX_BIN_DIR/"candle
-LIGHT_EXE="$WIX_BIN_DIR"/light
-HEAT_EXE="$WIX_BIN_DIR"/heat
-BUILD_INSTALLER_DIR="$BUILD_DIR/win-installer"
-WINDOWS_PACKAGE_BUILD_DIR="$BUILD_DIR"/win-x64
-
-mkdir -p "$BUILD_INSTALLER_DIR"
-"$HEAT_EXE" dir $WINDOWS_PACKAGE_BUILD_DIR \
-    -o $WINDOWS_INSTALLER_DIR/ComponentsGenerated.wxs \
-    -cg PublishedComponents \
-    -pog Binaries \
-    -dr INSTALLFOLDER \
-    -srd -scom -ag -sfrag -sreg
-
-# Compile the .wxs file to .wixobj
-"$CANDLE_EXE" \
-    $WINDOWS_INSTALLER_DIR/*.wxs \
-    -arch x64 \
-    -dBuildVersion=$VERSION \
-    -dDesktopProjectDir=$DESKTOP \
-
-# Link the .wixobj file to create the .msi installer
-"$LIGHT_EXE" \
-    *.wixobj \
-    -loc $WINDOWS_INSTALLER_DIR/Common.wxl \
-    -ext "$WIX_BIN_DIR/WixUIExtension.dll" \
-    -ext "$WIX_BIN_DIR/WixUtilExtension.dll" \
-    -b $WINDOWS_PACKAGE_BUILD_DIR \
-    -out $PACKAGES_DIR/$PACKAGE_FILE_NAME_PREFIX.msi
-
-# Remove unwanted file
-rm $PACKAGES_DIR/*.wixpdb
-
-# Define paths (using your existing variables)
-SIGNTOOL="azuresigntool"
-
-"$SIGNTOOL" sign \
-    -kvu "https://wasabiwallet.vault.azure.net/" \
-    -kvc "WasabiCodeSignCert" \
-    -kvi "$AZURE_CLIENT_ID" \
-    -kvs "$AZURE_CLIENT_SECRET" \
-    --azure-key-vault-tenant-id "$AZURE_TENANT_ID" \
-    -tr "http://timestamp.digicert.com" \
-    "$PACKAGES_DIR/$PACKAGE_FILE_NAME_PREFIX.msi"
 fi
 
 #------------------------------------------------------------------------------------#

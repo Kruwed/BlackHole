@@ -84,11 +84,9 @@ public static class IoHelpers
 			{
 				using var process = Process.Start(new ProcessStartInfo
 				{
-					FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-						? "explorer.exe"
-						: (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-							? "open"
-							: "xdg-open"),
+					FileName = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+						? "open"
+						: "xdg-open",
 					ArgumentList = { dirPath },
 					CreateNoWindow = true
 				});
@@ -124,15 +122,6 @@ public static class IoHelpers
 				ArgumentList = { safeUrl },
 				UseShellExecute = false,
 				CreateNoWindow	= true
-			});
-		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			using var process = Process.Start(new ProcessStartInfo
-			{
-				FileName = url,
-				CreateNoWindow = true,
-				UseShellExecute = true
 			});
 		}
 		else

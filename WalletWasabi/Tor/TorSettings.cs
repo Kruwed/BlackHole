@@ -142,7 +142,7 @@ public record TorSettings
 	/// <returns>Full path to Tor binary for selected <paramref name="platform"/>.</returns>
 	public static string GetTorBinaryFilePath(string path)
 	{
-		return Path.Combine(path, BundledAppHelpers.GetFilenameWithExtension(TorBinaryFileName));
+		return Path.Combine(path, TorBinaryFileName);
 	}
 
 	/// <seealso href="https://github.com/torproject/tor/blob/7528524aee3ffe3c9b7c69fa18f659e1993f59a3/doc/man/tor.1.txt#L1505-L1509">For <c>KeepAliveIsolateSOCKSAuth</c> explanation.</seealso>
@@ -211,7 +211,7 @@ public record TorSettings
 
 			foreach (string plugin in usedPlugins)
 			{
-				string fileNameWithoutExtension = plugin switch
+				string filename = plugin switch
 				{
 					"obfs4" => "lyrebird", // obfs4 was renamed to lyrebird.
 					"webtunnel" => "webtunnel-client",
@@ -219,7 +219,6 @@ public record TorSettings
 					_ => throw new NotSupportedException($"Unknown Tor pluggable transport '{plugin}'."),
 				};
 
-				string filename = BundledAppHelpers.GetCurrentPlatform() == OSPlatform.Windows ? $"{fileNameWithoutExtension}.exe" : $"{fileNameWithoutExtension}";
 				string path = Path.Combine(TorTransportPluginsDir, filename);
 
 				if (!File.Exists(path))

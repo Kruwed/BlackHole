@@ -16,13 +16,6 @@ public class WalletGenerator
 	public const int MinShamirThreshold = 1;
 	public const int MaxShamirThreshold = 16;
 
-	private static readonly string[] ReservedFileNames = new string[]
-	{
-			"CON", "PRN", "AUX", "NUL",
-			"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-			"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-	};
-
 	public WalletGenerator(string walletsDir, Network network)
 	{
 		WalletsDir = walletsDir;
@@ -90,9 +83,7 @@ public class WalletGenerator
 			return false;
 		}
 		var invalidChars = Path.GetInvalidFileNameChars();
-		var isValid = !walletName.Any(c => invalidChars.Contains(c)) && !walletName.EndsWith('.');
-		var isReserved = ReservedFileNames.Any(w => walletName.ToUpper() == w || walletName.ToUpper().StartsWith(w + "."));
-		return isValid && !isReserved;
+		return !walletName.Any(c => invalidChars.Contains(c)) && !walletName.EndsWith('.');
 	}
 
 	public static byte[] GenerateShamirEntropy()

@@ -26,7 +26,6 @@
 		<PackageReference Include="Microsoft.Extensions.Http" />
 		<PackageReference Include="NNostr.Client" />
 		<PackageReference Include="Microsoft.Data.Sqlite" />
-		<PackageReference Include="Microsoft.Win32.SystemEvents" />
 		<PackageReference Include="NBitcoin" />
 		<PackageReference Include="System.Linq.Async" />
 		<PackageReference Include="WabiSabi" />
@@ -41,9 +40,6 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 		<None Update="BundledApps\Binaries\osx64\Tor\**\*">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="BundledApps\Binaries\win-x64\Tor\**\*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 		<!-- GEOIP. -->

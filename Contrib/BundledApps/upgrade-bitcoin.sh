@@ -4,9 +4,9 @@
 # Downloads, extracts and upgrades bitcoind from Bitcoin Core archives for Wasabi Wallet
 #
 # Requirements:
-#   - bash on linux or git bash on Windows
+#   - bash
 #   - curl
-#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone / brew install sevenzip / winget install --id 7zip.7zip)
+#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone / brew install sevenzip)
 #   - git (only for chmod +x marking via git update-index)
 
 set -euo pipefail
@@ -81,9 +81,8 @@ declare -A FILES
 FILES[linux-arm64]="bitcoin-${VERSION}-aarch64-linux-gnu.tar.gz"
 FILES[linux-x64]="bitcoin-${VERSION}-x86_64-linux-gnu.tar.gz"
 FILES[osx64]="bitcoin-${VERSION}-x86_64-apple-darwin.tar.gz"
-FILES[win-x64]="bitcoin-${VERSION}-win64.zip"
 
-SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64" "osx64" "win-x64")
+SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64" "osx64")
 
 SEVEN_ZIP="7zz"
 
@@ -152,14 +151,6 @@ verify_checksums() {
 
 require_command curl
 
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-    SEVEN_ZIP="/c/Program Files/7-Zip/7z.exe"
-    if [[ ! -f "$SEVEN_ZIP" ]]; then
-        error "Cannot find 7z.exe in /c/Program Files/7-Zip/\nInstall 7-Zip and verify the path."
-    fi
-    info "Git Bash detected — using full path to 7-Zip: $SEVEN_ZIP"
-fi
-
 require_command "$SEVEN_ZIP"
 require_command gpg
 require_command sha256sum
@@ -174,8 +165,8 @@ cd $BINARIES_DIR || { echo "Error: Failed to change directory to '$BINARIES_DIR'
 
 info "Change directory to '$BINARIES_DIR'"
 
-if [[ ! -d "linux-x64" || ! -d "osx64" || ! -d "win-x64" ]]; then
-    error "Expected linux-x64, osx64, win-x64, etc. to be present in the folder 'WalletWasabi.IntegrationTests/BundledApps/Binaries'"
+if [[ ! -d "linux-x64" || ! -d "osx64" ]]; then
+    error "Expected linux-x64, osx64, etc. to be present in the folder 'WalletWasabi.IntegrationTests/BundledApps/Binaries'"
 fi
 
 TEMP_DIR="temp/bitcoin-${VERSION}"
@@ -236,11 +227,6 @@ if [[ "$SKIP_EXTRACT" != true ]]; then
     mkdir -p BitcoinCore/osx64
     "$SEVEN_ZIP" x -y "bitcoin-${VERSION}-x86_64-apple-darwin.tar.gz" >/dev/null
     "$SEVEN_ZIP" x -y -oBitcoinCore/osx64 "bitcoin-${VERSION}-x86_64-apple-darwin.tar" >/dev/null
-
-    # Windows (win-x64)
-    info "Extracting Windows archive (bitcoin-${VERSION}-win64.zip)"
-    mkdir -p BitcoinCore/win-x64
-    "$SEVEN_ZIP" x -y -oBitcoinCore/win-x64 "bitcoin-${VERSION}-win64.zip" >/dev/null
 else
     section "Skipping Bitcoin Core archive extraction"
 fi
@@ -258,11 +244,7 @@ if [[ "$SKIP_REPLACE" != true ]]; then
 
         bin_dir="${TEMP_DIR}/BitcoinCore/${platform}/bitcoin-${VERSION}/bin"
 
-        if [[ "$platform" == win-* ]]; then
-            cp -a "${bin_dir}/bitcoind.exe" "${target_dir}/"
-        else
-            cp -a "${bin_dir}/bitcoind" "${target_dir}/"
-        fi
+        cp -a "${bin_dir}/bitcoind" "${target_dir}/"
 
         info "Updated ${target_dir}"
     done
@@ -273,10 +255,9 @@ fi
 # ─── Make executables +x (git friendly) ──────────────────────────────────────
 section "Marking Bitcoin Core binaries executable in the git repository"
 
-chmod +x ./{linux-arm64,linux-x64,osx64,win-x64}/bitcoind{,.exe} 2>/dev/null || true
+chmod +x ./{linux-arm64,linux-x64,osx64}/bitcoind 2>/dev/null || true
 
 git update-index --chmod=+x ./{linux-arm64,linux-x64,osx64}/bitcoind 2>/dev/null || true
-git update-index --chmod=+x ./win-x64/bitcoind.exe 2>/dev/null || true
 
 echo ""
 echo "Done."
