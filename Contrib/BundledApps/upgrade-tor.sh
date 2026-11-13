@@ -6,7 +6,7 @@
 # Requirements:
 #   - bash
 #   - curl
-#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone / brew install sevenzip)
+#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone)
 #   - git (only for chmod +x marking via git update-index)
 
 set -euo pipefail
@@ -82,9 +82,8 @@ DIST_URI="https://www.torproject.org/dist/torbrowser/${VERSION}"
 declare -A FILES
 FILES[linux-arm64]="tor-browser-linux-aarch64-${VERSION}.tar.xz"
 FILES[linux-x64]="tor-browser-linux-x86_64-${VERSION}.tar.xz"
-FILES[osx64]="tor-browser-macos-${VERSION}.dmg"
 
-SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64" "osx64")
+SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64")
 
 SEVEN_ZIP="7zz"
 
@@ -133,8 +132,8 @@ cd $BINARIES_DIR || { echo "Error: Failed to change directory to '$BINARIES_DIR'
 
 info "Change directory to '$BINARIES_DIR'"
 
-if [[ ! -d "linux-x64" || ! -d "osx64" ]]; then
-    error "Expected linux-x64, osx64, etc. to be present in the folder 'WalletWasabi/BundledApps/Binaries'"
+if [[ ! -d "linux-x64" || ! -d "linux-arm64" ]]; then
+    error "Expected linux-x64 and linux-arm64 to be present in the folder 'WalletWasabi/BundledApps/Binaries'"
 fi
 
 TEMP_DIR="temp/${VERSION}"
@@ -205,11 +204,6 @@ if [[ "$SKIP_EXTRACT_BROWSER" != true ]]; then
     mkdir -p TorBrowser/linux-x64
     "$SEVEN_ZIP" x -y "tor-browser-linux-x86_64-${VERSION}.tar.xz" >/dev/null
     "$SEVEN_ZIP" x -y -oTorBrowser/linux-x64 "tor-browser-linux-x86_64-${VERSION}.tar" >/dev/null
-
-    # macOS → .dmg
-    info "Extracting macOS DMG (tor-browser-macos-${VERSION}.dmg)"
-    mkdir -p TorBrowser/macOS
-    "$SEVEN_ZIP" x -y -oTorBrowser/macOS "tor-browser-macos-${VERSION}.dmg" >/dev/null
 else
     section "Skipping browser archive extraction"
 fi
@@ -219,17 +213,13 @@ if [[ "$SKIP_EXTRACT_TOR" != true ]]; then
     section "Extracting Tor binaries only"
 
     rm -rf Tor
-    mkdir -p Tor/{linux-arm64,linux-x64,osx64}
+    mkdir -p Tor/{linux-arm64,linux-x64}
 
     # Linux arm64
     cp -a TorBrowser/linux-arm64/tor-browser/Browser/TorBrowser/Tor/* Tor/linux-arm64/ 2>/dev/null || true
 
     # Linux x64
     cp -a TorBrowser/linux-x64/tor-browser/Browser/TorBrowser/Tor/* Tor/linux-x64/ 2>/dev/null || true
-
-    # macOS
-    # Note: path can vary slightly between versions — "Tor Browser.app" or "Tor Browser Alpha.app"
-    cp -a "TorBrowser/macOS/Tor Browser"*"/Tor Browser"*".app/Contents/MacOS/Tor/"* Tor/osx64/ 2>/dev/null || true
 
     # Remove PluggableTransports if accidentally copied
     rm -rf Tor/*/PluggableTransports 2>/dev/null || true
@@ -272,9 +262,9 @@ fi
 # ─── Make executables +x (git friendly) ──────────────────────────────────────
 section "Marking Tor binaries executable in the git repository"
 
-chmod +x ./{linux-arm64,linux-x64,osx64}/Tor/tor 2>/dev/null || true
+chmod +x ./{linux-arm64,linux-x64}/Tor/tor 2>/dev/null || true
 
-git update-index --chmod=+x ./{linux-arm64,linux-x64,osx64}/Tor/tor 2>/dev/null || true
+git update-index --chmod=+x ./{linux-arm64,linux-x64}/Tor/tor 2>/dev/null || true
 
 echo ""
 echo "Done."

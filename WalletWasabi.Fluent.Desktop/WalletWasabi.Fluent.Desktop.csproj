@@ -5,7 +5,7 @@
 		<NoWarn>1701;1702;1705;1591;1573;CA1031;CA1822</NoWarn>
 		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 		<DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
-		<RuntimeIdentifiers>linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+		<RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -16,7 +16,7 @@
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyTitle>Wasabi Wallet</AssemblyTitle>
 		<Description>
-			Open-source, non-custodial, privacy focused Bitcoin wallet for Linux and Mac. Built-in Tor, coinjoin, and coin control features.
+			Open-source, non-custodial, privacy focused Bitcoin wallet for Linux. Built-in Tor, coinjoin, and coin control features.
 		</Description>
 		<Copyright>MIT</Copyright>
 		<PackageTags>bitcoin-wallet;privacy;bitcoin;dotnet;nbitcoin;cross-platform;zerolink;wallet;wabisabi;coinjoin;tor</PackageTags>
@@ -33,7 +33,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Avalonia.X11" />
-		<PackageReference Include="Avalonia.Native" />
 		<PackageReference Include="Avalonia.Skia" />
 		<PackageReference Include="ReactiveUI.Avalonia" />
 	</ItemGroup>

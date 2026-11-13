@@ -95,9 +95,7 @@ public static class EnvironmentHelpers
 		var home = Environment.GetEnvironmentVariable("HOME");
 		if (!string.IsNullOrEmpty(home))
 		{
-			directory = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-				? Path.Combine(home, "Library", "Application Support", "Bitcoin")
-				: Path.Combine(home, ".bitcoin"); // Linux
+			directory = Path.Combine(home, ".bitcoin");
 		}
 
 		return directory;
@@ -107,7 +105,6 @@ public static class EnvironmentHelpers
 public enum OS
 {
 	Linux,
-	OSX,
 	FreeBSD
 }
 
@@ -115,11 +112,6 @@ public static class PlatformInformation
 {
 	public static OS GetOsPlatform()
 	{
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-		{
-			return OS.OSX;
-		}
-
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
 			return OS.Linux;

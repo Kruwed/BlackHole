@@ -269,8 +269,6 @@ public static class ReleaseDownloader
 	internal static string GetInstallerName(Version version, OS platform, Architecture architecture, bool isDebianBased) =>
 		(platform, architecture, isDebianBased) switch
 		{
-			(OS.OSX, Architecture.Arm64, _) => $"Wasabi-{version}-arm64.dmg",
-			(OS.OSX, _, _) => $"Wasabi-{version}.dmg",
 			(OS.Linux, _, true) => $"Wasabi-{version}.deb",
 			(OS.Linux, Architecture.X64, false) => $"Wasabi-{version}-linux-x64.tar.gz",
 			_ => throw new NotSupportedException($"Unsupported platform: '{RuntimeInformation.OSDescription}'.")
@@ -301,14 +299,6 @@ public static class Installer
 			if (p is null)
 			{
 				throw new InvalidOperationException($"Can't start {nameof(p)} {startInfo.FileName}.");
-			}
-
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-			{
-				// For MacOS, you need to start the process twice, first start => permission denied
-				// TODO: find out why and fix.
-				p.WaitForExit(5000);
-				p.Start();
 			}
 		}
 		catch (Exception ex)

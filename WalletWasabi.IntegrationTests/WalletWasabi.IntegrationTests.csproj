@@ -33,9 +33,6 @@
 		<None Update="BundledApps\Binaries\linux-x64\bitcoind">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
-		<None Update="BundledApps\Binaries\osx64\bitcoind">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
 	</ItemGroup>
 
 	<ItemGroup>

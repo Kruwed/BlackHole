@@ -175,7 +175,6 @@ utils
 debian
 somethingyoudontunderstand
 somethingelseyoudontget
-plist
 spctl
 icns
 volname
@@ -183,7 +182,6 @@ srcfolder
 xcrun
 altool
 xcrum
-codesign
 xcode
 xargs
 ntip

@@ -14,12 +14,11 @@ Every release artifact is produced by [`Contrib/release.sh`](../../Contrib/relea
 | --- | --- | --- | --- |
 | `debian-package-and-zips` | `ubuntu-latest` | `sudo bash -x ./Contrib/release.sh debian` | `Wasabi-<version>.deb`, `Wasabi-<version>-arm64.deb`, `Wasabi-<version>-linux-{x64,arm64}.{tar.gz,zip}` |
 | `appimage-package` | `ubuntu-latest` | `sudo bash -x ./Contrib/release.sh appimage` | `Wasabi-<version>.AppImage`, `Wasabi-<version>-arm64.AppImage` |
-| `macos-packages-and-zips` | `macos-latest` | `./Contrib/release.sh dmg` | `Wasabi-<version>.dmg`, `Wasabi-<version>-arm64.dmg`, `Wasabi-<version>-macOS-{x64,arm64}.zip` |
 | `sign-all-packages` | `ubuntu-latest` | `bash -x ./Contrib/release.sh gpgsign` | `SHA256SUMS.asc` (used in section 4) |
 
 To reproduce a release, run **that release's own** `Contrib/release.sh`, checked out from the release tag.
 
-The rest of this guide covers the Linux packages, which are the ones that reproduce byte for byte. macOS is discussed in section 4.
+The rest of this guide covers these Linux packages.
 
 ## 2. Assert correct environment
 
@@ -107,22 +106,3 @@ diff -r official built
 * **`.deb`: byte-identical.** [WalletScrutiny](https://walletscrutiny.com/) rebuilt `Wasabi-<version>.deb` from tag `v<version>`
 * **`.tar.gz`: byte-identical.** The tarball is created with `--sort=name`, `--mtime=@$SOURCE_DATE_EPOCH`, `--owner=0 --group=0 --numeric-owner` and the atime/ctime PAX headers removed.
 * **`.zip`: differs**, because `zip -r` stores the files' modification times (see *Timestamps* above); it contains the same files that go into the `.tar.gz`.
-
-### macOS
-
-According to Apple documentation, the signature that is used to ensure the integrity of the software is added into the binary itself - so it will manipulate the content of the files.
-
-> If the code is universal, the object code for each slice (architecture) is signed separately. This signature is stored within the binary file itself.
-
-[Source](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/AboutCS/AboutCS.html#//apple_ref/doc/uid/TP40005929-CH3-SW3)
-
-According to this, it is impossible to have both deterministic build and code signature on macOS. macOS Gatekeeper won't let you run software without it. Thus, Wasabi only applies code signature, but no deterministic build for macOS.
-
-There is an issue [here](https://github.com/WalletWasabi/WalletWasabi/issues/4110) for further discussion.
-
-With the following method you can check the differences by yourself. You will need `7z` to extract the `.dmg` (`sudo apt install p7zip-full`):
-
-```sh
-7z x Wasabi-<version>.dmg -oWasabiOsx
-git diff --no-index osx-x64/ WasabiOsx/Wasabi\ Wallet.App/Contents/MacOS/
-```

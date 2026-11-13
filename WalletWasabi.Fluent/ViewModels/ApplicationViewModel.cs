@@ -33,30 +33,14 @@ public partial class ApplicationViewModel : ViewModelBase, ICanShutdownProvider
 		});
 
 		ShowCommand = ReactiveCommand.Create(() => _mainWindowService.Show());
-
-		AboutCommand = ReactiveCommand.Create(AboutExecute, AboutCanExecute());
 	}
 
 	public MainViewModel MainViewModel { get; }
-	public ICommand AboutCommand { get; }
 	public ICommand ShowCommand { get; }
 
 	public ICommand ShowHideCommand { get; }
 
 	public ICommand QuitCommand { get; }
-
-	private void AboutExecute()
-	{
-		MainViewModel.DialogScreen.To().About(navigateBack: MainViewModel.DialogScreen.CurrentPage is not null);
-	}
-
-	private IObservable<bool> AboutCanExecute()
-	{
-		return MainViewModel.DialogScreen
-			.WhenAnyValue(x => x.CurrentPage)
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Select(x => x is null);
-	}
 
 	public void Shutdown(bool restart) => _mainWindowService.Shutdown(restart);
 

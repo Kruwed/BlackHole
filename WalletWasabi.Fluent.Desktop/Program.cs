@@ -4,7 +4,6 @@ using Avalonia.Controls;
 using System.IO;
 using System.Reactive;
 using System.Reactive.Concurrency;
-using System.Runtime.InteropServices;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using ReactiveUI;
@@ -126,10 +125,7 @@ public class Program
 
 		Dispatcher.UIThread.Post(() =>
 		{
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-			{
-				DetachTrayIconMenus();
-			}
+			DetachTrayIconMenus();
 
 			(Application.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow?.Close();
 		}, DispatcherPriority.Send);
@@ -190,8 +186,6 @@ public class Program
 
 		return result
 			.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software }, WmClass = "Wasabi Wallet Crash Report" })
-			.With(new AvaloniaNativePlatformOptions { RenderingMode = new[] { AvaloniaNativeRenderingMode.Software } })
-			.With(new MacOSPlatformOptions { ShowInDock = true })
 			.AfterSetup(_ => ThemeHelper.ApplyTheme(Theme.Dark));
 	}
 }
@@ -224,7 +218,6 @@ public static class WasabiAppExtensions
 				AppBuilder appBuilder = AppBuilder.Configure(() => new App(
 					backendInitializeAsync: async () =>
 					{
-						// macOS require that Avalonia is started with the UI thread. Hence this call must be delayed to this point.
 						await app.Global.InitializeAsync(initializeSleepInhibitor: true, app.TerminateService, stopLoadingCts.Token).ConfigureAwait(false);
 
 						// Make sure that wallet startup set correctly regarding RunOnSystemStartup
@@ -236,18 +229,15 @@ public static class WasabiAppExtensions
 					{
 						ThemeHelper.ApplyTheme(uiConfig.DarkModeEnabled ? Theme.Dark : Theme.Light);
 
-						if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+						Dispatcher.UIThread.UnhandledException += (_, e) =>
 						{
-							Dispatcher.UIThread.UnhandledException += (_, e) =>
+							if (Program.IsShuttingDown &&
+								Program.IsDbusMenuShutdownException(e.Exception))
 							{
-								if (Program.IsShuttingDown &&
-									Program.IsDbusMenuShutdownException(e.Exception))
-								{
-									Logger.LogWarning("Suppressing DBusMenuExporter exception during shutdown.");
-									e.Handled = true;
-								}
-							};
-						}
+								Logger.LogWarning("Suppressing DBusMenuExporter exception during shutdown.");
+								e.Handled = true;
+							}
+						};
 					});
 
 				if (app.TerminateService.CancellationToken.IsCancellationRequested)

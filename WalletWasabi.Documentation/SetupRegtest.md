@@ -11,11 +11,6 @@ RegTest is a local network in which users can generate blocks and coins for test
 
     `-datadir` using example:
 
-    macOS:
-    ```
-    "/Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt" -regtest -blockfilterindex -txindex -datadir=$HOME/Library/Application Support/Bitcoin"
-    ```
-    Linux:
     ```
      ~/bitcoin-[version number]/bin/bitcoin-qt -regtest -blockfilterindex -txindex -datadir=$HOME/.bitcoin/
     ```
@@ -26,11 +21,6 @@ RegTest is a local network in which users can generate blocks and coins for test
 
     Defaults:
 
-    macOS:
-    ```
-    $HOME/Library/Application Support/Bitcoin/
-    ```
-    Linux:
     ```
     $HOME/.bitcoin/
     ```
@@ -76,8 +66,7 @@ Here you will have to build from source, follow [these instructions here](https:
 4. Stop the application if it is still running with CTRL-C.
 5. Go to the Coordinator folder:
     ```
-    macOS: "/Users/{your username}/.walletwasabi/coordinator"
-    Linux: "/home/{your username}/.walletwasabi/coordinator"
+    /home/{your username}/.walletwasabi/coordinator
     ```
 6. Edit these lines in `Config.json`:
     ```

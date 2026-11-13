@@ -28,21 +28,8 @@ public static class FileHelpers
 			throw new NotSupportedException($"Opening '{Path.GetExtension(fullPath)}' files in a text editor is not supported.");
 		}
 
-		ProcessStartInfo startInfo;
-
-		if (OperatingSystem.IsLinux())
-		{
-			// Opens the default handler for the file type, which is not guaranteed to be a text editor.
-			startInfo = new ProcessStartInfo("xdg-open") { ArgumentList = { fullPath } };
-		}
-		else if (OperatingSystem.IsMacOS())
-		{
-			startInfo = new ProcessStartInfo("/usr/bin/open") { ArgumentList = { "-e", "--", fullPath } };
-		}
-		else
-		{
-			throw new PlatformNotSupportedException("Cannot open a text editor on this platform.");
-		}
+		// Opens the default handler for the file type, which is not guaranteed to be a text editor.
+		var startInfo = new ProcessStartInfo("xdg-open") { ArgumentList = { fullPath } };
 
 		try
 		{

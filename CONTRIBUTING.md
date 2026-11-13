@@ -265,7 +265,7 @@ All the logic should go into `ViewModels` or `Behaviors`.
 
 ## Main MUST be Synchronous
 
-For Avalonia applications the Main method must be synchronous. No async-await here! If you await inside Main before Avalonia has initialised its renderloop / UIThread, then OSX will stop working. Why? Because OSX applications (and some of Unixes) assume that the very first thread created in a program is the UIThread. Cocoa apis check this and crash if they are not called from Thread 0. Awaiting means that Avalonia may not be able to capture Thread 0 for the UIThread.
+For Avalonia applications the Main method must be synchronous. No async-await here! If you await inside Main before Avalonia has initialised its renderloop / UIThread, then some platforms will stop working. Why? Because some windowing systems assume that the very first thread created in a program is the UIThread. Cocoa apis check this and crash if they are not called from Thread 0. Awaiting means that Avalonia may not be able to capture Thread 0 for the UIThread.
 
 ## Avoid Binding expressions with SubProperties
 If you have a `Binding` expression i.e. `{Binding MyProperty.ChildProperty}` then most likely the UI design is flawed and you have broken the MVVM pattern.

@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using WalletWasabi.Logging;
 
@@ -12,14 +11,7 @@ public static class StartupHelper
 	{
 		try
 		{
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-			{
-				await LinuxStartupHelper.AddOrRemoveDesktopFileAsync(runOnSystemStartup).ConfigureAwait(false);
-			}
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-			{
-				await MacOsStartupHelper.AddOrRemoveStartupItemAsync(runOnSystemStartup).ConfigureAwait(false);
-			}
+			await LinuxStartupHelper.AddOrRemoveDesktopFileAsync(runOnSystemStartup).ConfigureAwait(false);
 		}
 		catch (Exception ex)
 		{

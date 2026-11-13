@@ -34,7 +34,6 @@
     <PackageVersion Include="Avalonia.Diagnostics" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Xaml.Behaviors.Avalonia" Version="11.3.9.6" />
     <PackageVersion Include="Avalonia.X11" Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.Native" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="ReactiveUI.Avalonia" Version="11.3.8" />
     <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />

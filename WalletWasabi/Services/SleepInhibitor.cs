@@ -51,10 +51,6 @@ public class SleepInhibitor : PeriodicRunner
 
 			taskFactory = () => Task.FromResult<IPowerSavingInhibitorTask>(Create(InhibitWhat.Idle, Timeout, Reason, gui));
 		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-		{
-			taskFactory = () => Task.FromResult<IPowerSavingInhibitorTask>(MacOsInhibitorTask.Create(Timeout, Reason));
-		}
 
 		return new SleepInhibitor(coinJoinManager, taskFactory);
 	}

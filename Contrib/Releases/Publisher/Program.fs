@@ -31,16 +31,12 @@ let buildMessage content (tags : (string * string list) list) =
 let buildMessageTags version baseUri =
     [
         "SHA256SUMS"; "SHA256SUMS.asc"; "SHA256SUMS.wasabisig";
-        $"Wasabi-{version}-arm64.dmg"; $"Wasabi-{version}-arm64.dmg.asc";
         $"Wasabi-{version}-linux-x64.tar.gz"; $"Wasabi-{version}-linux-x64.tar.gz.asc";
         $"Wasabi-{version}-linux-arm64.tar.gz"; $"Wasabi-{version}-linux-arm64.tar.gz.asc";
         $"Wasabi-{version}-linux-x64.zip"; $"Wasabi-{version}-linux-x64.zip.asc";
-        $"Wasabi-{version}-macOS-arm64.zip"; $"Wasabi-{version}-macOS-arm64.zip.asc";
-        $"Wasabi-{version}-macOS-x64.zip"; $"Wasabi-{version}-macOS-x64.zip.asc";
         $"Wasabi-{version}.deb"; $"Wasabi-{version}.deb.asc";
         $"Wasabi-{version}.Appimage"; $"Wasabi-{version}.Appimage.asc";
-        $"Wasabi-{version}-arm64.Appimage"; $"Wasabi-{version}-arm64.Appimage.asc";
-        $"Wasabi-{version}.dmg"; $"Wasabi-{version}.dmg.asc"
+        $"Wasabi-{version}-arm64.Appimage"; $"Wasabi-{version}-arm64.Appimage.asc"
     ] |> List.map (fun file -> file, [$"{baseUri}/{file}"])
 
 

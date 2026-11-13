@@ -32,11 +32,6 @@
     <StyleInclude Source="avares://WalletWasabi.Fluent/Icons/Icons.axaml" />
     <StyleInclude Source="avares://WalletWasabi.Fluent/Styles/Styles.axaml" />
   </Application.Styles>
-  <NativeMenu.Menu>
-    <NativeMenu>
-      <NativeMenuItem Header="About Wasabi Wallet" Command="{Binding AboutCommand}" />
-    </NativeMenu>
-  </NativeMenu.Menu>
   <TrayIcon.Icons>
     <TrayIcons>
       <TrayIcon Icon="/Assets/WasabiLogo.ico" Command="{Binding ShowCommand}" ToolTipText="Wasabi Wallet">

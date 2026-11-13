@@ -64,8 +64,6 @@ public class ReleaseDownloaderTests
 	}
 
 	[Theory]
-	[InlineData(OS.OSX, Architecture.X64, false, "Wasabi-2.5.1.dmg")]
-	[InlineData(OS.OSX, Architecture.Arm64, false, "Wasabi-2.5.1-arm64.dmg")]
 	[InlineData(OS.Linux, Architecture.X64, true, "Wasabi-2.5.1.deb")]
 	[InlineData(OS.Linux, Architecture.X64, false, "Wasabi-2.5.1-linux-x64.tar.gz")]
 	public void SelectsInstallerName(OS platform, Architecture architecture, bool isDebianBased, string expected)

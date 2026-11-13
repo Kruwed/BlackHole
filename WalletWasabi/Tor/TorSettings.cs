@@ -53,7 +53,7 @@ public record TorSettings
 			}
 		}
 
-		TorBinaryDir = torFolder ?? Path.Combine(BundledAppHelpers.GetBinaryFolder(BundledApp.Tor), "Tor");
+		TorBinaryDir = torFolder ?? Path.Combine(BundledAppHelpers.GetBinaryFolder(), "Tor");
 		TorBinaryFilePath = GetTorBinaryFilePath(TorBinaryDir);
 		TorTransportPluginsDir = Path.Combine(TorBinaryDir, "PluggableTransports");
 

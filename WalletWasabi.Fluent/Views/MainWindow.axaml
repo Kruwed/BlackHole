@@ -15,7 +15,7 @@
         TransparencyLevelHint="AcrylicBlur"
         ExtendClientAreaTitleBarHeightHint="50"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="Default, PreferSystemChrome, OSXThickTitleBar"
+        ExtendClientAreaChromeHints="Default, PreferSystemChrome"
         Title="Wasabi Wallet"
         WindowState="{Binding WindowState, Mode=TwoWay}"
         Focusable="True"

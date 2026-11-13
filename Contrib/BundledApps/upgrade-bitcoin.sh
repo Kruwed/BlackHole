@@ -6,7 +6,7 @@
 # Requirements:
 #   - bash
 #   - curl
-#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone / brew install sevenzip)
+#   - 7zz (version 25.1+; 7-Zip command line; apt install 7zip-standalone)
 #   - git (only for chmod +x marking via git update-index)
 
 set -euo pipefail
@@ -80,9 +80,8 @@ DIST_URI="https://bitcoincore.org/bin/bitcoin-core-${VERSION}"
 declare -A FILES
 FILES[linux-arm64]="bitcoin-${VERSION}-aarch64-linux-gnu.tar.gz"
 FILES[linux-x64]="bitcoin-${VERSION}-x86_64-linux-gnu.tar.gz"
-FILES[osx64]="bitcoin-${VERSION}-x86_64-apple-darwin.tar.gz"
 
-SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64" "osx64")
+SUPPORTED_PLATFORMS=("linux-arm64" "linux-x64")
 
 SEVEN_ZIP="7zz"
 
@@ -165,8 +164,8 @@ cd $BINARIES_DIR || { echo "Error: Failed to change directory to '$BINARIES_DIR'
 
 info "Change directory to '$BINARIES_DIR'"
 
-if [[ ! -d "linux-x64" || ! -d "osx64" ]]; then
-    error "Expected linux-x64, osx64, etc. to be present in the folder 'WalletWasabi.IntegrationTests/BundledApps/Binaries'"
+if [[ ! -d "linux-x64" || ! -d "linux-arm64" ]]; then
+    error "Expected linux-x64 and linux-arm64 to be present in the folder 'WalletWasabi.IntegrationTests/BundledApps/Binaries'"
 fi
 
 TEMP_DIR="temp/bitcoin-${VERSION}"
@@ -221,12 +220,6 @@ if [[ "$SKIP_EXTRACT" != true ]]; then
     mkdir -p BitcoinCore/linux-x64
     "$SEVEN_ZIP" x -y "bitcoin-${VERSION}-x86_64-linux-gnu.tar.gz" >/dev/null
     "$SEVEN_ZIP" x -y -oBitcoinCore/linux-x64 "bitcoin-${VERSION}-x86_64-linux-gnu.tar" >/dev/null
-
-    # macOS (x86-64)
-    info "Extracting macOS archive (bitcoin-${VERSION}-x86_64-apple-darwin.tar.gz)"
-    mkdir -p BitcoinCore/osx64
-    "$SEVEN_ZIP" x -y "bitcoin-${VERSION}-x86_64-apple-darwin.tar.gz" >/dev/null
-    "$SEVEN_ZIP" x -y -oBitcoinCore/osx64 "bitcoin-${VERSION}-x86_64-apple-darwin.tar" >/dev/null
 else
     section "Skipping Bitcoin Core archive extraction"
 fi
@@ -255,9 +248,9 @@ fi
 # ─── Make executables +x (git friendly) ──────────────────────────────────────
 section "Marking Bitcoin Core binaries executable in the git repository"
 
-chmod +x ./{linux-arm64,linux-x64,osx64}/bitcoind 2>/dev/null || true
+chmod +x ./{linux-arm64,linux-x64}/bitcoind 2>/dev/null || true
 
-git update-index --chmod=+x ./{linux-arm64,linux-x64,osx64}/bitcoind 2>/dev/null || true
+git update-index --chmod=+x ./{linux-arm64,linux-x64}/bitcoind 2>/dev/null || true
 
 echo ""
 echo "Done."

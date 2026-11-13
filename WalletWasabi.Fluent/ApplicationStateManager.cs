@@ -27,7 +27,6 @@ public class ApplicationStateManager : IMainWindowService
 	private bool _hideRequest;
 	private bool _isShuttingDown;
 	private bool _restartRequest;
-	private IActivatableLifetime? _activatable;
 
 	internal ApplicationStateManager(IClassicDesktopStyleApplicationLifetime lifetime, UiContext uiContext, MainViewModel mainViewModel, bool startInBg)
 	{
@@ -35,27 +34,6 @@ public class ApplicationStateManager : IMainWindowService
 		_stateMachine = new StateMachine<State, Trigger>(State.InitialState);
 		UiContext = uiContext;
 		MainViewModel = mainViewModel;
-
-		// The IActivatableLifetime feature is only available on macOS. Linux and Windows will return null.
-		if (Application.Current?.TryGetFeature<IActivatableLifetime>() is { } activatableLifetime)
-		{
-			if (startInBg)
-			{
-				Dispatcher.UIThread.Post(
-					() =>
-					{
-						_activatable = activatableLifetime;
-						activatableLifetime.TryEnterBackground();
-						activatableLifetime.Activated += ActivatableLifetimeOnActivated;
-					},
-					DispatcherPriority.Background);
-			}
-			else
-			{
-				_activatable = activatableLifetime;
-				activatableLifetime.Activated += ActivatableLifetimeOnActivated;
-			}
-		}
 
 		ApplicationViewModel = new ApplicationViewModel(UiContext, mainViewModel, this);
 		State initTransitionState = startInBg ? State.Closed : State.Open;
@@ -89,10 +67,6 @@ public class ApplicationStateManager : IMainWindowService
 				_lifetime.MainWindow?.Close();
 				_lifetime.MainWindow = null;
 				ApplicationViewModel.IsMainWindowShown = false;
-				if (_activatable is { })
-				{
-					_activatable.TryEnterBackground();
-				}
 			})
 			.Permit(Trigger.Show, State.Open)
 			.Permit(Trigger.ShutdownPrevented, State.Open);
@@ -142,20 +116,6 @@ public class ApplicationStateManager : IMainWindowService
 		_stateMachine.Fire(shouldShutdown ? Trigger.ShutdownRequested : Trigger.ShutdownPrevented);
 	}
 
-	private void ActivatableLifetimeOnActivated(object? sender, ActivatedEventArgs e)
-	{
-		switch (e.Kind)
-		{
-			case ActivationKind.Background:
-			case ActivationKind.Reopen:
-				if (this is IMainWindowService service)
-				{
-					service.Show();
-				}
-				break;
-		}
-	}
-
 	private void CreateAndShowMainWindow()
 	{
 		if (_isShuttingDown)
@@ -169,8 +129,6 @@ public class ApplicationStateManager : IMainWindowService
 		}
 
 		MainViewModel.ApplyUiConfigWindowState();
-
-		_activatable?.TryLeaveBackground();
 
 		var result = new MainWindow
 		{

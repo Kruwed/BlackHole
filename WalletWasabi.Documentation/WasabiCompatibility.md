@@ -4,15 +4,14 @@ This document lists all the officially supported software by Wasabi Wallet. This
 
 # Officially Supported Operating Systems
 
-- macOS 14+
 - Ubuntu 22.04+
 - Fedora 42+
 - Debian 12+
 
 # Officially Supported Architectures
 
-- x64 (Linux, macOS)
-- arm64 (macOS, Linux (experimental))
+- x64
+- arm64 (experimental)
 
 # FAQ
 

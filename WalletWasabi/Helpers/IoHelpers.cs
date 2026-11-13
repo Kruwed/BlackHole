@@ -84,9 +84,7 @@ public static class IoHelpers
 			{
 				using var process = Process.Start(new ProcessStartInfo
 				{
-					FileName = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-						? "open"
-						: "xdg-open",
+					FileName = "xdg-open",
 					ArgumentList = { dirPath },
 					CreateNoWindow = true
 				});
@@ -104,30 +102,14 @@ public static class IoHelpers
 
 		var safeUrl = uri.ToString();
 
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		// If no associated application/json MimeType is found xdg-open opens return error
+		// but it tries to open it anyway using the console editor (nano, vim, other..)
+		using var process = Process.Start(new ProcessStartInfo("xdg-open")
 		{
-			// If no associated application/json MimeType is found xdg-open opens return error
-			// but it tries to open it anyway using the console editor (nano, vim, other..)
-			using var process = Process.Start(new ProcessStartInfo("xdg-open")
-			{
-				ArgumentList = { safeUrl },
-				UseShellExecute = false,
-				CreateNoWindow	= true
-			});
-		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-		{
-			using var process = Process.Start(new ProcessStartInfo("open")
-			{
-				ArgumentList = { safeUrl },
-				UseShellExecute = false,
-				CreateNoWindow	= true
-			});
-		}
-		else
-		{
-			throw new PlatformNotSupportedException("Cannot open browser on this platform.");
-		}
+			ArgumentList = { safeUrl },
+			UseShellExecute = false,
+			CreateNoWindow	= true
+		});
 
 		return Task.CompletedTask;
 	}

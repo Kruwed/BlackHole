@@ -19,7 +19,7 @@ public partial class QrCodeReader
 {
 	private readonly QRCodeReader _decoder = new();
 
-	public bool IsPlatformSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+	public bool IsPlatformSupported => true;
 
 	public IObservable<(string decoded, Bitmap bitmap)> Read()
 	{

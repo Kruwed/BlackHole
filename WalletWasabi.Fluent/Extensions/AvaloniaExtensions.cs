@@ -24,29 +24,16 @@ public static class AvaloniaExtensions
 			return;
 		}
 
-		if (OperatingSystem.IsMacOS())
+		if (!window.IsActive)
 		{
+			var position = window.Position;
 			if (window.IsVisible)
 			{
 				window.Hide();
 			}
 
+			window.Position = position;
 			window.Show();
-		}
-
-		if (OperatingSystem.IsLinux())
-		{
-			if (!window.IsActive)
-			{
-				var position = window.Position;
-				if (window.IsVisible)
-				{
-					window.Hide();
-				}
-
-				window.Position = position;
-				window.Show();
-			}
 		}
 	}
 }
