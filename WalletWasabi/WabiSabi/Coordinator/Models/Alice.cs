@@ -21,7 +21,6 @@ public class Alice
 	public int TotalInputVsize => Coin.ScriptPubKey.EstimateInputVsize();
 
 	public bool ConfirmedConnection { get; set; }
-	public bool ReadyToSign { get; set; }
 
 	public long CalculateRemainingVsizeCredentials(int maxRegistrableSize) => maxRegistrableSize - TotalInputVsize;
 

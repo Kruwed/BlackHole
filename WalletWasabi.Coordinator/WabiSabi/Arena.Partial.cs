@@ -112,16 +112,6 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		}
 	}
 
-	public async Task ReadyToSignAsync(ReadyToSignRequestRequest request, CancellationToken cancellationToken)
-	{
-		using (await _asyncLock.LockAsync(cancellationToken).ConfigureAwait(false))
-		{
-			var round = GetRound(request.RoundId, Phase.OutputRegistration);
-			var alice = GetAlice(request.AliceId, round);
-			alice.ReadyToSign = true;
-		}
-	}
-
 	public async Task RemoveInputAsync(InputsRemovalRequest request, CancellationToken cancellationToken)
 	{
 		using (await _asyncLock.LockAsync(cancellationToken).ConfigureAwait(false))

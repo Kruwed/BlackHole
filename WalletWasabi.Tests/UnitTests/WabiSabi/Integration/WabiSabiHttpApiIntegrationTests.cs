@@ -220,6 +220,7 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 					AllowP2trInputs = true,
 					AllowP2trOutputs = true,
 					MaxInputCountByRound = 3 * inputCount,
+					OutputRegistrationTimeout = TimeSpan.FromSeconds(20), // This phase always lasts its whole time frame.
 					TransactionSigningTimeout = TimeSpan.FromSeconds(4 * inputCount),
 				})));
 
@@ -327,14 +328,16 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 
 				// Instruct the coordinator DI container to use this scoped services to build everything (WabiSabi controller, arena, etc)
 				//
-				// Only the signing phase has to time out, because the second participant never signs. The other coinjoin phases (such as input
-				// registration, connection confirmation, etc.) keep their defaults, each ends as soon as every participant has acted. A short
-				// window would drop slow participants, and one below a minute opens a new round on every tick.
+				// The signing phase has to time out, because the second participant never signs. Output registration always lasts its
+				// whole time frame, so it is shortened to keep the test fast. The other phases (input registration, connection confirmation)
+				// keep their defaults, each ends as soon as every participant has acted. A short window would drop slow participants,
+				// and an input registration window below a minute opens a new round on every tick.
 				services.AddSingleton(s => new WabiSabiConfig
 				{
 					AllowP2trInputs = true,
 					AllowP2trOutputs = true,
 					MaxInputCountByRound = 3 * inputCount, // To make the input phase end as early as all inputs are registered.
+					OutputRegistrationTimeout = TimeSpan.FromSeconds(20),
 					TransactionSigningTimeout = TimeSpan.FromSeconds(4 * inputCount),
 				})));
 
@@ -448,7 +451,7 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 					StandardInputRegistrationTimeout = TimeSpan.FromSeconds(5 * ExpectedInputNumber),
 					BlameInputRegistrationTimeout = TimeSpan.FromSeconds(2 * ExpectedInputNumber),
 					ConnectionConfirmationTimeout = TimeSpan.FromSeconds(2 * ExpectedInputNumber),
-					OutputRegistrationTimeout = TimeSpan.FromSeconds(5 * ExpectedInputNumber),
+					OutputRegistrationTimeout = TimeSpan.FromSeconds(30),
 					TransactionSigningTimeout = TimeSpan.FromSeconds(3 * ExpectedInputNumber),
 				});
 			}));

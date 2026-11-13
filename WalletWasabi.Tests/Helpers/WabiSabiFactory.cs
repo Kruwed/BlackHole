@@ -383,7 +383,6 @@ public static class WabiSabiFactory
 			DoSMinTimeForCheating = TimeSpan.FromDays(1),
 			DoSMinTimeInPrison = TimeSpan.FromHours(1),
 			DoSPenaltyFactorForDisruptingConfirmation = 1.0d,
-			DoSPenaltyFactorForDisruptingSignalReadyToSign = 1.5d,
 			DoSPenaltyFactorForDisruptingSigning = 1.5d,
 			DoSPenaltyFactorForDisruptingByDoubleSpending = 3.0d
 		};

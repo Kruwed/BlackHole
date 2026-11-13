@@ -691,36 +691,6 @@ public class CoinJoinClient
 
 	private record NotAllAlicesSigned(ImmutableArray<AliceClient> AliceClientsThatSigned);
 
-	private async Task ReadyToSignAsync(ImmutableArray<AliceClient> aliceClients, DateTimeOffset readyToSignEndTime, CancellationToken cancellationToken)
-	{
-		var scheduledDates = GetScheduledDates(aliceClients.Length, DateTimeOffset.UtcNow, readyToSignEndTime, MaximumRequestDelay);
-
-		var tasks = aliceClients.Zip(
-			scheduledDates,
-			async (aliceClient, scheduledDate) =>
-			{
-				var delay = scheduledDate - DateTimeOffset.UtcNow;
-				if (delay > TimeSpan.Zero)
-				{
-					await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-				}
-
-				try
-				{
-					await aliceClient.ReadyToSignAsync(cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception e)
-				{
-					// This cannot fail. Otherwise the whole conjoin process will be halted.
-					Logger.LogDebug(FormatLog(e.ToString(), aliceClient));
-					Logger.LogInfo(FormatLog($"Failed to register signal ready to sign with message {e.Message}. Ignoring...", aliceClient));
-				}
-			})
-			.ToImmutableArray();
-
-		await Task.WhenAll(tasks).ConfigureAwait(false);
-	}
-
 	internal virtual ImmutableList<DateTimeOffset> GetScheduledDates(int howMany, DateTimeOffset startTime, DateTimeOffset endTime, TimeSpan maximumRequestDelay)
 	{
 		var remainingTime = endTime - startTime;
@@ -791,10 +761,9 @@ public class CoinJoinClient
 			}
 		}
 
-		// Splitting the remaining time.
-		// Both operations are done under output registration phase, so we have to do the random timing taking that into account.
-		var outputRegistrationEndTime = now + (remainingTime * 0.8); // 80% of the time.
-		var readyToSignEndTime = outputRegistrationEndTime + (remainingTime * 0.2); // 20% of the time.
+		// The coordinator closes output registration when its time frame expires, so every output must be
+		// registered well before that. Keep the last 20% of the phase as a safety margin for slow requests.
+		var outputRegistrationEndTime = now + (remainingTime * 0.8);
 
 		CoinJoinClientProgress.SafeInvoke(this, new EnteringOutputRegistrationPhase(roundState, outputRegistrationPhaseEndTime));
 
@@ -853,10 +822,6 @@ public class CoinJoinClient
 			Logger.LogDebug(FormatLog(e.ToString(), roundState));
 		}
 
-		// ReadyToSign.
-		Logger.LogDebug(FormatLog($"ReadyToSign phase started - it will end in: {readyToSignEndTime - DateTimeOffset.UtcNow:hh\\:mm\\:ss}.", roundState));
-		await ReadyToSignAsync(registeredAliceClients, readyToSignEndTime, combinedToken).ConfigureAwait(false);
-		Logger.LogDebug(FormatLog($"Alices({registeredAliceClients.Length}) are ready to sign.", roundState));
 		return outputTxOuts;
 
 		void OnOutputRegistrationSuccess(Unit _) =>

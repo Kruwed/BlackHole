@@ -195,11 +195,5 @@ public class AliceClient
 		Logger.LogInfo(FormatLog("Posted a signature.", this));
 	}
 
-	public async Task ReadyToSignAsync(CancellationToken cancellationToken)
-	{
-		await _arenaClient.ReadyToSignAsync(RoundId, AliceId, cancellationToken).ConfigureAwait(false);
-		Logger.LogInfo(FormatLog("Ready to sign.", this));
-	}
-
 	public Money EffectiveValue => SmartCoin.EffectiveValue(_feeRate);
 }

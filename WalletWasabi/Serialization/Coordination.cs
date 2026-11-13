@@ -269,12 +269,6 @@ public static partial class Encode
 			("Witness", WitScript(sr.Witness)),
 		]);
 
-	public static JsonNode ReadyToSignRequestRequest(ReadyToSignRequestRequest sr) =>
-		Object([
-			("RoundId", UInt256(sr.RoundId)),
-			("AliceId", Guid(sr.AliceId)),
-		]);
-
 
 	public static JsonNode HumanMonitorRoundResponse(HumanMonitorRoundResponse rs) =>
 		Object([
@@ -306,7 +300,6 @@ public static partial class Encode
 			ConnectionConfirmationRequest ccr => ConnectionConfirmationRequest(ccr),
 			ReissueCredentialRequest rcr => ReissueCredentialRequest(rcr),
 			OutputRegistrationRequest orr => OutputRegistrationRequest(orr),
-			ReadyToSignRequestRequest rsr => ReadyToSignRequestRequest(rsr),
 			TransactionSignaturesRequest tsr => TransactionSignaturesRequest(tsr),
 			RoundStateRequest rsr => RoundStateRequest(rsr),
 
@@ -522,12 +515,6 @@ public static partial class Decode
 			get.Required("Witness", WitScript)
 		));
 
-	private static Decoder<ReadyToSignRequestRequest> ReadyToSignRequestRequest =>
-		Object(get => new ReadyToSignRequestRequest(
-			get.Required("RoundId", UInt256),
-			get.Required("AliceId", Guid)
-		));
-
 	private static Decoder<RoundState> RoundState =>
 		Object(get => new RoundState(
 			get.Required("id", UInt256),
@@ -610,7 +597,6 @@ public static partial class Decode
 			{ } t when t == typeof(ConnectionConfirmationRequest) => Cast<object, ConnectionConfirmationRequest>(ConnectionConfirmationRequest),
 			{ } t when t == typeof(ReissueCredentialRequest) => Cast<object, ReissueCredentialRequest>(ReissueCredentialRequest),
 			{ } t when t == typeof(OutputRegistrationRequest) => Cast<object, OutputRegistrationRequest>(OutputRegistrationRequest),
-			{ } t when t == typeof(ReadyToSignRequestRequest) => Cast<object, ReadyToSignRequestRequest>(ReadyToSignRequestRequest),
 			{ } t when t == typeof(TransactionSignaturesRequest) => Cast<object, TransactionSignaturesRequest>(TransactionSignaturesRequest),
 			{ } t when t == typeof(RoundStateRequest) => Cast<object, RoundStateRequest>(RoundStateRequest),
 			{ } t when t == typeof(RoundState) => Cast<object, RoundState>(RoundState),

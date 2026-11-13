@@ -26,8 +26,7 @@ public class WabiSabiHttpApiClient : IWabiSabiApiRequestHandler
 		RegisterOutput,
 		ReissueCredential,
 		SignTransaction,
-		GetStatus,
-		ReadyToSign
+		GetStatus
 	}
 
 	public Task<InputRegistrationResponse> RegisterInputAsync(InputRegistrationRequest request, CancellationToken cancellationToken) =>
@@ -50,9 +49,6 @@ public class WabiSabiHttpApiClient : IWabiSabiApiRequestHandler
 
 	public Task<RoundStateResponse> GetStatusAsync(RoundStateRequest request, CancellationToken cancellationToken) =>
 		SendAndReceiveAsync<RoundStateRequest, RoundStateResponse>(RemoteAction.GetStatus, request, cancellationToken);
-
-	public Task ReadyToSignAsync(ReadyToSignRequestRequest request, CancellationToken cancellationToken) =>
-		SendAndReceiveAsync(RemoteAction.ReadyToSign, request, cancellationToken);
 
 	private async Task<HttpResponseMessage> InternalSendAsync(RemoteAction action, string jsonString, CancellationToken cancellationToken)
 	{
@@ -95,7 +91,6 @@ public class WabiSabiHttpApiClient : IWabiSabiApiRequestHandler
 			RemoteAction.RemoveInput => "input-unregistration",
 			RemoteAction.SignTransaction => "transaction-signature",
 			RemoteAction.GetStatus => "status",
-			RemoteAction.ReadyToSign => "ready-to-sign",
 			_ => throw new NotSupportedException($"Action '{action}' is unknown and has no endpoint associated.")
 		};
 }

@@ -71,12 +71,6 @@ public class WabiSabiController : ControllerBase, IWabiSabiApiRequestHandler
 		await _arena.SignTransactionAsync(request, cancellableToken);
 	}
 
-	[HttpPost("ready-to-sign")]
-	public async Task ReadyToSignAsync(ReadyToSignRequestRequest request, CancellationToken cancellableToken)
-	{
-		await _arena.ReadyToSignAsync(request, cancellableToken);
-	}
-
 	/// <summary>
 	/// Information about the current Rounds designed for the human eyes.
 	/// </summary>

@@ -70,8 +70,6 @@ public class Round
 	public EndRoundState EndRoundState { get; set; }
 	public int RemainingInputVsizeAllocation => Parameters.MaxTransactionSize - MultipartyTransactionParameters.SharedOverhead - (InputCount * Parameters.MaxVsizeAllocationPerAlice);
 
-	public bool FastSigningPhase { get; set; }
-
 	public RoundParameters Parameters { get; }
 	public Script? CoordinatorScript { get; set; }
 

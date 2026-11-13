@@ -204,14 +204,4 @@ public class ArenaClient
 	{
 		return await RequestHandler.GetStatusAsync(request, cancellationToken).ConfigureAwait(false);
 	}
-
-	public async Task ReadyToSignAsync(
-		uint256 roundId,
-		Guid aliceId,
-		CancellationToken cancellationToken)
-	{
-		await RequestHandler.ReadyToSignAsync(
-			new ReadyToSignRequestRequest(roundId, aliceId),
-			cancellationToken).ConfigureAwait(false);
-	}
 }

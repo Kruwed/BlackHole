@@ -39,8 +39,6 @@ public record WabiSabiConfig
 
 	public double DoSPenaltyFactorForDisruptingConfirmation { get; init; } = 0.2;
 
-	public double DoSPenaltyFactorForDisruptingSignalReadyToSign { get; init; } = 1.0;
-
 	public double DoSPenaltyFactorForDisruptingSigning { get; init; } = 1.0;
 
 	public double DoSPenaltyFactorForDisruptingByDoubleSpending { get; init; } = 3.0;
@@ -62,10 +60,6 @@ public record WabiSabiConfig
 	public TimeSpan OutputRegistrationTimeout { get; init; } = TimeSpan.FromMinutes(1);
 
 	public TimeSpan TransactionSigningTimeout { get; init; } = TimeSpan.FromMinutes(1);
-
-	public TimeSpan FailFastOutputRegistrationTimeout { get; init; } = TimeSpan.FromMinutes(3);
-
-	public TimeSpan FailFastTransactionSigningTimeout { get; init; } = TimeSpan.FromMinutes(1);
 
 	public TimeSpan RoundExpiryTimeout { get; init; } = TimeSpan.FromMinutes(5);
 
@@ -135,7 +129,6 @@ public record WabiSabiConfig
 			MinTimeForFailedToVerify: DoSMinTimeForFailedToVerify,
 			MinTimeForCheating: DoSMinTimeForCheating,
 			PenaltyFactorForDisruptingConfirmation: (decimal) DoSPenaltyFactorForDisruptingConfirmation,
-			PenaltyFactorForDisruptingSignalReadyToSign: (decimal) DoSPenaltyFactorForDisruptingSignalReadyToSign,
 			PenaltyFactorForDisruptingSigning: (decimal) DoSPenaltyFactorForDisruptingSigning,
 			PenaltyFactorForDisruptingByDoubleSpending: (decimal) DoSPenaltyFactorForDisruptingByDoubleSpending,
 			MinTimeInPrison: DoSMinTimeInPrison);

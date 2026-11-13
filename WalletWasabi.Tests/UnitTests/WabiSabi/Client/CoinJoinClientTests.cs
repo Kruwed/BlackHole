@@ -335,9 +335,6 @@ file sealed class InputRegistrationFailingRequestHandler(RoundState roundState, 
 
 	public Task SignTransactionAsync(TransactionSignaturesRequest request, CancellationToken cancellationToken) =>
 		throw new NotSupportedException();
-
-	public Task ReadyToSignAsync(ReadyToSignRequestRequest request, CancellationToken cancellationToken) =>
-		throw new NotSupportedException();
 }
 
 file sealed class SigningCaptureRequestHandler(RoundState roundState) : IWabiSabiApiRequestHandler
@@ -368,8 +365,5 @@ file sealed class SigningCaptureRequestHandler(RoundState roundState) : IWabiSab
 		throw new NotSupportedException();
 
 	public Task<ReissueCredentialResponse> ReissuanceAsync(ReissueCredentialRequest request, CancellationToken cancellationToken) =>
-		throw new NotSupportedException();
-
-	public Task ReadyToSignAsync(ReadyToSignRequestRequest request, CancellationToken cancellationToken) =>
 		throw new NotSupportedException();
 }

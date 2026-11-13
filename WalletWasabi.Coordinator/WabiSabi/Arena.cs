@@ -204,7 +204,6 @@ public partial class Arena : PeriodicRunner
 					}
 					else
 					{
-						round.OutputRegistrationTimeFrame = TimeFrame.Create(_config.FailFastOutputRegistrationTimeout);
 						SetRoundPhase(round, Phase.OutputRegistration);
 					}
 				}
@@ -223,10 +222,8 @@ public partial class Arena : PeriodicRunner
 		{
 			try
 			{
-				var allReady = round.Alices.All(a => a.ReadyToSign);
-				bool phaseExpired = round.OutputRegistrationTimeFrame.HasExpired;
-
-				if (allReady || phaseExpired)
+				// Participants do not announce when they are done, so the phase always lasts its whole time frame.
+				if (round.OutputRegistrationTimeFrame.HasExpired)
 				{
 					var coinjoin = round.Assert<ConstructionState>();
 
@@ -237,14 +234,6 @@ public partial class Arena : PeriodicRunner
 					coinjoin = AddCoordinationFee(round, coinjoin, round.CoordinatorScript, _config.TrimCoordinatorOutput);
 
 					round.CoinjoinState = FinalizeTransaction(coinjoin);
-
-					if (!allReady && phaseExpired)
-					{
-						// It would be better to end the round and create a blame round here, but older client would not support it.
-						// See https://github.com/WalletWasabi/WalletWasabi/pull/11028.
-						round.TransactionSigningTimeFrame = TimeFrame.Create(_config.FailFastTransactionSigningTimeout);
-						round.FastSigningPhase = true;
-					}
 
 					SetRoundPhase(round, Phase.TransactionSigning);
 				}
@@ -315,14 +304,7 @@ public partial class Arena : PeriodicRunner
 				else if (round.TransactionSigningTimeFrame.HasExpired)
 				{
 					Logger.LogWarning(FormatLog($"Signing phase failed with timed out after {round.TransactionSigningTimeFrame.Duration.TotalSeconds} seconds.", round));
-					if (round.FastSigningPhase)
-					{
-						await FailFastTransactionSigningPhaseAsync(round, cancellationToken).ConfigureAwait(false);
-					}
-					else
-					{
-						await FailTransactionSigningPhaseAsync(round, cancellationToken).ConfigureAwait(false);
-					}
+					await FailTransactionSigningPhaseAsync(round, cancellationToken).ConfigureAwait(false);
 				}
 			}
 			catch (RPCException ex)
@@ -385,34 +367,6 @@ public partial class Arena : PeriodicRunner
 		var cnt = round.Alices.RemoveAll(alice => unsignedOutpoints.Contains(alice.Coin.Outpoint));
 
 		Logger.LogInfo(FormatLog($"Removed {cnt} alices, because they didn't sign. Remaining: {round.InputCount}", round));
-
-		await EndRoundAndTryCreateBlameRoundAsync(round, cancellationToken).ConfigureAwait(false);
-	}
-
-	private async Task FailFastTransactionSigningPhaseAsync(Round round, CancellationToken cancellationToken)
-	{
-		var alicesToRemove = round.Alices.Where(alice => !alice.ReadyToSign).ToHashSet();
-
-		if (ReasonableOffendersCount(alicesToRemove.Count, round.Parameters.MinInputCountByRound))
-		{
-			foreach (var alice in alicesToRemove)
-			{
-				// Intentionally, do not ban Alices who have not signed, as clients using hardware wallets may not be able to sign in time.
-				_prison.FailedToSignalReadyToSign(alice.Coin.Outpoint, alice.Coin.Amount, round.Id);
-			}
-		}
-		else
-		{
-			Logger.LogWarning(FormatLog($"Tried to ban {alicesToRemove.Count} inputs for FailedToConfirm - ban was skipped.", round));
-			foreach (var alice in alicesToRemove)
-			{
-				_prison.CoordinatorStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
-			}
-		}
-
-		var removedAlices = round.Alices.RemoveAll(alice => alicesToRemove.Contains(alice));
-
-		Logger.LogInfo(FormatLog($"Removed {removedAlices} alices, because they weren't ready. Remaining: {round.InputCount}", round));
 
 		await EndRoundAndTryCreateBlameRoundAsync(round, cancellationToken).ConfigureAwait(false);
 	}

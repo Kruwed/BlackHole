@@ -276,7 +276,9 @@ public class ArenaClientTests
 			CancellationToken.None);
 
 		await Task.WhenAll(bobOutputRegistration1, bobOutputRegistration2);
-		await aliceArenaClient.ReadyToSignAsync(round.Id, aliceId, CancellationToken.None);
+
+		// Output registration ends when its time frame expires.
+		round.OutputRegistrationTimeFrame = new TimeFrame(DateTimeOffset.UtcNow.AddMinutes(-1), TimeSpan.Zero);
 
 		await arena.TriggerAndWaitRoundAsync(TimeSpan.FromMinutes(1));
 		Assert.Equal(Phase.TransactionSigning, round.Phase);

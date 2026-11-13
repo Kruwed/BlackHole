@@ -72,13 +72,6 @@ public class OffenderSerializationTests
 			Assert.Equal(expected, actual);
 		}
 
-		// Fail to signal ready to sign
-		{
-			var offender = new Offender(outpoint, now, new RoundDisruption(roundId, Money.Satoshis(12345678), RoundDisruptionMethod.DidNotSignalReadyToSign));
-			var expected = Serialize(offender);
-			var actual = Deserialize(expected);
-			Assert.Equal(expected, actual);
-		}
 	}
 
 	private static string Deserialize(string expected) => Offender.FromStringLine(expected).ToStringLine();
