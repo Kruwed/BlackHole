@@ -16,14 +16,12 @@ namespace WalletWasabi.Fluent.Models.Wallets;
 public partial class WalletRepository : ReactiveObject
 {
 	private readonly IServices _services;
-	private readonly AmountProvider _amountProvider;
 	private readonly Dictionary<WalletId, WalletModel> _walletDictionary = new();
 	private readonly CompositeDisposable _disposable = new();
 
-	public WalletRepository(IServices services, AmountProvider amountProvider)
+	public WalletRepository(IServices services)
 	{
 		_services = services;
-		_amountProvider = amountProvider;
 
 		var signals =
 			Observable.FromEventPattern<Wallet>(services.WalletManager, nameof(WalletManager.WalletAdded))
@@ -196,7 +194,7 @@ public partial class WalletRepository : ReactiveObject
 			return existing;
 		}
 
-		var result = new WalletModel(_services, wallet, _amountProvider);
+		var result = new WalletModel(_services, wallet);
 
 		_walletDictionary[wallet.WalletId] = result;
 

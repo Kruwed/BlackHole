@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Serialization;
 using static WalletWasabi.Serialization.Encode;
 using static WalletWasabi.Serialization.Decode;
@@ -27,8 +26,6 @@ public static class UiConfigEncode
 			yield return ("DarkModeEnabled", Bool(cfg.DarkModeEnabled));
 			yield return ("RunOnSystemStartup", Bool(cfg.RunOnSystemStartup));
 			yield return ("HideOnClose", Bool(cfg.HideOnClose));
-			yield return ("SendAmountConversionReversed", Bool(cfg.SendAmountConversionReversed));
-			yield return ("FiatCurrency", String(cfg.FiatCurrency));
 			if (cfg is {WindowWidth: {} width, WindowHeight: {} height})
 			{
 				yield return ("WindowWidth", Double(width));
@@ -64,18 +61,10 @@ public static class UiConfigDecode
 			var lastSelectedWallet = get.Optional("LastSelectedWallet", Decode.String);
 			var runOnSystemStartup = get.Required("RunOnSystemStartup", Decode.Bool);
 			var hideOnClose = get.Required("HideOnClose", Decode.Bool);
-			var sendAmountConversionReversed = get.Required("SendAmountConversionReversed", Decode.Bool);
 			var windowWidth = get.Optional("WindowWidth", Decode.Double, 0);
 			var windowHeight = get.Optional("WindowHeight", Decode.Double, 0);
-			var fiatCurrency = get.Optional("FiatCurrency", Decode.String)?.ToUpperInvariant() ?? UiConstants.DefaultFiatCurrency;
-
-			if (!ExchangeRateProviders.Currencies.Contains(fiatCurrency))
-			{
-				fiatCurrency = UiConstants.DefaultFiatCurrency;
-			}
-
 			return new UiConfig(filePath, privacyMode, isCustomChangeAddress, autocopy, darkModeEnabled,
 				lastSelectedWallet, windowState, runOnSystemStartup, oobe, lastVersionHighlightsDisplayed, hideOnClose,
-				autoPaste, feeTarget, sendAmountConversionReversed, windowWidth > 0 ? windowWidth : null, windowHeight > 0 ? windowHeight : null, fiatCurrency);
+				autoPaste, feeTarget, windowWidth > 0 ? windowWidth : null, windowHeight > 0 ? windowHeight : null);
 		});
 }

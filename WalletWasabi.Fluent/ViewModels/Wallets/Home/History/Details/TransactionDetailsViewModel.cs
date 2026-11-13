@@ -44,7 +44,7 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 			wallet.Network);
 
 		NextCommand = ReactiveCommand.Create(OnNext);
-		Fee = wallet.AmountProvider.Create(model.Fee);
+		Fee = new Amount(model.Fee);
 		IsFeeVisible = model.Fee != null;
 		TransactionId = model.Id;
 		TransactionHex = model.Hex.Value;
@@ -88,12 +88,12 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 
 		if (model.Amount < Money.Zero)
 		{
-			Amount = _wallet.AmountProvider.Create(-model.Amount - (model.Fee ?? Money.Zero));
+			Amount = new Amount(-model.Amount - (model.Fee ?? Money.Zero));
 			AmountText = "Amount sent";
 		}
 		else
 		{
-			Amount = _wallet.AmountProvider.Create(model.Amount);
+			Amount = new Amount(model.Amount);
 			AmountText = "Amount received";
 		}
 

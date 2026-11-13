@@ -22,26 +22,11 @@ public partial class CurrencyEntryBox : TextBox
 	public static readonly StyledProperty<string> CurrencyCodeProperty =
 		AvaloniaProperty.Register<CurrencyEntryBox, string>(nameof(CurrencyCode));
 
-	public static readonly StyledProperty<bool> IsFiatProperty =
-		AvaloniaProperty.Register<CurrencyEntryBox, bool>(nameof(IsFiat));
-
-	public static readonly StyledProperty<bool> IsApproximateProperty =
-		AvaloniaProperty.Register<CurrencyEntryBox, bool>(nameof(IsApproximate));
-
-	public static readonly StyledProperty<decimal> ConversionRateProperty =
-		AvaloniaProperty.Register<CurrencyEntryBox, decimal>(nameof(ConversionRate));
-
-	public static readonly StyledProperty<bool> IsRightSideProperty =
-		AvaloniaProperty.Register<CurrencyEntryBox, bool>(nameof(IsRightSide));
-
 	public static readonly StyledProperty<int> MaxDecimalsProperty =
 		AvaloniaProperty.Register<CurrencyEntryBox, int>(nameof(MaxDecimals), 8);
 
 	public static readonly StyledProperty<Money> BalanceBtcProperty =
 		AvaloniaProperty.Register<CurrencyEntryBox, Money>(nameof(BalanceBtc));
-
-	public static readonly StyledProperty<decimal> BalanceFiatProperty =
-		AvaloniaProperty.Register<CurrencyEntryBox, decimal>(nameof(BalanceFiat));
 
 	public static readonly StyledProperty<bool> ValidatePasteBalanceProperty =
 		AvaloniaProperty.Register<CurrencyEntryBox, bool>(nameof(ValidatePasteBalance));
@@ -51,42 +36,12 @@ public partial class CurrencyEntryBox : TextBox
 	public CurrencyEntryBox()
 	{
 		SetCurrentValue(TextProperty, string.Empty);
-
-		PseudoClasses.Set(":noexchangerate", true);
-		PseudoClasses.Set(":isrightside", false);
-
-		this.GetObservable(IsRightSideProperty)
-			.Subscribe(x => PseudoClasses.Set(":isrightside", x));
-	}
-
-	public decimal ConversionRate
-	{
-		get => GetValue(ConversionRateProperty);
-		set => SetValue(ConversionRateProperty, value);
 	}
 
 	public string CurrencyCode
 	{
 		get => GetValue(CurrencyCodeProperty);
 		set => SetValue(CurrencyCodeProperty, value);
-	}
-
-	public bool IsFiat
-	{
-		get => GetValue(IsFiatProperty);
-		set => SetValue(IsFiatProperty, value);
-	}
-
-	public bool IsApproximate
-	{
-		get => GetValue(IsApproximateProperty);
-		set => SetValue(IsApproximateProperty, value);
-	}
-
-	public bool IsRightSide
-	{
-		get => GetValue(IsRightSideProperty);
-		set => SetValue(IsRightSideProperty, value);
 	}
 
 	public int MaxDecimals
@@ -101,26 +56,10 @@ public partial class CurrencyEntryBox : TextBox
 		set => SetValue(BalanceBtcProperty, value);
 	}
 
-	public decimal BalanceFiat
-	{
-		get => GetValue(BalanceFiatProperty);
-		set => SetValue(BalanceFiatProperty, value);
-	}
-
 	public bool ValidatePasteBalance
 	{
 		get => GetValue(ValidatePasteBalanceProperty);
 		set => SetValue(ValidatePasteBalanceProperty, value);
-	}
-
-	private decimal FiatToBitcoin(decimal fiatValue)
-	{
-		if (ConversionRate == 0m)
-		{
-			return 0m;
-		}
-
-		return fiatValue / ConversionRate;
 	}
 
 	protected override void OnGotFocus(GotFocusEventArgs e)
@@ -165,14 +104,9 @@ public partial class CurrencyEntryBox : TextBox
 
 		preComposedText = preComposedText.TotalTrim();
 
-		var parsed = decimal.TryParse(preComposedText, NumberStyles.Number, InvariantNumberFormat, out var fiatValue);
+		var parsed = decimal.TryParse(preComposedText, NumberStyles.Number, InvariantNumberFormat, out _);
 
 		e.Handled = !(isValid && parsed);
-
-		if (IsFiat && !e.Handled)
-		{
-			e.Handled = FiatToBitcoin(fiatValue) >= Constants.MaximumNumberOfBitcoins;
-		}
 
 		base.OnTextInput(e);
 	}
@@ -252,23 +186,11 @@ public partial class CurrencyEntryBox : TextBox
 			return false;
 		}
 
-		if (IsFiat)
+		// Bitcoin input restriction is to only allow 8 decimal places max
+		// and also 8 whole number places.
+		if ((whole > 8 && !trailingDecimal) || frac > MaxDecimals)
 		{
-			// Fiat input restriction is to only allow 2 decimal places max
-			// and also 16 whole number places.
-			if ((whole > 16 && !trailingDecimal) || frac > 2)
-			{
-				return false;
-			}
-		}
-		else
-		{
-			// Bitcoin input restriction is to only allow 8 decimal places max
-			// and also 8 whole number places.
-			if ((whole > 8 && !trailingDecimal) || frac > MaxDecimals)
-			{
-				return false;
-			}
+			return false;
 		}
 
 		return true;
@@ -332,27 +254,13 @@ public partial class CurrencyEntryBox : TextBox
 
 	private bool TryParsePastedValue(string text, [NotNullWhen(true)] out string? result)
 	{
-		if (!IsFiat)
+		var money = ValidatePasteBalance
+			? ClipboardObserver.ParseToBtc(text, BalanceBtc)
+			: ClipboardObserver.ParseToBtc(text);
+		if (money is not null)
 		{
-			var money = ValidatePasteBalance
-				? ClipboardObserver.ParseToBtc(text, BalanceBtc)
-				: ClipboardObserver.ParseToBtc(text);
-			if (money is not null)
-			{
-				result = money.ToDecimal(MoneyUnit.BTC).FormattedBtcExactFractional(text);
-				return true;
-			}
-		}
-		else
-		{
-			var fiat = ValidatePasteBalance
-				? ClipboardObserver.ParseToFiat(text, BalanceFiat)
-				: ClipboardObserver.ParseToFiat(text);
-			if (fiat is not null)
-			{
-				result = fiat.Value.ToString("0.00");
-				return true;
-			}
+			result = money.ToDecimal(MoneyUnit.BTC).FormattedBtcExactFractional(text);
+			return true;
 		}
 
 		result = null;
@@ -406,14 +314,6 @@ public partial class CurrencyEntryBox : TextBox
 		if (change.Property == IsReadOnlyProperty)
 		{
 			PseudoClasses.Set(":readonly", change.GetNewValue<bool>());
-		}
-		else if (change.Property == ConversionRateProperty)
-		{
-			PseudoClasses.Set(":noexchangerate", change.GetNewValue<decimal>() == 0m);
-		}
-		else if (change.Property == IsFiatProperty)
-		{
-			PseudoClasses.Set(":isfiat", change.GetNewValue<bool>());
 		}
 	}
 }

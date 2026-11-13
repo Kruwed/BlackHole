@@ -21,7 +21,6 @@ using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client.Configuration;
 using WalletWasabi.Client.Rpc;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Discoverability;
 using WalletWasabi.Extensions;
 using WalletWasabi.FeeRateEstimation;
@@ -451,35 +450,6 @@ public class Global
 		}).DisposeUsing(_disposables);
 	}
 
-	private void ConfigureExchangeRateUpdater(CancellationToken cancellationToken)
-	{
-		var fetcherFactory = ExchangeRateProviders.FetcherFactory(ExternalSourcesHttpClientFactory);
-		var mempoolSpaceProvider = ExchangeRateProviders.MempoolSpaceAsync(fetcherFactory);
-		var blockchainInfoProvider = ExchangeRateProviders.BlockchainInfoAsync(fetcherFactory);
-		var coinGeckoProvider = ExchangeRateProviders.CoinGeckoAsync(fetcherFactory);
-		var geminiProvider = ExchangeRateProviders.GeminiAsync(fetcherFactory);
-
-		ExchangeRateProvider exchangeRateProvider = Config.ExchangeRateProvider.ToLower() switch
-		{
-			"mempoolspace" => ExchangeRateProviders.Composed([mempoolSpaceProvider, blockchainInfoProvider, coinGeckoProvider, geminiProvider ]),
-			"blockchaininfo" => ExchangeRateProviders.Composed([blockchainInfoProvider, mempoolSpaceProvider, coinGeckoProvider, geminiProvider]),
-			"coingecko" => ExchangeRateProviders.Composed([coinGeckoProvider, mempoolSpaceProvider, blockchainInfoProvider, geminiProvider]),
-			"gemini" => ExchangeRateProviders.Composed([geminiProvider, mempoolSpaceProvider, blockchainInfoProvider, coinGeckoProvider, ]),
-			"" or "none" => ExchangeRateProviders.NoneAsync(),
-			var providerName => throw new ArgumentException( $"Not supported exchange rate provider '{providerName}'. Default: '{Constants.DefaultExchangeRateProvider}'")
-		};
-
-		var exchangeRateUpdater = Spawn(ExchangeRateUpdater.ServiceName,
-				Service("Exchange Rate Updater",
-					Periodically(
-						TimeSpan.FromMinutes(20),
-						[],
-						ExchangeRateUpdater.CreateExchangeRateUpdater(exchangeRateProvider, EventBus))), cancellationToken);
-		exchangeRateUpdater.DisposeUsing(_disposables);
-		EventBus.Subscribe<Tick>(_ => exchangeRateUpdater.Post(UpdateMessage.Instance))
-			.DisposeUsing(_disposables);
-	}
-
 	private void ConfigureWasabiUpdater(CancellationToken cancellationToken)
 	{
 		if (Config.UseTor is TorMode.Disabled)
@@ -565,7 +535,6 @@ public class Global
 		CancellationToken linkedCtsToken = linkedCts.Token;
 
 		ConfigureWasabiUpdater(linkedCtsToken);
-		ConfigureExchangeRateUpdater(linkedCtsToken);
 		ConfigureRpcMonitor(linkedCtsToken);
 		ConfigureFeeRateUpdater(linkedCtsToken);
 

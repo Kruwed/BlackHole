@@ -29,7 +29,7 @@ public partial class CoinJoinsDetailsViewModel : RoutableViewModel
 		_wallet = wallet;
 		_transaction = transaction;
 
-		Costs = new CoinjoinCostsViewModel(wallet.AmountProvider.Create);
+		Costs = new CoinjoinCostsViewModel(x => new Amount(x));
 
 		var allWalletInputs = transaction.Children.SelectMany(x => x.WalletInputs).ToList();
 		var allWalletOutputs = transaction.Children.SelectMany(x => x.WalletOutputs).ToList();

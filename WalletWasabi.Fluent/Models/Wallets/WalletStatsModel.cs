@@ -71,13 +71,13 @@ public partial class WalletStatsModel : ReactiveObject, IWalletStatsModel, IDisp
 		CoinCount = wallet.Coins.Unspent().Count();
 
 		// Total amount of money in the wallet.
-		Balance = walletModel.AmountProvider.Create(wallet.Coins.TotalAmount());
+		Balance = new Amount(wallet.Coins.TotalAmount());
 
 		// Total amount of confirmed money in the wallet.
-		ConfirmedBalance = walletModel.AmountProvider.Create(wallet.Coins.Confirmed().TotalAmount());
+		ConfirmedBalance = new Amount(wallet.Coins.Confirmed().TotalAmount());
 
 		// Total amount of unconfirmed money in the wallet.
-		UnconfirmedBalance = walletModel.AmountProvider.Create(wallet.Coins.Unconfirmed().TotalAmount());
+		UnconfirmedBalance = new Amount(wallet.Coins.Unconfirmed().TotalAmount());
 
 		GeneratedKeyCount = wallet.KeyManager.GetKeys().Length;
 		GeneratedCleanKeyCount = wallet.KeyManager.GetKeys(KeyState.Clean).Length;

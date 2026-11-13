@@ -61,8 +61,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	IObservable<bool> Loaded { get; }
 
-	AmountProvider AmountProvider { get; }
-
 	IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent);
 
 	IWalletStatsModel GetWalletStats();
@@ -85,11 +83,10 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	[AutoNotify] private bool _isLoaded;
 	[AutoNotify] private bool _isSelected;
 
-	public WalletModel(IServices services, Wallet wallet, AmountProvider amountProvider)
+	public WalletModel(IServices services, Wallet wallet)
 	{
 		_services = services;
 		Wallet = wallet;
-		AmountProvider = amountProvider;
 
 		Auth = new WalletAuthModel(Wallet);
 		Loader = new WalletLoadWorkflow(services, Wallet);
@@ -117,7 +114,7 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 
 		Balances = Transactions.TransactionProcessed
 			.Select(_ => Wallet.Coins.TotalAmount())
-			.Select(AmountProvider.Create);
+			.Select(x => new Amount(x));
 
 		HasBalance = Balances.Select(x => x.HasBalance);
 
@@ -179,8 +176,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 
 	public IObservable<bool> Loaded { get; }
-
-	public AmountProvider AmountProvider { get; }
 
 	public IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent)
 	{

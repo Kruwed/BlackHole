@@ -42,7 +42,7 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 			CoinList.Selection
 					.ToObservableChangeSet()
 					.ToCollection()
-					.Select(c => c.Any() ? walletModel.AmountProvider.Create(c.TotalAmount()) : null);
+					.Select(c => c.Any() ? new Amount(c.TotalAmount()) : null);
 
 		ToggleSelectionCommand = ReactiveCommand.Create(() => SelectAll(!CoinList.Selection.Any()));
 

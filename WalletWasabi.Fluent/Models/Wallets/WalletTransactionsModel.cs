@@ -118,7 +118,7 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 		}
 		var boostingTransaction = await _wallet.SpeedUpTransactionAsync(targetTransaction, null, cancellationToken);
 
-		var fee = _walletModel.AmountProvider.Create(GetFeeDifference(targetTransaction, boostingTransaction));
+		var fee = new Amount(GetFeeDifference(targetTransaction, boostingTransaction));
 
 		var originalForeignAmounts = targetTransaction.ForeignOutputs.Select(x => x.TxOut.Value).OrderBy(x => x).ToArray();
 		var boostedForeignAmounts = boostingTransaction.Transaction.ForeignOutputs.Select(x => x.TxOut.Value).OrderBy(x => x).ToArray();
@@ -141,7 +141,7 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 
 		var cancellingTransaction = _wallet.CancelTransaction(targetTransaction);
 
-		return new CancellingTransaction(transaction, cancellingTransaction, _walletModel.AmountProvider.Create(cancellingTransaction.Fee));
+		return new CancellingTransaction(transaction, cancellingTransaction, new Amount(cancellingTransaction.Fee));
 	}
 
 	public Task SendAsync(SpeedupTransaction speedupTransaction) => SendAsync(speedupTransaction.BoostingTransaction);

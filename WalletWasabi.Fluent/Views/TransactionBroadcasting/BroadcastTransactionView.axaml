@@ -20,7 +20,6 @@
           <TextBlock IsVisible="{Binding Path=BroadcastInfo.InputAmount, Converter={x:Static ObjectConverters.IsNull}}"
                      Text="Unknown" />
           <AmountControl IsVisible="{Binding Path=BroadcastInfo.InputAmount, Converter={x:Static ObjectConverters.IsNotNull}}"
-                         Classes="WithFiat"
                          Amount="{Binding BroadcastInfo.InputAmount}"/>
         </StackPanel>
       </PreviewItem>
@@ -31,7 +30,6 @@
           <TextBlock IsVisible="{Binding Path=BroadcastInfo.OutputAmount, Converter={x:Static ObjectConverters.IsNull}}"
                      Text="Unknown" />
           <AmountControl IsVisible="{Binding Path=BroadcastInfo.OutputAmount, Converter={x:Static ObjectConverters.IsNotNull}}"
-                         Classes="WithFiat"
                          Amount="{Binding BroadcastInfo.OutputAmount}"/>
         </StackPanel>
       </PreviewItem>
@@ -50,7 +48,6 @@
           <TextBlock IsVisible="{Binding Path=BroadcastInfo.NetworkFee, Converter={x:Static ObjectConverters.IsNull}}"
                    Text="Unknown" />
           <AmountControl IsVisible="{Binding Path=BroadcastInfo.NetworkFee, Converter={x:Static ObjectConverters.IsNotNull}}"
-                         Classes="WithFiat"
                          Amount="{Binding BroadcastInfo.NetworkFee}"/>
         </StackPanel>
       </PreviewItem>

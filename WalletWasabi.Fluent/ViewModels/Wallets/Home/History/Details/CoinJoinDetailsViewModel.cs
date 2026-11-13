@@ -33,7 +33,7 @@ public partial class CoinJoinDetailsViewModel : RoutableViewModel
 		_wallet = wallet;
 		_transaction = transaction;
 
-		Costs = new CoinjoinCostsViewModel(wallet.AmountProvider.Create);
+		Costs = new CoinjoinCostsViewModel(x => new Amount(x));
 
 		TransactionHex = transaction.Hex.Value;
 

@@ -64,7 +64,6 @@ public class PersistentConfigManagerTests
 			  "DustThreshold": "0.00001",
 			  "EnableGpu": true,
 			  "CoordinatorIdentifier": "CoinJoinCoordinatorIdentifier",
-			  "ExchangeRateProvider": "MempoolSpace",
 			  "FeeRateEstimationProvider": "MempoolSpace",
 			  "ExternalTransactionBroadcaster": "MempoolSpace",
 			  "MaxCoinJoinMiningFeeRate": 50.0,
@@ -265,7 +264,6 @@ public class PersistentConfigManagerTests
 		Assert.Equal(Money.Coins(0.0001m), migratedConfig.DustThreshold);
 		Assert.False(migratedConfig.EnableGpu);
 		Assert.Equal("CustomCoordinator", migratedConfig.CoordinatorIdentifier);
-		Assert.Equal("Binance", migratedConfig.ExchangeRateProvider);
 		Assert.Equal("Custom", migratedConfig.FeeRateEstimationProvider);
 		Assert.Equal("Custom", migratedConfig.ExternalTransactionBroadcaster);
 		Assert.Equal(100.5m, migratedConfig.MaxCoinJoinMiningFeeRate);

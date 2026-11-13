@@ -317,7 +317,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		yield return new PrivacyControlTileViewModel(UiContext, WalletModel);
 
-		yield return new BtcPriceTileViewModel(UiContext, UiContext.AmountProvider);
 	}
 
 	private async Task<bool> AuthorizeForPasswordAsync()

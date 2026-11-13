@@ -29,7 +29,6 @@ public static class PersistentConfigManager
 		DustThreshold : Money.Coins(Constants.DefaultDustThreshold),
 		EnableGpu : true,
 		CoordinatorIdentifier : "CoinJoinCoordinatorIdentifier",
-		ExchangeRateProvider : Constants.DefaultExchangeRateProvider,
 		FeeRateEstimationProvider : Constants.DefaultFeeRateEstimationProvider,
 		ExternalTransactionBroadcaster : Constants.DefaultExternalTransactionBroadcaster,
 		MaxCoinJoinMiningFeeRate : Constants.DefaultMaxCoinJoinMiningFeeRate,

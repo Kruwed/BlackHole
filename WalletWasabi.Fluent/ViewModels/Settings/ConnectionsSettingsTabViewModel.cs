@@ -18,14 +18,12 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 	Category = "Settings",
 	Keywords = new[]
 	{
-		"Settings", "Connections", "URI", "Exchange", "Rate", "Provider", "Fiat", "Currency", "Fee", "Estimation", "Network", "Anonymization",
+		"Settings", "Connections", "URI", "Provider", "Fee", "Estimation", "Network", "Anonymization",
 		"Tor", "Terminate", "Wasabi", "Shut", "Reset"
 	},
 	IconName = "settings_general_regular")]
 public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 {
-	[AutoNotify] private string[] _exchangeRateProviders = [];
-
 	public ConnectionsSettingsTabViewModel(UiContext uiContext, ApplicationSettings settings) : base(uiContext)
 	{
 		Settings = settings;
@@ -38,24 +36,12 @@ public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 		{
 			ExternalBroadcastProviders = ExternalTransactionBroadcaster.TestNet4Providers.Select(x => x.Name);
 		}
-
-		this.WhenAnyValue(x => x.Settings.FiatCurrency)
-			.Select(Client.Wallets.Exchange.ExchangeRateProviders.ProviderNamesFor)
-			.Subscribe(providers =>
-			{
-				ExchangeRateProviders = providers;
-				if (!providers.Contains(Settings.ExchangeRateProvider, StringComparer.OrdinalIgnoreCase))
-				{
-					Settings.ExchangeRateProvider = providers[0];
-				}
-			});
 	}
 
 	public bool IsReadOnly => Settings.IsOverridden;
 
 	public ApplicationSettings Settings { get; }
 
-	public ImmutableArray<string> FiatCurrencies => Client.Wallets.Exchange.ExchangeRateProviders.Currencies;
 	public ImmutableArray<string> FeeRateEstimationProviders => FeeRateProviders.Providers;
 	public IEnumerable<string> ExternalBroadcastProviders { get; }
 

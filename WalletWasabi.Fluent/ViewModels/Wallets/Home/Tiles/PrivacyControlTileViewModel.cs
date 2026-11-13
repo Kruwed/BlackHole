@@ -24,7 +24,7 @@ public partial class PrivacyControlTileViewModel : ActivatableViewModel, IPrivac
 	{
 		_wallet = wallet;
 
-		_balancePrivate = _wallet.AmountProvider.Create(Money.Zero);
+		_balancePrivate = new Amount(Money.Zero);
 
 		var canShowDetails = _wallet.HasBalance;
 
@@ -102,7 +102,7 @@ public partial class PrivacyControlTileViewModel : ActivatableViewModel, IPrivac
 
 		FullyMixed = isWalletPrivate;
 
-		BalancePrivate = _wallet.AmountProvider.Create(coins.Where(x => x.IsPrivate).TotalAmount());
+		BalancePrivate = new Amount(coins.Where(x => x.IsPrivate).TotalAmount());
 		HasPrivateBalance = BalancePrivate.HasBalance;
 	}
 }

@@ -12,7 +12,7 @@
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/CopyableItem.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/CurrencyEntryBox.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/Dialog.axaml" />
-        <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/DualCurrencyEntryBox.axaml" />
+        <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/AmountEntryBox.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/FadeOutTextControl.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/InfoMessage.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/LabelsItemsPresenter.axaml" />

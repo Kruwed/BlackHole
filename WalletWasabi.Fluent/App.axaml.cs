@@ -87,9 +87,9 @@ public class App : Application
 		}
 	}
 
-	private static WalletRepository CreateWalletRepository(IServices services, AmountProvider amountProvider)
+	private static WalletRepository CreateWalletRepository(IServices services)
 	{
-		return new WalletRepository(services, amountProvider);
+		return new WalletRepository(services);
 	}
 
 	private static FileSystemModel CreateFileSystem()
@@ -112,16 +112,9 @@ public class App : Application
 		return new TransactionBroadcasterModel(services, network);
 	}
 
-	private static AmountProvider CreateAmountProvider(IServices services)
-	{
-		return new AmountProvider(services);
-	}
-
 	private UiContext CreateUiContext()
 	{
 		var services = Services.Instance;
-		var amountProvider = CreateAmountProvider(services);
-
 		var applicationSettings = CreateApplicationSettings(services);
 		var torStatusChecker = new TorStatusCheckerModel(services);
 
@@ -132,13 +125,12 @@ public class App : Application
 			new QrCodeGenerator(),
 			new QrCodeReader(),
 			new UiClipboard(),
-			CreateWalletRepository(services, amountProvider),
+			CreateWalletRepository(services),
 			new CoinjoinModel(services),
 			CreateFileSystem(),
 			CreateConfig(services),
 			applicationSettings,
 			CreateBroadcaster(services, applicationSettings.Network),
-			amountProvider,
 			new EditableSearchSource(),
 			torStatusChecker,
 			new HealthMonitor(services, torStatusChecker),

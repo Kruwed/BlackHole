@@ -25,7 +25,6 @@ public class UiContext
 		ClientConfigModel config,
 		ApplicationSettings applicationSettings,
 		TransactionBroadcasterModel transactionBroadcaster,
-		AmountProvider amountProvider,
 		EditableSearchSource editableSearchSource,
 		TorStatusCheckerModel torStatusChecker,
 		HealthMonitor healthMonitor,
@@ -41,7 +40,6 @@ public class UiContext
 		Config = config ?? throw new ArgumentNullException(nameof(config));
 		ApplicationSettings = applicationSettings ?? throw new ArgumentNullException(nameof(applicationSettings));
 		TransactionBroadcaster = transactionBroadcaster ?? throw new ArgumentNullException(nameof(transactionBroadcaster));
-		AmountProvider = amountProvider ?? throw new ArgumentNullException(nameof(amountProvider));
 		EditableSearchSource = editableSearchSource ?? throw new ArgumentNullException(nameof(editableSearchSource));
 		TorStatusChecker = torStatusChecker ?? throw new ArgumentNullException(nameof(torStatusChecker));
 		HealthMonitor = healthMonitor ?? throw new ArgumentNullException(nameof(healthMonitor));
@@ -58,7 +56,6 @@ public class UiContext
 	public ClientConfigModel Config { get; }
 	public ApplicationSettings ApplicationSettings { get; }
 	public TransactionBroadcasterModel TransactionBroadcaster { get; }
-	public AmountProvider AmountProvider { get; }
 	public EditableSearchSource EditableSearchSource { get; }
 	public TorStatusCheckerModel TorStatusChecker { get; }
 	public HealthMonitor HealthMonitor { get; }

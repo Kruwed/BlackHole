@@ -23,7 +23,6 @@ using WalletWasabi.Fluent.ViewModels.Wallets.Labels;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Wallets;
 using Address = WalletWasabi.Userfacing.Address;
 using Constants = WalletWasabi.Helpers.Constants;
@@ -54,14 +53,11 @@ public partial class SendViewModel : RoutableViewModel
 	[AutoNotify] private string _caption = "";
 	[AutoNotify] private string _to;
 	[AutoNotify] private decimal? _amountBtc;
-	[AutoNotify] private ExchangeRate _exchangeRate;
 	[AutoNotify] private bool _isFixedAmount;
-	[AutoNotify] private bool _conversionReversed;
 	[AutoNotify] private bool _displaySilentPaymentInfo;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private SuggestionLabelsViewModel _suggestionLabels;
 	[AutoNotify] private string _defaultLabel;
 	[AutoNotify] private bool _isFixedAddress;
-	[AutoNotify] private string? _fiatContent;
 	[AutoNotify] private string? _bitcoinContent;
 	[AutoNotify] private bool _isPayToMany;
 	[AutoNotify] private bool _isPrimarySubtractFee;
@@ -81,13 +77,9 @@ public partial class SendViewModel : RoutableViewModel
 		_showQrCodeCameraDialog = showQrCodeCameraDialog;
 		_coinJoinManager = UiContext.Services.GetHostedService<CoinJoinManager>();
 
-		_conversionReversed = UiContext.Services.GetSendAmountConversionReversed();
-
-		_exchangeRate = UiContext.Services.GetExchangeRate();
-
 		Balance =
 			_parameters.IsManual
-			? Observable.Return(_walletModel.AmountProvider.Create(_parameters.AvailableAmount))
+			? Observable.Return(new Amount(_parameters.AvailableAmount))
 			: _walletModel.Balances;
 
 		_suggestionLabels = new SuggestionLabelsViewModel(uiContext, _walletModel, Intent.Send, 3);
@@ -171,10 +163,6 @@ public partial class SendViewModel : RoutableViewModel
 
 		NextCommand = ReactiveCommand.CreateFromTask(OnNextAsync, nextCommandCanExecute);
 		PasteFromClipboardCommand = ReactiveCommand.CreateFromTask<object>(PasteFromClipboardAsync);
-
-		this.WhenAnyValue(x => x.ConversionReversed)
-			.Skip(1)
-			.Subscribe(x => UiContext.Services.SetSendAmountConversionReversed(x));
 	}
 
 	public IObservable<Amount> Balance { get; }
@@ -371,31 +359,20 @@ public partial class SendViewModel : RoutableViewModel
 
 	private async Task PasteFromClipboardAsync(object? parameter)
 	{
-		if (parameter is not DualCurrencyEntryBox box)
+		if (parameter is not AmountEntryBox)
 		{
 			return;
 		}
 
 		string content = await ApplicationHelper.GetTextAsync();
 
-		if (box.IsFiat)
+		var latestBalance = BalanceLatest;
+		if (latestBalance is not null)
 		{
-			var fiat = ClipboardObserver.ParseToFiat(content);
-			if (fiat is not null)
+			var btc = ClipboardObserver.ParseToBtc(content, latestBalance.Btc);
+			if (btc is not null)
 			{
-				FiatContent = fiat.Value.ToString("0.00");
-			}
-		}
-		else
-		{
-			var latestBalance = BalanceLatest;
-			if (latestBalance is not null)
-			{
-				var btc = ClipboardObserver.ParseToBtc(content, latestBalance.Btc);
-				if (btc is not null)
-				{
-					BitcoinContent = btc;
-				}
+				BitcoinContent = btc;
 			}
 		}
 	}
@@ -557,13 +534,6 @@ public partial class SendViewModel : RoutableViewModel
 
 	protected override void OnNavigatedTo(bool inHistory, CompositeDisposable disposables)
 	{
-		// Refresh in case the rate changed while we were not subscribed.
-		ExchangeRate = UiContext.Services.GetExchangeRate();
-
-		UiContext.Services.EventBus
-			.Subscribe<ExchangeRatesChanged>(_ => ExchangeRate = UiContext.Services.GetExchangeRate())
-			.DisposeWith(disposables);
-
 		if (!inHistory)
 		{
 			To = "";

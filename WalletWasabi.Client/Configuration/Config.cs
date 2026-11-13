@@ -53,7 +53,6 @@ public class Config
 			[nameof(CoordinatorIdentifier)] = GetStringValue("CoordinatorIdentifier", PersistentConfig.CoordinatorIdentifier, cliArgs),
 			[nameof(MaxCoinjoinMiningFeeRate)] = GetDecimalValue("MaxCoinjoinMiningFeeRate", PersistentConfig.MaxCoinJoinMiningFeeRate, cliArgs),
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
-			[nameof(ExchangeRateProvider)] = GetStringValue("ExchangeRateProvider", PersistentConfig.ExchangeRateProvider, cliArgs),
 			[nameof(FeeRateEstimationProvider)] = GetStringValue("FeeRateEstimationProvider", PersistentConfig.FeeRateEstimationProvider, cliArgs),
 			[nameof(ExternalTransactionBroadcaster)] = GetStringValue("ExternalTransactionBroadcaster", PersistentConfig.ExternalTransactionBroadcaster, cliArgs),
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = GetLongValue("MaxDaysInMempool", PersistentConfig.MaxDaysInMempool, cliArgs),
@@ -106,7 +105,6 @@ public class Config
 			[nameof(CoordinatorIdentifier)] = "-",
 			[nameof(MaxCoinjoinMiningFeeRate)] = "Max mining fee rate in sat/vB the client is willing to pay to participate into a round",
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
-			[nameof(ExchangeRateProvider)] = "The BTC exchange rate provider. Available providers are MempoolSpace (default), Gemini, BlockchainInfo, CoinGecko or None",
 			[nameof(FeeRateEstimationProvider)] = "The mining fee rate estimation provider. Available providers are MempoolSpace (default), BlockstreamInfo, BlockXyz or None",
 			[nameof(ExternalTransactionBroadcaster)] = "Third party transaction broadcaster. Available broadcasters are MempoolSpace (default) and BlockstreamInfo",
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Wasabi before dropping them",
@@ -134,7 +132,6 @@ public class Config
 	public bool RpcOnionEnabled => GetEffectiveValue<bool>(nameof(RpcOnionEnabled));
 	public Money DustThreshold => GetEffectiveValue<Money>(nameof(DustThreshold));
 	public bool BlockOnlyMode => GetEffectiveValue<bool>(nameof(BlockOnlyMode));
-	public string ExchangeRateProvider => GetEffectiveValue<string>(nameof(ExchangeRateProvider));
 	public string FeeRateEstimationProvider => GetEffectiveValue<string>(nameof(FeeRateEstimationProvider));
 	public string ExternalTransactionBroadcaster => GetEffectiveValue<string>(nameof(ExternalTransactionBroadcaster));
 	public int DropUnconfirmedTransactionsAfterDays => GetEffectiveValue<int>(nameof(DropUnconfirmedTransactionsAfterDays));

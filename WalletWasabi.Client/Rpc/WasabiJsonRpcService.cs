@@ -11,7 +11,6 @@ using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
@@ -226,7 +225,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 			["filtersCount"] = smartHeaderChain.HashCount,
 			["filtersLeft"] = smartHeaderChain.HashesLeft,
 			["network"] = Global.Network.Name,
-			["exchangeRates"] = Global.Status.ExchangeRates.ToDictionary(x => x.Ticker, x => x.Rate),
 			["peers"] = Global.GetNodes().Select(
 				x => new JsonRpcResult
 				{

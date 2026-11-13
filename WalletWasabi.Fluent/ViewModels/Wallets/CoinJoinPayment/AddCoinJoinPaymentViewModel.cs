@@ -10,7 +10,6 @@ using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client.Batching;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Wallets;
 using Address = WalletWasabi.Userfacing.Address;
 using Constants = WalletWasabi.Helpers.Constants;
@@ -27,17 +26,12 @@ public partial class AddCoinJoinPaymentViewModel : RoutableViewModel
 
 	[AutoNotify] private string _to = "";
 	[AutoNotify] private decimal? _amountBtc;
-	[AutoNotify] private ExchangeRate _exchangeRate;
-	[AutoNotify] private bool _conversionReversed;
 
 	public AddCoinJoinPaymentViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, ShowQrCodeCameraDialog showQrCodeCameraDialog) : base(uiContext)
 	{
 		_wallet = wallet;
 		_showQrCodeCameraDialog = showQrCodeCameraDialog;
 		_walletModel = walletModel;
-
-		_exchangeRate = UiContext.Services.GetExchangeRate();
-		_conversionReversed = UiContext.Services.GetSendAmountConversionReversed();
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
 		EnableBack = true;

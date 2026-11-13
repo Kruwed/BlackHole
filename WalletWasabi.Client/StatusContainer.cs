@@ -1,5 +1,4 @@
 using System;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Services;
 
@@ -8,7 +7,6 @@ namespace WalletWasabi.Client;
 public class StatusContainer : IDisposable
 {
 	public bool IsTorRunning { get; private set; }
-	public ExchangeRate[] ExchangeRates { get; private set; } = [];
 	public FeeRateEstimations? FeeRates { get; private set; }
 	public uint BestNetworkHeight { get; private set; }
 	public bool InstallOnClose { get; private set; }
@@ -16,7 +14,6 @@ public class StatusContainer : IDisposable
 
 	private readonly IDisposable _torConnectionSubscription;
 	private readonly IDisposable _feeRateSubscription;
-	private readonly IDisposable _exchangeRateSubscription;
 	private readonly IDisposable _bestHeightSubscription;
 	private readonly IDisposable _installOnCloseSubscription;
 	private readonly IDisposable _installerAvailableSubscription;
@@ -28,9 +25,6 @@ public class StatusContainer : IDisposable
 
 		_feeRateSubscription =
 			eventBus.Subscribe<MiningFeeRatesChanged>(e => FeeRates = e.AllFeeEstimate);
-
-		_exchangeRateSubscription =
-			eventBus.Subscribe<ExchangeRatesChanged>(e => ExchangeRates = e.ExchangeRates);
 
 		_bestHeightSubscription =
 			eventBus.Subscribe<NetworkTipHeightChanged>(e => BestNetworkHeight = e.Height);
@@ -48,7 +42,6 @@ public class StatusContainer : IDisposable
 	{
 		_torConnectionSubscription.Dispose();
 		_feeRateSubscription.Dispose();
-		_exchangeRateSubscription.Dispose();
 		_bestHeightSubscription.Dispose();
 		_installerAvailableSubscription.Dispose();
 		_installOnCloseSubscription.Dispose();

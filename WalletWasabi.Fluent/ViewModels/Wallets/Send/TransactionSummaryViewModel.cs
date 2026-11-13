@@ -70,7 +70,7 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 				return new RecipientSummaryViewModel(
 					UiContext,
 					r.Destination.ToString(_wallet.Network),
-					UiContext.AmountProvider.Create(displayAmount),
+					new Amount(displayAmount),
 					r.Label);
 			}).ToList();
 
@@ -92,8 +92,8 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 			.Select(r => r.Destination.GetScriptPubKey())
 			.ToHashSet();
 
-		Amount = UiContext.AmountProvider.Create(destinationAmount);
-		Fee = UiContext.AmountProvider.Create(_transaction.Fee);
+		Amount = new Amount(destinationAmount);
+		Fee = new Amount(_transaction.Fee);
 		FeeRate = info.FeeRate;
 
 		InputList = new InputsCoinListViewModel(

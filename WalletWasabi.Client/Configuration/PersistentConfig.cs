@@ -27,7 +27,6 @@ public record PersistentConfig(
 	Money DustThreshold,
 	bool EnableGpu,
 	string CoordinatorIdentifier,
-	string ExchangeRateProvider,
 	string FeeRateEstimationProvider,
 	string ExternalTransactionBroadcaster,
 	decimal MaxCoinJoinMiningFeeRate,

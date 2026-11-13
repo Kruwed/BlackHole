@@ -20,10 +20,8 @@ public class UiConfig : ConfigBase
 	private bool _hideOnClose;
 	private bool _autoPaste;
 	private int _feeTarget;
-	private bool _sendAmountConversionReversed;
 	private double? _windowWidth;
 	private double? _windowHeight;
-	private string _fiatCurrency;
 
 	public UiConfig(
 		string filePath,
@@ -39,10 +37,8 @@ public class UiConfig : ConfigBase
 		bool hideOnClose,
 		bool autoPaste,
 		int feeTarget,
-		bool sendAmountConversionReversed,
 		double? windowWidth,
-		double? windowHeight,
-		string fiatCurrency) : base(filePath)
+		double? windowHeight) : base(filePath)
 	{
 		_privacyMode = privacyMode;
 		_isCustomChangeAddress = isCustomChangeAddress;
@@ -56,10 +52,8 @@ public class UiConfig : ConfigBase
 		_hideOnClose = hideOnClose;
 		_autoPaste = autoPaste;
 		_feeTarget = feeTarget;
-		_sendAmountConversionReversed = sendAmountConversionReversed;
 		_windowWidth = windowWidth;
 		_windowHeight = windowHeight;
-		_fiatCurrency = fiatCurrency;
 
 		this.WhenAnyValue(
 				x => x.Autocopy,
@@ -75,14 +69,6 @@ public class UiConfig : ConfigBase
 				x => x.HideOnClose,
 				x => x.FeeTarget,
 				(_, _, _, _, _, _, _, _, _, _, _, _) => Unit.Default)
-			.Throttle(TimeSpan.FromMilliseconds(1000))
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(_ => ToFile());
-
-		this.WhenAnyValue(
-				x => x.SendAmountConversionReversed,
-				x => x.FiatCurrency,
-				(_, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -110,10 +96,8 @@ public class UiConfig : ConfigBase
 			hideOnClose: false,
 			autoPaste: false,
 			feeTarget: 2,
-			sendAmountConversionReversed: false,
 			windowWidth: null,
-			windowHeight: null,
-			fiatCurrency: UiConstants.DefaultFiatCurrency)
+			windowHeight: null)
 	{
 	}
 
@@ -189,12 +173,6 @@ public class UiConfig : ConfigBase
 		set => RaiseAndSetIfChanged(ref _hideOnClose, value);
 	}
 
-	public bool SendAmountConversionReversed
-	{
-		get => _sendAmountConversionReversed;
-		internal set => RaiseAndSetIfChanged(ref _sendAmountConversionReversed, value);
-	}
-
 	public double? WindowWidth
 	{
 		get => _windowWidth;
@@ -205,12 +183,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _windowHeight;
 		internal set => RaiseAndSetIfChanged(ref _windowHeight, value);
-	}
-
-	public string FiatCurrency
-	{
-		get => _fiatCurrency;
-		set => RaiseAndSetIfChanged(ref _fiatCurrency, value);
 	}
 
 	public static UiConfig LoadFile(string filePath)

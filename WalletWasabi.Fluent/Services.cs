@@ -17,7 +17,6 @@ using WalletWasabi.Services;
 using WalletWasabi.Services.Terminate;
 using WalletWasabi.Storages;
 using WalletWasabi.Tor;
-using WalletWasabi.Client.Wallets.Exchange;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent;
@@ -111,10 +110,6 @@ public class Services : IServices
 	public string GetTorLogFilePath() => _torSettings.LogFilePath;
 	public TorMode GetUseTor() => Config.UseTor;
 
-	// ExchangeRate info
-	public ExchangeRate GetExchangeRate() =>
-		_status.ExchangeRates.ForCurrency(UiConfig.FiatCurrency) ?? new ExchangeRate(UiConfig.FiatCurrency, 0m);
-
 	// UI Config
 	public bool GetHideOnClose() => UiConfig.HideOnClose;
 	public double? GetWindowWidth() => UiConfig.WindowWidth;
@@ -126,8 +121,6 @@ public class Services : IServices
 	public bool GetPrivacyMode() => UiConfig.PrivacyMode;
 	public bool GetAutocopy() => UiConfig.Autocopy;
 	public bool GetAutoPaste() => UiConfig.AutoPaste;
-	public bool GetSendAmountConversionReversed() => UiConfig.SendAmountConversionReversed;
-	public void SetSendAmountConversionReversed(bool value) => UiConfig.SendAmountConversionReversed = value;
 	public int GetFeeTarget() => UiConfig.FeeTarget;
 	public void SetFeeTarget(int value) => UiConfig.FeeTarget = value;
 
