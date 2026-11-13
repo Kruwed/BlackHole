@@ -84,7 +84,7 @@ public static class TransactionHelpers
 			}
 
 			var network = keyManager.GetNetwork();
-			var builder = new TransactionFactory(network, keyManager, allCoins, new EmptyTransactionStore(network), password);
+			var builder = new TransactionFactory(network, keyManager, allCoins, password);
 
 			TransactionParameters parameters = new (
 				intent,
@@ -159,32 +159,5 @@ public static class TransactionHelpers
 			.ToArray();
 
 		return new PaymentIntent(requests);
-	}
-
-	public static async Task<bool> ExportTransactionToBinaryAsync(BuildTransactionResult transaction)
-	{
-		var psbtExtension = "psbt";
-		string initialFileName = transaction.Transaction.GetHash().ToString();
-		var file = await FileDialogHelper.SaveFileAsync("Export transaction", new[] { psbtExtension }, initialFileName);
-		if (file is null)
-		{
-			return false;
-		}
-
-		var filePath = file.Path.LocalPath;
-
-		if (!string.IsNullOrWhiteSpace(filePath))
-		{
-			var ext = Path.GetExtension(filePath);
-			if (string.IsNullOrWhiteSpace(ext))
-			{
-				filePath = $"{filePath}.{psbtExtension}";
-			}
-			await File.WriteAllBytesAsync(filePath, transaction.Psbt.ToBytes());
-
-			return true;
-		}
-
-		return false;
 	}
 }

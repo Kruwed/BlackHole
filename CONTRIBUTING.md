@@ -183,7 +183,6 @@ It causes confusion and awkward catch clauses.
 - Bad: `_ = PrevOutsIndex.Remove(txInput.PrevOut);`
 - Bad: `_ = Directory.CreateDirectory(dir);`
 - Good: `_ = WaitAsync();` - disables warning message. Remark: you should always `await` or store the reference of the task.
-- Good: `_ = new HwiClient(network);`
 
 In general
 - If the return value is not used, write nothing.
@@ -227,7 +226,7 @@ this.WhenAnyValue(...)
 When you subscribe with the usage of `.WhenAnyValue()` right after the creation one call of Subscription will be triggered. This is by design and most of the cases it is fine. Still you can suppress this behaviour by adding `Skip(1)`.
 
 ```cs
-this.WhenAnyValue(x => x.PreferPsbtWorkflow)
+this.WhenAnyValue(x => x.AutoCoinjoin)
 	.Skip(1)
 	.Subscribe(value =>
 	{

@@ -48,8 +48,7 @@
 
           <!-- Enter password -->
           <DockPanel DockPanel.Dock="Top"
-                     VerticalAlignment="Bottom"
-                     IsVisible="{Binding IsPasswordNeeded}">
+                     VerticalAlignment="Bottom">
             <CopyablePasswordTextBox DockPanel.Dock="Top" Text="{Binding Password}" Watermark="Passphrase" PasswordChar="•"
                                      Classes="revealPasswordButton copyablePasswordTextBox"
                                      x:Name="Password">
@@ -68,9 +67,6 @@
               </Button>
             </Panel>
           </DockPanel>
-
-          <!-- Hardware & Watch only wallet -->
-          <Button Content="Open" IsVisible="{Binding !IsPasswordNeeded}" HorizontalAlignment="Center" Classes="function" Command="{Binding NextCommand}" />
         </DockPanel>
 
         <!-- Incorrect password -->
@@ -93,7 +89,7 @@
 
       <!-- Icon -->
       <Viewbox MaxHeight="180" Margin="0 0 0 15">
-        <WalletIconControl WalletType="{Binding WalletType}" />
+        <Image Source="{StaticResource NormalWalletIcon}" />
       </Viewbox>
     </DockPanel>
   </ContentArea>

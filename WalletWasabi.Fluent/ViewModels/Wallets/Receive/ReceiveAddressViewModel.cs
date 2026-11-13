@@ -23,7 +23,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		ShortenedAddress = model.ShortenedText;
 		Labels = model.Labels;
 		ScriptType = model.ScriptType;
-		IsHardwareWallet = wallet.IsHardwareWallet;
 		IsAutoCopyEnabled = isAutoCopyEnabled;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
@@ -32,8 +31,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 
 		CopyAddressCommand = ReactiveCommand.CreateFromTask(() =>
 			UiContext.Clipboard.SetTextAsync(Address));
-
-		ShowOnHwWalletCommand = ReactiveCommand.CreateFromTask(ShowOnHwWalletAsync);
 
 		NextCommand = CancelCommand;
 
@@ -49,8 +46,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 
 	public ICommand CopyAddressCommand { get; }
 
-	public ICommand ShowOnHwWalletCommand { get; }
-
 	public string Address { get; }
 	public string ShortenedAddress { get; }
 	public bool AddressHasBeenShortened => Address != ShortenedAddress;
@@ -58,8 +53,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 	public LabelsArray Labels { get; }
 
 	public ScriptType ScriptType { get; }
-
-	public bool IsHardwareWallet { get; }
 
 	public IObservable<bool[,]> QrCode { get; }
 
@@ -82,17 +75,5 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 			.DisposeWith(disposables);
 
 		base.OnNavigatedTo(isInHistory, disposables);
-	}
-
-	private async Task ShowOnHwWalletAsync()
-	{
-		try
-		{
-			await Model.ShowOnHwWalletAsync();
-		}
-		catch (Exception ex)
-		{
-			await ShowErrorAsync(Title, ex.ToUserFriendlyString(), "Unable to send the address to the device");
-		}
 	}
 }

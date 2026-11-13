@@ -290,19 +290,12 @@ public static class Installer
 			{
 				throw new FileNotFoundException(installerPath);
 			}
-			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+			startInfo = new()
 			{
-				startInfo = ProcessStartInfoFactory.Make(installerPath, [], true);
-			}
-			else
-			{
-				startInfo = new()
-				{
-					FileName = installerPath,
-					UseShellExecute = true,
-					WindowStyle = ProcessWindowStyle.Normal
-				};
-			}
+				FileName = installerPath,
+				UseShellExecute = true,
+				WindowStyle = ProcessWindowStyle.Normal
+			};
 
 			using var p = Process.Start(startInfo);
 

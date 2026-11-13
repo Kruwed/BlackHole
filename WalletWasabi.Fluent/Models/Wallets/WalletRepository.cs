@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Helpers;
-using WalletWasabi.Hwi.Models;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
@@ -65,7 +64,6 @@ public partial class WalletRepository : ReactiveObject
 		return options switch
 		{
 			WalletCreationOptions.AddNewWallet add => await CreateNewWalletAsync(add),
-			WalletCreationOptions.ConnectToHardwareWallet hw => await ConnectToHardwareWalletAsync(hw, cancelToken),
 			WalletCreationOptions.ImportWallet import => await ImportWalletAsync(import),
 			WalletCreationOptions.RecoverWallet recover => await RecoverWalletAsync(recover),
 			_ => throw new InvalidOperationException($"{nameof(WalletCreationOptions)} not supported: {options?.GetType().Name}")
@@ -83,16 +81,6 @@ public partial class WalletRepository : ReactiveObject
 	public (ErrorSeverity Severity, string Message)? ValidateWalletName(string walletName)
 	{
 		return _services.ValidateWalletName(walletName);
-	}
-
-	public IWalletModel? GetExistingWallet(HwiEnumerateEntry device)
-	{
-		var existingWallet = _services.GetWallets().FirstOrDefault(x => x.KeyManager.MasterFingerprint == device.Fingerprint);
-		if (existingWallet is { })
-		{
-			return GetById(existingWallet.WalletId);
-		}
-		return null;
 	}
 
 	private async Task<WalletSettingsModel> CreateNewWalletAsync(WalletCreationOptions.AddNewWallet options)
@@ -130,22 +118,6 @@ public partial class WalletRepository : ReactiveObject
 				});
 
 		return new WalletSettingsModel(_services, keyManager, true);
-	}
-
-	private async Task<WalletSettingsModel> ConnectToHardwareWalletAsync(WalletCreationOptions.ConnectToHardwareWallet options, CancellationToken? cancelToken)
-	{
-		var (walletName, device) = options;
-
-		ArgumentException.ThrowIfNullOrEmpty(walletName);
-		ArgumentNullException.ThrowIfNull(device);
-		ArgumentNullException.ThrowIfNull(cancelToken);
-
-		var walletFilePath = _services.GetWalletFilePath(walletName);
-		var keyManager = await HardwareWalletOperationHelpers.GenerateWalletAsync(device, walletFilePath, _services.GetNetwork(), cancelToken.Value);
-		keyManager.SetIcon(device.WalletType);
-
-		var result = new WalletSettingsModel(_services, keyManager, true);
-		return result;
 	}
 
 	private async Task<WalletSettingsModel> ImportWalletAsync(WalletCreationOptions.ImportWallet options)
@@ -224,10 +196,7 @@ public partial class WalletRepository : ReactiveObject
 			return existing;
 		}
 
-		var result =
-			wallet.KeyManager.IsHardwareWallet
-			? new HardwareWalletModel(_services, wallet, _amountProvider)
-			: new WalletModel(_services, wallet, _amountProvider);
+		var result = new WalletModel(_services, wallet, _amountProvider);
 
 		_walletDictionary[wallet.WalletId] = result;
 

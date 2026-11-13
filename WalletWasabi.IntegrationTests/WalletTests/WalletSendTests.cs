@@ -141,7 +141,7 @@ public class WalletSendTests
 				AllowedInputs: null,
 				TryToSign: true,
 				OverrideFeeOverpaymentProtection: false);
-			var factory = new TransactionFactory(env.Network, keyManager, wallet.Coins, env.TransactionStore, RegTestEnvironment.DefaultPassword);
+			var factory = new TransactionFactory(env.Network, keyManager, wallet.Coins, RegTestEnvironment.DefaultPassword);
 			var selector = new LockTimeSelector(new FixedRandom(randomValue));
 			var result = factory.BuildTransaction(parameters, () => selector.GetLockTimeBasedOnDistribution(wallet.FilterHeaderChain.TipHeight));
 

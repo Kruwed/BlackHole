@@ -34,9 +34,4 @@ public class TestAddress : ReactiveObject, IAddress
 	{
 		Labels = labels;
 	}
-
-	public Task ShowOnHwWalletAsync()
-	{
-		return Task.CompletedTask;
-	}
 }

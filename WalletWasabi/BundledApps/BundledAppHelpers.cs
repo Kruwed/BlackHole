@@ -45,10 +45,8 @@ public static class BundledAppHelpers
 		}
 		else if (platform == OSPlatform.OSX)
 		{
-			// Only HWI has a native arm64 build. Tor is universal; bitcoind is x86_64-only (Rosetta).
-			path = app == BundledApp.Hwi && RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-				? Path.Combine(commonPartialPath, "osx-arm64")
-				: Path.Combine(commonPartialPath, "osx64");
+			// Tor is universal; bitcoind is x86_64-only (Rosetta).
+			path = Path.Combine(commonPartialPath, "osx64");
 		}
 		else
 		{
@@ -66,7 +64,6 @@ public static class BundledAppHelpers
 		var binaryNameWithoutExtension = app switch
 		{
 			BundledApp.Tor => "tor",
-			BundledApp.Hwi => "hwi",
 			BundledApp.Bitcoind => "bitcoind",
 			_ => throw new NotSupportedException($"Bundled app '{app}' is not supported.")
 		};

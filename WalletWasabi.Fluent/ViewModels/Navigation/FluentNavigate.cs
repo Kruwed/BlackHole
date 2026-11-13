@@ -8,7 +8,6 @@ using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.AddWallet.Create;
-using WalletWasabi.Fluent.ViewModels.AddWallet.HardwareWallet;
 using WalletWasabi.Fluent.ViewModels.CoinControl;
 using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
@@ -160,15 +159,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new BugReportLinkViewModel(UiContext), navigationMode);
 	}
 
-	public FluentDialog<bool> HardwareWalletAuthDialog(IHardwareWalletModel wallet, TransactionAuthorizationInfo transactionAuthorizationInfo, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new HardwareWalletAuthDialogViewModel(UiContext, wallet, transactionAuthorizationInfo);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
 	public FluentDialog<IEnumerable<SmartCoin>> PrivacyControl(Wallet wallet, SendFlowModel sendFlow, TransactionInfo transactionInfo, IEnumerable<SmartCoin>? usedCoins, bool isSilent, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new PrivacyControlViewModel(UiContext, wallet, sendFlow, transactionInfo, usedCoins, isSilent);
@@ -246,11 +236,6 @@ public partial class FluentNavigate
 		return new FluentDialog<FeeRate>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void DetectedHardwareWallet(WalletCreationOptions.ConnectToHardwareWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new DetectedHardwareWalletViewModel(UiContext, options), navigationMode);
-	}
-
 	public void SendSuccess(SmartTransaction finalTransaction, string? title = null, string? caption = null, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new SendSuccessViewModel(UiContext, finalTransaction, title, caption), navigationMode);
@@ -326,11 +311,6 @@ public partial class FluentNavigate
 	public void BroadcastTransaction(SmartTransaction transaction, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new BroadcastTransactionViewModel(UiContext, transaction), navigationMode);
-	}
-
-	public void ConnectHardwareWallet(WalletCreationOptions.ConnectToHardwareWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new ConnectHardwareWalletViewModel(UiContext, options), navigationMode);
 	}
 
 	public void ConfirmMultiShare(WalletCreationOptions.AddNewWallet options, Dictionary<int, List<RecoveryWordViewModel>> wordsDictionary, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

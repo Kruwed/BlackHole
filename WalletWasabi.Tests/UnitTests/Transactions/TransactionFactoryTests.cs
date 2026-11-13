@@ -88,7 +88,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		var spentCoin = Assert.Single(result.SpentCoins);
 		Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
 		Assert.Equal(200, spentCoin.AnonymitySet);
@@ -119,7 +118,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		var spentCoin = Assert.Single(result.SpentCoins);
 		Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
 		Assert.Equal(200, spentCoin.AnonymitySet);
@@ -153,7 +151,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Equal(2, result.SpentCoins.Count());
 		var spentCoin200 = Assert.Single(result.SpentCoins, x => x.AnonymitySet == 200);
 		var spentCoin100 = Assert.Single(result.SpentCoins, x => x.AnonymitySet == 100);
@@ -185,7 +182,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.True(result.SpendsUnconfirmed);
 		Assert.Equal(3, result.SpentCoins.Count());
 		Assert.Equal(Money.Coins(0.14m), result.SpentCoins.Select(x => x.Amount).Sum());
@@ -240,8 +236,7 @@ public class TransactionFactoryTests
 		}
 
 		var coinsView = new CoinsView(sCoins.ToArray());
-		using var mockTransactionStore = new AllTransactionStore(".", Network.Main);
-		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, mockTransactionStore, password);
+		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, password);
 
 		// Two 0.9btc coins are enough
 		using Key key1 = new();
@@ -310,7 +305,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Single(result.SpentCoins);
 		Assert.Equal(Money.Coins(1m), result.SpentCoins.Select(x => x.Amount).Sum());
 
@@ -344,7 +338,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		var spentCoin = Assert.Single(result.SpentCoins);
 		Assert.Equal(Money.Coins(1m), spentCoin.Amount);
 
@@ -403,7 +396,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		var spentCoin = Assert.Single(result.SpentCoins);
 		Assert.Equal(Money.Coins(1m), spentCoin.Amount);
 
@@ -439,7 +431,6 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Equal(Money.Coins(1.4m), result.SpentCoins.Select(x => x.Amount).Sum());
 
 		var tx = result.Transaction.Transaction;
@@ -473,7 +464,6 @@ public class TransactionFactoryTests
 			.Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Equal(Money.Coins(0.12m), result.SpentCoins.Select(x => x.Amount).Sum());
 		Assert.Equal(2, result.SpentCoins.Count());
 		Assert.Contains(allowedCoins[0], result.SpentCoins);
@@ -509,7 +499,6 @@ public class TransactionFactoryTests
 			.Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Equal(Money.Coins(0.13m), result.SpentCoins.Select(x => x.Amount).Sum());
 		Assert.Equal(3, result.SpentCoins.Count());
 		Assert.Contains(allowedCoins[0], result.SpentCoins);
@@ -584,46 +573,11 @@ public class TransactionFactoryTests
 
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.True(result.Signed);
 		Assert.Equal(Money.Coins(0.14m), result.SpentCoins.Select(x => x.Amount).Sum());
 		Assert.Equal(3, result.SpentCoins.Count());
 		var jackCoin = coins.Where(x => x.HdPubKey.Labels == "Jack").ToArray();
 		Assert.Contains(jackCoin[0], result.SpentCoins);
 		Assert.Contains(jackCoin[1], result.SpentCoins);
-	}
-
-	[Fact]
-	public void DoNotSignWatchOnly()
-	{
-		var transactionFactory = ServiceFactory.CreateTransactionFactory(
-			new[]
-			{
-				("Pablo", 0, 1m, confirmed: true, anonymitySet: 1)
-			},
-			watchOnly: true);
-
-		using Key key = new();
-		var payment = new PaymentIntent(key, MoneyRequest.CreateAllRemaining(subtractFee: true));
-		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(44.25m).Build();
-		var result = transactionFactory.BuildTransaction(txParameters);
-		Assert.Single(result.OuterWalletOutputs);
-		Assert.False(result.Signed);
-	}
-
-	[Fact]
-	public void DoNotSilentPaymentWithWatchOnly()
-	{
-		var transactionFactory = ServiceFactory.CreateTransactionFactory(
-			new[]
-			{
-				("Pablo", 0, 1m, confirmed: true, anonymitySet: 1)
-			},
-			watchOnly: true);
-
-		var key = SilentPaymentAddress.Parse("sp1qq2exrz9xjumnvujw7zmav4r3vhfj9rvmd0aytjx0xesvzlmn48ctgqnqdgaan0ahmcfw3cpq5nxvnczzfhhvl3hmsps683cap4y696qecs7wejl3", Network.Main);
-		var payment = new PaymentIntent(key, MoneyRequest.CreateAllRemaining(subtractFee: true));
-		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(44.25m).Build();
-		Assert.Throws<InvalidOperationException>(() => transactionFactory.BuildTransaction(txParameters));
 	}
 
 	/// <summary>
@@ -878,8 +832,7 @@ public class TransactionFactoryTests
 		var coinsView = new CoinsView([
 			new SmartCoin(creditingTx, 0, pubkey)
 		]);
-		using var mockTransactionStore = new AllTransactionStore(".", Network.Main);
-		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, mockTransactionStore, "password");
+		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, "password");
 
 		// Create a silent payment address to receive a 0.9 payment
 		using var scanKey = ECPrivKey.Create(Encoders.Hex.DecodeData("7e3a1d4b5f8e2c9a0f6b4d3e9a1f0c8b7e5d2a3c4f6e8b7a9d0c1f2e3a4b5d61"));
@@ -928,8 +881,7 @@ public class TransactionFactoryTests
 		var coinsView = new CoinsView([
 			new SmartCoin(creditingTx, 0, pubkey)
 		]);
-		using var mockTransactionStore = new AllTransactionStore(".", Network.Main);
-		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, mockTransactionStore, "password");
+		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, "password");
 
 		// Create a silent payment address to receive a 0.9 payment
 		using var scanKey = ECPrivKey.Create(Encoders.Hex.DecodeData("7e3a1d4b5f8e2c9a0f6b4d3e9a1f0c8b7e5d2a3c4f6e8b7a9d0c1f2e3a4b5d61"));

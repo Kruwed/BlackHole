@@ -1,12 +1,8 @@
-using System.Threading;
-using System.Threading.Tasks;
 using NBitcoin;
 using ReactiveUI;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Extensions;
-using WalletWasabi.Hwi;
-using WalletWasabi.Logging;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
 
@@ -45,36 +41,6 @@ public class Address : ReactiveObject, IAddress
 	{
 		HdPubKey.SetLabel(labels, KeyManager);
 		this.RaisePropertyChanged(nameof(Labels));
-	}
-
-	public async Task ShowOnHwWalletAsync()
-	{
-		if (HdFingerprint is null)
-		{
-			return;
-		}
-
-		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-		try
-		{
-			var client = new HwiClient(Network);
-			await client.DisplayAddressAsync(HdFingerprint.Value, FullKeyPath, cts.Token).ConfigureAwait(false);
-		}
-		catch (FormatException ex) when (ex.Message.Contains("network") && Network == Network.TestNet)
-		{
-			// This exception happens every time on TestNet because of Wasabi Keypath handling.
-			// The user doesn't need to know about it.
-		}
-		catch (Exception ex)
-		{
-			Logger.LogError(ex);
-			if (cts.IsCancellationRequested)
-			{
-				throw new ApplicationException("User response didn't arrive in time.");
-			}
-
-			throw;
-		}
 	}
 
 	public static string ShortenAddress(string input)

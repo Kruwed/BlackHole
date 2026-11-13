@@ -67,8 +67,6 @@ public static class WasabiLibGenerator
 
 		// KeyManager accessors (chained via wallet-keymanager)
 		DefineAccessorWithGetter("wallet-path", (KeyManager km) => km.FilePath, "wallet-keymanager");
-		DefineAccessorWithGetter("wallet-watch-only?", (KeyManager km) => km.IsWatchOnly, "wallet-keymanager");
-		DefineAccessorWithGetter("wallet-hardware-wallet?", (KeyManager km) => km.IsHardwareWallet, "wallet-keymanager");
 		DefineAccessorWithGetter("wallet-auto-coinjoin?", (KeyManager km) => km.AutoCoinJoin, "wallet-keymanager");
 		DefineAccessorWithGetter("wallet-non-private-coin-isolation?", (KeyManager km) => km.NonPrivateCoinIsolation, "wallet-keymanager");
 		DefineAccessorWithGetter("wallet-anonscore-target", (KeyManager km) => km.AnonScoreTarget, "wallet-keymanager");
@@ -254,7 +252,6 @@ public static class WasabiLibGenerator
 		       (define (wallet-info wallet)
 		         `(("name"     ,(wallet-name wallet))
 		           ("loaded"   ,(wallet-loaded? wallet))
-		           ("readOnly" ,(wallet-watch-only? wallet))
 		           ("path"     ,(wallet-path wallet))))
 
 		       ;;; ----------------------
@@ -795,8 +792,6 @@ public static class WasabiLibGenerator
 		                    ("loaded" ,(wallet-loaded? wallet))
 		                    ("masterKeyFingerprint" ,(wallet-master-key-fingerprint wallet))
 		                    ("anonScoreTarget" ,(wallet-anonscore-target wallet))
-		                    ("isWatchOnly" ,(wallet-watch-only? wallet))
-		                    ("isHardwareWallet" ,(wallet-hardware-wallet? wallet))
 		                    ("isAutoCoinjoin" ,(wallet-auto-coinjoin? wallet))
 		                    ("isNonPrivateCoinIsolation" ,(wallet-non-private-coin-isolation? wallet))
 		                    ("accounts" ,accounts))))

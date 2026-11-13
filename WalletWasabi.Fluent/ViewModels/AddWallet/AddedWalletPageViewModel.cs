@@ -19,15 +19,12 @@ public partial class AddedWalletPageViewModel : RoutableViewModel
 		_walletSettings = walletSettings;
 
 		WalletName = options.WalletName!;
-		WalletType = walletSettings.WalletType;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: false, enableCancelOnPressed: false);
 		EnableBack = false;
 
 		NextCommand = ReactiveCommand.CreateFromTask(() => OnNextAsync(options));
 	}
-
-	public WalletType WalletType { get; }
 
 	public string WalletName { get; }
 
@@ -75,7 +72,6 @@ public partial class AddedWalletPageViewModel : RoutableViewModel
 			{
 				WalletCreationOptions.AddNewWallet add => add.SelectedWalletBackup?.Password,
 				WalletCreationOptions.RecoverWallet rec => rec.WalletBackup?.Password,
-				WalletCreationOptions.ConnectToHardwareWallet => "",
 				_ => null
 			};
 

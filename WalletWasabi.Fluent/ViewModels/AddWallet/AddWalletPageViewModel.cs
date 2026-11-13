@@ -12,11 +12,11 @@ namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
 [NavigationMetaData(
 	Title = "Add Wallet",
-	Caption = "Create, connect, import or recover",
+	Caption = "Create, import or recover",
 	Order = 2,
 	Category = "General",
 	Keywords = new[]
-		{ "Wallet", "Add", "Create", "New", "Recover", "Import", "Connect", "Hardware", "ColdCard", "Trezor", "Ledger" },
+		{ "Wallet", "Add", "Create", "New", "Recover", "Import" },
 	IconName = "nav_add_circle_24_regular",
 	IconNameFocused = "nav_add_circle_24_filled",
 	NavigationTarget = NavigationTarget.DialogScreen,
@@ -28,16 +28,12 @@ public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 	{
 		CreateWalletCommand = ReactiveCommand.Create(OnCreateWallet);
 
-		ConnectHardwareWalletCommand = ReactiveCommand.Create(OnConnectHardwareWallet);
-
 		ImportWalletCommand = ReactiveCommand.CreateFromTask(OnImportWalletAsync);
 
 		RecoverWalletCommand = ReactiveCommand.Create(OnRecoverWallet);
 	}
 
 	public ICommand CreateWalletCommand { get; }
-
-	public ICommand ConnectHardwareWalletCommand { get; }
 
 	public ICommand ImportWalletCommand { get; }
 
@@ -47,11 +43,6 @@ public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 	{
 		var options = new WalletCreationOptions.AddNewWallet().WithNewWalletBackups();
 		Navigate().To().WalletNamePage(options);
-	}
-
-	private void OnConnectHardwareWallet()
-	{
-		Navigate().To().WalletNamePage(new WalletCreationOptions.ConnectToHardwareWallet());
 	}
 
 	private async Task OnImportWalletAsync()

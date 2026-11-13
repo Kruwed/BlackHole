@@ -21,5 +21,4 @@ public interface IAddress : IReactiveObject
 
 	void SetLabels(LabelsArray labels);
 
-	Task ShowOnHwWalletAsync();
 }

@@ -72,7 +72,6 @@ Trezor
 gitweb
 torproject
 torspec
-Coldcard
 xpub
 reindexed
 Builtin
@@ -257,7 +256,6 @@ datadir
 testnet
 conf
 wwwroot
-Coldcard
 Trezor
 Utxos
 substate
@@ -277,7 +275,6 @@ onlybinaries
 generatekeys
 appleid
 wassabeed
-hwi'
 bitcoind'
 optin
 getfeerates

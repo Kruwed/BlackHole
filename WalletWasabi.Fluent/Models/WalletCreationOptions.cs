@@ -1,6 +1,5 @@
 using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.Hwi.Models;
 using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Fluent.Models;
@@ -33,10 +32,6 @@ public abstract record WalletCreationOptions(string? WalletName = null)
 			};
 		}
 	}
-
-	public record ConnectToHardwareWallet(
-		string? WalletName = null,
-		HwiEnumerateEntry? Device = null) : WalletCreationOptions(WalletName);
 
 	public record ImportWallet(
 		string? WalletName = null,

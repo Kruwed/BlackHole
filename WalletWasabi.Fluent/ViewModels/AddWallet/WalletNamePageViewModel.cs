@@ -47,10 +47,6 @@ public partial class WalletNamePageViewModel : RoutableViewModel
 				Navigate().To().WalletBackupType(add);
 				break;
 
-			case WalletCreationOptions.ConnectToHardwareWallet chw:
-				Navigate().To().ConnectHardwareWallet(chw);
-				break;
-
 			case WalletCreationOptions.RecoverWallet rec:
 				Navigate().To().WalletBackupType(rec);
 				break;

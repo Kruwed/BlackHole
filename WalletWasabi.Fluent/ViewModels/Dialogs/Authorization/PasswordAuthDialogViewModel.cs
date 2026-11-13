@@ -11,11 +11,6 @@ public partial class PasswordAuthDialogViewModel : AuthorizationDialogBase
 
 	public PasswordAuthDialogViewModel(UiContext uiContext, IWalletModel wallet, string continueText = "Continue") : base(uiContext)
 	{
-		if (wallet.IsHardwareWallet)
-		{
-			throw new InvalidOperationException("Passphrase authorization is not possible on hardware wallets.");
-		}
-
 		ContinueText = continueText;
 
 		_wallet = wallet;

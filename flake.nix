@@ -31,7 +31,7 @@
           runtimeDeps = with pkgs; [
              pkgs.openssl pkgs.zlib
              # for client
-             tor hwi bitcoind
+             tor bitcoind
              xorg.libX11 xorg.libXrandr xorg.libX11.dev xorg.libICE xorg.libSM fontconfig.lib ];
 
           # Disable parallel builds to avoid Avalonia resource file locking issues
@@ -50,7 +50,6 @@
           bundledAppsIntegrationTest = "./WalletWasabi.IntegrationTests/${binaries}";
           preBuild = ''
             cp -r ${pkgs.tor}/bin/tor ${bundledApps}/Tor/tor
-            cp ${pkgs.hwi}/bin/hwi ${bundledApps}/hwi
             cp ${pkgs.bitcoind}/bin/bitcoind ${bundledAppsIntegrationTest}/bitcoind
           '';
         };
@@ -169,7 +168,6 @@
               # dependencies
               pkgs.bitcoind
               pkgs.tor
-              pkgs.hwi
 
               # IDE
               pkgsUnfree.jetbrains.rider
@@ -192,7 +190,6 @@
             shellHook = ''
               export PATH="$PATH:$DOTNET_GLOBAL_TOOLS_PATH"
               cp $(which tor) "$BUNDLED_APPS_BINARIES_PATH/Tor/"
-              cp $(which hwi) "$BUNDLED_APPS_BINARIES_PATH/hwi"
               cp $(which bitcoind) "$BUNDLED_APPS_INTEGRATION_TEST_BINARIES_PATH/"
 
               export PS1='\n\[\033[1;34m\][Wasabi:\w]\$\[\033[0m\] '

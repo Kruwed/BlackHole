@@ -1,5 +1,4 @@
 using WalletWasabi.Helpers;
-using WalletWasabi.Hwi.Exceptions;
 using WalletWasabi.Models;
 
 namespace WalletWasabi.Extensions;
@@ -12,10 +11,6 @@ public static class ExceptionExtensions
 
 		if (trimmed.Length == 0)
 		{
-			if (ex is HwiException hwiEx)
-			{
-				return $"{hwiEx.GetType().Name}: {hwiEx.ErrorCode}";
-			}
 			return ex.GetType().Name;
 		}
 		else

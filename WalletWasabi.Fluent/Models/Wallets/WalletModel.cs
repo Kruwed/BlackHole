@@ -63,10 +63,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	AmountProvider AmountProvider { get; }
 
-	bool IsHardwareWallet { get; }
-
-	bool IsWatchOnlyWallet { get; }
-
 	IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent);
 
 	IWalletStatsModel GetWalletStats();
@@ -185,10 +181,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public IObservable<bool> Loaded { get; }
 
 	public AmountProvider AmountProvider { get; }
-
-	public bool IsHardwareWallet => Wallet.KeyManager.IsHardwareWallet;
-
-	public bool IsWatchOnlyWallet => Wallet.KeyManager.IsWatchOnly;
 
 	public IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent)
 	{

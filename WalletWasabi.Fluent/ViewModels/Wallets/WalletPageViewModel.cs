@@ -92,10 +92,7 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 
 	private void ShowWallet()
 	{
-		WalletViewModel =
-			WalletModel.IsHardwareWallet
-			? new HardwareWalletViewModel(UiContext, WalletModel, Wallet)
-			: new WalletViewModel(UiContext, WalletModel, Wallet);
+		WalletViewModel = new WalletViewModel(UiContext, WalletModel, Wallet);
 
 		// Pass IsSelected down to WalletViewModel.IsSelected
 		this.WhenAnyValue(x => x.IsSelected)
@@ -110,19 +107,7 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 
 	private void SetIcon()
 	{
-		var walletType = WalletModel.Settings.WalletType;
-
-		var baseResourceName = walletType switch
-		{
-			WalletType.Coldcard => "coldcard_24",
-			WalletType.Trezor => "trezor_24",
-			WalletType.Ledger => "ledger_24",
-			WalletType.BitBox => "bitbox_24",
-			WalletType.Jade => "jade_24",
-			_ => "wallet_24"
-		};
-
-		IconName = $"nav_{baseResourceName}_regular";
-		IconNameFocused = $"nav_{baseResourceName}_filled";
+		IconName = "nav_wallet_24_regular";
+		IconNameFocused = "nav_wallet_24_filled";
 	}
 }

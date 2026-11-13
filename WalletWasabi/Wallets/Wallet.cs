@@ -215,12 +215,7 @@ public class Wallet : BackgroundService
 	{
 		compatibilityPasswordUsed = null;
 
-		if (KeyManager.IsWatchOnly)
-		{
-			IsLoggedIn = true;
-			Password = "";
-		}
-		else if (PasswordHelper.TryPassword(KeyManager, password, out compatibilityPasswordUsed))
+		if (PasswordHelper.TryPassword(KeyManager, password, out compatibilityPasswordUsed))
 		{
 			IsLoggedIn = true;
 			Password = compatibilityPasswordUsed ?? Guard.Correct(password);

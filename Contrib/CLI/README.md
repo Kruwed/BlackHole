@@ -51,8 +51,6 @@ $ ./wcli.sh -wallet=MyWallet getwalletinfo
   "state": "Started",
   "masterKeyFingerprint": "d415c529",
   "anonScoreTarget": 5,
-  "isWatchOnly": false,
-  "isHardwareWallet": false,
   "isAutoCoinjoin": true,
   "isRedCoinIsolation": false,
   "accounts": [

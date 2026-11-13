@@ -25,8 +25,7 @@ public static class CrashReporter
 
 			ProcessStartInfo startInfo = ProcessStartInfoFactory.Make(
 				processPath: path,
-				arguments: args,
-				openConsole: false);
+				arguments: args);
 
 			using Process? p = Process.Start(startInfo);
 		}

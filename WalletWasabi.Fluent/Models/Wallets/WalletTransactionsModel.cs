@@ -85,12 +85,6 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 		return transaction is not null;
 	}
 
-	public async Task<SmartTransaction> LoadFromFileAsync(string path)
-	{
-		var txn = await TransactionHelpers.ParseTransactionAsync(path, _wallet.Network);
-		return txn;
-	}
-
 	public async Task<TimeSpan?> TryEstimateConfirmationTimeAsync(uint256 id, CancellationToken cancellationToken)
 	{
 		if (!_wallet.TransactionStore.TryGetTransaction(id, out var smartTransaction))

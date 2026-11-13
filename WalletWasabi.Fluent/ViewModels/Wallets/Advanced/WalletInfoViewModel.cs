@@ -24,11 +24,8 @@ public partial class WalletInfoViewModel : RoutableViewModel
 	public WalletInfoViewModel(UiContext uiContext, IWalletModel wallet) : base(uiContext)
 	{
 		_model = wallet.GetWalletInfo();
-		IsHardwareWallet = wallet.IsHardwareWallet;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
-
-		EnableCancel = !wallet.IsWatchOnlyWallet;
 
 		NextCommand = ReactiveCommand.Create(() => Navigate().Clear());
 
@@ -50,15 +47,11 @@ public partial class WalletInfoViewModel : RoutableViewModel
 
 	public string? MasterKeyFingerprint => _model.MasterKeyFingerprint;
 
-	public string? ExtendedMasterPrivateKey => _model.ExtendedMasterPrivateKey;
+	public string ExtendedMasterPrivateKey => _model.ExtendedMasterPrivateKey;
 
-	public string? ExtendedAccountPrivateKey => _model.ExtendedAccountPrivateKey;
+	public string ExtendedAccountPrivateKey => _model.ExtendedAccountPrivateKey;
 
-	public string? ExtendedMasterZprv => _model.ExtendedMasterZprv;
+	public string ExtendedMasterZprv => _model.ExtendedMasterZprv;
 
-	public bool HasWpkhWalletPolicy => _model.WpkhWalletPolicy is not null;
-
-	public string? WpkhWalletPolicyFullDescriptor => _model.WpkhWalletPolicy?.FullDescriptor.ToString();
-
-	public bool IsHardwareWallet { get; }
+	public string WpkhWalletPolicyFullDescriptor => _model.WpkhWalletPolicy.FullDescriptor.ToString();
 }

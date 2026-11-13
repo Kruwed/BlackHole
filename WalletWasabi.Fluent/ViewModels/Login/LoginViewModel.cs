@@ -13,16 +13,13 @@ namespace WalletWasabi.Fluent.ViewModels.Login;
 public partial class LoginViewModel : RoutableViewModel
 {
 	[AutoNotify] private string _password;
-	[AutoNotify] private bool _isPasswordNeeded;
 	[AutoNotify] private string _errorMessage;
 
 	public LoginViewModel(UiContext uiContext, IWalletModel wallet) : base(uiContext)
 	{
 		_password = "";
 		_errorMessage = "";
-		IsPasswordNeeded = !wallet.IsWatchOnlyWallet;
 		WalletName = wallet.Name;
-		WalletType = wallet.Settings.WalletType;
 
 		NextCommand = ReactiveCommand.CreateFromTask(async () => await OnNextAsync(wallet));
 
@@ -30,8 +27,6 @@ public partial class LoginViewModel : RoutableViewModel
 
 		EnableAutoBusyOn(NextCommand);
 	}
-
-	public WalletType WalletType { get; }
 
 	public string WalletName { get; }
 

@@ -182,13 +182,8 @@ for PLATFORM in "${PLATFORMS[@]}"; do
   BUNDLED_APPS_DIR="$OUTPUT_DIR/BundledApps/Binaries"
 
   if [[ "${PLATFORM_PREFIX}" == "osx" ]]; then
-    if [[ "$PLATFORM" == "osx-arm64" ]]; then
-      # Tor is universal and remains in osx64. HWI has a separate arm64 binary.
-      find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "osx64" ! -name "osx-arm64" -exec rm -rf {} +
-      rm "$BUNDLED_APPS_DIR/osx64/hwi"
-    else
-      find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "osx64" -exec rm -rf {} +
-    fi
+    # Tor is universal and lives in osx64 for both macOS architectures.
+    find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "osx64" -exec rm -rf {} +
   else
     # For other platforms, the bundled binaries are stored in a folder with the same name as the platform (e.g. linux-x64, linux-arm64 and win-x64).
     find $BUNDLED_APPS_DIR -mindepth 1 -maxdepth 1 -type d ! -name "$PLATFORM" -exec rm -rf {} +
@@ -300,14 +295,8 @@ Description: open-source, non-custodial, privacy focused Bitcoin wallet
 
 echo "${DEBIAN_CONTROL_FILE_CONTENT}" > $DEBIAN/control
 
-# Post-installation script content
 USR_LOCAL_BIN_DIR="/usr/local/bin"
 INSTALL_DIR="${USR_LOCAL_BIN_DIR}/wasabiwallet"
-DEBIAN_POST_INST_SCRIPT_CONTENT="#!/usr/bin/env sh
-${INSTALL_DIR}/BundledApps/Binaries/${DEBIAN_FULL_PLATFORM_NAME}/hwi installudevrules
-exit 0"
-echo "${DEBIAN_POST_INST_SCRIPT_CONTENT}" > $DEBIAN/postinst
-chmod 0775 ${DEBIAN}/postinst
 
 # Create the desktop file content
 DEBIAN_DESKTOP_CONTENT="[Desktop Entry]
@@ -344,9 +333,8 @@ find ${DEBIAN_BIN}/wasabiwallet -type d -not -path ${DEBIAN_BIN}/wasabiwallet -e
 chmod 0755 ${DEBIAN_BIN}/wasabiwallet/${EXECUTABLE_NAME}{,d}
 chmod 0755 ${DEBIAN_BIN}/${EXECUTABLE_NAME}{,d}
 
-# Make bundled binaries executable (hwi and tor)
+# Make the bundled Tor binary executable
 DEBIAN_BUNDLED_BINARIES="${DEBIAN_BIN}/wasabiwallet/BundledApps/Binaries/${DEBIAN_FULL_PLATFORM_NAME}"
-chmod 0755 "${DEBIAN_BUNDLED_BINARIES}/hwi"
 chmod 0755 "${DEBIAN_BUNDLED_BINARIES}/Tor/tor"
 
 if [[ "$PACKAGE_COORDINATOR" == "yes" ]]; then
@@ -489,8 +477,8 @@ find "$APPDIR_BIN" -type f -name "*.so.*" -exec chmod 0755 {} \;
 # Make bundled binaries executable
 if [ -d "$APPDIR_BIN/BundledApps/Binaries/${APPIMAGE_FULL_PLATFORM_NAME}" ]; then
   find "$APPDIR_BIN/BundledApps/Binaries/${APPIMAGE_FULL_PLATFORM_NAME}" -type f -executable -exec chmod 0755 {} \;
-  # hwi and tor binaries
-  for BINARY in hwi tor; do
+  # tor binary
+  for BINARY in tor; do
     if [ -f "$APPDIR_BIN/BundledApps/Binaries/${APPIMAGE_FULL_PLATFORM_NAME}/$BINARY" ]; then
       chmod 0755 "$APPDIR_BIN/BundledApps/Binaries/${APPIMAGE_FULL_PLATFORM_NAME}/$BINARY"
     fi

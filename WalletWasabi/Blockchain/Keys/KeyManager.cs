@@ -32,8 +32,8 @@ public class KeyManager
 	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.005m);
 
 	internal KeyManager(
-		BitcoinEncryptedSecretNoEC? encryptedSecret,
-		byte[]? chainCode,
+		BitcoinEncryptedSecretNoEC encryptedSecret,
+		byte[] chainCode,
 		HDFingerprint? masterFingerprint,
 		ExtPubKey extPubKey,
 		ExtPubKey? taprootExtPubKey,
@@ -126,11 +126,9 @@ public class KeyManager
 
 	#region Properties
 
-	/// <remarks><c>null</c> if the watch-only mode is on.</remarks>
-	public BitcoinEncryptedSecretNoEC? EncryptedSecret { get; }
+	public BitcoinEncryptedSecretNoEC EncryptedSecret { get; }
 
-	/// <remarks><c>null</c> if the watch-only mode is on.</remarks>
-	public byte[]? ChainCode { get; }
+	public byte[] ChainCode { get; }
 
 	public HDFingerprint? MasterFingerprint { get; private set; }
 
@@ -150,16 +148,12 @@ public class KeyManager
 
 	private readonly BlockchainState _blockchainState;
 
-	public bool PreferPsbtWorkflow { get; set; }
-
 	public bool AutoCoinJoin { get; set; } = DefaultAutoCoinjoin;
 
 	/// <summary>
 	/// Won't coinjoin automatically if the confirmed wallet balance is below this.
 	/// </summary>
 	public Money PlebStopThreshold { get; set; } = DefaultPlebStopThreshold;
-
-	public string? Icon { get; private set; }
 
 	public int AnonScoreTarget { get; set; } = PrivacyProfiles.DefaultProfile.AnonScoreTarget;
 
@@ -178,13 +172,6 @@ public class KeyManager
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
 
 	public string? FilePath { get; private set; }
-
-	[MemberNotNullWhen(returnValue: false, nameof(EncryptedSecret))]
-	[MemberNotNullWhen(returnValue: false, nameof(ChainCode))]
-	public bool IsWatchOnly => EncryptedSecret is null;
-
-	[MemberNotNullWhen(returnValue: true, nameof(MasterFingerprint))]
-	public bool IsHardwareWallet => EncryptedSecret is null && MasterFingerprint is not null;
 
 	public IEnumerable<ScriptPubKeyType> AvailableScriptPubKeyTypes => TaprootExtPubKey is null
 		? [ScriptPubKeyType.Segwit]
@@ -246,12 +233,6 @@ public class KeyManager
 		ExtPubKey silentPaymentSpendExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Spend)).Neuter();
 
 		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
-	}
-
-	public static KeyManager CreateNewHardwareWalletWatchOnly(HDFingerprint masterFingerprint, ExtPubKey segwitExtPubKey, ExtPubKey? taprootExtPubKey, ExtPubKey? silentPaymentScanExtPubKey, ExtPubKey? silentPaymentSpendExtPubKey, Network network, string? filePath = null)
-	{
-		var birthHeight = FilterCheckpoints.GetWasabiGenesisFilter(network).Header.Height;
-		return new KeyManager(null, null, masterFingerprint, segwitExtPubKey, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, AbsoluteMinGapLimit, new BlockchainState(network, birthHeight: birthHeight), filePath);
 	}
 
 	public static KeyManager Recover(Mnemonic mnemonic, string password, Network network, KeyPath swAccountKeyPath, KeyPath? trAccountKeyPath = null, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
@@ -462,11 +443,6 @@ public class KeyManager
 
 	public ExtKey GetMasterExtKey(string password)
 	{
-		if (IsWatchOnly)
-		{
-			throw new SecurityException("This is a watch-only wallet.");
-		}
-
 		password ??= "";
 
 		var passwordHash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(password));
@@ -704,17 +680,6 @@ public class KeyManager
 		}
 	}
 
-	public void SetIcon(string icon)
-	{
-		Icon = icon;
-		ToFile();
-	}
-
-	public void SetIcon(WalletType type)
-	{
-		SetIcon(type.ToString());
-	}
-
 	#endregion _blockchainState
 
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
@@ -745,8 +710,8 @@ public class KeyManager
 
 	private static JsonNode EncodeKeyManagerNoLock(KeyManager keyManager) =>
 		Encode.Object([
-			("EncryptedSecret", Encode.Optional(keyManager.EncryptedSecret, Encode.BitcoinEncryptedSecretNoEC)),
-			("ChainCode", Encode.Optional(keyManager.ChainCode, Encode.ChainCode)),
+			("EncryptedSecret", Encode.BitcoinEncryptedSecretNoEC(keyManager.EncryptedSecret)),
+			("ChainCode", Encode.ChainCode(keyManager.ChainCode)),
 			("MasterFingerprint", Encode.Optional(keyManager.MasterFingerprint, Encode.HDFingerprint)),
 			("ExtPubKey", Encode.ExtPubKey(keyManager.SegwitExtPubKey)),
 			("TaprootExtPubKey", Encode.Optional(keyManager.TaprootExtPubKey, Encode.ExtPubKey)),
@@ -756,10 +721,8 @@ public class KeyManager
 			("AccountKeyPath", Encode.KeyPath(keyManager.SegwitAccountKeyPath)),
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
-			("PreferPsbtWorkflow", Encode.Bool(keyManager.PreferPsbtWorkflow)),
 			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
 			("PlebStopThreshold", Encode.MoneyBitcoins(keyManager.PlebStopThreshold)),
-			("Icon", Encode.Optional(keyManager.Icon, Encode.String)),
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
@@ -781,8 +744,8 @@ public class KeyManager
 			var network = blockchainState.Network;
 			var encryptedSecretDecoder = Decode.String.Map(s => new BitcoinEncryptedSecretNoEC(s, network));
 			var km = new KeyManager(
-				get.Optional("EncryptedSecret", encryptedSecretDecoder),
-				get.Optional("ChainCode", Decode.ByteArray),
+				get.Required("EncryptedSecret", encryptedSecretDecoder),
+				get.Required("ChainCode", Decode.ByteArray),
 				fingerprint,
 
 				get.Required("ExtPubKey", Decode.ExtPubKey),
@@ -796,10 +759,8 @@ public class KeyManager
 				get.Optional("TaprootAccountKeyPath", Decode.KeyPath)
 			)
 			{
-				PreferPsbtWorkflow = get.Optional("PreferPsbtWorkflow", Decode.Bool, false),
 				AutoCoinJoin = get.Optional("AutoCoinJoin", Decode.Bool, false),
 				PlebStopThreshold = get.Optional("PlebStopThreshold", Decode.MoneyBitcoins) ?? DefaultPlebStopThreshold,
-				Icon = get.Optional("Icon", Decode.String),
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),

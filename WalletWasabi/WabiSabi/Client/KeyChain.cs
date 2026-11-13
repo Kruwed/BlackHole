@@ -7,11 +7,6 @@ public class KeyChain : IKeyChain
 {
 	public KeyChain(KeyManager keyManager, string password)
 	{
-		if (keyManager.IsWatchOnly)
-		{
-			throw new ArgumentException("A watch-only key manager cannot be used to initialize a key chain.");
-		}
-
 		_keyManager = keyManager;
 		_password = password;
 	}

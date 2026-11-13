@@ -42,7 +42,7 @@ public static class TransactionBuilderWalletExtensions
 			TryToSign: tryToSign,
 			OverrideFeeOverpaymentProtection: overrideFeeOverpaymentProtection);
 
-		var factory = new TransactionFactory(wallet.Network, wallet.KeyManager, wallet.Coins, wallet.TransactionStore, password);
+		var factory = new TransactionFactory(wallet.Network, wallet.KeyManager, wallet.Coins, password);
 		return factory.BuildTransaction(
 			parameters,
 			lockTimeSelector: () =>

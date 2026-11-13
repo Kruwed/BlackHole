@@ -21,12 +21,7 @@
     </TextBox>
   </DockPanel>
 
-    <DockPanel IsVisible="{Binding IsHardwareWallet}">
-      <TextBlock Text="PSBT workflow" />
-      <ToggleSwitch IsChecked="{Binding PreferPsbtWorkflow}" />
-    </DockPanel>
-
-    <DockPanel IsVisible="{Binding IsDefaultSendWorkflowSettingVisible}">
+    <DockPanel>
       <TextBlock Text="Default Send Workflow" />
       <ComboBox ItemsSource="{Binding SendWorkflows}"
                 SelectedItem="{Binding DefaultSendWorkflow}">

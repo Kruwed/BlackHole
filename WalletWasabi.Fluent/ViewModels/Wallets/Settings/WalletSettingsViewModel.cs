@@ -26,7 +26,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 public partial class WalletSettingsViewModel : RoutableViewModel
 {
     private readonly IWalletModel _wallet;
-    [AutoNotify] private bool _preferPsbtWorkflow;
     [AutoNotify] private string _walletName;
     [AutoNotify] private int _selectedTab;
     [AutoNotify] private ScriptType _defaultReceiveScriptType;
@@ -39,10 +38,7 @@ public partial class WalletSettingsViewModel : RoutableViewModel
     {
         _wallet = walletModel;
         _walletName = walletModel.Name;
-        _preferPsbtWorkflow = walletModel.Settings.PreferPsbtWorkflow;
         _selectedTab = 0;
-        IsHardwareWallet = walletModel.IsHardwareWallet;
-        IsWatchOnly = walletModel.IsWatchOnlyWallet;
 
         this.ValidateProperty(
             x => x.WalletName,
@@ -144,20 +140,9 @@ public partial class WalletSettingsViewModel : RoutableViewModel
                 walletModel.Settings.ChangeScriptPubKeyType = value;
                 walletModel.Settings.Save();
             });
-
-        this.WhenAnyValue(x => x.PreferPsbtWorkflow)
-            .Skip(1)
-            .Subscribe(value =>
-            {
-                walletModel.Settings.PreferPsbtWorkflow = value;
-                walletModel.Settings.Save();
-            });
     }
 
-    public bool IsHardwareWallet { get; }
-    public bool IsWatchOnly { get; }
     public bool SeveralReceivingScriptTypes => _wallet.SeveralReceivingScriptTypes;
-    public bool IsDefaultSendWorkflowSettingVisible => !(IsWatchOnly || IsHardwareWallet);
 
     public IEnumerable<ScriptType> ReceiveScriptTypes { get; } = [ScriptType.SegWit, ScriptType.Taproot];
     public IEnumerable<PreferredScriptPubKeyType> ChangeScriptPubKeyTypes { get; } =

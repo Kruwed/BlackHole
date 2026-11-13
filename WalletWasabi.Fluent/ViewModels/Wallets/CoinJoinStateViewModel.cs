@@ -90,11 +90,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			? State.WaitingForAutoStart
 			: State.StoppedOrPaused;
 
-		if (wallet.IsHardwareWallet || wallet.IsWatchOnlyWallet)
-		{
-			initialState = State.Disabled;
-		}
-
 		if (wallet.Settings.IsCoinJoinPaused)
 		{
 			initialState = State.StoppedOrPaused;
@@ -166,8 +161,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			{
 				settings.SelectedTab = 1;
 				UiContext.Navigate(NavigationTarget.DialogScreen).To(settings);
-			},
-			Observable.Return(!_wallet.IsWatchOnlyWallet));
+			});
 
 		NavigateToSettingsCommand = coinJoinSettingsCommand;
 		CanNavigateToCoinjoinSettings = coinJoinSettingsCommand.CanExecute;
@@ -187,7 +181,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private enum State
 	{
 		Invalid = 0,
-		Disabled,
 		StoppedOrPaused,
 		Playing,
 		PlebStopActive,
@@ -231,8 +224,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	private void ConfigureStateMachine()
 	{
-		_stateMachine.Configure(State.Disabled);
-
 		_stateMachine.Configure(State.WaitingForAutoStart)
 			.Permit(Trigger.WalletStartedCoinJoin, State.Playing)
 			.Permit(Trigger.AutoCoinJoinOff, State.StoppedOrPaused)

@@ -16,6 +16,7 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
+using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Logging;
@@ -35,7 +36,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	private TransactionInfo _currentTransactionInfo;
 	private CancellationTokenSource _cancellationTokenSource;
 	[AutoNotify] private BuildTransactionResult? _transaction;
-	[AutoNotify] private string _nextButtonText;
 	[AutoNotify] private TransactionSummaryViewModel? _displayedTransactionSummary;
 	[AutoNotify] private bool _canUndo;
 	[AutoNotify] private bool _isCoinControlVisible;
@@ -68,19 +68,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
 		EnableBack = true;
 
-		if (PreferPsbtWorkflow)
-		{
-			SkipCommand = ReactiveCommand.CreateFromTask(OnConfirmAsync);
-			NextCommand = ReactiveCommand.CreateFromTask(OnExportPsbtAsync);
-
-			_nextButtonText = "Save PSBT file";
-		}
-		else
-		{
-			NextCommand = ReactiveCommand.CreateFromTask(OnConfirmAsync);
-
-			_nextButtonText = "Confirm";
-		}
+		NextCommand = ReactiveCommand.CreateFromTask(OnConfirmAsync);
 
 		AdjustFeeCommand = ReactiveCommand.CreateFromTask(OnAdjustFeeAsync);
 
@@ -106,35 +94,11 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	public PrivacySuggestionsFlyoutViewModel PrivacySuggestions { get; }
 
-	public bool PreferPsbtWorkflow => _walletModel.Settings.PreferPsbtWorkflow;
-
 	public ICommand AdjustFeeCommand { get; }
 
 	public ICommand ChangeCoinsCommand { get; }
 
 	public ICommand UndoCommand { get; }
-
-	private async Task OnExportPsbtAsync()
-	{
-		if (Transaction is { })
-		{
-			bool saved = false;
-			try
-			{
-				saved = await TransactionHelpers.ExportTransactionToBinaryAsync(Transaction);
-			}
-			catch (Exception ex)
-			{
-				Logger.LogError(ex);
-				await ShowErrorAsync("Transaction Export", ex.ToUserFriendlyString(), "Wasabi was unable to export the PSBT.");
-			}
-
-			if (saved)
-			{
-				Navigate().To().Success();
-			}
-		}
-	}
 
 	private void UpdateTransaction(TransactionSummaryViewModel summary, BuildTransactionResult transaction, bool addToUndoHistory = true)
 	{
@@ -433,13 +397,12 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		try
 		{
 			var transaction = await Task.Run(() => TransactionHelpers.BuildTransaction(_wallet, _info));
-			var transactionAuthorizationInfo = new TransactionAuthorizationInfo(transaction);
-			var authResult = await AuthorizeAsync(transactionAuthorizationInfo);
+			var authResult = await AuthorizeAsync();
 			if (authResult)
 			{
 				IsBusy = true;
 
-				var finalTransaction = transactionAuthorizationInfo.Transaction;
+				var finalTransaction = transaction.Transaction;
 				await SendTransactionAsync(finalTransaction);
 				_wallet.UpdateUsedHdPubKeysLabels(transaction.HdPubKeysWithNewLabels);
 				_cancellationTokenSource.Cancel();
@@ -460,14 +423,14 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		}
 	}
 
-	private async Task<bool> AuthorizeAsync(TransactionAuthorizationInfo transactionAuthorizationInfo)
+	private async Task<bool> AuthorizeAsync()
 	{
-		if (!_walletModel.IsHardwareWallet && !_walletModel.Auth.HasPassword) // Do not show authentication dialog when password is empty
+		if (!_walletModel.Auth.HasPassword) // Do not show authentication dialog when password is empty
 		{
 			return true;
 		}
 
-		var authDialog = AuthorizationHelpers.GetAuthorizationDialog(UiContext, _walletModel, transactionAuthorizationInfo);
+		var authDialog = new PasswordAuthDialogViewModel(UiContext, _walletModel, "Send");
 		var authDialogResult = await NavigateDialogAsync(authDialog, authDialog.DefaultTarget, NavigationMode.Clear);
 
 		return authDialogResult.Result;
