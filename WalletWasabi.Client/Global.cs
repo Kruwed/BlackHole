@@ -116,8 +116,6 @@ public class Global
 		var broadcasters = CreateBroadcasters(p2PNodeListProvider: () => _p2pConnectionManager.Nodes, _mempoolService);
 		TransactionBroadcaster = new TransactionBroadcaster(broadcasters.ToArray(), _mempoolService);
 
-		Scheme = new Scheme(this);
-
 		_ticker = new Timer(_ => EventBus.Publish(new Tick(DateTime.UtcNow)));
 		_ticker.DisposeUsing(_disposables);
 
@@ -153,7 +151,6 @@ public class Global
 	public JsonRpcServer? RpcServer { get; private set; }
 	public Uri? OnionServiceUri { get; private set; }
 	public EventBus EventBus { get; }
-	public Scheme Scheme { get; }
 
 	private string GetBitcoinP2PNetworkDirectory() => Path.Combine(DataDir, "BitcoinP2pNetwork");
 

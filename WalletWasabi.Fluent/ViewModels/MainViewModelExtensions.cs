@@ -2,7 +2,6 @@ using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 using WalletWasabi.Fluent.ViewModels.OpenDirectory;
-using WalletWasabi.Fluent.ViewModels.Scheme;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.TransactionBroadcasting;
 
@@ -52,11 +51,5 @@ public static class MainViewModelExtensions
 		OpenLogsViewModel.RegisterLazy(() => new OpenLogsViewModel(uiContext));
 		OpenTorLogsViewModel.RegisterLazy(() => new OpenTorLogsViewModel(uiContext));
 		OpenConfigFileViewModel.RegisterLazy(() => new OpenConfigFileViewModel(uiContext));
-
-		if (uiContext.ApplicationSettings.ExperimentalFeatures.Contains("scripting", StringComparer.InvariantCultureIgnoreCase))
-		{
-			ArgumentNullException.ThrowIfNull(uiContext.Scheme, nameof(uiContext.Scheme));
-			SchemeConsoleViewModel.Register(new SchemeConsoleViewModel(uiContext, uiContext.Scheme));
-		}
 	}
 }

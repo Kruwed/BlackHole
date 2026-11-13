@@ -110,7 +110,7 @@ public class Config
 			[nameof(FeeRateEstimationProvider)] = "The mining fee rate estimation provider. Available providers are MempoolSpace (default), BlockstreamInfo, BlockXyz or None",
 			[nameof(ExternalTransactionBroadcaster)] = "Third party transaction broadcaster. Available broadcasters are MempoolSpace (default) and BlockstreamInfo",
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Wasabi before dropping them",
-			[nameof(ExperimentalFeatures)] = "Colon-separated list of experimental features to enable. (features available: scripting)",
+			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }

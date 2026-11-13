@@ -29,8 +29,7 @@ public class UiContext
 		EditableSearchSource editableSearchSource,
 		TorStatusCheckerModel torStatusChecker,
 		HealthMonitor healthMonitor,
-		ReleaseHighlights releaseHighlights,
-		Client.Scheme? scheme = null)
+		ReleaseHighlights releaseHighlights)
 	{
 		Services = services ?? throw new ArgumentNullException(nameof(services));
 		QrCodeGenerator = qrCodeGenerator ?? throw new ArgumentNullException(nameof(qrCodeGenerator));
@@ -47,7 +46,6 @@ public class UiContext
 		TorStatusChecker = torStatusChecker ?? throw new ArgumentNullException(nameof(torStatusChecker));
 		HealthMonitor = healthMonitor ?? throw new ArgumentNullException(nameof(healthMonitor));
 		ReleaseHighlights = releaseHighlights ?? throw new ArgumentNullException(nameof(releaseHighlights));
-		Scheme = scheme;
 	}
 
 	public IServices Services { get; }
@@ -65,7 +63,6 @@ public class UiContext
 	public TorStatusCheckerModel TorStatusChecker { get; }
 	public HealthMonitor HealthMonitor { get; }
 	public ReleaseHighlights ReleaseHighlights { get; }
-	public Client.Scheme? Scheme { get; }
 	public MainViewModel? MainViewModel { get; private set; }
 
 	public void RegisterNavigation(INavigate navigate)

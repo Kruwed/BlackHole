@@ -55,7 +55,7 @@ rawprint=(help)
 if [ $CURL_ERRORCODE -eq $CURL_FAIL_TO_CONNECT_ERRORCODE ]; then
     echo "It was not possible to get a response. RPC server could be disabled."
 elif [[ "$RESULT_ERROR" == "null" ]]; then
-    if [[ " ${rawprint[*]} " =~ ${METHOD} || ${METHOD} == 'query' ]]; then
+    if [[ " ${rawprint[*]} " =~ ${METHOD} ]]; then
        echo "$RESULT" | jq -r .result
     else
         IS_NONEMPTY_ARRAY=$(echo "$RESULT" | jq -r '.result | if type=="array" and length > 0 then "true" else "false" end')

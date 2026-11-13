@@ -24,7 +24,6 @@ public interface IServices
 	UiConfig UiConfig { get; }
 	Config Config { get; }
 	EventBus EventBus { get; }
-	Client.Scheme Scheme { get; }
 
 	uint GetTipHeight();
 	uint GetServerTipHeight();

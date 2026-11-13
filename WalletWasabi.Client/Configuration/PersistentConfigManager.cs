@@ -46,7 +46,6 @@ public static class PersistentConfigManager
 		BitcoinRpcUri = Constants.DefaultTestNetBitcoinRpcUri,
 		JsonRpcServerEnabled = true,
 		AbsoluteMinInputCount = Constants.AbsoluteMinInputCount,
-		ExperimentalFeatures = new ValueList<string>(["scripting"]),
 	};
 
 	public static readonly PersistentConfig DefaultRegTestConfig = DefaultTestNetConfig with

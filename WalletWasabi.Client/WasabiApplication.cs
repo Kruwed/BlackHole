@@ -330,7 +330,7 @@ public class WasabiApplication
 			Network: Network.TestNet,
 			BitcoinRpcCredentialString : MustMigrate(configs260.TestNet) ? string.Empty : oldConfig.BitcoinRpcCredentialString,
 			BitcoinRpcUri : MustMigrate(configs260.TestNet) ? string.Empty : oldConfig.BitcoinRpcUri,
-			ExperimentalFeatures : new ValueList<string>(["scripting"]),
+			ExperimentalFeatures : [],
 			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
 			ConfigVersion : 4,
 			CoordinatorUri : oldConfig.CoordinatorUri,
@@ -357,7 +357,7 @@ public class WasabiApplication
 			Network: Network.RegTest,
 			BitcoinRpcCredentialString: MustMigrate(configs260.RegTest) ? string.Empty : oldConfig.BitcoinRpcCredentialString,
 			BitcoinRpcUri: MustMigrate(configs260.RegTest) ? string.Empty : oldConfig.BitcoinRpcUri,
-			ExperimentalFeatures: new ValueList<string>(["scripting"]),
+			ExperimentalFeatures: [],
 			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
 			ConfigVersion : 4,
 			CoordinatorUri : oldConfig.CoordinatorUri,
@@ -417,8 +417,7 @@ public class WasabiApplication
 			Network	= Network.TestNet,
 			CoordinatorUri = oldConfig.TestNetCoordinatorUri,
 			BitcoinRpcCredentialString = oldConfig.TestNetBitcoinRpcCredentialString,
-			BitcoinRpcUri = oldConfig.TestNetBitcoinRpcEndPoint.ToUriString("http"),
-			ExperimentalFeatures = new ValueList<string>(["scripting"])
+			BitcoinRpcUri = oldConfig.TestNetBitcoinRpcEndPoint.ToUriString("http")
 		};
 
 		var regtestConfig = mainConfig with
@@ -426,8 +425,7 @@ public class WasabiApplication
 			Network = Network.RegTest,
 			CoordinatorUri = oldConfig.RegTestCoordinatorUri,
 			BitcoinRpcCredentialString = oldConfig.RegTestBitcoinRpcCredentialString,
-			BitcoinRpcUri = oldConfig.RegTestBitcoinRpcEndPoint.ToUriString("http"),
-			ExperimentalFeatures = new ValueList<string>(["scripting"])
+			BitcoinRpcUri = oldConfig.RegTestBitcoinRpcEndPoint.ToUriString("http")
 		};
 		return (MainNet: mainConfig, TestNet: testConfig, RegTest: regtestConfig);
 	}
