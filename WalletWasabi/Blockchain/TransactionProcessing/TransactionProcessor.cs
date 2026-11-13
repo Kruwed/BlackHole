@@ -12,7 +12,6 @@ public class TransactionProcessor(
 	AllTransactionStore transactionStore,
 	MempoolService? mempoolService,
 	KeyManager keyManager,
-	Money dustThreshold,
 	EventBus eventBus)
 {
 	/// <remarks>Intentionally, <c>static</c> to avoid modifying smart transactions from multiple threads.</remarks>
@@ -26,7 +25,6 @@ public class TransactionProcessor(
 	public KeyManager KeyManager { get; } = keyManager;
 
 	public CoinsRegistry Coins { get; } = new();
-	public Money DustThreshold { get; } = dustThreshold;
 
 	public IEnumerable<ProcessedResult> Process(IEnumerable<SmartTransaction> txs)
 	{
@@ -205,13 +203,7 @@ public class TransactionProcessor(
 					tx.Labels = LabelsArray.Merge(tx.Labels, foundKey.Labels);
 				}
 
-				var couldBeDustAttack = CanBeConsideredDustAttack(output, foundKey, myInputs.Any());
 				KeyManager.SetKeyState(KeyState.Used, foundKey);
-				if (couldBeDustAttack)
-				{
-					result.ReceivedDusts.Add(output);
-					continue;
-				}
 
 				SmartCoin newCoin = new(tx, i, foundKey);
 
@@ -305,11 +297,6 @@ public class TransactionProcessor(
 			|| (!allInputsAreMine && coin.ScriptPubKey.IsScriptType(ScriptType.Taproot))
 			|| input.VerifyScript(coin, ScriptVerify.Standard, precomputedData, out _));
 	}
-
-	private bool CanBeConsideredDustAttack(TxOut output, HdPubKey hdPubKey, bool weAreAmongTheSender) =>
-		output.Value <= DustThreshold // the value received is under the dust threshold
-		&& !weAreAmongTheSender // we are not one of the senders (it is not a self-spending tx or coinjoin)
-		&& Coins.IsUsed(hdPubKey); // the destination address has already been used (address reuse)
 
 	public void UndoBlock(ChainHeight blockHeight)
 	{

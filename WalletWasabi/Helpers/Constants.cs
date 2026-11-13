@@ -58,7 +58,6 @@ public static class Constants
 	public const int DefaultSignetBitcoinRpcPort = 38332;
 	public const int DefaultRegTestBitcoinCorePort = 18443;
 
-	public const decimal DefaultDustThreshold = 0.00001m;
 	public const decimal DefaultMaxCoinJoinMiningFeeRate = 50.0m;
 	public const int DefaultAbsoluteMinInputCount = 21;
 	public const int AbsoluteMinInputCount = 2;

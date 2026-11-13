@@ -43,7 +43,7 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 		TransactionStore = transactionStore;
 		FilterHeaderChain = filterHeaderChain;
 		CpfpInfoProvider = cpfpInfoProvider;
-		ServiceConfiguration = new ServiceConfiguration(Money.Coins(Constants.DefaultDustThreshold));
+		ServiceConfiguration = new ServiceConfiguration();
 	}
 
 	public IntegrationTestFixture Fixture { get; }

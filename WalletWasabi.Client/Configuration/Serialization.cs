@@ -30,7 +30,6 @@ public static class PersistentConfigEncode
 			("JsonRpcUser", String(cfg.JsonRpcUser)),
 			("JsonRpcPassword", String(cfg.JsonRpcPassword)),
 			("JsonRpcServerPrefixes", Array(cfg.JsonRpcServerPrefixes.Select(String))),
-			("DustThreshold", MoneyBitcoins(cfg.DustThreshold)),
 			("EnableGpu", Bool(cfg.EnableGpu)),
 			("CoordinatorIdentifier", String(cfg.CoordinatorIdentifier)),
 			("FeeRateEstimationProvider", String(cfg.FeeRateEstimationProvider)),
@@ -77,7 +76,6 @@ public static class PersistentConfigDecode
 					JsonRpcUser: get.Required("JsonRpcUser", Decode.String),
 					JsonRpcPassword: get.Required("JsonRpcPassword", Decode.String),
 					JsonRpcServerPrefixes: get.Required("JsonRpcServerPrefixes", ValueList(Decode.String)),
-					DustThreshold: get.Required("DustThreshold", Decode.MoneyBitcoins),
 					EnableGpu: get.Required("EnableGpu", Decode.Bool),
 					FeeRateEstimationProvider: get.Optional("FeeRateEstimationProvider", Decode.String) ??
 					                           "BlockstreamInfo",

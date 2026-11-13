@@ -24,7 +24,6 @@ public record PersistentConfig(
 	string JsonRpcUser,
 	string JsonRpcPassword,
 	ValueList<string> JsonRpcServerPrefixes,
-	Money DustThreshold,
 	bool EnableGpu,
 	string CoordinatorIdentifier,
 	string FeeRateEstimationProvider,

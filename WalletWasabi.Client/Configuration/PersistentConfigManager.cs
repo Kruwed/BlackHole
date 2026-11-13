@@ -26,7 +26,6 @@ public static class PersistentConfigManager
 		JsonRpcUser : GenerateRandomString(12),
 		JsonRpcPassword : GenerateRandomString(12),
 		JsonRpcServerPrefixes : new (["http://127.0.0.1:37128/", "http://localhost:37128/"]),
-		DustThreshold : Money.Coins(Constants.DefaultDustThreshold),
 		EnableGpu : true,
 		CoordinatorIdentifier : "CoinJoinCoordinatorIdentifier",
 		FeeRateEstimationProvider : Constants.DefaultFeeRateEstimationProvider,

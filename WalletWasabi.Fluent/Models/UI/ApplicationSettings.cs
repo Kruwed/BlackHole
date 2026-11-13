@@ -41,7 +41,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 	[AutoNotify] private string _bitcoinRpcUri;
 	[AutoNotify] private string _bitcoinRpcCredentialString;
-	[AutoNotify] private string _dustThreshold;
 	[AutoNotify] private string _feeRateEstimationProvider;
 	[AutoNotify] private string _externalTransactionBroadcaster;
 
@@ -93,7 +92,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_network = persistentConfig.Network;
 		_bitcoinRpcUri = persistentConfig.BitcoinRpcUri;
 		_bitcoinRpcCredentialString = persistentConfig.BitcoinRpcCredentialString;
-		_dustThreshold = persistentConfig.DustThreshold.ToString();
 
 		// Coordinator
 		_coordinatorUri = persistentConfig.CoordinatorUri;
@@ -136,7 +134,6 @@ public partial class ApplicationSettings : ReactiveObject
 		Network = persistentConfig.Network;
 		BitcoinRpcUri = persistentConfig.BitcoinRpcUri;
 		BitcoinRpcCredentialString = persistentConfig.BitcoinRpcCredentialString;
-		DustThreshold = persistentConfig.DustThreshold.ToString();
 
 		// Coordinator
 		CoordinatorUri = persistentConfig.CoordinatorUri;
@@ -176,11 +173,10 @@ public partial class ApplicationSettings : ReactiveObject
 					x => x.Network,
 					x => x.BitcoinRpcCredentialString,
 					x => x.BitcoinRpcUri,
-					x => x.DustThreshold,
 					x => x.UseTor,
 					x => x.TerminateTorOnExit,
 					x => x.DownloadNewVersion,
-					(_, _, _, _, _, _, _, _) => Unit.Default)
+					(_, _, _, _, _, _, _) => Unit.Default)
 				.Skip(1);
 		var configSaveTrigger2 =
 			this.WhenAnyValue(
@@ -312,9 +308,6 @@ public partial class ApplicationSettings : ReactiveObject
 		result = result with
 		{
 			Network = Network,
-			DustThreshold = decimal.TryParse(DustThreshold, out var threshold) ?
-				Money.Coins(threshold) :
-				Money.Coins(Constants.DefaultDustThreshold),
 			MaxCoinJoinMiningFeeRate = decimal.TryParse(MaxCoinJoinMiningFeeRate, out var maxCoinjoinMiningFeeRate) ?
 				maxCoinjoinMiningFeeRate :
 				Constants.DefaultMaxCoinJoinMiningFeeRate,

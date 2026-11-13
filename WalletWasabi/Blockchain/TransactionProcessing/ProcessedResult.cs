@@ -18,16 +18,9 @@ public class ProcessedResult
 		|| NewlyReceivedCoins.Count != 0
 		|| NewlyConfirmedReceivedCoins.Count != 0
 		|| NewlySpentCoins.Count != 0
-		|| NewlyConfirmedSpentCoins.Count != 0
-		|| ReceivedDusts.Count != 0; // To be fair it isn't necessarily news, the algorithm of the processor can be improved for that. Not sure it is worth it though.
+		|| NewlyConfirmedSpentCoins.Count != 0;
 
 	public bool IsOwnCoinJoin => Transaction.IsOwnCoinjoin();
-
-	/// <summary>
-	/// Gets the dust outputs we received in this transaction. We may or may not have known about
-	/// them previously. They aren't SmartCoins, because they aren't fully processed.
-	/// </summary>
-	public List<TxOut> ReceivedDusts { get; } = new();
 
 	/// <summary>Gets the coins we received in this transaction.</summary>
 	public List<SmartCoin> ReceivedCoins { get; } = new();

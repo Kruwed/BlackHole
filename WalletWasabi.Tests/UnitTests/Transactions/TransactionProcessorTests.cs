@@ -57,8 +57,8 @@ public class TransactionProcessorTests
 		var km2 = KeyManager.Recover(mnemonic, "pw", Network.Main, km1.SegwitAccountKeyPath, km1.TaprootAccountKeyPath);
 
 		var eventBus = new EventBus();
-		var tp1 = new TransactionProcessor(txStore, null, km1, Money.Coins(0.0001m), eventBus);
-		var tp2 = new TransactionProcessor(txStore, null, km2, Money.Coins(0.0001m), eventBus);
+		var tp1 = new TransactionProcessor(txStore, null, km1, eventBus);
+		var tp2 = new TransactionProcessor(txStore, null, km2, eventBus);
 
 		// A receive to a key both instances of the wallet control (identical derivation).
 		var receiveKey = km1.GetNextReceiveKey(LabelsArray.Empty);
@@ -158,7 +158,6 @@ public class TransactionProcessorTests
 		Assert.Empty(res1.NewlySpentCoins);
 		Assert.Single(res1.ReceivedCoins);
 		Assert.Empty(res1.SpentCoins);
-		Assert.Empty(res1.ReceivedDusts);
 		Assert.Empty(res1.ReplacedCoins);
 		Assert.Empty(res1.RestoredCoins);
 		Assert.Empty(res1.SuccessfullyDoubleSpentCoins);
@@ -172,7 +171,6 @@ public class TransactionProcessorTests
 		Assert.Empty(res2.NewlySpentCoins);
 		Assert.Single(res2.ReceivedCoins);
 		Assert.Empty(res2.SpentCoins);
-		Assert.Empty(res2.ReceivedDusts);
 		Assert.Empty(res2.ReplacedCoins);
 		Assert.Empty(res2.RestoredCoins);
 		Assert.Empty(res2.SuccessfullyDoubleSpentCoins);
@@ -186,7 +184,6 @@ public class TransactionProcessorTests
 		Assert.Single(res3.NewlySpentCoins);
 		Assert.Empty(res3.ReceivedCoins);
 		Assert.Single(res3.SpentCoins);
-		Assert.Empty(res3.ReceivedDusts);
 		Assert.Empty(res3.ReplacedCoins);
 		Assert.Empty(res3.RestoredCoins);
 		Assert.Empty(res3.SuccessfullyDoubleSpentCoins);
@@ -200,7 +197,6 @@ public class TransactionProcessorTests
 		Assert.Single(res4.NewlySpentCoins);
 		Assert.Empty(res4.ReceivedCoins);
 		Assert.Single(res4.SpentCoins);
-		Assert.Empty(res4.ReceivedDusts);
 		Assert.Empty(res4.ReplacedCoins);
 		Assert.Empty(res4.RestoredCoins);
 		Assert.Empty(res4.SuccessfullyDoubleSpentCoins);
@@ -634,7 +630,6 @@ public class TransactionProcessorTests
 		Assert.Single(res1.NewlyReceivedCoins);
 		Assert.Single(res1.ReceivedCoins);
 		Assert.Empty(res1.NewlyConfirmedReceivedCoins);
-		Assert.Empty(res1.ReceivedDusts);
 
 		foreach (var res2 in new[] { res2a, res2b })
 		{
@@ -644,7 +639,6 @@ public class TransactionProcessorTests
 			Assert.Empty(res2.SuccessfullyDoubleSpentCoins);
 			Assert.Single(res2.ReceivedCoins);
 			Assert.Empty(res2.NewlyConfirmedReceivedCoins);
-			Assert.Empty(res2.ReceivedDusts);
 		}
 
 		var coin = Assert.Single(transactionProcessor.Coins);
@@ -660,7 +654,6 @@ public class TransactionProcessorTests
 		Assert.Empty(res3.SuccessfullyDoubleSpentCoins);
 		Assert.Single(res3.ReceivedCoins);
 		Assert.Single(res3.NewlyConfirmedReceivedCoins);
-		Assert.Empty(res3.ReceivedDusts);
 		Assert.True(coin.Confirmed);
 
 		Assert.Equal(0, confirmed);
@@ -945,23 +938,16 @@ public class TransactionProcessorTests
 		Assert.Contains("bar", registeredSpender.Labels.Select(x => x.ToString()));
 	}
 
+	/// <summary>
+	/// There is no dust attack limit: tiny payments to an already used address are tracked like any other coin.
+	/// </summary>
 	[Fact]
-	public async Task ReceiveTransactionWithDustForWalletAsync()
+	public async Task ReceiveSmallPaymentsToUsedAddressAsync()
 	{
-		static void AssertCoin(ProcessedResult result, bool expectDust)
+		static void AssertCoin(ProcessedResult result)
 		{
-			if (!expectDust)
-			{
-				Assert.Empty(result.ReceivedDusts);
-				Assert.NotEmpty(result.ReceivedCoins);
-				Assert.NotEmpty(result.NewlyReceivedCoins);
-			}
-			else
-			{
-				Assert.NotEmpty(result.ReceivedDusts);
-				Assert.Empty(result.ReceivedCoins);
-				Assert.Empty(result.NewlyReceivedCoins);
-			}
+			Assert.NotEmpty(result.ReceivedCoins);
+			Assert.NotEmpty(result.NewlyReceivedCoins);
 			Assert.True(result.IsNews);
 			Assert.Empty(result.NewlyConfirmedReceivedCoins);
 		}
@@ -971,30 +957,25 @@ public class TransactionProcessorTests
 		var keys = transactionProcessor.KeyManager.GetKeys();
 		var tx = CreateCreditingTransaction(keys.First().P2wpkhScript, Money.Coins(0.000099m));
 
-		var relevant = transactionProcessor.Process(tx);
-
-		// It is relevant even when all the coins can be dust.
-		AssertCoin(relevant, expectDust: false);
+		AssertCoin(transactionProcessor.Process(tx));
 		Assert.Single(transactionProcessor.Coins);
 
 		// Transaction store assertions
 		var mempool = transactionProcessor.TransactionStore.MempoolStore.GetTransactions();
-		Assert.Single(mempool); // it doesn't matter if it is a dust only tx, we save the tx anyway.
+		Assert.Single(mempool);
 
 		var matureTxs = transactionProcessor.TransactionStore.ConfirmedStore.GetTransactions().ToArray();
 		Assert.Empty(matureTxs);
 
-		var attackTx = CreateCreditingTransaction(keys.First().P2wpkhScript, Money.Coins(0.000099m));
+		// A second tiny payment from someone else to the same, now used, address.
+		var secondTx = CreateCreditingTransaction(keys.First().P2wpkhScript, Money.Coins(0.000099m));
 
-		var result = transactionProcessor.Process(attackTx);
-
-		// It is relevant even when all the coins can be dust.
-		AssertCoin(result, expectDust: true);
-		Assert.Single(transactionProcessor.Coins); // the dust coin used is not added to the coin registry
+		AssertCoin(transactionProcessor.Process(secondTx));
+		Assert.Equal(2, transactionProcessor.Coins.Count());
 	}
 
 	[Fact]
-	public async Task ReceiveManyConsecutiveTransactionWithDustForWalletAsync()
+	public async Task ReceiveManyConsecutiveSmallTransactionsForWalletAsync()
 	{
 		using var txStore = await CreateTransactionStoreAsync();
 		var transactionProcessor = CreateTransactionProcessor(txStore);
@@ -1012,14 +993,10 @@ public class TransactionProcessorTests
 	}
 
 	[Fact]
-	public async Task ReceiveTransactionWithDustFromOurselvesAsync()
+	public async Task ReceiveSmallChangeFromOurselvesAsync()
 	{
 		using var txStore = await CreateTransactionStoreAsync();
-		var transactionProcessor = CreateTransactionProcessor(txStore, out var eventBus);
-
-		// The dust coin should raise an event, but it shouldn't be fully processed.
-		using var _ = eventBus.Subscribe<WalletRelevantTransactionProcessed>(e =>
-			Assert.Empty(e.Result.ReceivedDusts)); // small coins received from us are not an attack.
+		var transactionProcessor = CreateTransactionProcessor(txStore);
 
 		var keys = transactionProcessor.KeyManager.GetKeys();
 		var creditingTx = CreateCreditingTransaction(keys.First().P2wpkhScript, Money.Coins(0.0001001m));
@@ -1035,9 +1012,9 @@ public class TransactionProcessorTests
 		relevant = transactionProcessor.Process(spendingTx);
 		Assert.True(relevant.IsNews);
 
-		// There is one coin (the change of the payment) under dust.
-		var underDustThresholdCoin = Assert.Single(transactionProcessor.Coins);
-		Assert.True(underDustThresholdCoin.Amount < transactionProcessor.DustThreshold);
+		// There is one coin (the small change of the payment).
+		var smallChangeCoin = Assert.Single(transactionProcessor.Coins);
+		Assert.True(smallChangeCoin.Amount < Money.Coins(0.0001m));
 	}
 
 	[Fact]
@@ -1639,7 +1616,6 @@ public class TransactionProcessorTests
 			transactionStore,
 			null,
 			keyManager,
-			Money.Coins(0.0001m),
 			eventBus);
 	}
 

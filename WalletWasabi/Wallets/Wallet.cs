@@ -51,7 +51,7 @@ public class Wallet : BackgroundService
 		TransactionStore = transactionStore;
 		FilterHeaderChain = filterHeaderChain;
 
-		TransactionProcessor = new TransactionProcessor(TransactionStore, mempoolService, keyManager, ServiceConfiguration.DustThreshold, eventBus);
+		TransactionProcessor = new TransactionProcessor(TransactionStore, mempoolService, keyManager, eventBus);
 		WalletFilterProcessor = new WalletFilterProcessor(keyManager, TransactionStore, _filterManager, FilterHeaderChain, TransactionProcessor, blockProvider, eventBus);
 		Coins = TransactionProcessor.Coins;
 		BatchedPayments = new PaymentBatch(Coins);

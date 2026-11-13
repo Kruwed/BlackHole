@@ -20,7 +20,6 @@ A few examples:
 | Network: "TestNet"         | --network=testnet           | WASABI_NETWORK=testnet           |
 | JsonRpcServerEnabled: true | --jsonrpcserverenabled=true | WASABI_JSONRPCSERVERENABLED=true |
 | UseTor: true               | --usetor=true               | WASABI_USETOR=true               |
-| DustThreshold: "0.00005"   | --dustthreshold=0.00005     | WASABI_DUSTTHRESHOLD=0.00005     |
 
 ### Values precedence
 

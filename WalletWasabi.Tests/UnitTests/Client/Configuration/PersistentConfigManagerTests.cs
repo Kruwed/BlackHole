@@ -61,7 +61,6 @@ public class PersistentConfigManagerTests
 			    "http://127.0.0.1:37128/",
 			    "http://localhost:37128/"
 			  ],
-			  "DustThreshold": "0.00001",
 			  "EnableGpu": true,
 			  "CoordinatorIdentifier": "CoinJoinCoordinatorIdentifier",
 			  "FeeRateEstimationProvider": "MempoolSpace",
@@ -261,7 +260,6 @@ public class PersistentConfigManagerTests
 		Assert.Equal("rpcuser", migratedConfig.JsonRpcUser);
 		Assert.Equal("rpcpass", migratedConfig.JsonRpcPassword);
 		Assert.Equal(2, migratedConfig.JsonRpcServerPrefixes.Count());
-		Assert.Equal(Money.Coins(0.0001m), migratedConfig.DustThreshold);
 		Assert.False(migratedConfig.EnableGpu);
 		Assert.Equal("CustomCoordinator", migratedConfig.CoordinatorIdentifier);
 		Assert.Equal("Custom", migratedConfig.FeeRateEstimationProvider);

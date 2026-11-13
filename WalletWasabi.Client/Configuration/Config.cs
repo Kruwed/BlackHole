@@ -45,7 +45,6 @@ public class Config
 			[nameof(JsonRpcPassword)] = GetStringValue("JsonRpcPassword", PersistentConfig.JsonRpcPassword, cliArgs),
 			[nameof(JsonRpcServerPrefixes)] = GetStringArrayValue("JsonRpcServerPrefixes", PersistentConfig.JsonRpcServerPrefixes.ToArray(), cliArgs),
 			[nameof(RpcOnionEnabled)] = GetBoolValue("RpcOnionEnabled", value: false, cliArgs),
-			[nameof(DustThreshold)] = GetMoneyValue("DustThreshold", PersistentConfig.DustThreshold, cliArgs),
 			[nameof(BlockOnlyMode)] = GetBoolValue("BlockOnly", value: false, cliArgs),
 			[nameof(LogLevel)] = GetStringValue("LogLevel", value: "", cliArgs),
 			[nameof(LogModes)] = GetLogModeArrayValue("LogModes", arrayValues: DefaultLogModes, cliArgs),
@@ -75,7 +74,7 @@ public class Config
 			}
 		}
 
-		ServiceConfiguration = new ServiceConfiguration(DustThreshold, DropUnconfirmedTransactionsAfterDays);
+		ServiceConfiguration = new ServiceConfiguration(DropUnconfirmedTransactionsAfterDays);
 	}
 
 	private static readonly Dictionary<string, string> Help =
@@ -97,7 +96,6 @@ public class Config
 			[nameof(JsonRpcPassword)] = "The user password that is authorized to make requests to the Json RPC server",
 			[nameof(JsonRpcServerPrefixes)] = "The Json RPC server prefixes",
 			[nameof(RpcOnionEnabled)] = "Publish the Json RPC Server as a Tor Onion service",
-			[nameof(DustThreshold)] = "The amount threshold under which coins received from others to already used addresses are considered a dust attack",
 			[nameof(BlockOnlyMode)] = "Wasabi listens only for blocks and not for transactions",
 			[nameof(LogLevel)] = "The level of detail in the logs: trace, debug, info, warning, error, or critical",
 			[nameof(LogModes)] = "The logging modes: console, and file (for multiple values use comma as a separator)",
@@ -130,7 +128,6 @@ public class Config
 	public string JsonRpcPassword => GetEffectiveValue<string>(nameof(JsonRpcPassword));
 	public string[] JsonRpcServerPrefixes => GetEffectiveValue<string[]>(nameof(JsonRpcServerPrefixes));
 	public bool RpcOnionEnabled => GetEffectiveValue<bool>(nameof(RpcOnionEnabled));
-	public Money DustThreshold => GetEffectiveValue<Money>(nameof(DustThreshold));
 	public bool BlockOnlyMode => GetEffectiveValue<bool>(nameof(BlockOnlyMode));
 	public string FeeRateEstimationProvider => GetEffectiveValue<string>(nameof(FeeRateEstimationProvider));
 	public string ExternalTransactionBroadcaster => GetEffectiveValue<string>(nameof(ExternalTransactionBroadcaster));
@@ -179,21 +176,6 @@ public class Config
 
 	public static IEnumerable<(string ParameterName, string Hint)> GetConfigOptionsMetadata() =>
 		Help.Select(x => (x.Key, x.Value));
-
-	private MoneyValue GetMoneyValue(string key, Money value, string[] cliArgs)
-	{
-		if (GetOverrideValue(key, cliArgs, out string? overrideValue, out ValueSource? valueSource))
-		{
-			if (!Money.TryParse(overrideValue, out var money))
-			{
-				throw new ArgumentNullException("DustThreshold", "Not a valid money");
-			}
-
-			return new MoneyValue(value, money, valueSource.Value);
-		}
-
-		return new MoneyValue(value, value, ValueSource.Disk);
-	}
 
 	private NetworkValue GetNetworkValue(string key, string value, string[] cliArgs)
 	{
@@ -456,5 +438,4 @@ public class Config
 	private record LogModeArrayValue(LogMode[] Value, LogMode[] EffectiveValue, ValueSource ValueSource) : ITypedValue<LogMode[]>;
 	private record TorModeValue(TorMode Value, TorMode EffectiveValue, ValueSource ValueSource) : ITypedValue<TorMode>;
 	private record NetworkValue(Network Value, Network EffectiveValue, ValueSource ValueSource) : ITypedValue<Network>;
-	private record MoneyValue(Money Value, Money EffectiveValue, ValueSource ValueSource) : ITypedValue<Money>;
 }
