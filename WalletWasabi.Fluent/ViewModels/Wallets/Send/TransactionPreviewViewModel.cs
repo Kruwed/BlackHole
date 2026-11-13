@@ -486,10 +486,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 					break;
 				}
 
-			case ChangeAvoidanceSuggestion { Transaction: { } txn }:
-				_info.ChangelessCoins = txn.SpentCoins;
-				break;
-
 			case FullPrivacySuggestion fullPrivacySuggestion:
 				{
 					if (fullPrivacySuggestion.IsChangeless)

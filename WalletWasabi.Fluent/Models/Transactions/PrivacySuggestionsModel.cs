@@ -23,13 +23,11 @@ namespace WalletWasabi.Fluent.Models.Transactions;
 
 public partial class PrivacySuggestionsModel
 {
-	private const decimal MaximumDifferenceTolerance = Constants.BnBMaximumDifferenceTolerance;
+	/// <summary>How far a suggested transaction may deviate from the requested amount.</summary>
+	private const decimal MaximumDifferenceTolerance = 0.15m;
 
 	private const decimal LargePortionSpentTolerance = 0.9m;
 	private static readonly Money LargePortionSpentMinAmount = new (1_000_000L);
-
-	/// <remarks>Guards use of <see cref="_singleRunCancellationTokenSource"/>.</remarks>
-	private readonly Lock _lock = new();
 
 	/// <summary>Allow at most one suggestion generation run.</summary>
 	private readonly AsyncLock _asyncLock = new();
@@ -38,8 +36,6 @@ public partial class PrivacySuggestionsModel
 	private readonly SendFlowModel _sendFlow;
 	private readonly IServices _services;
 	private readonly Wallet _wallet;
-	private CancellationTokenSource? _singleRunCancellationTokenSource;
-	private CancellationTokenSource? _linkedCancellationTokenSource;
 
 	public PrivacySuggestionsModel(IServices services, SendFlowModel sendFlow)
 	{
@@ -59,19 +55,7 @@ public partial class PrivacySuggestionsModel
 		var parameters = new Parameters(transactionInfo, transactionResult, includeSuggestions);
 		var result = new List<PrivacyItem>();
 
-		using CancellationTokenSource singleRunCts = new();
-		using CancellationTokenSource timeoutCts = new(TimeSpan.FromSeconds(15));
-
-		lock (_lock)
-		{
-			_singleRunCancellationTokenSource?.Cancel();
-			_linkedCancellationTokenSource?.Cancel();
-			_singleRunCancellationTokenSource = singleRunCts;
-			CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, singleRunCts.Token, cancellationToken);
-			_linkedCancellationTokenSource = linkedCts;
-		}
-
-		using (await _asyncLock.LockAsync(CancellationToken.None))
+		using (await _asyncLock.LockAsync(cancellationToken))
 		{
 			result.Add(VerifyLabels(parameters));
 			result.Add(VerifyRecipients(parameters));
@@ -79,17 +63,10 @@ public partial class PrivacySuggestionsModel
 			result.Add(VerifyLargePercentSpent(parameters));
 			result.Add(VerifyUnconfirmedInputs(parameters));
 			result.Add(VerifyCoinjoiningInputs(parameters));
+			result.Add(VerifyChange(parameters));
 			foreach (var item in result)
 			{
 				yield return item;
-			}
-			await foreach (var item in VerifyChangeAsync(parameters, _linkedCancellationTokenSource).ConfigureAwait(false))
-			{
-				yield return item;
-			}
-			lock (_lock)
-			{
-				_singleRunCancellationTokenSource = null;
 			}
 		}
 	}
@@ -270,7 +247,7 @@ public partial class PrivacySuggestionsModel
 		}
 	}
 
-	private async IAsyncEnumerable<PrivacyItem> VerifyChangeAsync(Parameters parameters, CancellationTokenSource linkedCts)
+	private IEnumerable<PrivacyItem> VerifyChange(Parameters parameters)
 	{
 		var destinationScripts = parameters.TransactionInfo.AllRecipients
 			.Select(r => r.Destination.GetScriptPubKey())
@@ -282,120 +259,6 @@ public partial class PrivacySuggestionsModel
 		if (hasChange)
 		{
 			yield return new CreatesChangeWarning();
-
-			if (parameters.IncludeSuggestions && !parameters.TransactionInfo.IsFixedAmount && !parameters.TransactionInfo.IsPayToMany)
-			{
-				var suggestions = await CreateChangeAvoidanceSuggestionsAsync(parameters.TransactionInfo, parameters.Transaction, linkedCts).ConfigureAwait(false);
-				foreach (var suggestion in suggestions)
-				{
-					yield return suggestion;
-				}
-			}
-		}
-	}
-
-	private async Task<List<ChangeAvoidanceSuggestion>> CreateChangeAvoidanceSuggestionsAsync(TransactionInfo info, BuildTransactionResult transaction, CancellationTokenSource linkedCts)
-	{
-		var result = new List<ChangeAvoidanceSuggestion>();
-
-		// Only allow to create 2 more inputs with BnB.
-		int maxInputCount = transaction.SpentCoins.Count() + 2;
-
-		var pockets = _sendFlow.GetPockets();
-		var spentCoins = transaction.SpentCoins;
-		var usedPockets = pockets.Where(x => x.Coins.Any(coin => spentCoins.Contains(coin)));
-		ImmutableArray<SmartCoin> coinsToUse = usedPockets.SelectMany(x => x.Coins).ToImmutableArray();
-
-		// If the original transaction couldn't avoid the CJing coins, BnB can use them too. Otherwise exclude them.
-		var coinsInCoinJoin = _cjManager?.CoinsInCriticalPhase[_wallet.WalletId] ?? [];
-		coinsToUse = spentCoins.Any(coinsInCoinJoin.Contains) ? coinsToUse : coinsToUse.Except(coinsInCoinJoin).ToImmutableArray();
-
-		// If the original transaction is using only confirmed coins, BnB can use only them too. Otherwise let unconfirmed coins stay in the list.
-		if (spentCoins.All(x => x.Confirmed))
-		{
-			coinsToUse = coinsToUse.Where(x => x.Confirmed).ToImmutableArray();
-		}
-
-		var suggestions = CreateChangeAvoidanceSuggestionsAsync(info, coinsToUse, maxInputCount, linkedCts.Token).ConfigureAwait(false);
-
-		await foreach (var suggestion in suggestions)
-		{
-			var changeAvoidanceSuggestions = result.ToArray();
-			var newSuggestionAmount = suggestion.GetAmount(info.Destination);
-
-			// If BnB solutions become the same transaction somehow, do not show the same suggestion twice.
-			if (changeAvoidanceSuggestions.Any(x => x.GetAmount(info.Destination) == newSuggestionAmount))
-			{
-				continue;
-			}
-
-			// If BnB solution has the same amount as the original transaction, only suggest that one and stop searching.
-			if (newSuggestionAmount == transaction.CalculateDestinationAmount(info.Destination))
-			{
-				result.RemoveMany(changeAvoidanceSuggestions);
-				result.Add(suggestion);
-				return result;
-			}
-
-			// If both is Less/More, only return the one with smaller difference.
-			if (changeAvoidanceSuggestions.FirstOrDefault(x => x.IsLess == suggestion.IsLess && x.IsMore == suggestion.IsMore) is { } existingSuggestion)
-			{
-				if (Math.Abs(suggestion.Difference) < Math.Abs(existingSuggestion.Difference))
-				{
-					result.Remove(existingSuggestion);
-					result.Add(suggestion);
-				}
-				return result;
-			}
-
-			result.Add(suggestion);
-		}
-
-		return result;
-	}
-
-	private async IAsyncEnumerable<ChangeAvoidanceSuggestion> CreateChangeAvoidanceSuggestionsAsync(
-		TransactionInfo transactionInfo,
-		ImmutableArray<SmartCoin> coinsToUse,
-		int maxInputCount,
-		[EnumeratorCancellation] CancellationToken cancellationToken)
-	{
-		var selectionsTask =
-			ChangelessTransactionCoinSelector.GetAllStrategyResultsAsync(
-				coinsToUse,
-				transactionInfo.FeeRate,
-				new TxOut(transactionInfo.Amount, transactionInfo.Destination.GetScriptPubKey()),
-				maxInputCount,
-				cancellationToken);
-
-		await foreach (IReadOnlyList<SmartCoin> selection in selectionsTask.ConfigureAwait(false))
-		{
-			BuildTransactionResult? transaction = null;
-
-			try
-			{
-				transaction = _wallet.BuildChangelessTransaction(
-					transactionInfo.Destination,
-					transactionInfo.Recipient,
-					transactionInfo.FeeRate,
-					selection,
-					tryToSign: false);
-			}
-			catch (Exception ex)
-			{
-				Logger.LogError($"Failed to build changeless transaction. Exception: {ex}");
-			}
-
-			if (transaction is not null)
-			{
-				var btcDifference = GetDifference(transactionInfo, transaction);
-				var differenceText = GetBtcDifferenceText(btcDifference);
-				var differenceAmountText = GetDifferenceAmountText(btcDifference);
-				var isMore = btcDifference > 0;
-				var isLess = btcDifference < 0;
-
-				yield return new ChangeAvoidanceSuggestion(transaction, btcDifference, differenceText, differenceAmountText, isMore, isLess);
-			}
 		}
 	}
 

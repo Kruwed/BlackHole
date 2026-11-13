@@ -290,36 +290,6 @@
             </DockPanel>
           </SuggestionItem>
         </DataTemplate>
-
-        <!-- Change Avoidance Suggestion -->
-        <DataTemplate DataType="{x:Type model:ChangeAvoidanceSuggestion}">
-          <SuggestionItem>
-            <DockPanel>
-              <DockPanel.Styles>
-                <Style Selector="PathIcon">
-                  <Setter Property="Data" Value="{StaticResource change_avoidance_equal}" />
-                </Style>
-                <Style Selector="PathIcon.more">
-                  <Setter Property="Data" Value="{StaticResource change_avoidance_more}" />
-                </Style>
-                <Style Selector="PathIcon.less">
-                  <Setter Property="Data" Value="{StaticResource change_avoidance_less}" />
-                </Style>
-              </DockPanel.Styles>
-              <PathIcon Classes.more="{Binding IsMore}"
-                        Classes.less="{Binding IsLess}" />
-              <StackPanel Classes="suggestion">
-                <TextBlock Text="Change Avoidance" Classes="title" />
-                <StackPanel Orientation="Horizontal" Classes="description">
-                  <TextBlock Text="Send" />
-                  <TextBlock Text="{Binding DifferenceText}"
-                             Foreground="{DynamicResource SystemAccentColor}" />
-                  <TextBlock Text="{Binding DifferenceAmountText, StringFormat='by {0}'}" IsVisible="{Binding !IsSameAmount}" />
-                </StackPanel>
-              </StackPanel>
-            </DockPanel>
-          </SuggestionItem>
-        </DataTemplate>
       </ListBox.DataTemplates>
     </ListBox>
 

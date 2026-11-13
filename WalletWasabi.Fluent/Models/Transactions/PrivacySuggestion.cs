@@ -17,10 +17,3 @@ public record LabelManagementSuggestion(BuildTransactionResult? Transaction = nu
 public record FullPrivacySuggestion(BuildTransactionResult Transaction, decimal Difference, string DifferenceText, string DifferenceAmountText, IEnumerable<SmartCoin> Coins, bool IsChangeless) : PrivacySuggestion(Transaction);
 
 public record BetterPrivacySuggestion(BuildTransactionResult Transaction, string DifferenceText, string DifferenceAmountText, IEnumerable<SmartCoin> Coins, bool IsChangeless) : PrivacySuggestion(Transaction);
-
-public record ChangeAvoidanceSuggestion(BuildTransactionResult Transaction, decimal Difference, string DifferenceText, string DifferenceAmountText, bool IsMore, bool IsLess) : PrivacySuggestion(Transaction)
-{
-    public Money GetAmount(Destination destination) => Transaction!.CalculateDestinationAmount(destination);
-
-    public bool IsSameAmount => !IsMore && !IsLess;
-}
