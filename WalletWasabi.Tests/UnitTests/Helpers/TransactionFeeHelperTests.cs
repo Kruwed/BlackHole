@@ -53,6 +53,6 @@ public class TransactionFeeHelperTests
 
 		Assert.True(TransactionFeeHelper.TryGetFeeEstimates(feeEstimates, Network.TestNet, out var estimates));
 		Assert.NotNull(estimates);
-		Assert.NotEmpty(estimates.WildEstimations);
+		Assert.NotEmpty(estimates.Estimations);
 	}
 }

@@ -40,7 +40,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	[AutoNotify] private bool _canUndo;
 	[AutoNotify] private bool _isCoinControlVisible;
 	[AutoNotify] private bool _isFeeAdjustable = true;
-	[AutoNotify] private string _feeAdjustToolTip = "Change transaction fee or confirmation time";
+	[AutoNotify] private string _feeAdjustToolTip = "Change the transaction fee rate";
 
 	public TransactionPreviewViewModel(UiContext uiContext, IWalletModel walletModel, SendFlowModel sendFlow) : base(uiContext)
 	{
@@ -125,7 +125,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		if (Transaction is null || !_info.IsPayToMany)
 		{
 			IsFeeAdjustable = true;
-			FeeAdjustToolTip = "Change transaction fee or confirmation time";
+			FeeAdjustToolTip = "Change the transaction fee rate";
 			return;
 		}
 
@@ -134,7 +134,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		if (hasSubtractFee)
 		{
 			IsFeeAdjustable = true;
-			FeeAdjustToolTip = "Change transaction fee or confirmation time";
+			FeeAdjustToolTip = "Change the transaction fee rate";
 			return;
 		}
 
@@ -148,7 +148,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		if (hasChange)
 		{
 			IsFeeAdjustable = true;
-			FeeAdjustToolTip = "Change transaction fee or confirmation time";
+			FeeAdjustToolTip = "Change the transaction fee rate";
 		}
 		else
 		{

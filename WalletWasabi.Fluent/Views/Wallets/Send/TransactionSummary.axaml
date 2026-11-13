@@ -122,7 +122,7 @@
 
     <Separator />
 
-    <!-- Fee and confirmation time -->
+    <!-- Fee -->
     <DockPanel>
       <Button Classes="plain"
               Command="{Binding Parent.AdjustFeeCommand}"
@@ -138,13 +138,6 @@
       </Button>
 
       <StackPanel Spacing="10">
-        <PreviewItem Icon="{StaticResource timer_regular}"
-                       Label="Expected confirmation time"
-                       IsVisible="{Binding !IsCustomFeeUsed}"
-                       Classes.Dimmed="{Binding IsPreview}"
-                       ToolTip.Tip="This is just an estimation based on some data for transactions and blocks. The confirmation time might change.">
-          <TextBlock Text="{Binding ConfirmationTime, Converter={x:Static converters:TimeSpanConverter.ToEstimatedConfirmationTime}, FallbackValue=~20 minutes}" />
-        </PreviewItem>
         <PreviewItem Icon="{StaticResource paper_cash_regular}"
                        Label="Fee"
                        CopyableContent="{Binding Fee.Btc, Converter={x:Static converters:MoneyConverters.ToFeeWithoutUnit}}">

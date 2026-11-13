@@ -17,7 +17,6 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 	private readonly TransactionInfo _info;
 	private BuildTransactionResult? _transaction;
 	[AutoNotify] private bool _transactionHasChange;
-	[AutoNotify] private TimeSpan? _confirmationTime;
 	[AutoNotify] private string _feeText = "";
 	[AutoNotify] private bool _isCustomFeeUsed;
 	[AutoNotify] private bool _isOtherPocketSelectionPossible;
@@ -53,8 +52,6 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 	public void UpdateTransaction(BuildTransactionResult transactionResult, TransactionInfo info)
 	{
 		_transaction = transactionResult;
-
-		ConfirmationTime = _wallet.Transactions.TryEstimateConfirmationTime(info);
 
 		Money destinationAmount;
 		if (info.IsPayToMany)

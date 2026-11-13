@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
@@ -5,6 +6,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
+using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
@@ -27,6 +29,9 @@ public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>
 	private readonly TransactionInfo _transactionInfo;
 	private readonly bool _isSilent;
 
+	[AutoNotify] private IReadOnlyList<FeeRateOption> _options = [];
+	[AutoNotify] private FeeRateOption? _selectedOption;
+
 	public SendFeeViewModel(UiContext uiContext, Wallet wallet, TransactionInfo transactionInfo, bool isSilent) : base(uiContext)
 	{
 		_isSilent = isSilent;
@@ -34,26 +39,46 @@ public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>
 		_wallet = wallet;
 		_transactionInfo = transactionInfo;
 
-		FeeChart = new FeeChartViewModel(uiContext);
-
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: false, escapeGoesBack: true);
 		EnableBack = true;
 
-		NextCommand = ReactiveCommand.Create(OnNext);
+		NextCommand = ReactiveCommand.Create(OnNext, this.WhenAnyValue(x => x.SelectedOption).Select(x => x is not null));
 
 		AdvancedOptionsCommand = ReactiveCommand.CreateFromTask(ShowAdvancedOptionsAsync);
 	}
-
-	public FeeChartViewModel FeeChart { get; }
 
 	public ICommand AdvancedOptionsCommand { get; }
 
 	private void OnNext()
 	{
-		var blockTarget = FeeChart.CurrentConfirmationTarget;
-		_transactionInfo.ConfirmationTimeSpan = TransactionFeeHelper.CalculateConfirmationTime(blockTarget);
-		UiContext.Services.SetFeeTarget((int)blockTarget);
-		Close(DialogResultKind.Normal, new FeeRate(FeeChart.GetSatoshiPerByte(blockTarget)));
+		if (SelectedOption is not { } option)
+		{
+			return;
+		}
+
+		UiContext.Services.SetFeeTarget(option.BlockTarget);
+		Close(DialogResultKind.Normal, option.FeeRate);
+	}
+
+	/// <summary>
+	/// Rebuilds the presets from the given estimations. Returns false and keeps the current presets if none is usable.
+	/// </summary>
+	private bool TryUpdateOptions(FeeRateEstimations estimations)
+	{
+		var options = FeeRateOption.FromEstimations(estimations, _transactionInfo.MaximumPossibleFeeRate);
+		if (options.Count == 0)
+		{
+			return false;
+		}
+
+		// Keep the user's selection across refreshes; otherwise start from the fee rate already in use or the remembered target.
+		var selected = SelectedOption is { } current
+			? FeeRateOption.SelectDefault(options, currentFeeRate: null, current.BlockTarget)
+			: FeeRateOption.SelectDefault(options, _transactionInfo.FeeRate, UiContext.Services.GetFeeTarget());
+
+		Options = options;
+		SelectedOption = selected;
+		return true;
 	}
 
 	private async Task ShowAdvancedOptionsAsync()
@@ -105,28 +130,21 @@ public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>
 			})
 			.WhereNotNull()
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(estimations => FeeChart.TryUpdateFeeEstimates(estimations.WildEstimations, _transactionInfo.MaximumPossibleFeeRate))
+			.Subscribe(estimations => TryUpdateOptions(estimations))
 			.DisposeWith(disposables);
 
 		RxApp.MainThreadScheduler.Schedule(async () =>
 		{
 			if (!TransactionFeeHelper.TryGetFeeEstimates(_wallet, out var feeRateEstimations) ||
-				!FeeChart.TryUpdateFeeEstimates(feeRateEstimations.WildEstimations, _transactionInfo.MaximumPossibleFeeRate))
+				!TryUpdateOptions(feeRateEstimations))
 			{
 				Logger.LogInfo("Transaction fee estimations are not available.");
 				await FeeEstimationsAreNotAvailableAsync();
 				return;
 			}
 
-			if (_transactionInfo.FeeRate != FeeRate.Zero)
-			{
-				FeeChart.InitCurrentConfirmationTarget(_transactionInfo.FeeRate);
-			}
-
 			if (_isSilent)
 			{
-				_transactionInfo.ConfirmationTimeSpan = TransactionFeeHelper.CalculateConfirmationTime(FeeChart.CurrentConfirmationTarget);
-
 				OnNext();
 			}
 			else

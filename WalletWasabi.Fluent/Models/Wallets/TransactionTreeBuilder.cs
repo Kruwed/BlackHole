@@ -143,7 +143,7 @@ public class TransactionTreeBuilder
 			ForeignOutputsFunction = transactionSummary.ForeignOutputs,
 			Fee = transactionSummary.GetFee(),
 			FeeRate = transactionSummary.FeeRate(),
-			ConfirmedTooltip = await GetConfirmationToolTipAsync(status, confirmations, transactionSummary.Transaction, cancellationToken),
+			ConfirmedTooltip = GetConfirmationToolTip(status, confirmations),
 		};
 	}
 
@@ -261,7 +261,7 @@ public class TransactionTreeBuilder
 			ForeignInputsFunction = transactionSummary.ForeignInputs,
 			WalletOutputs = transactionSummary.WalletOutputs,
 			ForeignOutputsFunction = transactionSummary.ForeignOutputs,
-			ConfirmedTooltip = await GetConfirmationToolTipAsync(status, confirmations, transactionSummary.Transaction, cancellationToken),
+			ConfirmedTooltip = GetConfirmationToolTip(status, confirmations),
 			FeeRate = transactionSummary.FeeRate(),
 			CoinjoinCosts = _wallet.KeyManager.GetCoinjoinCosts(transactionSummary.GetHash())
 		};
@@ -303,22 +303,11 @@ public class TransactionTreeBuilder
 		return transactionSummary.IsConfirmed(serverHeight) ? TransactionStatus.Confirmed : TransactionStatus.Pending;
 	}
 
-	private async Task<string> GetConfirmationToolTipAsync(TransactionStatus status, uint confirmations, SmartTransaction smartTransaction, CancellationToken cancellationToken)
-	{
-		if (status == TransactionStatus.Confirmed)
+	private static string GetConfirmationToolTip(TransactionStatus status, uint confirmations) =>
+		status switch
 		{
-			return TextHelpers.GetConfirmationText(confirmations);
-		}
-
-		var friendlyString = await TransactionFeeHelper.EstimateConfirmationTimeAsync(_wallet.FeeRateEstimations, _wallet.Network, smartTransaction, _wallet.CpfpInfoProvider, cancellationToken) is { } estimate
-			? TextHelpers.TimeSpanToFriendlyString(estimate)
-			: "";
-
-		return (status, friendlyString != "") switch
-		{
-			(TransactionStatus.Pending, true) => $"Pending (confirming in ≈ {friendlyString})",
-			(TransactionStatus.Pending, false) => "Pending",
+			TransactionStatus.Confirmed => TextHelpers.GetConfirmationText(confirmations),
+			TransactionStatus.Pending => "Pending",
 			_ => "Unknown"
 		};
-	}
 }

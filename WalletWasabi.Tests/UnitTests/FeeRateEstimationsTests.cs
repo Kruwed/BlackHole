@@ -285,68 +285,6 @@ public class FeeRateEstimationsTests
 		await mockRpc.EstimateAllFeeAsync();
 	}
 
-	[Fact]
-	public void WildEstimations()
-	{
-		var estimations = new Dictionary<int, FeeRate>
-		{
-			{ 2,new FeeRate(102m) }, // 20m
-			{ 3,new FeeRate(20m) }, // 30m
-			{ 6,new FeeRate(10m) }, // 1h
-			{ 18,new FeeRate(1m) } // 3h
-		};
-
-		var allFee = new FeeRateEstimations(estimations);
-
-		Assert.Equal(7, allFee.WildEstimations.Count);
-		Assert.Equal(new FeeRate(102m), allFee.WildEstimations[0].feeRate); // 20m
-		Assert.Equal(new FeeRate(20m), allFee.WildEstimations[1].feeRate); // 30m
-		Assert.Equal(new FeeRate(16.666m), allFee.WildEstimations[2].feeRate); // 40m
-		Assert.Equal(new FeeRate(13.333m), allFee.WildEstimations[3].feeRate); // 50m
-		Assert.Equal(new FeeRate(10m), allFee.WildEstimations[4].feeRate); // 1h
-		Assert.Equal(new FeeRate(5.5m), allFee.WildEstimations[5].feeRate); // 2h
-		Assert.Equal(new FeeRate(1m), allFee.WildEstimations[6].feeRate); // 3h
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(200m), out var confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(10), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(102.1m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(20), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(102m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(20), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(101.9m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(30), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(50m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(30), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(20m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(30), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(19m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(40), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(11m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(60), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(10m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromMinutes(60), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(9m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromHours(2), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(3m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromHours(3), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(1m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromHours(3), confirmationTime);
-
-		Assert.True(allFee.TryEstimateConfirmationTime(new FeeRate(0.1m), out confirmationTime));
-		Assert.Equal(TimeSpan.FromHours(3), confirmationTime);
-	}
-
 	private static MockRpcClient CreateAndConfigureRpcClient(bool isSynchronized = true, bool hasPeersInfo = false, double memPoolMinFee = 0.00001000)
 	{
 		var mockRpc = new MockRpcClient();

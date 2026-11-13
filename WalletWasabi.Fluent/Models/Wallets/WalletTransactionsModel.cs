@@ -85,24 +85,6 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 		return transaction is not null;
 	}
 
-	public async Task<TimeSpan?> TryEstimateConfirmationTimeAsync(uint256 id, CancellationToken cancellationToken)
-	{
-		if (!_wallet.TransactionStore.TryGetTransaction(id, out var smartTransaction))
-		{
-			throw new InvalidOperationException($"Transaction not found! ID: {id}");
-		}
-
-		return await TransactionFeeHelper.EstimateConfirmationTimeAsync(_wallet.FeeRateEstimations, _wallet.Network, smartTransaction, _wallet.CpfpInfoProvider, cancellationToken);
-	}
-
-	public async Task<TimeSpan?> TryEstimateConfirmationTimeAsync(TransactionModel model, CancellationToken cancellationToken) => await TryEstimateConfirmationTimeAsync(model.Id, cancellationToken);
-
-	public TimeSpan? TryEstimateConfirmationTime(TransactionInfo info)
-	{
-		TransactionFeeHelper.TryEstimateConfirmationTime(_wallet, info.FeeRate, out var estimate);
-		return estimate;
-	}
-
 	public async Task<SpeedupTransaction> CreateSpeedUpTransactionAsync(RegularTransactionModel transaction, CancellationToken cancellationToken)
 	{
 		if (!_wallet.TransactionStore.TryGetTransaction(transaction.Id, out var targetTransaction))

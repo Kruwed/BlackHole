@@ -35,8 +35,6 @@ public partial class TransactionInfo
 
 	public FeeRate? MaximumPossibleFeeRate { get; set; }
 
-	public TimeSpan ConfirmationTimeSpan { get; set; }
-
 	public IEnumerable<SmartCoin> ChangelessCoins { get; set; } = [];
 
 	public bool IsOptimized => ChangelessCoins.Any();
@@ -90,7 +88,6 @@ public partial class TransactionInfo
 			Destination = Destination,
 			Recipient = Recipient,
 			MaximumPossibleFeeRate = MaximumPossibleFeeRate,
-			ConfirmationTimeSpan = ConfirmationTimeSpan,
 			ChangelessCoins = ChangelessCoins,
 			IsCustomFeeUsed = IsCustomFeeUsed,
 			SubtractFee = SubtractFee,

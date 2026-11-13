@@ -23,9 +23,7 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 	[AutoNotify] private string? _amountText = "";
 	[AutoNotify] private uint _blockHeight;
 	[AutoNotify] private uint _confirmations;
-	[AutoNotify] private TimeSpan? _confirmationTime;
 	[AutoNotify] private string? _dateString;
-	[AutoNotify] private bool _isConfirmationTimeVisible;
 	[AutoNotify] private bool _isLabelsVisible;
 	[AutoNotify] private LabelsArray? _labels;
 	[AutoNotify] private Amount? _amount;
@@ -78,12 +76,6 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 		FeeRate = model.FeeRate;
 		IsFeeRateVisible = FeeRate is not null && FeeRate != FeeRate.Zero;
 
-		var confirmationTime = await _wallet.Transactions.TryEstimateConfirmationTimeAsync(model, cancellationToken);
-		if (confirmationTime is { })
-		{
-			ConfirmationTime = confirmationTime;
-		}
-
 		IsConfirmed = Confirmations > 0;
 
 		if (model.Amount < Money.Zero)
@@ -97,7 +89,6 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 			AmountText = "Amount received";
 		}
 
-		IsConfirmationTimeVisible = ConfirmationTime.HasValue && ConfirmationTime != TimeSpan.Zero;
 		IsLabelsVisible = Labels.HasValue && Labels.Value.Any();
 	}
 
