@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -40,6 +41,23 @@ public class HttpClientFactory : IHttpClientFactory
 		CheckForExpirations();
 		var httpClientHandler = _httpClientHandlers.GetOrAdd(name, CreateHttpClientHandler);
 		return new HttpClient(httpClientHandler, false);
+	}
+
+	/// <summary>
+	/// Creates a client for answers that can be big and slow. Its requests have no deadline as a whole: the server has to
+	/// start answering in time, and it must not fall silent in the middle of an answer, see <see cref="StallTimeoutHandler"/>.
+	/// </summary>
+	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The client that is returned owns the handler.")]
+	public HttpClient CreateClientForSlowAnswers(string name, TimeSpan answerTimeout, TimeSpan silenceTimeout)
+	{
+		CheckForExpirations();
+		var httpClientHandler = _httpClientHandlers.GetOrAdd(name, CreateHttpClientHandler);
+
+		// The handler of the connections is shared and outlives the client: the handler that is put in front of it leaves it alone.
+		return new HttpClient(new StallTimeoutHandler(httpClientHandler, answerTimeout, silenceTimeout))
+		{
+			Timeout = Timeout.InfiniteTimeSpan
+		};
 	}
 
 	public void AddLifetimeResolver(LifetimeResolver resolver)

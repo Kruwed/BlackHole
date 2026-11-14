@@ -470,6 +470,91 @@ public class WalletSynchronizerTests
 	}
 
 	[Fact]
+	public async Task AsksForOneMoreBlockAtATimeWhileTheBlocksArriveQuicklyAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		var keyManager = RecoverWallet();
+		node.MineBlocks(9);
+		var gate = new BlockGate(node);
+
+		using var wallet = await TestWallet.CreateAsync(node, keyManager, maxParallelBlockDownloads: 3, timeProvider: new ManualTimeProvider());
+		using var testCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+		var round = wallet.Synchronizer.SynchronizeAsync(testCts.Token);
+
+		// The first block is asked for alone: nobody knows yet how fast the node delivers.
+		await WaitForAskedBlocksAsync(gate, 1, testCts.Token);
+
+		// It arrives at once, so the next two are asked for together.
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 3, testCts.Token);
+
+		// One more at a time: block 3 is on its way, blocks 4 and 5 join it.
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 5, testCts.Token);
+
+		// Three at a time is the limit of this wallet: blocks 4 and 5 are on their way, only block 6 joins them.
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 6, testCts.Token);
+
+		for (int height = 4; height <= 9; height++)
+		{
+			await gate.HandOutNextAsync(testCts.Token);
+		}
+
+		await round;
+		Assert.Equal(new Height.ChainHeight(9), keyManager.GetBestHeight());
+		Assert.Equal(Enumerable.Range(1, 9).Select(height => node.GetBlockHash((uint)height)), gate.AskedBlocks);
+	}
+
+	[Fact]
+	public async Task AsksForOneBlockAtATimeWhenTheBlocksArriveSlowlyAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		var keyManager = RecoverWallet();
+		node.MineBlocks(12);
+		var gate = new BlockGate(node);
+		var clock = new ManualTimeProvider();
+
+		using var wallet = await TestWallet.CreateAsync(node, keyManager, maxParallelBlockDownloads: 4, timeProvider: clock);
+		using var testCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+		var round = wallet.Synchronizer.SynchronizeAsync(testCts.Token);
+
+		// Block 1 arrives at once, so blocks 2 and 3 are asked for together.
+		await WaitForAskedBlocksAsync(gate, 1, testCts.Token);
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 3, testCts.Token);
+
+		// They take eleven seconds, like blocks that come through Tor. Nothing is asked for until both of them are here,
+		// and then one block only.
+		clock.Advance(TimeSpan.FromSeconds(11));
+		await gate.HandOutNextAsync(testCts.Token);
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 4, testCts.Token);
+
+		// As long as the blocks are slow, they are asked for one after the other.
+		clock.Advance(TimeSpan.FromSeconds(11));
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 5, testCts.Token);
+
+		// A block that is neither quick nor slow changes nothing.
+		clock.Advance(TimeSpan.FromSeconds(5));
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 6, testCts.Token);
+
+		// Blocks arrive quickly again: one more at a time.
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 8, testCts.Token);
+
+		for (int height = 7; height <= 12; height++)
+		{
+			await gate.HandOutNextAsync(testCts.Token);
+		}
+
+		await round;
+		Assert.Equal(new Height.ChainHeight(12), keyManager.GetBestHeight());
+	}
+
+	[Fact]
 	public async Task WatchesTheMempoolOfTheNodeAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
@@ -765,6 +850,13 @@ public class WalletSynchronizerTests
 		}
 	}
 
+	/// <summary>Waits until the wallet has asked the node for that many blocks. It must not have asked for more.</summary>
+	private static async Task WaitForAskedBlocksAsync(BlockGate gate, int expectedCount, CancellationToken cancellationToken)
+	{
+		await WaitUntilAsync(() => gate.AskedBlocks.Count >= expectedCount, cancellationToken);
+		Assert.Equal(expectedCount, gate.AskedBlocks.Count);
+	}
+
 	/// <summary>Makes the node fail to deliver the blocks above the given height.</summary>
 	private static Func<uint256, Task<Block>> WithFailureAbove(FakeBitcoinNode node, Func<uint256, Task<Block>> getBlockAsync, uint lastGoodHeight)
 	{
@@ -776,13 +868,81 @@ public class WalletSynchronizerTests
 	}
 
 	/// <summary>
+	/// Keeps the blocks that the wallet asks the node for until the test hands them out, so that the test sees how many
+	/// blocks the wallet asks for at the same time.
+	/// </summary>
+	private sealed class BlockGate
+	{
+		private readonly Lock _lock = new();
+		private readonly List<(uint256 BlockHash, TaskCompletionSource<Block> Answer)> _asked = [];
+		private readonly Func<uint256, Task<Block>> _getBlockAsync;
+		private int _handedOutCount;
+
+		public BlockGate(FakeBitcoinNode node)
+		{
+			_getBlockAsync = node.RpcClient.OnGetBlockAsync!;
+
+			node.RpcClient.OnGetBlockAsync = blockHash =>
+			{
+				var answer = new TaskCompletionSource<Block>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+				lock (_lock)
+				{
+					_asked.Add((blockHash, answer));
+				}
+
+				return answer.Task;
+			};
+		}
+
+		/// <summary>The blocks that the wallet asked for so far, in the order it asked for them.</summary>
+		public IReadOnlyList<uint256> AskedBlocks
+		{
+			get
+			{
+				lock (_lock)
+				{
+					return _asked.Select(x => x.BlockHash).ToArray();
+				}
+			}
+		}
+
+		/// <summary>Delivers the block that the wallet has been waiting for the longest.</summary>
+		public async Task HandOutNextAsync(CancellationToken cancellationToken)
+		{
+			await WaitUntilAsync(() => AskedBlocks.Count > _handedOutCount, cancellationToken);
+
+			(uint256 BlockHash, TaskCompletionSource<Block> Answer) next;
+
+			lock (_lock)
+			{
+				next = _asked[_handedOutCount++];
+			}
+
+			next.Answer.SetResult(await _getBlockAsync(next.BlockHash));
+		}
+	}
+
+	/// <summary>A clock that goes on when the test says so.</summary>
+	private sealed class ManualTimeProvider : TimeProvider
+	{
+		private long _ticks;
+
+		public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+		public override long GetTimestamp() => Interlocked.Read(ref _ticks);
+
+		public void Advance(TimeSpan time) => Interlocked.Add(ref _ticks, time.Ticks);
+	}
+
+	/// <summary>
 	/// What a wallet is made of as far as synchronization goes: its keys, its transactions and the synchronizer.
 	/// </summary>
 	private sealed class TestWallet : IDisposable
 	{
 		private readonly List<IDisposable> _subscriptions = [];
 
-		private TestWallet(FakeBitcoinNode node, KeyManager keyManager, AllTransactionStore transactionStore, bool watchMempool, Action? onSynchronizedFirst)
+		private TestWallet(FakeBitcoinNode node, KeyManager keyManager, AllTransactionStore transactionStore, bool watchMempool, Action? onSynchronizedFirst, int? maxParallelBlockDownloads, TimeProvider? timeProvider)
 		{
 			KeyManager = keyManager;
 			TransactionStore = transactionStore;
@@ -795,11 +955,12 @@ public class WalletSynchronizerTests
 			// As the wallet does when it starts: what it knows already is processed before anything new.
 			Processor.Process(transactionStore.ConfirmedStore.GetTransactions());
 
-			Synchronizer = new WalletSynchronizer(node.RpcClient, keyManager, transactionStore, Processor, EventBus, onSynchronizedFirst, watchMempool)
+			Synchronizer = new WalletSynchronizer(node.RpcClient, keyManager, transactionStore, Processor, EventBus, onSynchronizedFirst, watchMempool, maxParallelBlockDownloads)
 			{
 				// Tests do not wait as long as a wallet does.
 				IdlePeriod = TimeSpan.FromMilliseconds(50),
-				RetryPeriod = TimeSpan.FromMilliseconds(50)
+				RetryPeriod = TimeSpan.FromMilliseconds(50),
+				TimeProvider = timeProvider ?? TimeProvider.System
 			};
 		}
 
@@ -820,6 +981,8 @@ public class WalletSynchronizerTests
 			KeyManager keyManager,
 			bool watchMempool = true,
 			Action? onSynchronizedFirst = null,
+			int? maxParallelBlockDownloads = null,
+			TimeProvider? timeProvider = null,
 			[CallerMemberName] string callerMemberName = "")
 		{
 			if (keyManager.FilePath is null)
@@ -831,7 +994,7 @@ public class WalletSynchronizerTests
 
 			var transactionStore = new AllTransactionStore(Path.Combine(Path.GetDirectoryName(keyManager.FilePath)!, "Transactions"), Network);
 			await transactionStore.InitializeAsync();
-			return new TestWallet(node, keyManager, transactionStore, watchMempool, onSynchronizedFirst);
+			return new TestWallet(node, keyManager, transactionStore, watchMempool, onSynchronizedFirst, maxParallelBlockDownloads, timeProvider);
 		}
 
 		public void Dispose()

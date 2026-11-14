@@ -67,6 +67,18 @@ public class WalletSynchronizer : BackgroundService
 	/// <summary>How long to wait before trying again after a failure.</summary>
 	internal TimeSpan RetryPeriod { get; init; } = TimeSpan.FromSeconds(10);
 
+	/// <summary>A block that arrives sooner than this comes from a node that is close: it pays to ask for one more block at a time.</summary>
+	internal TimeSpan FastBlockDownload { get; init; } = TimeSpan.FromSeconds(2);
+
+	/// <summary>
+	/// A block that takes longer than this comes over a slow connection, like Tor. Blocks that are asked for at the same
+	/// time share that connection and only arrive later, so they are asked for one at a time.
+	/// </summary>
+	internal TimeSpan SlowBlockDownload { get; init; } = TimeSpan.FromSeconds(10);
+
+	/// <summary>The clock that tells how long a block took to arrive. Tests bring their own.</summary>
+	internal TimeProvider TimeProvider { get; init; } = TimeProvider.System;
+
 	/// <summary>The height of the wallet is written to the wallet file at least this often while blocks are processed.</summary>
 	private static readonly TimeSpan PersistPeriod = TimeSpan.FromSeconds(30);
 
@@ -90,6 +102,9 @@ public class WalletSynchronizer : BackgroundService
 	private readonly Action? _onSynchronizedFirst;
 	private readonly bool _watchMempool;
 	private readonly int _maxParallelBlockDownloads;
+
+	/// <summary>How many blocks are asked for at the same time at the moment. It starts with one and follows how fast the blocks arrive.</summary>
+	private int _parallelBlockDownloads = 1;
 	private readonly TaskCompletionSource _initialSynchronizationFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	private readonly Lock _statusLock = new();
 
@@ -366,7 +381,7 @@ public class WalletSynchronizer : BackgroundService
 		var previousBlockHash = knownBlockHashes.IsEmpty ? null : knownBlockHashes[^1];
 
 		using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		var downloads = new Queue<(uint Height, uint256 BlockHash, Task<Block> Block)>();
+		var downloads = new Queue<(uint Height, uint256 BlockHash, Task<(Block Block, TimeSpan Elapsed)> Block)>();
 		var hashesToDownload = new Queue<(uint Height, uint256 BlockHash)>();
 		var nextHeightToAsk = walletHeight + 1;
 		var stopwatch = Stopwatch.StartNew();
@@ -380,7 +395,7 @@ public class WalletSynchronizer : BackgroundService
 			while (true)
 			{
 				// Keep the downloads going. The blocks are processed in their order, one after the other.
-				while (downloads.Count < _maxParallelBlockDownloads)
+				while (downloads.Count < _parallelBlockDownloads)
 				{
 					if (hashesToDownload.Count == 0 && nextHeightToAsk <= nodeHeight)
 					{
@@ -400,7 +415,7 @@ public class WalletSynchronizer : BackgroundService
 						break;
 					}
 
-					downloads.Enqueue((next.Height, next.BlockHash, _rpcClient.GetBlockAsync(next.BlockHash, downloadCts.Token)));
+					downloads.Enqueue((next.Height, next.BlockHash, DownloadBlockAsync(next.BlockHash, downloadCts.Token)));
 				}
 
 				if (!downloads.TryDequeue(out var download))
@@ -411,7 +426,8 @@ public class WalletSynchronizer : BackgroundService
 				Block block;
 				try
 				{
-					block = await download.Block.ConfigureAwait(false);
+					(block, var elapsed) = await download.Block.ConfigureAwait(false);
+					AdjustParallelBlockDownloads(download.Height, elapsed);
 				}
 				catch (RPCException ex) when (isNodePruned && IsBlockNotAvailable(ex))
 				{
@@ -465,6 +481,32 @@ public class WalletSynchronizer : BackgroundService
 		if (processedCount > 1)
 		{
 			Logger.LogInfo($"Wallet: processed {processedCount} blocks up to height {nodeHeight} in {stopwatch.Elapsed.TotalSeconds:0.#} seconds.");
+		}
+	}
+
+	private async Task<(Block Block, TimeSpan Elapsed)> DownloadBlockAsync(uint256 blockHash, CancellationToken cancellationToken)
+	{
+		var started = TimeProvider.GetTimestamp();
+		var block = await _rpcClient.GetBlockAsync(blockHash, cancellationToken).ConfigureAwait(false);
+		return (block, TimeProvider.GetElapsedTime(started));
+	}
+
+	/// <summary>
+	/// Decides how many blocks to ask for at the same time from how long a block took to arrive. A node that is close
+	/// delivers several blocks at once faster than one after the other. Over a slow connection it is the other way
+	/// round: the blocks share the connection, the first of them arrives later, and all of them are lost when the
+	/// connection breaks.
+	/// </summary>
+	private void AdjustParallelBlockDownloads(uint height, TimeSpan elapsed)
+	{
+		if (elapsed <= FastBlockDownload)
+		{
+			_parallelBlockDownloads = Math.Min(_parallelBlockDownloads + 1, _maxParallelBlockDownloads);
+		}
+		else if (elapsed >= SlowBlockDownload)
+		{
+			Logger.LogDebug($"Wallet: block {height} took {elapsed.TotalSeconds:0.#} seconds to arrive. Blocks are asked for one at a time.");
+			_parallelBlockDownloads = 1;
 		}
 	}
 

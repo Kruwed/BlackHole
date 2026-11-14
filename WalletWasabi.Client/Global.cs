@@ -74,7 +74,7 @@ public class Global
 		TransactionStore = new AllTransactionStore(networkWorkFolderPath, Network);
 		TransactionStore.DisposeUsing(_disposables);
 
-		BitcoinRpcHttpClientFactory = BuildHttpClientFactory();
+		_bitcoinRpcHttpClientFactory = BuildHttpClientFactory();
 		_bitcoinRpcClient = new SwitchableRpcClient(ConfigureBitcoinRpcClient());
 		var cpfpProvider = ConfigureCpfpInfoProvider();
 
@@ -103,6 +103,7 @@ public class Global
 	private readonly CancellationTokenSource _stoppingCts = new();
 
 	private TorManager? _torManager;
+	private readonly HttpClientFactory _bitcoinRpcHttpClientFactory;
 	/// <summary>The user's node. Everything that needs the node holds this one client, so that <see cref="ConnectToBitcoinNodeAsync"/> can put another node behind it.</summary>
 	private readonly SwitchableRpcClient _bitcoinRpcClient;
 	private CoinPrison? _coinPrison;
@@ -113,7 +114,7 @@ public class Global
 	public StatusContainer Status { get; }
 
 	/// <summary>Creates the HTTP clients that reach the Bitcoin node when it is an onion service.</summary>
-	public IHttpClientFactory BitcoinRpcHttpClientFactory { get; }
+	public IHttpClientFactory BitcoinRpcHttpClientFactory => _bitcoinRpcHttpClientFactory;
 	public string DataDir { get; }
 	public TorSettings TorSettings { get; }
 
@@ -132,6 +133,12 @@ public class Global
 
 	/// <summary>The same for a node that is an onion service: the way through Tor takes its time.</summary>
 	private static readonly TimeSpan OnionNodeAnswerTimeout = TimeSpan.FromSeconds(90);
+
+	/// <summary>How long a node that is an onion service may take until its answer to a request starts to arrive.</summary>
+	private static readonly TimeSpan OnionNodeAnswerStartTimeout = TimeSpan.FromSeconds(100);
+
+	/// <summary>How long nothing may arrive while an answer of such a node is on its way, before the connection counts as lost.</summary>
+	private static readonly TimeSpan OnionNodeSilenceTimeout = TimeSpan.FromMinutes(2);
 
 	/// <summary>
 	/// Creates the client of the RPC interface of the node that the application is configured to use. The node is the only
@@ -186,7 +193,13 @@ public class Global
 		// Use Tor only if the address ends with .onion. Especially, do not use Tor for loopback (i.e. `localhost`).
 		if (RpcSettings.IsOnion(bitcoinRpcUri))
 		{
-			rpcClient.HttpClient = BitcoinRpcHttpClientFactory.CreateClient("long-live-rpc-connection");
+			// A block can take minutes to come through Tor, so the answers of the node have no deadline as a whole, like those
+			// of a node that is reached directly. Tor can lose a connection without telling, though, so the node has to
+			// start answering in time and must not fall silent in the middle of an answer.
+			rpcClient.HttpClient = _bitcoinRpcHttpClientFactory.CreateClientForSlowAnswers(
+				"long-live-rpc-connection",
+				OnionNodeAnswerStartTimeout,
+				OnionNodeSilenceTimeout);
 		}
 
 		return rpcClient;
