@@ -4,14 +4,7 @@ Queue multiple payments with smart denomination suggestions:
 
 ```
 $ ./wpay.sh
-Wallets:
-
-[1] savings
-[2] spending
-
-Select wallet: 2
-
-Loading wallet spending (this may take a moment)...
+Loading the wallet (this may take a moment)...
 Wallet ready.
 
 === Add Payments ===
@@ -46,14 +39,7 @@ Made a mistake? Cancel payments interactively:
 
 ```
 $ ./wcancel.sh
-Wallets:
-
-[1] savings
-[2] spending
-
-Select wallet: 2
-
-Loading wallet spending (this may take a moment)...
+Loading the wallet (this may take a moment)...
 Wallet ready.
 
 === Pending Payments ===
@@ -76,17 +62,10 @@ Start coinjoin and monitor until all payments complete:
 
 ```
 $ ./wcj.sh
-Wallets:
-
-[1] savings
-[2] spending
-
-Select wallet: 2
-
-Loading wallet spending (this may take a moment)...
+Loading the wallet (this may take a moment)...
 Wallet ready.
 
-=== Wallet: spending ===
+=== Wallet ===
 
 Pending payments:
 100000 sats -> tb1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

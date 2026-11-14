@@ -19,51 +19,27 @@ if [ -z "$status" ]; then
     exit 1
 fi
 
-# Get wallet list
-wallets=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"listwallets"}' "$RPC_ENDPOINT" | jq -r '.result')
-wallet_count=$(echo "$wallets" | jq 'length')
-
-if [ "$wallet_count" -eq 0 ]; then
-    echo "No wallets found."
-    exit 1
-fi
-
-# Select wallet
-echo "Wallets:"
-echo ""
-for i in $(seq 0 $((wallet_count - 1))); do
-    num=$((i + 1))
-    name=$(echo "$wallets" | jq -r ".[$i].walletName")
-    echo "  [$num] $name"
-done
-echo ""
-read -p "Select wallet: " wallet_choice
-
-idx=$((wallet_choice - 1))
-if [ "$idx" -lt 0 ] || [ "$idx" -ge "$wallet_count" ]; then
-    echo "Invalid selection."
-    exit 1
-fi
-
-WALLET=$(echo "$wallets" | jq -r ".[$idx].walletName")
-
-# Load wallet if not already loaded
-echo ""
-echo "Loading wallet $WALLET (this may take a moment)..."
-load_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"loadwallet","params":["'"$WALLET"'"]}' "$RPC_ENDPOINT")
+# There is a single wallet. Load it if it is not loaded already.
+echo "Loading the wallet (this may take a moment)..."
+load_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"loadwallet"}' "$RPC_ENDPOINT")
 load_error=$(echo "$load_result" | jq -r '.error.message // empty')
 
-if [ -n "$load_error" ] && [[ "$load_error" != *"already"* ]]; then
+if [ -n "$load_error" ]; then
     echo "Error loading wallet: $load_error"
     exit 1
 fi
+
+# The wallet is ready once it is synchronized with the Bitcoin node.
+until [ "$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"getwalletinfo"}' "$RPC_ENDPOINT" | jq -r '.result.loaded')" == "true" ]; do
+    sleep 1
+done
 echo "Wallet ready."
 echo ""
 echo "=== Pending Payments ==="
 echo ""
 
 # Get pending payments
-result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"listpaymentsincoinjoin"}' "$RPC_ENDPOINT/$WALLET")
+result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"listpaymentsincoinjoin"}' "$RPC_ENDPOINT")
 error=$(echo "$result" | jq -r '.error.message // empty')
 
 if [ -n "$error" ]; then
@@ -103,7 +79,7 @@ if [[ "${choice^^}" == "A" ]]; then
     echo ""
     ids=$(echo "$payments" | jq -r '.[].id')
     for id in $ids; do
-        curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"cancelpaymentincoinjoin","params":["'"$id"'"]}' "$RPC_ENDPOINT/$WALLET" > /dev/null
+        curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"cancelpaymentincoinjoin","params":["'"$id"'"]}' "$RPC_ENDPOINT" > /dev/null
         amount=$(echo "$payments" | jq -r ".[] | select(.id == \"$id\") | .amount")
         address=$(echo "$payments" | jq -r ".[] | select(.id == \"$id\") | .address")
         echo "Cancelled: $amount sats -> $address"
@@ -131,7 +107,7 @@ for sel in $selections; do
     amount=$(echo "$payments" | jq -r ".[$idx].amount")
     address=$(echo "$payments" | jq -r ".[$idx].address")
 
-    cancel_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"cancelpaymentincoinjoin","params":["'"$id"'"]}' "$RPC_ENDPOINT/$WALLET")
+    cancel_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"cancelpaymentincoinjoin","params":["'"$id"'"]}' "$RPC_ENDPOINT")
     cancel_error=$(echo "$cancel_result" | jq -r '.error.message // empty')
 
     if [ -n "$cancel_error" ]; then

@@ -21,44 +21,20 @@ fi
 
 DENOMS=(5000 6561 8192 10000 13122 16384 19683 20000 32768 39366 50000 59049 65536 100000 118098 131072 177147 200000 262144 354294 500000 524288 531441 1000000 1048576 1062882 1594323 2000000 2097152 3188646 4194304 4782969 5000000 8388608 9565938 10000000 14348907 16777216 20000000 28697814 33554432 43046721 50000000 67108864 86093442 100000000 129140163 134217728 200000000 258280326 268435456 387420489 500000000 536870912 774840978 1000000000 1073741824 1162261467 2000000000 2147483648 2324522934 3486784401 4294967296 5000000000 6973568802 8589934592 10000000000 10460353203 17179869184 20000000000 20920706406 31381059609 34359738368 50000000000 62762119218 68719476736 94143178827 100000000000 137438953472)
 
-# Get wallet list
-wallets=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"listwallets"}' "$RPC_ENDPOINT" | jq -r '.result')
-wallet_count=$(echo "$wallets" | jq 'length')
-
-if [ "$wallet_count" -eq 0 ]; then
-    echo "No wallets found."
-    exit 1
-fi
-
-# Select wallet
-echo "Wallets:"
-echo ""
-for i in $(seq 0 $((wallet_count - 1))); do
-    num=$((i + 1))
-    name=$(echo "$wallets" | jq -r ".[$i].walletName")
-    echo "  [$num] $name"
-done
-echo ""
-read -p "Select wallet: " wallet_choice
-
-idx=$((wallet_choice - 1))
-if [ "$idx" -lt 0 ] || [ "$idx" -ge "$wallet_count" ]; then
-    echo "Invalid selection."
-    exit 1
-fi
-
-WALLET=$(echo "$wallets" | jq -r ".[$idx].walletName")
-
-# Load wallet if not already loaded
-echo ""
-echo "Loading wallet $WALLET (this may take a moment)..."
-load_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"loadwallet","params":["'"$WALLET"'"]}' "$RPC_ENDPOINT")
+# There is a single wallet. Load it if it is not loaded already.
+echo "Loading the wallet (this may take a moment)..."
+load_result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"loadwallet"}' "$RPC_ENDPOINT")
 load_error=$(echo "$load_result" | jq -r '.error.message // empty')
 
-if [ -n "$load_error" ] && [[ "$load_error" != *"already"* ]]; then
+if [ -n "$load_error" ]; then
     echo "Error loading wallet: $load_error"
     exit 1
 fi
+
+# The wallet is ready once it is synchronized with the Bitcoin node.
+until [ "$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"getwalletinfo"}' "$RPC_ENDPOINT" | jq -r '.result.loaded')" == "true" ]; do
+    sleep 1
+done
 echo "Wallet ready."
 echo ""
 echo "=== Add Payments ==="
@@ -159,7 +135,7 @@ add_payment() {
 
     # Send payment
     local result error payment_id
-    result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"payincoinjoin","params":["'"$ADDRESS"'",'"$selected"']}' "$RPC_ENDPOINT/$WALLET")
+    result=$(curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"payincoinjoin","params":["'"$ADDRESS"'",'"$selected"']}' "$RPC_ENDPOINT")
     error=$(echo "$result" | jq -r '.error.message // empty')
 
     if [ -n "$error" ]; then
