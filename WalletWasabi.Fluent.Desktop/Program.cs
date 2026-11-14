@@ -7,7 +7,6 @@ using System.Reactive.Concurrency;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using ReactiveUI;
-using System.Linq;
 using WalletWasabi.Fluent.CrashReport;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Logging;
@@ -203,7 +202,6 @@ public static class WasabiAppExtensions
 				});
 
 				Logger.LogInfo("Black Hole GUI started.");
-				bool runGuiInBackground = app.AppConfig.Arguments.Any(arg => arg.Contains(StartupHelper.SilentArgument));
 				UiConfig uiConfig = LoadOrCreateUiConfig(Config.DataDir);
 				var services = Services.Create(app.Global, uiConfig, app.TerminateService);
 
@@ -211,12 +209,7 @@ public static class WasabiAppExtensions
 
 				AppBuilder appBuilder = AppBuilder.Configure(() => new App(
 					backendInitializeAsync: async () =>
-					{
-						await app.Global.InitializeAsync(initializeSleepInhibitor: true, app.TerminateService, stopLoadingCts.Token).ConfigureAwait(false);
-
-						// Make sure that wallet startup set correctly regarding RunOnSystemStartup
-						await StartupHelper.ModifyStartupSettingAsync(uiConfig.RunOnSystemStartup).ConfigureAwait(false);
-					}, startInBg: runGuiInBackground))
+						await app.Global.InitializeAsync(initializeSleepInhibitor: true, app.TerminateService, stopLoadingCts.Token).ConfigureAwait(false)))
 					.UseReactiveUI()
 					.SetupAppBuilder(services.Config.EnableGpu)
 					.AfterSetup(_ =>

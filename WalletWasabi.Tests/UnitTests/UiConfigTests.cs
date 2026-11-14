@@ -31,7 +31,7 @@ public class UiConfigTests
 		using (var persisted = JsonDocument.Parse(File.ReadAllText(filePath)))
 		{
 			Assert.True(persisted.RootElement.GetProperty(nameof(UiConfig.Oobe)).GetBoolean());
-			Assert.False(persisted.RootElement.GetProperty(nameof(UiConfig.RunOnSystemStartup)).GetBoolean());
+			Assert.False(persisted.RootElement.GetProperty(nameof(UiConfig.PrivacyMode)).GetBoolean());
 		}
 
 		// A subsequent save must not overlap the initial write or be overwritten by it.
@@ -95,5 +95,5 @@ public class UiConfigTests
 	}
 
 	/// <summary>Settings of earlier versions that the application does not have any more.</summary>
-	private static readonly string[] RemovedSettings = ["DarkModeEnabled"];
+	private static readonly string[] RemovedSettings = ["DarkModeEnabled", "RunOnSystemStartup"];
 }

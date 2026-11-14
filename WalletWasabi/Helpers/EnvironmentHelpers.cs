@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace WalletWasabi.Helpers;
@@ -74,18 +73,6 @@ public static class EnvironmentHelpers
 		}
 
 		return fullBaseDirectory;
-	}
-
-	public static string GetExecutablePath()
-	{
-		var fullBaseDir = GetFullBaseDirectory();
-		var executableFileName = Path.Combine(fullBaseDir, Constants.ExecutableName);
-		if (File.Exists(executableFileName))
-		{
-			return executableFileName;
-		}
-		var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name ?? throw new NullReferenceException("Assembly or Assembly's Name was null.");
-		return Path.Combine(fullBaseDir, assemblyName);
 	}
 
 	public static string GetDefaultBitcoinDataDir()

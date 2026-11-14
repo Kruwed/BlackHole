@@ -12,7 +12,6 @@ public class UiConfig : ConfigBase
 	private bool _isCustomChangeAddress;
 	private bool _autocopy;
 	private string _windowState;
-	private bool _runOnSystemStartup;
 	private bool _oobe;
 	private Version _lastVersionHighlightsDisplayed;
 	private bool _hideOnClose;
@@ -27,7 +26,6 @@ public class UiConfig : ConfigBase
 		bool isCustomChangeAddress,
 		bool autocopy,
 		string windowState,
-		bool runOnSystemStartup,
 		bool oobe,
 		Version lastVersionHighlightsDisplayed,
 		bool hideOnClose,
@@ -40,7 +38,6 @@ public class UiConfig : ConfigBase
 		_isCustomChangeAddress = isCustomChangeAddress;
 		_autocopy = autocopy;
 		_windowState = windowState;
-		_runOnSystemStartup = runOnSystemStartup;
 		_oobe = oobe;
 		_lastVersionHighlightsDisplayed = lastVersionHighlightsDisplayed;
 		_hideOnClose = hideOnClose;
@@ -56,11 +53,10 @@ public class UiConfig : ConfigBase
 				x => x.WindowState,
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
-				x => x.RunOnSystemStartup,
 				x => x.PrivacyMode,
 				x => x.HideOnClose,
 				x => x.FeeTarget,
-				(_, _, _, _, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _, _, _, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -80,7 +76,6 @@ public class UiConfig : ConfigBase
 			isCustomChangeAddress: false,
 			autocopy: true,
 			windowState: "Normal",
-			runOnSystemStartup: false,
 			oobe: true,
 			lastVersionHighlightsDisplayed: new (2, 3, 1),
 			hideOnClose: false,
@@ -137,12 +132,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _privacyMode;
 		set => RaiseAndSetIfChanged(ref _privacyMode, value);
-	}
-
-	public bool RunOnSystemStartup
-	{
-		get => _runOnSystemStartup;
-		set => RaiseAndSetIfChanged(ref _runOnSystemStartup, value);
 	}
 
 	public bool HideOnClose

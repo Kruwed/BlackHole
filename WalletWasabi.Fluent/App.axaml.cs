@@ -17,7 +17,6 @@ namespace WalletWasabi.Fluent;
 
 public class App : Application
 {
-	private readonly bool _startInBg;
 	private readonly Func<Task>? _backendInitializeAsync;
 	private ApplicationStateManager? _applicationStateManager;
 
@@ -26,9 +25,8 @@ public class App : Application
 		Name = WalletWasabi.Helpers.Constants.AppName;
 	}
 
-	public App(Func<Task> backendInitializeAsync, bool startInBg) : this()
+	public App(Func<Task> backendInitializeAsync) : this()
 	{
-		_startInBg = startInBg;
 		_backendInitializeAsync = backendInitializeAsync;
 	}
 
@@ -45,7 +43,7 @@ public class App : Application
 			{
 				var uiContext = CreateUiContext();
 				var mainViewModel = new MainViewModel(uiContext);
-				_applicationStateManager = new ApplicationStateManager(desktop, uiContext, mainViewModel, _startInBg);
+				_applicationStateManager = new ApplicationStateManager(desktop, uiContext, mainViewModel);
 				var applicationViewModel = _applicationStateManager.ApplicationViewModel;
 				DataContext = applicationViewModel;
 

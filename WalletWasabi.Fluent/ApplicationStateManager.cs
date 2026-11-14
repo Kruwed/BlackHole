@@ -28,7 +28,7 @@ public class ApplicationStateManager : IMainWindowService
 	private bool _isShuttingDown;
 	private bool _restartRequest;
 
-	internal ApplicationStateManager(IClassicDesktopStyleApplicationLifetime lifetime, UiContext uiContext, MainViewModel mainViewModel, bool startInBg)
+	internal ApplicationStateManager(IClassicDesktopStyleApplicationLifetime lifetime, UiContext uiContext, MainViewModel mainViewModel)
 	{
 		_lifetime = lifetime;
 		_stateMachine = new StateMachine<State, Trigger>(State.InitialState);
@@ -36,10 +36,9 @@ public class ApplicationStateManager : IMainWindowService
 		MainViewModel = mainViewModel;
 
 		ApplicationViewModel = new ApplicationViewModel(UiContext, mainViewModel, this);
-		State initTransitionState = startInBg ? State.Closed : State.Open;
 
 		_stateMachine.Configure(State.InitialState)
-			.InitialTransition(initTransitionState)
+			.InitialTransition(State.Open)
 			.OnTrigger(
 				Trigger.ShutdownRequested,
 				() =>
