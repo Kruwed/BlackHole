@@ -14,7 +14,6 @@ public class UiConfig : ConfigBase
 	private string _windowState;
 	private bool _oobe;
 	private Version _lastVersionHighlightsDisplayed;
-	private bool _hideOnClose;
 	private bool _autoPaste;
 	private int _feeTarget;
 	private double? _windowWidth;
@@ -28,7 +27,6 @@ public class UiConfig : ConfigBase
 		string windowState,
 		bool oobe,
 		Version lastVersionHighlightsDisplayed,
-		bool hideOnClose,
 		bool autoPaste,
 		int feeTarget,
 		double? windowWidth,
@@ -40,7 +38,6 @@ public class UiConfig : ConfigBase
 		_windowState = windowState;
 		_oobe = oobe;
 		_lastVersionHighlightsDisplayed = lastVersionHighlightsDisplayed;
-		_hideOnClose = hideOnClose;
 		_autoPaste = autoPaste;
 		_feeTarget = feeTarget;
 		_windowWidth = windowWidth;
@@ -54,9 +51,8 @@ public class UiConfig : ConfigBase
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
 				x => x.PrivacyMode,
-				x => x.HideOnClose,
 				x => x.FeeTarget,
-				(_, _, _, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _, _, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -78,7 +74,6 @@ public class UiConfig : ConfigBase
 			windowState: "Normal",
 			oobe: true,
 			lastVersionHighlightsDisplayed: new (2, 3, 1),
-			hideOnClose: false,
 			autoPaste: false,
 			feeTarget: 2,
 			windowWidth: null,
@@ -132,12 +127,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _privacyMode;
 		set => RaiseAndSetIfChanged(ref _privacyMode, value);
-	}
-
-	public bool HideOnClose
-	{
-		get => _hideOnClose;
-		set => RaiseAndSetIfChanged(ref _hideOnClose, value);
 	}
 
 	public double? WindowWidth

@@ -12,7 +12,7 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 	Category = "Settings",
 	Keywords = new[]
 	{
-			"Settings", "General", "Run", "Background", "Close",
+			"Settings", "General",
 			"Auto", "Copy", "Paste", "Address", "Download", "New", "Version", "Enable", "GPU"
 	},
 	IconName = "settings_general_regular")]

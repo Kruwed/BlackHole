@@ -95,5 +95,5 @@ public class UiConfigTests
 	}
 
 	/// <summary>Settings of earlier versions that the application does not have any more.</summary>
-	private static readonly string[] RemovedSettings = ["DarkModeEnabled", "RunOnSystemStartup"];
+	private static readonly string[] RemovedSettings = ["DarkModeEnabled", "RunOnSystemStartup", "HideOnClose"];
 }

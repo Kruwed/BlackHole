@@ -53,9 +53,6 @@ public interface IServices
 	string GetTorLogFilePath();
 	TorMode GetUseTor();
 
-	/// <summary>Gets the current exchange rate of BTC to the configured currency.</summary>
-
-	bool GetHideOnClose();
 	double? GetWindowWidth();
 	double? GetWindowHeight();
 	void SetWindowWidth(double? width);

@@ -94,7 +94,6 @@ public class Services : IServices
 	public TorMode GetUseTor() => Config.UseTor;
 
 	// UI Config
-	public bool GetHideOnClose() => UiConfig.HideOnClose;
 	public double? GetWindowWidth() => UiConfig.WindowWidth;
 	public double? GetWindowHeight() => UiConfig.WindowHeight;
 	public void SetWindowWidth(double? width) => UiConfig.WindowWidth = width;

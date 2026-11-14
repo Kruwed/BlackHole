@@ -53,7 +53,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private bool _autoCopy;
 	[AutoNotify] private bool _autoPaste;
 	[AutoNotify] private bool _customChangeAddress;
-	[AutoNotify] private bool _hideOnClose;
 	[AutoNotify] private TorMode _useTor;
 	[AutoNotify] private bool _terminateTorOnExit;
 
@@ -94,7 +93,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_autoCopy = uiConfig.Autocopy;
 		_autoPaste = uiConfig.AutoPaste;
 		_customChangeAddress = uiConfig.IsCustomChangeAddress;
-		_hideOnClose = uiConfig.HideOnClose;
 		_terminateTorOnExit = persistentConfig.TerminateTorOnExit;
 		_enableGpu = persistentConfig.EnableGpu;
 
@@ -131,7 +129,6 @@ public partial class ApplicationSettings : ReactiveObject
 		AutoCopy = uiConfig.Autocopy;
 		AutoPaste = uiConfig.AutoPaste;
 		CustomChangeAddress = uiConfig.IsCustomChangeAddress;
-		HideOnClose = uiConfig.HideOnClose;
 		TerminateTorOnExit = persistentConfig.TerminateTorOnExit;
 		EnableGpu = persistentConfig.EnableGpu;
 
@@ -181,11 +178,10 @@ public partial class ApplicationSettings : ReactiveObject
 				x => x.AutoCopy,
 				x => x.AutoPaste,
 				x => x.CustomChangeAddress,
-				x => x.HideOnClose,
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
 				x => x.WindowState,
-				(_, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _) => Unit.Default)
 			.Skip(1)
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => ApplyUiConfigChanges())
@@ -335,7 +331,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_uiConfig.Autocopy = AutoCopy;
 		_uiConfig.AutoPaste = AutoPaste;
 		_uiConfig.IsCustomChangeAddress = CustomChangeAddress;
-		_uiConfig.HideOnClose = HideOnClose;
 		_uiConfig.Oobe = Oobe;
 		_uiConfig.LastVersionHighlightsDisplayed = LastVersionHighlightsDisplayed;
 		_uiConfig.WindowState = WindowState.ToString();
