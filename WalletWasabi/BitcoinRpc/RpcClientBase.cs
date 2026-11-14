@@ -13,7 +13,8 @@ public class RpcClientBase : IRPCClient
 
 	public Network Network => RpcClient.Network;
 
-	protected internal RPCClient RpcClient { get; }
+	/// <summary>The client that the requests go through.</summary>
+	protected internal virtual RPCClient RpcClient { get; }
 
 	public RPCCredentialString CredentialString => RpcClient.CredentialString;
 

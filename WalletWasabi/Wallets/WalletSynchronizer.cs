@@ -646,12 +646,8 @@ public class WalletSynchronizer : BackgroundService
 		ex switch
 		{
 			WrongChainException or BlockPrunedException => ex.Message,
-			RPCException rpcException => $"The Bitcoin node refused a request ({rpcException.Message}).",
-			HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized } => "The Bitcoin node refused the RPC credentials.",
-			HttpRequestException { StatusCode: System.Net.HttpStatusCode.Forbidden } => "The Bitcoin node does not allow RPC requests from this computer.",
-			OperationCanceledException or TimeoutException => "The Bitcoin node did not answer in time.",
 			AggregateException { InnerExceptions: [var single, ..] } => DescribeNodeFailure(single),
-			_ => $"The Bitcoin node cannot be reached ({ex.Message})."
+			_ => RpcErrorTools.DescribeNodeFailure(ex)
 		};
 
 	private class WrongChainException(string message) : Exception(message);

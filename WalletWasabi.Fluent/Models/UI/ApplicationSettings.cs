@@ -29,7 +29,11 @@ public partial class ApplicationSettings : ReactiveObject
 	private readonly IServices _services;
 	private readonly Subject<bool> _isRestartNeeded = new();
 	private readonly string _persistentConfigFilePath;
-	private readonly PersistentConfig _startupConfig;
+	/// <summary>
+	/// What the running application works with: the configuration that it was started with, except for what was applied
+	/// without a restart since then. Settings that differ from it need a restart.
+	/// </summary>
+	private PersistentConfig _runningConfig;
 	private readonly Config _config;
 	private readonly UiConfig _uiConfig;
 
@@ -72,7 +76,7 @@ public partial class ApplicationSettings : ReactiveObject
 	{
 		_services = services;
 		_persistentConfigFilePath = services.PersistentConfigFilePath;
-		_startupConfig = persistentConfig;
+		_runningConfig = persistentConfig;
 
 		_config = config;
 		_uiConfig = uiConfig;
@@ -212,13 +216,13 @@ public partial class ApplicationSettings : ReactiveObject
 
 	public void ResetToDefault()
 	{
-		var defaultConfig = _startupConfig.Network switch
+		var defaultConfig = _runningConfig.Network switch
 		{
 			var network when network == Network.Main => PersistentConfigManager.DefaultMainNetConfig,
 			var network when network == Network.TestNet => PersistentConfigManager.DefaultTestNetConfig,
 			var network when network == Network.RegTest => PersistentConfigManager.DefaultRegTestConfig,
 			var network when network == Bitcoin.Instance.Signet => PersistentConfigManager.DefaultSignetConfig,
-			_ => throw new NotSupportedException($"Network '{_startupConfig.Network}' is not supported."),
+			_ => throw new NotSupportedException($"Network '{_runningConfig.Network}' is not supported."),
 		};
 
 		var newPersistentConfig = defaultConfig with {CoordinatorUri = CoordinatorUri};
@@ -234,11 +238,29 @@ public partial class ApplicationSettings : ReactiveObject
 
 	public bool IsOverridden => _config.IsOverridden;
 
+	/// <summary>Whether the node was given on the command line or in the environment, so that saving another one would have no effect.</summary>
+	public bool IsBitcoinRpcOverridden => _config.IsBitcoinRpcOverridden;
+
 	public IObservable<bool> IsRestartNeeded => _isRestartNeeded;
 
 	public bool CheckIfRestartIsNeeded(PersistentConfig config)
 	{
-		return _startupConfig != config;
+		return _runningConfig != config;
+	}
+
+	/// <summary>
+	/// Stores the settings of the node that the application has just been connected to. Unlike a change of these settings
+	/// on the settings page, this asks for no restart: the application works with that node already.
+	/// </summary>
+	public void SetConnectedBitcoinNode(Uri rpcUri, string rpcCredentialString)
+	{
+		// The address in the form in which it gets saved.
+		var uri = rpcUri.ToString();
+
+		_runningConfig = _runningConfig with { BitcoinRpcUri = uri, BitcoinRpcCredentialString = rpcCredentialString };
+
+		BitcoinRpcUri = uri;
+		BitcoinRpcCredentialString = rpcCredentialString;
 	}
 
 	private void Save()

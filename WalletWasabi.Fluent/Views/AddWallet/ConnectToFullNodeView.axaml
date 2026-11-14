@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.AddWallet"
+             xmlns:converters="using:WalletWasabi.Fluent.Converters"
+             mc:Ignorable="d" d:DesignWidth="428" d:DesignHeight="371"
+             x:DataType="vm:ConnectToFullNodeViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.AddWallet.ConnectToFullNodeView">
+  <UserControl.Resources>
+    <converters:ConnectionStatusBrushConverter x:Key="BoolToConnectionStatusBrush"
+                                               SuccessBrush="{StaticResource PositiveBrush}"
+                                               FailureBrush="{StaticResource DismissColor}" />
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBox /template/ DataValidationErrors">
+      <Setter Property="MinHeight" Value="25" />
+    </Style>
+  </UserControl.Styles>
+  <ContentArea Title="{Binding Title}"
+               Caption="Tell where the RPC interface of your Bitcoin node is."
+               EnableCancel="{Binding EnableCancel}"
+               EnableBack="{Binding EnableBack}"
+               EnableNext="True" NextContent="{Binding NextLabel}"
+               IsBusy="{Binding IsBusy}">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
+      <Label Content="RPC endpoint:" Target="TbRpcUri" />
+      <TextBox Name="TbRpcUri"
+               Text="{Binding BitcoinRpcUri}"
+               Watermark="{Binding DefaultRpcUri}"
+               IsEnabled="{Binding !IsReadOnly}">
+        <Interaction.Behaviors>
+          <FocusOnAttachedBehavior />
+          <WhitespacePasteRemovalBehavior />
+          <WhitespaceInputRemovalBehavior />
+        </Interaction.Behaviors>
+      </TextBox>
+
+      <Label Content="RPC credentials:" Target="TbRpcCredentials" />
+      <TextBox Name="TbRpcCredentials"
+               Text="{Binding BitcoinRpcCredentialString}"
+               Watermark="rpcuser:rpcpassword or cookiefile=path"
+               IsEnabled="{Binding !IsReadOnly}" />
+      <TextBlock Text="Leave the credentials empty to use the cookie file of a Bitcoin Core that runs on this computer."
+                 TextWrapping="Wrap"
+                 Opacity="0.6" />
+
+      <!-- What the node answered to the last attempt. The room for it is always there, so that nothing moves when it appears. -->
+      <TextBlock Text="{Binding StatusMessage}"
+                 Foreground="{Binding IsConnected, Converter={StaticResource BoolToConnectionStatusBrush}}"
+                 TextWrapping="Wrap"
+                 MinHeight="40"
+                 Margin="0 10 0 0" />
+
+      <InfoMessage Foreground="{StaticResource WarningMessageForeground}"
+                   IsVisible="{Binding IsReadOnly}"
+                   Margin="0 10 0 0">
+        <TextBlock Text="The node was given on the command line or in the environment when Black Hole was started, so it cannot be changed here."
+                   TextWrapping="Wrap" />
+      </InfoMessage>
+    </StackPanel>
+  </ContentArea>
+</UserControl>

@@ -151,6 +151,13 @@ public class Config
 	/// </remarks>
 	public bool IsOverridden { get; }
 
+	/// <summary>
+	/// Whether the node that the application works with was given on the command line or in the environment.
+	/// What is saved about the node then has no effect the next time the application is started the same way.
+	/// </summary>
+	public bool IsBitcoinRpcOverridden =>
+		Data[nameof(BitcoinRpcUri)].Overridden || Data[nameof(BitcoinRpcCredentialString)].Overridden;
+
 	public bool TryGetCoordinatorUri([NotNullWhen(true)] out Uri? coordinatorUri)
 	{
 		try

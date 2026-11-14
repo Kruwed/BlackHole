@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.BitcoinRpc;
@@ -74,6 +75,8 @@ public class Services : IServices
 	// Chain info
 	public uint GetNodeTipHeight() => _status.BestNetworkHeight;
 	public ConnectedRpcStatus? GetNodeStatus() => _status.BitcoinRpcStatus is { IsOk: true } status ? status.Value : null;
+	public Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken) =>
+		_global.ConnectToBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken);
 	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
 	// Transactions info

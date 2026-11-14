@@ -13,7 +13,7 @@
                  EnableBack="{Binding EnableBack}"
                  IsBusy="{Binding IsBusy}"
                  EnableNext="False">
-    <Grid Width="530" MaxHeight="350" ColumnDefinitions="*,*" RowDefinitions="*,Auto,*">
+    <Grid Width="530" MaxHeight="350" ColumnDefinitions="*,*" RowDefinitions="*,*">
       <Grid.Styles>
         <Style Selector="TileButton">
           <Setter Property="Cursor" Value="Hand" />
@@ -54,21 +54,34 @@
         <Style Selector="TileButton /template/ PathIcon#PART_Icon">
           <Setter Property="Margin" Value="0" />
         </Style>
+        <Style Selector="TileButton:disabled">
+          <Setter Property="Opacity" Value="0.4" />
+        </Style>
       </Grid.Styles>
 
-      <TileButton Text="Create a new wallet"
-                    Grid.ColumnSpan="2"
+      <!-- The wallet -->
+      <TileButton Grid.Row="0" Grid.Column="0" Text="Create a new wallet"
                     Classes="action bottomtext"
                     Icon="{StaticResource add_regular}"
                     IsDefault="True"
                     Command="{Binding CreateWalletCommand}" />
 
-      <TextBlock Grid.ColumnSpan="2" Grid.Column="0" Grid.Row="1" TextAlignment="Center" Text="or" />
-
-      <TileButton Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Recover a wallet"
+      <TileButton Grid.Row="0" Grid.Column="1" Text="Recover a wallet"
                     Icon="{StaticResource recover_arrow_right_regular}"
                     Classes="bottomtext"
                     Command="{Binding RecoverWalletCommand}" />
+
+      <!-- The node that the wallet works with -->
+      <!-- A placeholder: it does nothing yet, so it cannot be used. -->
+      <TileButton Grid.Row="1" Grid.Column="0" Text="Create a full node"
+                    Icon="{StaticResource cube_multiple_regular}"
+                    Classes="bottomtext"
+                    IsEnabled="False" />
+
+      <TileButton Grid.Row="1" Grid.Column="1" Text="Connect to a full node"
+                    Icon="{StaticResource connector_regular}"
+                    Classes="bottomtext"
+                    Command="{Binding ConnectToFullNodeCommand}" />
     </Grid>
   </ContentArea>
 </UserControl>

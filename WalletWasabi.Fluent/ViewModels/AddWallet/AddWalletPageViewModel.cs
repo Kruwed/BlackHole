@@ -7,6 +7,7 @@ namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
 /// <summary>
 /// The choice between creating and recovering the wallet. It is offered as long as there is no wallet: the application works with a single one.
+/// The node that the wallet is going to work with can be chosen here too.
 /// </summary>
 [NavigationMetaData(
 	Title = "Add Wallet",
@@ -20,11 +21,15 @@ public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 		CreateWalletCommand = ReactiveCommand.Create(OnCreateWallet);
 
 		RecoverWalletCommand = ReactiveCommand.Create(OnRecoverWallet);
+
+		ConnectToFullNodeCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToFullNode());
 	}
 
 	public ICommand CreateWalletCommand { get; }
 
 	public ICommand RecoverWalletCommand { get; }
+
+	public ICommand ConnectToFullNodeCommand { get; }
 
 	private void OnCreateWallet()
 	{

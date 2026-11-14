@@ -27,7 +27,7 @@ public class MockRpcClient : IRPCClient
 	public Func<Task<int>>? OnGetBlockCountAsync { get; set; }
 	public Func<Task<TimeSpan>>? OnUptimeAsync { get; set; }
 	public Network Network { get; set; } = Network.RegTest;
-	public RPCCredentialString CredentialString => new();
+	public RPCCredentialString CredentialString { get; set; } = new();
 
 	public List<Block> Blockchain { get; set; } = new();
 	public List<Transaction> Mempool { get; set; } = new();

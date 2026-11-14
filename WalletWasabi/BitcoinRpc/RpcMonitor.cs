@@ -15,13 +15,19 @@ public static class RpcMonitor
 	public record CheckMessage;
 
 	public static MessageHandler<CheckMessage, Unit> CreateChecker(IRPCClient rpcClient, EventBus eventBus) =>
-		(_, _, cancellationToken) => CheckRpcStatusAsync(rpcClient, eventBus, cancellationToken);
+		async (_, _, cancellationToken) =>
+		{
+			await CheckAsync(rpcClient, eventBus, cancellationToken).ConfigureAwait(false);
+			return Unit.Instance;
+		};
 
-	private static async Task<Unit> CheckRpcStatusAsync(IRPCClient rpcClient, EventBus eventBus, CancellationToken cancellationToken)
+	/// <summary>
+	/// Asks the node about itself right now and announces what it answered, or why it did not.
+	/// </summary>
+	public static async Task CheckAsync(IRPCClient rpcClient, EventBus eventBus, CancellationToken cancellationToken)
 	{
 		var rpcStatus = await GetRpcStatusAsync(rpcClient, cancellationToken).ConfigureAwait(false);
 		eventBus.Publish(new RpcStatusChanged(rpcStatus));
-		return Unit.Instance;
 	}
 
 	private static async Task<Result<ConnectedRpcStatus, string>> GetRpcStatusAsync(IRPCClient rpcClient, CancellationToken cancellationToken)

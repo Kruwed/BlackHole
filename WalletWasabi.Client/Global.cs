@@ -75,7 +75,7 @@ public class Global
 		TransactionStore.DisposeUsing(_disposables);
 
 		BitcoinRpcHttpClientFactory = BuildHttpClientFactory();
-		_bitcoinRpcClient = ConfigureBitcoinRpcClient();
+		_bitcoinRpcClient = new SwitchableRpcClient(ConfigureBitcoinRpcClient());
 		var cpfpProvider = ConfigureCpfpInfoProvider();
 
 		// The wallet learns about the chain and about unconfirmed transactions from the user's node, and from nowhere else.
@@ -103,7 +103,8 @@ public class Global
 	private readonly CancellationTokenSource _stoppingCts = new();
 
 	private TorManager? _torManager;
-	private readonly IRPCClient _bitcoinRpcClient;
+	/// <summary>The user's node. Everything that needs the node holds this one client, so that <see cref="ConnectToBitcoinNodeAsync"/> can put another node behind it.</summary>
+	private readonly SwitchableRpcClient _bitcoinRpcClient;
 	private CoinPrison? _coinPrison;
 	private readonly Timer _ticker;
 	private readonly ComposedDisposable _disposables = new();
@@ -126,14 +127,20 @@ public class Global
 	public Uri? OnionServiceUri { get; private set; }
 	public EventBus EventBus { get; }
 
+	/// <summary>How long a node is given to answer when the user asks to be connected to it.</summary>
+	private static readonly TimeSpan NodeAnswerTimeout = TimeSpan.FromSeconds(30);
+
+	/// <summary>The same for a node that is an onion service: the way through Tor takes its time.</summary>
+	private static readonly TimeSpan OnionNodeAnswerTimeout = TimeSpan.FromSeconds(90);
+
 	/// <summary>
-	/// Creates the client of the RPC interface of the user's node. The node is the only source of blockchain data,
-	/// so there is always a client: with settings that do not work it reports what is wrong instead of connecting.
+	/// Creates the client of the RPC interface of the node that the application is configured to use. The node is the only
+	/// source of blockchain data, so there is always a client: with settings that do not work it reports what is wrong instead of connecting.
 	/// </summary>
-	private RpcClientBase ConfigureBitcoinRpcClient()
+	private RPCClient ConfigureBitcoinRpcClient()
 	{
 		var uriString = string.IsNullOrWhiteSpace(Config.BitcoinRpcUri)
-			? GetDefaultBitcoinRpcUri()
+			? RpcSettings.GetDefaultUri(Network)
 			: Config.BitcoinRpcUri;
 
 		if (!Uri.TryCreate(uriString, UriKind.Absolute, out var bitcoinRpcUri))
@@ -151,37 +158,100 @@ public class Global
 			credentials = InvalidRpcCredentials();
 		}
 
-		RPCClient internalRpcClient;
+		RPCClient rpcClient;
 
 		try
 		{
-			internalRpcClient = new RPCClient(credentials, bitcoinRpcUri, Network);
+			rpcClient = CreateBitcoinRpcClient(credentials, bitcoinRpcUri);
 		}
 		catch (ArgumentException ex)
 		{
 			Logger.LogWarning($"Failed to set up Bitcoin RPC using '{bitcoinRpcUri}'.", ex);
-			internalRpcClient = new RPCClient(InvalidRpcCredentials(), bitcoinRpcUri, Network);
-		}
-
-		// Use Tor only if the address ends with .onion. Especially, do not use Tor for loopback (i.e. `localhost`).
-		if (bitcoinRpcUri.DnsSafeHost.EndsWith(".onion", StringComparison.OrdinalIgnoreCase))
-		{
-			internalRpcClient.HttpClient = BitcoinRpcHttpClientFactory.CreateClient("long-live-rpc-connection");
+			rpcClient = CreateBitcoinRpcClient(InvalidRpcCredentials(), bitcoinRpcUri);
 		}
 
 		Logger.LogDebug($"Configured Bitcoin RPC to use {bitcoinRpcUri}.");
-		return new RpcClientBase(internalRpcClient);
+		return rpcClient;
 
 		// The node refuses these, which is how the user gets told that the configured credentials are wrong.
 		static RPCCredentialString InvalidRpcCredentials() =>
 			new() { UserPassword = new NetworkCredential("invalid", "invalid") };
 	}
 
-	private string GetDefaultBitcoinRpcUri() =>
-		Network == Network.Main ? Constants.DefaultMainNetBitcoinRpcUri
-		: Network == Network.TestNet ? Constants.DefaultTestNetBitcoinRpcUri
-		: Network == Network.RegTest ? Constants.DefaultRegTestBitcoinRpcUri
-		: Constants.DefaultSignetBitcoinRpcUri;
+	/// <summary>Creates the client of the RPC interface of a node.</summary>
+	private RPCClient CreateBitcoinRpcClient(RPCCredentialString credentials, Uri bitcoinRpcUri)
+	{
+		var rpcClient = new RPCClient(credentials, bitcoinRpcUri, Network);
+
+		// Use Tor only if the address ends with .onion. Especially, do not use Tor for loopback (i.e. `localhost`).
+		if (RpcSettings.IsOnion(bitcoinRpcUri))
+		{
+			rpcClient.HttpClient = BitcoinRpcHttpClientFactory.CreateClient("long-live-rpc-connection");
+		}
+
+		return rpcClient;
+	}
+
+	/// <summary>
+	/// Makes the application work with another node from now on, without a restart. The node is asked first: one that
+	/// does not answer, or that is on another network, is not taken, and the application keeps the node that it has.
+	/// </summary>
+	/// <param name="rpcUri">The address of the RPC interface of the node, for example <c>http://localhost:8332</c>.</param>
+	/// <param name="rpcCredentialString"><c>user:password</c> or <c>cookiefile=path</c>. Nothing stands for the cookie file in the default data folder of Bitcoin Core.</param>
+	/// <returns>Nothing if the application works with the node, otherwise the reason why it does not, in words for the user.</returns>
+	public async Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken)
+	{
+		if (!RpcSettings.TryParseUri(rpcUri, out var bitcoinRpcUri))
+		{
+			return Result<string>.Fail("The address of the Bitcoin node is not an HTTP address.");
+		}
+
+		if (!RpcSettings.TryParseCredentials(rpcCredentialString, out var credentials))
+		{
+			return Result<string>.Fail("The RPC credentials are neither 'user:password' nor 'cookiefile=path'.");
+		}
+
+		var isOnion = RpcSettings.IsOnion(bitcoinRpcUri);
+
+		if (isOnion && Config.UseTor == TorMode.Disabled)
+		{
+			return Result<string>.Fail("The Bitcoin node is an onion service, and Tor is turned off.");
+		}
+
+		RPCClient rpcClient;
+
+		try
+		{
+			rpcClient = CreateBitcoinRpcClient(credentials, bitcoinRpcUri);
+		}
+		catch (ArgumentException ex)
+		{
+			return Result<string>.Fail($"The Bitcoin node cannot be asked with these settings ({ex.Message}).");
+		}
+
+		var timeout = isOnion ? OnionNodeAnswerTimeout : NodeAnswerTimeout;
+		var check = await RpcConnectionCheck.CheckAsync(new RpcClientBase(rpcClient), Network, timeout, cancellationToken).ConfigureAwait(false);
+
+		if (!check.IsOk)
+		{
+			return check;
+		}
+
+		_bitcoinRpcClient.SwitchTo(rpcClient);
+		Logger.LogInfo($"Bitcoin RPC uses {bitcoinRpcUri.Scheme}://{bitcoinRpcUri.Authority} from now on.");
+
+		// Everybody learns about the new node now, and not only when the monitor asks it the next time.
+		try
+		{
+			await RpcMonitor.CheckAsync(_bitcoinRpcClient, EventBus, cancellationToken).ConfigureAwait(false);
+		}
+		catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
+		{
+			Logger.LogDebug(ex);
+		}
+
+		return check;
+	}
 
 	private HttpClientFactory BuildHttpClientFactory(HttpClientHandlerConfiguration? config = null) =>
 		Config.UseTor != TorMode.Disabled

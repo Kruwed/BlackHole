@@ -72,6 +72,35 @@ public class ConfigTests
 	}
 
 	/// <summary>
+	/// Settings can only be changed in the application while no option was given on the command line or in the environment.
+	/// The node can be changed there unless the node itself was given.
+	/// </summary>
+	[Fact]
+	public void TellsWhetherTheNodeWasGivenAtTheStart()
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.False(config.IsBitcoinRpcOverridden);
+
+		// The network is the one option that leaves the settings changeable.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--network=regtest"]);
+		Assert.False(config.IsOverridden);
+		Assert.False(config.IsBitcoinRpcOverridden);
+
+		// Another option locks the settings, but it says nothing about the node.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--loglevel=debug"]);
+		Assert.True(config.IsOverridden);
+		Assert.False(config.IsBitcoinRpcOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--bitcoinrpcendpoint=http://node.example:8332/"]);
+		Assert.True(config.IsOverridden);
+		Assert.True(config.IsBitcoinRpcOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--bitcoinrpccredentialstring=user:password"]);
+		Assert.True(config.IsOverridden);
+		Assert.True(config.IsBitcoinRpcOverridden);
+	}
+
+	/// <summary>
 	/// The default credentials are the cookie file that Bitcoin Core writes into its data folder. NBitcoin knows the place
 	/// of the file for every network but testnet4, which is what "testnet" means here.
 	/// </summary>

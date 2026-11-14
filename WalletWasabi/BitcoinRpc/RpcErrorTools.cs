@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using NBitcoin.RPC;
 
 namespace WalletWasabi.BitcoinRpc;
 
@@ -29,4 +32,18 @@ public static class RpcErrorTools
 	{
 		return new[] { SpentError1, SpentError2, SpentError3 }.Any(x => error.Contains(x, StringComparison.OrdinalIgnoreCase));
 	}
+
+	/// <summary>
+	/// Tells in words for the user why the node did not do what it was asked for.
+	/// </summary>
+	public static string DescribeNodeFailure(Exception ex) =>
+		ex switch
+		{
+			RPCException rpcException => $"The Bitcoin node refused a request ({rpcException.Message}).",
+			HttpRequestException { StatusCode: HttpStatusCode.Unauthorized } => "The Bitcoin node refused the RPC credentials.",
+			HttpRequestException { StatusCode: HttpStatusCode.Forbidden } => "The Bitcoin node does not allow RPC requests from this computer.",
+			OperationCanceledException or TimeoutException => "The Bitcoin node did not answer in time.",
+			AggregateException { InnerExceptions: [var single, ..] } => DescribeNodeFailure(single),
+			_ => $"The Bitcoin node cannot be reached ({ex.Message})."
+		};
 }
