@@ -58,6 +58,6 @@ public partial class ReceiveAddressesViewModel : RoutableViewModel
 
 	private void OnShowAddressAsync(IAddress a)
 	{
-		UiContext.Navigate().To().ReceiveAddress(_wallet, a, UiContext.Services.GetAutocopy());
+		UiContext.Navigate().To().ReceiveAddress(_wallet, a);
 	}
 }

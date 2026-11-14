@@ -14,13 +14,12 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _wallet;
 
-	public ReceiveAddressViewModel(UiContext uiContext, IWalletModel wallet, IAddress model, bool isAutoCopyEnabled) : base(uiContext)
+	public ReceiveAddressViewModel(UiContext uiContext, IWalletModel wallet, IAddress model) : base(uiContext)
 	{
 		_wallet = wallet;
 		Model = model;
 		Address = model.Text;
 		ShortenedAddress = model.ShortenedText;
-		IsAutoCopyEnabled = isAutoCopyEnabled;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
@@ -32,14 +31,7 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		NextCommand = CancelCommand;
 
 		QrCode = UiContext.QrCodeGenerator.Generate(model.Text.ToUpperInvariant());
-
-		if (IsAutoCopyEnabled)
-		{
-			CopyAddressCommand.Execute(null);
-		}
 	}
-
-	public bool IsAutoCopyEnabled { get; }
 
 	public ICommand CopyAddressCommand { get; }
 

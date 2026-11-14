@@ -99,7 +99,6 @@ public class Services : IServices
 	public void SetWindowWidth(double? width) => UiConfig.WindowWidth = width;
 	public void SetWindowHeight(double? height) => UiConfig.WindowHeight = height;
 	public bool GetPrivacyMode() => UiConfig.PrivacyMode;
-	public bool GetAutocopy() => UiConfig.Autocopy;
 	public bool GetAutoPaste() => UiConfig.AutoPaste;
 	public int GetFeeTarget() => UiConfig.FeeTarget;
 	public void SetFeeTarget(int value) => UiConfig.FeeTarget = value;

@@ -58,7 +58,6 @@ public interface IServices
 	void SetWindowWidth(double? width);
 	void SetWindowHeight(double? height);
 	bool GetPrivacyMode();
-	bool GetAutocopy();
 	bool GetAutoPaste();
 	int GetFeeTarget();
 	void SetFeeTarget(int value);

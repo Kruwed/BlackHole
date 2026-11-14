@@ -32,7 +32,6 @@ public class SettingsSearchSource : ReactiveObject, ISearchSource
 	{
 		var isEnabled = !_applicationSettings.IsOverridden;
 
-		yield return new ContentSearchItem(content: Setting(selector: x => x.AutoCopy), name: "Auto copy addresses", category: "Settings", keywords: new List<string>(), icon: "nav_settings_regular", isEnabled) { IsDefault = false, Priority = 2 };
 		yield return new ContentSearchItem(content: Setting(selector: x => x.AutoPaste), name: "Auto paste addresses", category: "Settings", keywords: new List<string>(), icon: "nav_settings_regular", isEnabled) { IsDefault = false, Priority = 3 };
 		yield return new ContentSearchItem(content: Setting(selector: x => x.EnableGpu), name: "Enable GPU", category: "Settings", keywords: new List<string>(), icon: "nav_settings_regular", isEnabled) { IsDefault = false, Priority = 6 };
 	}

@@ -13,7 +13,7 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 	Keywords = new[]
 	{
 			"Settings", "General",
-			"Auto", "Copy", "Paste", "Address", "Download", "New", "Version", "Enable", "GPU"
+			"Auto", "Paste", "Address", "Download", "New", "Version", "Enable", "GPU"
 	},
 	IconName = "settings_general_regular")]
 public partial class GeneralSettingsTabViewModel : RoutableViewModel

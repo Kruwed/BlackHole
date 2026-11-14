@@ -10,11 +10,6 @@
   <StackPanel Classes="settingsLayout">
 
     <DockPanel>
-      <TextBlock Text="Auto copy addresses" />
-      <ToggleSwitch IsChecked="{Binding Settings.AutoCopy}" />
-    </DockPanel>
-
-    <DockPanel>
       <TextBlock Text="Auto paste addresses" />
       <ToggleSwitch IsChecked="{Binding Settings.AutoPaste}" />
     </DockPanel>

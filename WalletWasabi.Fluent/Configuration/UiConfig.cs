@@ -10,7 +10,6 @@ public class UiConfig : ConfigBase
 {
 	private bool _privacyMode;
 	private bool _isCustomChangeAddress;
-	private bool _autocopy;
 	private string _windowState;
 	private bool _oobe;
 	private Version _lastVersionHighlightsDisplayed;
@@ -23,7 +22,6 @@ public class UiConfig : ConfigBase
 		string filePath,
 		bool privacyMode,
 		bool isCustomChangeAddress,
-		bool autocopy,
 		string windowState,
 		bool oobe,
 		Version lastVersionHighlightsDisplayed,
@@ -34,7 +32,6 @@ public class UiConfig : ConfigBase
 	{
 		_privacyMode = privacyMode;
 		_isCustomChangeAddress = isCustomChangeAddress;
-		_autocopy = autocopy;
 		_windowState = windowState;
 		_oobe = oobe;
 		_lastVersionHighlightsDisplayed = lastVersionHighlightsDisplayed;
@@ -44,7 +41,6 @@ public class UiConfig : ConfigBase
 		_windowHeight = windowHeight;
 
 		this.WhenAnyValue(
-				x => x.Autocopy,
 				x => x.AutoPaste,
 				x => x.IsCustomChangeAddress,
 				x => x.WindowState,
@@ -52,7 +48,7 @@ public class UiConfig : ConfigBase
 				x => x.LastVersionHighlightsDisplayed,
 				x => x.PrivacyMode,
 				x => x.FeeTarget,
-				(_, _, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -70,7 +66,6 @@ public class UiConfig : ConfigBase
 			filePath,
 			privacyMode: false,
 			isCustomChangeAddress: false,
-			autocopy: true,
 			windowState: "Normal",
 			oobe: true,
 			lastVersionHighlightsDisplayed: new (2, 3, 1),
@@ -103,12 +98,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _feeTarget;
 		internal set => RaiseAndSetIfChanged(ref _feeTarget, value);
-	}
-
-	public bool Autocopy
-	{
-		get => _autocopy;
-		set => RaiseAndSetIfChanged(ref _autocopy, value);
 	}
 
 	public bool AutoPaste

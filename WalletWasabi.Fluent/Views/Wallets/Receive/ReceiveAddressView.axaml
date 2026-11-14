@@ -31,8 +31,7 @@
             <AnimatedButton ToolTip.Tip="Copy"
                             Command="{Binding CopyAddressCommand}"
                             NormalIcon="{StaticResource copy_regular}"
-                            ClickIcon="{StaticResource copy_confirmed}"
-                            AnimateIcon="{Binding IsAutoCopyEnabled}" />
+                            ClickIcon="{StaticResource copy_confirmed}" />
           </StackPanel>
         </DockPanel>
       </StackPanel>
