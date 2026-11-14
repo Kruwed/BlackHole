@@ -8,7 +8,6 @@ using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.TreeDataGrid;
-using ScriptType = WalletWasabi.Fluent.Models.Wallets.ScriptType;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
@@ -112,8 +111,6 @@ public abstract partial class CoinListItem : ViewModelBase, ITreeDataGridExpande
 		get => _isSelected;
 		set => this.RaiseAndSetIfChanged(ref _isSelected, value);
 	}
-
-	public ScriptType? ScriptType { get; protected set; }
 
 	public virtual bool HasChildren() => Children.Count != 0;
 

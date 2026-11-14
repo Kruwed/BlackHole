@@ -4,7 +4,7 @@ public interface IDestinationProvider
 {
 	ImmutableHashSet<ScriptType> SupportedScriptTypes { get; }
 
-	IEnumerable<IDestination> GetNextDestinations(int count, bool preferTaproot);
+	IEnumerable<IDestination> GetNextDestinations(int count);
 
 	public void TrySetScriptStates(KeyState state, IEnumerable<Script> scripts);
 }

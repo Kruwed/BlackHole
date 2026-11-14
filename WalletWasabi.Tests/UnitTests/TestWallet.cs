@@ -111,7 +111,7 @@ public class TestWallet : IKeyChain, IDestinationProvider
 		// Test wallet doesn't care
 	}
 
-	public IEnumerable<IDestination> GetNextDestinations(int count, bool preferTaproot) =>
+	public IEnumerable<IDestination> GetNextDestinations(int count) =>
 		Enumerable.Range(0, count).Select(_ => CreateNewAddress());
 
 	public ImmutableHashSet<ScriptType> SupportedScriptTypes { get; } = [ScriptType.P2WPKH];

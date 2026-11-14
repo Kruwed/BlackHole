@@ -1,8 +1,5 @@
-using NBitcoin.WalletPolicies;
-using WalletWasabi.Extensions;
 using WalletWasabi.Userfacing;
 using WalletWasabi.Wallets;
-using static WalletWasabi.Blockchain.Keys.WpkhWalletPolicyHelper;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
 
@@ -11,29 +8,21 @@ public partial class WalletInfoModel
 	public WalletInfoModel(Wallet wallet)
 	{
 		var network = wallet.Network;
-		var secret = PasswordHelper.GetMasterExtKey(wallet.KeyManager, wallet.Password);
+		var keyManager = wallet.KeyManager;
+		var secret = PasswordHelper.GetMasterExtKey(keyManager, wallet.Password);
 
 		ExtendedMasterPrivateKey = secret.GetWif(network).ToWif();
-		ExtendedAccountPrivateKey = secret.Derive(wallet.KeyManager.SegwitAccountKeyPath).GetWif(network).ToWif();
-		ExtendedMasterZprv = secret.ToZPrv(network);
+		ExtendedAccountPrivateKey = secret.Derive(keyManager.TaprootAccountKeyPath).GetWif(network).ToWif();
 
-		WpkhWalletPolicy = wallet.KeyManager.GetWpkhWalletPolicy(wallet.Password, network);
-
-		SegWitExtendedAccountPublicKey = wallet.KeyManager.SegwitExtPubKey.ToString(network);
-		TaprootExtendedAccountPublicKey = wallet.KeyManager.TaprootExtPubKey?.ToString(network);
-
-		SegWitAccountKeyPath = $"m/{wallet.KeyManager.SegwitAccountKeyPath}";
-		TaprootAccountKeyPath = $"m/{wallet.KeyManager.TaprootAccountKeyPath}";
-		MasterKeyFingerprint = wallet.KeyManager.MasterFingerprint?.ToString();
+		OutputDescriptor = keyManager.GetOutputDescriptor(network);
+		ExtendedAccountPublicKey = keyManager.TaprootExtPubKey.ToString(network);
+		AccountKeyPath = $"m/{keyManager.TaprootAccountKeyPath}";
+		MasterKeyFingerprint = keyManager.MasterFingerprint?.ToString();
 	}
 
-	public string SegWitExtendedAccountPublicKey { get; }
+	public string ExtendedAccountPublicKey { get; }
 
-	public string? TaprootExtendedAccountPublicKey { get; }
-
-	public string SegWitAccountKeyPath { get; }
-
-	public string TaprootAccountKeyPath { get; }
+	public string AccountKeyPath { get; }
 
 	public string? MasterKeyFingerprint { get; }
 
@@ -41,7 +30,6 @@ public partial class WalletInfoModel
 
 	public string ExtendedAccountPrivateKey { get; }
 
-	public string ExtendedMasterZprv { get; }
-
-	public WalletPolicy WpkhWalletPolicy { get; }
+	/// <summary>Public descriptor of the wallet's addresses, e.g. to watch them with other software.</summary>
+	public string OutputDescriptor { get; }
 }

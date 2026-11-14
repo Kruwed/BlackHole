@@ -45,8 +45,6 @@ public class PocketViewModel : CoinListItem
 			.BindTo(this, x => x.IsCoinjoining)
 			.DisposeWith(_disposables);
 
-		ScriptType = null;
-
 		Children
 			.AsObservableChangeSet()
 			.WhenPropertyChanged(x => x.IsSelected)

@@ -20,8 +20,8 @@ public class SmartCoinTests
 		var km = KeyManager.CreateNew(out _, "", Network.Main);
 		var hdpk1 = km.GenerateNewKey(LabelsArray.Empty, KeyState.Clean, false);
 		var hdpk2 = km.GenerateNewKey(LabelsArray.Empty, KeyState.Clean, false);
-		tx.Outputs[0].ScriptPubKey = hdpk1.P2wpkhScript;
-		tx.Outputs[1].ScriptPubKey = hdpk2.P2wpkhScript;
+		tx.Outputs[0].ScriptPubKey = hdpk1.P2Taproot;
+		tx.Outputs[1].ScriptPubKey = hdpk2.P2Taproot;
 
 		var height = Height.Mempool;
 		var stx = new SmartTransaction(tx, height);

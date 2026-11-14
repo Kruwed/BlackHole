@@ -70,23 +70,16 @@ public static class ServiceFactory
 		Shamir.Generate(threshold: 1, shares: 1, seed);
 
 	/// <param name="seed">Seed of the wallet. A random one is used if it is not given.</param>
-	public static KeyManager CreateKeyManager(string password = "blahblahblah", bool isTaprootAllowed = false, byte[]? seed = null)
+	public static KeyManager CreateKeyManager(string password = "blahblahblah", byte[]? seed = null)
 	{
 		ExtKey extKey = ExtKey.CreateFromSeed(seed ?? WalletGenerator.GenerateShamirEntropy());
 		var encryptedSecret = extKey.PrivateKey.GetEncryptedBitcoinSecret(password, Network.Main);
 
 		HDFingerprint masterFingerprint = extKey.Neuter().PubKey.GetHDFingerPrint();
 		BlockchainState blockchainState = new(Network.Main);
-		KeyPath segwitAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit);
-		ExtPubKey segwitExtPubKey = extKey.Derive(segwitAccountKeyPath).Neuter();
+		KeyPath taprootAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main);
+		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
 
-		ExtPubKey? taprootExtPubKey = null;
-		if (isTaprootAllowed)
-		{
-			KeyPath taprootAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.TaprootBIP86);
-			taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
-		}
-
-		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, null, null, 21, blockchainState, null, segwitAccountKeyPath, null);
+		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, null, null, 21, blockchainState, null, taprootAccountKeyPath);
 	}
 }

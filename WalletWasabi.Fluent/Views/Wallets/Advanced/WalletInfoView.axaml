@@ -29,15 +29,6 @@
       </PreviewItem>
       <Separator IsVisible="{Binding !!ExtendedMasterPrivateKey}" />
 
-      <PreviewItem Icon="{StaticResource private_key_regular}"
-                     Label="Extended Master zprv"
-                     CopyableContent="{Binding ExtendedMasterZprv}"
-                     IsVisible="{Binding !!ExtendedMasterZprv}"
-                     PrivacyModeEnabled="{Binding !ShowSensitiveData}">
-        <TextBlock Classes="monoSpaced" Text="{Binding ExtendedMasterZprv}" />
-      </PreviewItem>
-      <Separator IsVisible="{Binding !!ExtendedMasterZprv}" />
-
       <PreviewItem Icon="{StaticResource fingerprint_regular}"
                      Label="Extended Master Fingerprint"
                      CopyableContent="{Binding MasterKeyFingerprint}"
@@ -47,16 +38,9 @@
       <Separator IsVisible="{Binding MasterKeyFingerprint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
       <PreviewItem Icon="{StaticResource organization_regular}"
-                     Label="Account Key Path (SegWit)"
-                     CopyableContent="{Binding SegWitAccountKeyPath}">
-        <TextBlock Classes="monoSpaced" Text="{Binding SegWitAccountKeyPath}" />
-      </PreviewItem>
-      <Separator />
-
-      <PreviewItem Icon="{StaticResource organization_regular}"
-                           Label="Account Key Path (Taproot)"
-                           CopyableContent="{Binding TaprootAccountKeyPath}">
-        <TextBlock Classes="monoSpaced" Text="{Binding TaprootAccountKeyPath}" />
+                     Label="Account Key Path"
+                     CopyableContent="{Binding AccountKeyPath}">
+        <TextBlock Classes="monoSpaced" Text="{Binding AccountKeyPath}" />
       </PreviewItem>
       <Separator />
 
@@ -71,26 +55,18 @@
 
       <StackPanel Spacing="10">
         <PreviewItem Icon="{StaticResource key_regular}"
-                     Label="WPKH Wallet Policy"
-                     CopyableContent="{Binding WpkhWalletPolicyFullDescriptor}">
-          <PrivacyContentControl Classes="monoSpaced" Content="{Binding WpkhWalletPolicyFullDescriptor}" ForceShow="{Binding ShowSensitiveData}" />
+                     Label="Output Descriptor"
+                     CopyableContent="{Binding OutputDescriptor}">
+          <PrivacyContentControl Classes="monoSpaced" Content="{Binding OutputDescriptor}" ForceShow="{Binding ShowSensitiveData}" />
         </PreviewItem>
       </StackPanel>
 
       <Separator />
 
       <PreviewItem Icon="{StaticResource key_regular}"
-                     Label="Extended Account Public Key (SegWit)"
-                     CopyableContent="{Binding SegWitExtendedAccountPublicKey}">
-        <PrivacyContentControl Classes="monoSpaced" Content="{Binding SegWitExtendedAccountPublicKey}" ForceShow="{Binding ShowSensitiveData}" />
-      </PreviewItem>
-      <Separator />
-
-      <PreviewItem Icon="{StaticResource key_regular}"
-                     Label="Extended Account Public Key (Taproot)"
-                     CopyableContent="{Binding TaprootExtendedAccountPublicKey}"
-                     IsVisible="{Binding !!TaprootExtendedAccountPublicKey}">
-        <PrivacyContentControl Classes="monoSpaced" Content="{Binding TaprootExtendedAccountPublicKey}" ForceShow="{Binding ShowSensitiveData}" />
+                     Label="Extended Account Public Key"
+                     CopyableContent="{Binding ExtendedAccountPublicKey}">
+        <PrivacyContentControl Classes="monoSpaced" Content="{Binding ExtendedAccountPublicKey}" ForceShow="{Binding ShowSensitiveData}" />
       </PreviewItem>
     </StackPanel>
   </ContentArea>

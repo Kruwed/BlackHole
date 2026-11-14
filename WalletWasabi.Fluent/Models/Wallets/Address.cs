@@ -30,7 +30,6 @@ public class Address : ReactiveObject, IAddress
 	public KeyPath FullKeyPath => HdPubKey.FullKeyPath;
 	public string Text => BitcoinAddress.ToString();
 	public string ShortenedText => ShortenAddress(BitcoinAddress.ToString());
-	public ScriptType ScriptType => ScriptType.FromEnum(BitcoinAddress.ScriptPubKey.GetScriptType());
 
 	public void Hide()
 	{
@@ -45,7 +44,6 @@ public class Address : ReactiveObject, IAddress
 
 	public static string ShortenAddress(string input)
 	{
-		// Don't shorten SegWit addresses
 		if (input.Length <= 47)
 		{
 			return input;

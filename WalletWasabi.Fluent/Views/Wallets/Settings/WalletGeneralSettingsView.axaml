@@ -6,7 +6,6 @@
              xmlns:vm="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Settings"
              xmlns:conv="clr-namespace:WalletWasabi.Fluent.Converters"
              xmlns:models="clr-namespace:WalletWasabi.Models;assembly=WalletWasabi"
-             xmlns:wallets="clr-namespace:WalletWasabi.Fluent.Models.Wallets"
              x:DataType="vm:WalletSettingsViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Settings.WalletGeneralSettingsView">
@@ -33,29 +32,6 @@
       </ComboBox>
     </DockPanel>
 
-    <DockPanel IsVisible="{Binding SeveralReceivingScriptTypes}">
-      <TextBlock Text="Default Receive Address Type" />
-      <ComboBox ItemsSource="{Binding ReceiveScriptTypes}"
-                SelectedItem="{Binding DefaultReceiveScriptType}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="wallets:ScriptType">
-            <TextBlock Text="{Binding Converter={x:Static conv:ScriptTypeConverters.ToName}}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-    </DockPanel>
-
-    <DockPanel IsVisible="{Binding SeveralReceivingScriptTypes}" ToolTip.Tip="Script Type of the keys used to create change outputs.">
-      <TextBlock Text="Change Address Type" />
-      <ComboBox ItemsSource="{Binding ChangeScriptPubKeyTypes}"
-                SelectedItem="{Binding ChangeScriptPubKeyType}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="models:PreferredScriptPubKeyType">
-            <TextBlock Text="{Binding Converter={x:Static conv:PreferredScriptPubKeyTypeConverter.ToName}}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-    </DockPanel>
   </StackPanel>
 
 </UserControl>

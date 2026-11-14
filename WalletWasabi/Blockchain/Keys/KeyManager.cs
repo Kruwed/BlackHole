@@ -35,20 +35,17 @@ public class KeyManager
 		BitcoinEncryptedSecretNoEC encryptedSecret,
 		byte[] chainCode,
 		HDFingerprint? masterFingerprint,
-		ExtPubKey extPubKey,
-		ExtPubKey? taprootExtPubKey,
+		ExtPubKey taprootExtPubKey,
 		ExtPubKey? silentPaymentScanExtPubKey,
 		ExtPubKey? silentPaymentSpendExtPubKey,
 		int? minGapLimit,
 		BlockchainState blockchainState,
 		string? filePath = null,
-		KeyPath? segwitAccountKeyPath = null,
 		KeyPath? taprootAccountKeyPath = null)
 	{
 		EncryptedSecret = encryptedSecret;
 		ChainCode = chainCode;
 		MasterFingerprint = masterFingerprint;
-		SegwitExtPubKey = extPubKey;
 		TaprootExtPubKey = taprootExtPubKey;
 		SilentPaymentScanExtPubKey = silentPaymentScanExtPubKey;
 		SilentPaymentSpendExtPubKey = silentPaymentSpendExtPubKey;
@@ -57,16 +54,9 @@ public class KeyManager
 
 		_blockchainState = blockchainState;
 
-		SegwitAccountKeyPath = segwitAccountKeyPath ?? GetAccountKeyPath(_blockchainState.Network, ScriptPubKeyType.Segwit);
-		SegwitExternalKeyGenerator = new HdPubKeyGenerator(SegwitExtPubKey.Derive(0), SegwitAccountKeyPath.Derive(0), MinGapLimit);
-		_segwitInternalKeyGenerator = new HdPubKeyGenerator(SegwitExtPubKey.Derive(1), SegwitAccountKeyPath.Derive(1), MinGapLimit);
-
-		TaprootAccountKeyPath = taprootAccountKeyPath ?? GetAccountKeyPath(_blockchainState.Network, ScriptPubKeyType.TaprootBIP86);
-		if (TaprootExtPubKey is { })
-		{
-			TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
-			_taprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
-		}
+		TaprootAccountKeyPath = taprootAccountKeyPath ?? GetAccountKeyPath(_blockchainState.Network);
+		TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
+		_taprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
 
 		if (SilentPaymentScanExtPubKey is { })
 		{
@@ -85,22 +75,19 @@ public class KeyManager
 
 	/// <remarks>Note that <see cref="GetNextReceiveKey(HdPubKeyGenerator)"/> can increase the minimum gap limit value.</remarks>
 	private int GetEffectiveMinGapLimit() =>
-		Math.Max(MinGapLimit, Math.Max(SegwitExternalKeyGenerator.MinGapLimit, TaprootExternalKeyGenerator?.MinGapLimit ?? 0));
+		Math.Max(MinGapLimit, TaprootExternalKeyGenerator.MinGapLimit);
 
-	public static KeyPath GetAccountKeyPath(Network network, ScriptPubKeyType scriptPubKeyType) =>
-		GetAccountKeyPath(network, new KeyPurpose.LoudPaymentKey(scriptPubKeyType));
+	/// <summary>The BIP86 account that the addresses of the wallet come from.</summary>
+	public static KeyPath GetAccountKeyPath(Network network) =>
+		GetAccountKeyPath(network, KeyPurpose.Loud);
 
 	public static KeyPath GetAccountKeyPath(Network network, KeyPurpose purpose) =>
 		new((network.Name, purpose) switch
 		{
-			("TestNet4", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.Segwit)) => "m/84h/1h/0h",
-			("signet", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.Segwit)) => "m/84h/1h/0h",
-			("RegTest", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.Segwit)) => "m/84h/0h/0h",
-			("Main", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.Segwit)) => "m/84h/0h/0h",
-			("TestNet4", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.TaprootBIP86)) => "m/86h/1h/0h",
-			("signet", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.TaprootBIP86)) => "m/86h/1h/0h",
-			("RegTest", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.TaprootBIP86)) => "m/86h/0h/0h",
-			("Main", KeyPurpose.LoudPaymentKey(ScriptPubKeyType.TaprootBIP86)) => "m/86h/0h/0h",
+			("TestNet4", KeyPurpose.LoudPaymentKey) => "m/86h/1h/0h",
+			("signet", KeyPurpose.LoudPaymentKey) => "m/86h/1h/0h",
+			("RegTest", KeyPurpose.LoudPaymentKey) => "m/86h/0h/0h",
+			("Main", KeyPurpose.LoudPaymentKey) => "m/86h/0h/0h",
 			("TestNet4", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/1h/0h/1h",
 			("signet", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/1h/0h/1h",
 			("RegTest", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/0h/0h/1h",
@@ -109,19 +96,19 @@ public class KeyManager
 			("signet", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/1h/0h/0h",
 			("RegTest", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/0h/0h/0h",
 			("Main", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/0h/0h/0h",
-			(_, KeyPurpose.LoudPaymentKey s) => throw new ArgumentException($"Unknown account for network '{network}' and script type {s.ScriptPubKeyType}."),
+			(_, KeyPurpose.LoudPaymentKey) => throw new ArgumentException($"Unknown account for network '{network}'."),
 			(_, KeyPurpose.SilentPaymentKey) => throw new ArgumentException($"Unknown account for silentPayment and network '{network}'"),
 			_ => throw new ArgumentException($"Unknown account for network '{network}' and key purpose.")
 		});
 
-	public WalletPolicy GetWpkhWalletPolicy(string password, Network network)
+	/// <summary>
+	/// Public descriptor of the wallet's addresses with its checksum, see <seealso href="https://bips.dev/386/">BIP386</seealso>
+	/// and <seealso href="https://bips.dev/389/">BIP389</seealso>, e.g. <c>tr([2fc4a4f3/86'/0'/0']xpub.../&lt;0;1&gt;/*)#udsxyp2a</c>.
+	/// </summary>
+	public string GetOutputDescriptor(Network network)
 	{
-		if (!MasterFingerprint.HasValue)
-		{
-			throw new InvalidOperationException($"{nameof(MasterFingerprint)} is not defined.");
-		}
-
-		return WpkhWalletPolicyHelper.Get(network, MasterFingerprint.Value, GetMasterExtKey(password), SegwitAccountKeyPath);
+		var origin = MasterFingerprint is { } fingerprint ? $"[{fingerprint}/{TaprootAccountKeyPath}]" : "";
+		return Miniscript.AddChecksum($"tr({origin}{TaprootExtPubKey.ToString(network)}/<0;1>/*)");
 	}
 
 	#region Properties
@@ -132,15 +119,12 @@ public class KeyManager
 
 	public HDFingerprint? MasterFingerprint { get; private set; }
 
-	public ExtPubKey SegwitExtPubKey { get; }
-
-	public ExtPubKey? TaprootExtPubKey { get; private set; }
+	/// <summary>Extended public key of the BIP86 account. Every address of the wallet is derived from it.</summary>
+	public ExtPubKey TaprootExtPubKey { get; }
 
 	public int MinGapLimit { get; private set; }
 
-	public KeyPath SegwitAccountKeyPath { get; private set; }
-
-	public KeyPath TaprootAccountKeyPath { get; private set; }
+	public KeyPath TaprootAccountKeyPath { get; }
 
 	public ExtPubKey? SilentPaymentScanExtPubKey { get; private set; }
 
@@ -161,10 +145,6 @@ public class KeyManager
 
 	public bool OnlyUsePrivateFundsForPayments { get; set; } = PrivacyProfiles.DefaultProfile.OnlyUsePrivateFundsForPayments;
 
-	public ScriptPubKeyType DefaultReceiveScriptType { get; set; } = ScriptPubKeyType.TaprootBIP86;
-
-	public PreferredScriptPubKeyType ChangeScriptPubKeyType { get; set; } = PreferredScriptPubKeyType.Unspecified.Instance;
-
 	public SendWorkflow DefaultSendWorkflow { get; set; } = SendWorkflow.Automatic;
 
 	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
@@ -172,10 +152,6 @@ public class KeyManager
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
 
 	public string? FilePath { get; private set; }
-
-	public IEnumerable<ScriptPubKeyType> AvailableScriptPubKeyTypes => TaprootExtPubKey is null
-		? [ScriptPubKeyType.Segwit]
-		: [ScriptPubKeyType.Segwit, ScriptPubKeyType.TaprootBIP86];
 
 	private readonly HdPubKeyCache _hdPubKeyCache = new();
 
@@ -185,10 +161,8 @@ public class KeyManager
 
 	#endregion Properties
 
-	private HdPubKeyGenerator SegwitExternalKeyGenerator { get; set; }
-	private readonly HdPubKeyGenerator _segwitInternalKeyGenerator;
-	private HdPubKeyGenerator? TaprootExternalKeyGenerator { get; set; }
-	private readonly HdPubKeyGenerator? _taprootInternalKeyGenerator;
+	private HdPubKeyGenerator TaprootExternalKeyGenerator { get; set; }
+	private readonly HdPubKeyGenerator _taprootInternalKeyGenerator;
 	private HdPubKeyGenerator? _silentPaymentScanKeyGenerator;
 	private HdPubKeyGenerator? _silentPaymentSpendKeyGenerator;
 	private List<(SilentPaymentAddress Address, ECPrivKey ScanSecret)> _silentPaymentScanData = new();
@@ -224,44 +198,40 @@ public class KeyManager
 		HDFingerprint masterFingerprint = extKey.Neuter().PubKey.GetHDFingerPrint();
 		var birthHeight = FilterCheckpoints.GetMostRecentCheckpoint(network).Header.Height;
 		BlockchainState blockchainState = new(network, birthHeight: birthHeight);
-		KeyPath segwitAccountKeyPath = GetAccountKeyPath(network, ScriptPubKeyType.Segwit);
-		ExtPubKey segwitExtPubKey = extKey.Derive(segwitAccountKeyPath).Neuter();
 
-		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network, ScriptPubKeyType.TaprootBIP86);
+		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network);
 		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
 
 		ExtPubKey silentPaymentScanExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Scan)).Neuter();
 		ExtPubKey silentPaymentSpendExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Spend)).Neuter();
 
-		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
+		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, taprootAccountKeyPath);
 	}
 
 	/// <param name="shares">As many SLIP-39 shares as their threshold requires. They alone determine the keys of the wallet.</param>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
-	public static KeyManager Recover(Share[] shares, string password, Network network, KeyPath swAccountKeyPath, KeyPath? trAccountKeyPath = null, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
+	public static KeyManager Recover(Share[] shares, string password, Network network, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
 	{
 		password ??= "";
 		var seed = Shamir.Combine(shares);
-		return Recover(seed, password, network, swAccountKeyPath, trAccountKeyPath, filePath, minGapLimit, birthHeight);
+		return Recover(seed, password, network, filePath, minGapLimit, birthHeight);
 	}
 
-	private static KeyManager Recover(byte[] seed, string password, Network network, KeyPath swAccountKeyPath, KeyPath? trAccountKeyPath = null, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
+	private static KeyManager Recover(byte[] seed, string password, Network network, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
 	{
 		ExtKey extKey = ExtKey.CreateFromSeed(seed);
 		var encryptedSecret = extKey.PrivateKey.GetEncryptedBitcoinSecret(password, network);
 
 		HDFingerprint masterFingerprint = extKey.Neuter().PubKey.GetHDFingerPrint();
 
-		KeyPath segwitAccountKeyPath = swAccountKeyPath ?? GetAccountKeyPath(network, ScriptPubKeyType.Segwit);
-		ExtPubKey segwitExtPubKey = extKey.Derive(segwitAccountKeyPath).Neuter();
-		KeyPath taprootAccountKeyPath = trAccountKeyPath ?? GetAccountKeyPath(network, ScriptPubKeyType.TaprootBIP86);
+		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network);
 		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
 		ExtPubKey silentPaymentScanExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Scan)).Neuter();
 		ExtPubKey silentPaymentSpendExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Spend)).Neuter();
 
 		birthHeight ??= FilterCheckpoints.GetWasabiGenesisFilter(network).Header.Height;
 		var blockchainState = new BlockchainState(network, height: birthHeight, birthHeight: birthHeight);
-		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
+		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, taprootAccountKeyPath);
 		km.AssertCleanKeysIndexedNoLock();
 		return km;
 	}
@@ -294,23 +264,22 @@ public class KeyManager
 		IoHelpers.EnsureContainingDirectoryExists(FilePath);
 	}
 
-	internal HdPubKey GenerateNewKey(LabelsArray labels, KeyState keyState, bool isInternal, ScriptPubKeyType scriptPubKeyType = ScriptPubKeyType.Segwit)
+	internal HdPubKey GenerateNewKey(LabelsArray labels, KeyState keyState, bool isInternal)
 	{
-		var hdPubKeyRegistry = GetHdPubKeyGenerator(isInternal, scriptPubKeyType)
-			?? throw new NotSupportedException($"Script type '{scriptPubKeyType}' is not supported.");
+		var hdPubKeyRegistry = isInternal ? _taprootInternalKeyGenerator : TaprootExternalKeyGenerator;
 
 		lock (_criticalStateLock)
 		{
 			var view = _hdPubKeyCache.GetView(hdPubKeyRegistry.KeyPath);
 			var (keyPath, extPubKey) = hdPubKeyRegistry.GenerateNewKey(view);
 			var hdPubKey = new HdPubKey(extPubKey.PubKey, keyPath, labels, keyState);
-			_hdPubKeyCache.AddKey(hdPubKey, scriptPubKeyType);
+			_hdPubKeyCache.AddKey(hdPubKey);
 			return hdPubKey;
 		}
 	}
 
-	public HdPubKey GetNextReceiveKey(LabelsArray labels, ScriptPubKeyType scriptPubKeyType = ScriptPubKeyType.Segwit) =>
-		GetNextReceiveKey(labels, KeyPurpose.Loud(scriptPubKeyType));
+	public HdPubKey GetNextReceiveKey(LabelsArray labels) =>
+		GetNextReceiveKey(labels, KeyPurpose.Loud);
 
 	public HdPubKey GetNextReceiveKey(LabelsArray labels, KeyPurpose purpose)
 	{
@@ -318,17 +287,15 @@ public class KeyManager
 		{
 			var (generator, generatorSetter) = purpose switch
 			{
-				KeyPurpose.LoudPaymentKey(ScriptPubKeyType.Segwit) => (SegwitExternalKeyGenerator, (Action<HdPubKeyGenerator>)(g => SegwitExternalKeyGenerator = g)),
-				KeyPurpose.LoudPaymentKey(ScriptPubKeyType.TaprootBIP86) => (TaprootExternalKeyGenerator, (g => TaprootExternalKeyGenerator = g)),
+				KeyPurpose.LoudPaymentKey => (TaprootExternalKeyGenerator, (Action<HdPubKeyGenerator>)(g => TaprootExternalKeyGenerator = g)),
 				KeyPurpose.SilentPaymentKey.ScanKey => (_silentPaymentScanKeyGenerator, g => _silentPaymentScanKeyGenerator = g),
 				KeyPurpose.SilentPaymentKey.SpendKey => (_silentPaymentSpendKeyGenerator, g => _silentPaymentSpendKeyGenerator = g),
-				KeyPurpose.LoudPaymentKey(var scriptPubKeyType) => throw new NotSupportedException($"Script type '{scriptPubKeyType}' is not supported."),
 				_ => throw new NotSupportedException("Key purpose is unknown.")
 			};
 
 			if (generator is null)
 			{
-				throw new NotSupportedException("Taproot is not supported in this wallet.");
+				throw new NotSupportedException("Silent payment keys are not available in this wallet.");
 			}
 
 			var (newKey, newlyGeneratedKeySet, newHdPubKeyGenerator) = GetNextReceiveKey(generator);
@@ -365,22 +332,13 @@ public class KeyManager
 	public HdPubKey GetNextChangeKey() =>
 		GetKeys(x =>
 			x.KeyState == KeyState.Clean &&
-			x.IsInternal &&
-			MatchesChangeScriptPubKeyType(x))
+			x.IsInternal)
 			.First();
 
 	public ImmutableArray<HdPubKey> GetNextCoinJoinKeys() =>
 		GetKeys(x =>
 				x.KeyState == KeyState.Locked &&
 				x.IsInternal == true);
-
-	private bool MatchesChangeScriptPubKeyType(HdPubKey hd) =>
-		ChangeScriptPubKeyType switch
-		{
-			PreferredScriptPubKeyType.Unspecified => true,
-			PreferredScriptPubKeyType.Specified scriptType => hd.FullKeyPath.GetScriptTypeFromKeyPath() == scriptType.ScriptType,
-			_ => throw new ArgumentOutOfRangeException()
-		};
 
 	public ImmutableArray<HdPubKey> GetKeys(Func<HdPubKey, bool>? wherePredicate)
 	{
@@ -429,7 +387,7 @@ public class KeyManager
 	{
 		ExtKey extKey = GetMasterExtKey(password);
 
-		foreach (HdPubKey key in GetKeys(x => scripts.Contains(x.P2wpkhScript) || scripts.Contains(x.P2Taproot)))
+		foreach (HdPubKey key in GetKeys(x => scripts.Contains(x.P2Taproot)))
 		{
 			yield return extKey.Derive(key.FullKeyPath).PrivateKey;
 		}
@@ -458,9 +416,7 @@ public class KeyManager
 			Key secret = EncryptedSecret.GetKey(password);
 			var extKey = new ExtKey(secret, ChainCode);
 
-			// Backwards compatibility:
 			MasterFingerprint ??= secret.PubKey.GetHDFingerPrint();
-			DeriveTaprootExtPubKey(extKey);
 			DeriveSilentPaymentExtPubKeys(extKey);
 
 			MasterKeyAndPasswordHash = (passwordHash, extKey);
@@ -470,15 +426,6 @@ public class KeyManager
 		catch (SecurityException ex)
 		{
 			throw new SecurityException("Invalid password.", ex);
-		}
-	}
-
-	private void DeriveTaprootExtPubKey(ExtKey extKey)
-	{
-		if (TaprootExtPubKey is null)
-		{
-			TaprootAccountKeyPath = GetAccountKeyPath(GetNetwork(), ScriptPubKeyType.TaprootBIP86);
-			TaprootExtPubKey = extKey.Derive(TaprootAccountKeyPath).Neuter();
 		}
 	}
 
@@ -492,12 +439,8 @@ public class KeyManager
 		hdPubKey.SetKeyState(newKeyState);
 		if (newKeyState is KeyState.Locked or KeyState.Used)
 		{
-			var keySource = GetHdPubKeyGenerator(hdPubKey.IsInternal, hdPubKey.FullKeyPath.GetScriptTypeFromKeyPath());
-
-			// This can happen after downgrading to pre-taproot wasabi version the switching back to a supporting
-			// version so taproot keys are detected. However, the user has not login yet so taprootextpubkey is
-			// not derived yet (because pre-taproot wasabi do not serialize fields that it doesn't know)
-			if (keySource is not null)
+			// Only the two chains of the account keep a gap of clean keys. Silent payment keys do not.
+			if (GetHdPubKeyGenerator(hdPubKey) is { } keySource)
 			{
 				lock (_criticalStateLock)
 				{
@@ -509,15 +452,17 @@ public class KeyManager
 		}
 	}
 
-	private HdPubKeyGenerator? GetHdPubKeyGenerator(bool isInternal, ScriptPubKeyType scriptPubKeyType) =>
-		(isInternal, scriptPubKeyType) switch
-		{
-			(true, ScriptPubKeyType.Segwit) => _segwitInternalKeyGenerator,
-			(false, ScriptPubKeyType.Segwit) => SegwitExternalKeyGenerator,
-			(true, ScriptPubKeyType.TaprootBIP86) => _taprootInternalKeyGenerator,
-			(false, ScriptPubKeyType.TaprootBIP86) => TaprootExternalKeyGenerator,
-			_ => throw new NotSupportedException($"There is not available generator for '{scriptPubKeyType}.")
-		};
+	/// <returns>The generator of the chain the key belongs to, or null if it is not a key of the account's receive or change chain.</returns>
+	private HdPubKeyGenerator? GetHdPubKeyGenerator(HdPubKey hdPubKey)
+	{
+		var chain = hdPubKey.FullKeyPath.Parent;
+
+		return chain == TaprootExternalKeyGenerator.KeyPath
+			? TaprootExternalKeyGenerator
+			: chain == _taprootInternalKeyGenerator.KeyPath
+				? _taprootInternalKeyGenerator
+				: null;
+	}
 
 	private void DeriveSilentPaymentExtPubKeys(ExtKey extKey)
 	{
@@ -543,13 +488,10 @@ public class KeyManager
 	{
 		var keys = new[]
 			{
-				_segwitInternalKeyGenerator,
-				SegwitExternalKeyGenerator,
 				_taprootInternalKeyGenerator,
 				TaprootExternalKeyGenerator
 			}
-			.Where(x => x is not null)
-			.SelectMany(gen => gen!.AssertCleanKeysIndexed(_hdPubKeyCache.GetView(gen.KeyPath)))
+			.SelectMany(gen => gen.AssertCleanKeysIndexed(_hdPubKeyCache.GetView(gen.KeyPath)))
 			.Select(CreateHdPubKey);
 
 		_hdPubKeyCache.AddRangeKeys(keys);
@@ -558,24 +500,20 @@ public class KeyManager
 	/// <summary>
 	/// Make sure there's always locked internal keys generated and indexed.
 	/// </summary>
-	public void AssertLockedInternalKeysIndexedAndPersist(int howMany, bool preferTaproot)
+	public void AssertLockedInternalKeysIndexedAndPersist(int howMany)
 	{
 		lock (_criticalStateLock)
 		{
-			if (AssertLockedInternalKeysIndexedNoLock(howMany, preferTaproot))
+			if (AssertLockedInternalKeysIndexedNoLock(howMany))
 			{
 				ToFileNoLock();
 			}
 		}
 	}
 
-	private bool AssertLockedInternalKeysIndexedNoLock(int howMany, bool preferTaproot)
+	private bool AssertLockedInternalKeysIndexedNoLock(int howMany)
 	{
-		var hdPubKeyGenerator = (_taprootInternalKeyGenerator, preferTaproot) switch
-		{
-			({ }, true) => _taprootInternalKeyGenerator,
-			_ => _segwitInternalKeyGenerator
-		};
+		var hdPubKeyGenerator = _taprootInternalKeyGenerator;
 
 		Guard.InRangeAndNotNull(nameof(howMany), howMany, 0, hdPubKeyGenerator.MinGapLimit);
 		var internalView = _hdPubKeyCache.GetView(hdPubKeyGenerator.KeyPath);
@@ -709,12 +647,10 @@ public class KeyManager
 			("EncryptedSecret", Encode.BitcoinEncryptedSecretNoEC(keyManager.EncryptedSecret)),
 			("ChainCode", Encode.ChainCode(keyManager.ChainCode)),
 			("MasterFingerprint", Encode.Optional(keyManager.MasterFingerprint, Encode.HDFingerprint)),
-			("ExtPubKey", Encode.ExtPubKey(keyManager.SegwitExtPubKey)),
-			("TaprootExtPubKey", Encode.Optional(keyManager.TaprootExtPubKey, Encode.ExtPubKey)),
+			("TaprootExtPubKey", Encode.ExtPubKey(keyManager.TaprootExtPubKey)),
 			("SilentPaymentScanExtPubKey", Encode.Optional(keyManager.SilentPaymentScanExtPubKey, Encode.ExtPubKey)),
 			("SilentPaymentSpendExtPubKey", Encode.Optional(keyManager.SilentPaymentSpendExtPubKey, Encode.ExtPubKey)),
 			("MinGapLimit", Encode.Int(keyManager.GetEffectiveMinGapLimit())),
-			("AccountKeyPath", Encode.KeyPath(keyManager.SegwitAccountKeyPath)),
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
@@ -722,8 +658,6 @@ public class KeyManager
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
-			("DefaultReceiveScriptType", Encode.ScriptPubKeyType(keyManager.DefaultReceiveScriptType)),
-			("ChangeScriptPubKeyType", Encode.PreferredScriptPubKeyType(keyManager.ChangeScriptPubKeyType)),
 			("DefaultSendWorkflow", Encode.SendWorkflow(keyManager.DefaultSendWorkflow)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
@@ -743,15 +677,12 @@ public class KeyManager
 				get.Required("EncryptedSecret", encryptedSecretDecoder),
 				get.Required("ChainCode", Decode.ByteArray),
 				fingerprint,
-
-				get.Required("ExtPubKey", Decode.ExtPubKey),
-				get.Optional("TaprootExtPubKey", Decode.ExtPubKey),
+				get.Required("TaprootExtPubKey", Decode.ExtPubKey),
 				get.Optional("SilentPaymentScanExtPubKey", Decode.ExtPubKey),
 				get.Optional("SilentPaymentSpendExtPubKey", Decode.ExtPubKey),
 				get.Optional("MinGapLimit", Decode.Int),
 				blockchainState,
 				(string?) "",
-				get.Optional("AccountKeyPath", Decode.KeyPath),
 				get.Optional("TaprootAccountKeyPath", Decode.KeyPath)
 			)
 			{
@@ -760,36 +691,48 @@ public class KeyManager
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),
-				DefaultReceiveScriptType = get.Optional("DefaultReceiveScriptType", Decode.ScriptPubKeyType, ScriptPubKeyType.TaprootBIP86),
-				ChangeScriptPubKeyType = get.Optional("ChangeScriptPubKeyType", Decode.PreferredScriptPubKeyType) ?? PreferredScriptPubKeyType.Unspecified.Instance,
 				DefaultSendWorkflow = get.Optional("DefaultSendWorkflow", Decode.SendWorkflow, SendWorkflow.Automatic),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? []
 			};
-			km._hdPubKeyCache.AddRangeKeys(get.Required("HdPubKeys", Decode.Array(Decode.HdPubKey)));
+			km._hdPubKeyCache.AddRangeKeys(km.AssertKeysBelongToWallet(get.Required("HdPubKeys", Decode.Array(Decode.HdPubKey))));
 			return km;
 		});
-}
 
-public static class KeyPathExtensions
-{
-	public static ScriptPubKeyType GetScriptTypeFromKeyPath(this KeyPath keyPath) =>
-		keyPath.ToBytes().First() switch
+	/// <summary>
+	/// Every key is turned into a Taproot address, so a wallet file may only hold keys of the wallet's own BIP86
+	/// account (and its silent payment keys). Keys of other accounts, for example of a SegWit v0 account written by
+	/// another wallet software, would silently become addresses that nobody ever paid to.
+	/// </summary>
+	private HdPubKey[] AssertKeysBelongToWallet(HdPubKey[] keys)
+	{
+		var network = GetNetwork();
+		KeyPath[] chains =
+		[
+			TaprootExternalKeyGenerator.KeyPath,
+			_taprootInternalKeyGenerator.KeyPath,
+			GetAccountKeyPath(network, KeyPurpose.Scan),
+			GetAccountKeyPath(network, KeyPurpose.Spend)
+		];
+
+		if (keys.FirstOrDefault(key => !chains.Contains(key.FullKeyPath.Parent)) is { } foreignKey)
 		{
-			84 => ScriptPubKeyType.Segwit,
-			86 => ScriptPubKeyType.TaprootBIP86,
-			_ => ScriptPubKeyType.Segwit // User can specify a specify whatever (like m/999'/999'/999')
-										 // throw new NotSupportedException("Unknown script type.")
-		};
+			throw new NotSupportedException($"The wallet file holds the key {foreignKey.FullKeyPath}, which is not a key of the wallet's Taproot account {TaprootAccountKeyPath}.");
+		}
+
+		return keys;
+	}
 }
 
 public static class HdPubKeyExtensions
 {
+	/// <summary>The Taproot (BIP86) address of the key.</summary>
 	public static BitcoinAddress GetAddress(this HdPubKey me, Network network) =>
-		me.PubKey.GetAddress(me.FullKeyPath.GetScriptTypeFromKeyPath(), network);
+		me.PubKey.GetAddress(ScriptPubKeyType.TaprootBIP86, network);
 
+	/// <summary>The Taproot (BIP86) script of the key.</summary>
 	public static Script GetAssumedScriptPubKey(this HdPubKey me) =>
-		me.PubKey.GetScriptPubKey(me.FullKeyPath.GetScriptTypeFromKeyPath());
+		me.P2Taproot;
 }
 
 public abstract record KeyPurpose
@@ -797,7 +740,9 @@ public abstract record KeyPurpose
 	public static readonly KeyPurpose Scan = new SilentPaymentKey.ScanKey();
 	public static readonly KeyPurpose Spend = new SilentPaymentKey.SpendKey();
 	public static readonly KeyPurpose Account = new SilentPaymentKey.AccountKey();
-	public static KeyPurpose Loud(ScriptPubKeyType spk) => new LoudPaymentKey(spk);
+
+	/// <summary>A key of an ordinary (Taproot) address.</summary>
+	public static readonly KeyPurpose Loud = new LoudPaymentKey();
 
 	public abstract record SilentPaymentKey : KeyPurpose
 	{
@@ -807,5 +752,5 @@ public abstract record KeyPurpose
 		public record AccountKey : SilentPaymentKey;
 	};
 
-	public record LoudPaymentKey(ScriptPubKeyType ScriptPubKeyType) : KeyPurpose;
+	public record LoudPaymentKey : KeyPurpose;
 }

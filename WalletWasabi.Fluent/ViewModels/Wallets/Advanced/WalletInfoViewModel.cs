@@ -37,13 +37,9 @@ public partial class WalletInfoViewModel : RoutableViewModel
 		});
 	}
 
-	public string SegWitExtendedAccountPublicKey => _model.SegWitExtendedAccountPublicKey;
+	public string ExtendedAccountPublicKey => _model.ExtendedAccountPublicKey;
 
-	public string? TaprootExtendedAccountPublicKey => _model.TaprootExtendedAccountPublicKey;
-
-	public string SegWitAccountKeyPath => _model.SegWitAccountKeyPath;
-
-	public string TaprootAccountKeyPath => _model.TaprootAccountKeyPath;
+	public string AccountKeyPath => _model.AccountKeyPath;
 
 	public string? MasterKeyFingerprint => _model.MasterKeyFingerprint;
 
@@ -51,7 +47,5 @@ public partial class WalletInfoViewModel : RoutableViewModel
 
 	public string ExtendedAccountPrivateKey => _model.ExtendedAccountPrivateKey;
 
-	public string ExtendedMasterZprv => _model.ExtendedMasterZprv;
-
-	public string WpkhWalletPolicyFullDescriptor => _model.WpkhWalletPolicy.FullDescriptor.ToString();
+	public string OutputDescriptor => _model.OutputDescriptor;
 }

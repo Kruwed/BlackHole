@@ -5,31 +5,16 @@ public class InternalDestinationProvider : IDestinationProvider
 	public InternalDestinationProvider(KeyManager keyManager)
 	{
 		_keyManager = keyManager;
-	    SupportedScriptTypes = _keyManager.TaprootExtPubKey is not null
-			? [ScriptType.P2WPKH, ScriptType.Taproot]
-			: [ScriptType.P2WPKH];
 	}
 
 	private readonly KeyManager _keyManager;
 
-	public IEnumerable<IDestination> GetNextDestinations(int count, bool preferTaproot)
+	public IEnumerable<IDestination> GetNextDestinations(int count)
 	{
 		// Get all locked internal keys we have and assert we have enough.
-		_keyManager.AssertLockedInternalKeysIndexedAndPersist(count, preferTaproot);
+		_keyManager.AssertLockedInternalKeysIndexedAndPersist(count);
 
-		var allKeys = _keyManager.GetNextCoinJoinKeys().ToList();
-		var taprootKeys = allKeys
-			.Where(x => x.FullKeyPath.GetScriptTypeFromKeyPath() == ScriptPubKeyType.TaprootBIP86)
-			.ToList();
-
-		var segwitKeys = allKeys
-			.Where(x => x.FullKeyPath.GetScriptTypeFromKeyPath() == ScriptPubKeyType.Segwit)
-			.ToList();
-
-		var destinations = preferTaproot && taprootKeys.Count >= count
-			? taprootKeys
-			: segwitKeys;
-		return destinations.Select(x => x.GetAddress(_keyManager.GetNetwork()));
+		return _keyManager.GetNextCoinJoinKeys().Select(x => x.GetAddress(_keyManager.GetNetwork()));
 	}
 
 	public void TrySetScriptStates(KeyState state, IEnumerable<Script> scripts)
@@ -42,5 +27,6 @@ public class InternalDestinationProvider : IDestinationProvider
 		_keyManager.ToFile();
 	}
 
-	public ImmutableHashSet<ScriptType> SupportedScriptTypes { get; }
+	/// <summary>The wallet only has Taproot addresses.</summary>
+	public ImmutableHashSet<ScriptType> SupportedScriptTypes { get; } = [ScriptType.Taproot];
 }

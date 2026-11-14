@@ -43,9 +43,9 @@ public class AddressesModel
 
 	private IEnumerable<HdPubKey> GetUnusedKeys() => _wallet.KeyManager.GetKeys(x => x is { IsInternal: false, KeyState: KeyState.Clean, Labels.Count: > 0 });
 
-	public IAddress NextReceiveAddress(IEnumerable<string> destinationLabels, ScriptPubKeyType scriptPubKeyType)
+	public IAddress NextReceiveAddress(IEnumerable<string> destinationLabels)
 	{
-		var pubKey = _wallet.GetNextReceiveAddress(destinationLabels, scriptPubKeyType);
+		var pubKey = _wallet.GetNextReceiveAddress(destinationLabels);
 		var nextReceiveAddress = new Address(_wallet.KeyManager, pubKey, Hide);
 		_newAddressGenerated.OnNext(pubKey);
 

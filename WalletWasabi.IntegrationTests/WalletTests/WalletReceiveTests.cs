@@ -1,3 +1,4 @@
+using WalletWasabi.Blockchain.Keys;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ public class WalletReceiveTests
 		var wallet = env.CreateWallet(keyManager);
 
 		var receiveKey = keyManager.GetNextReceiveKey("Test receive");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Act - Send funds and confirm
 		var fundingAmount = Money.Coins(1m);
@@ -52,7 +53,7 @@ public class WalletReceiveTests
 		var coin = Assert.Single(wallet.Coins);
 		Assert.Equal(fundingAmount, coin.Amount);
 		Assert.True(coin.Confirmed);
-		Assert.Equal(receiveKey.P2wpkhScript, coin.ScriptPubKey);
+		Assert.Equal(receiveKey.P2Taproot, coin.ScriptPubKey);
 
 		await wallet.StopAsync(TestContext.Current.CancellationToken);
 	}
@@ -71,9 +72,9 @@ public class WalletReceiveTests
 		var key2 = keyManager.GetNextReceiveKey("Payment 2");
 		var key3 = keyManager.GetNextReceiveKey("Payment 3");
 
-		var address1 = key1.GetP2wpkhAddress(env.Network);
-		var address2 = key2.GetP2wpkhAddress(env.Network);
-		var address3 = key3.GetP2wpkhAddress(env.Network);
+		var address1 = key1.GetAddress(env.Network);
+		var address2 = key2.GetAddress(env.Network);
+		var address3 = key3.GetAddress(env.Network);
 
 		// Act - Send multiple funds
 		await env.FundAddressAsync(address1, Money.Coins(0.5m), confirmations: 0);
@@ -110,7 +111,7 @@ public class WalletReceiveTests
 		var wallet = env.CreateWallet(keyManager);
 
 		var receiveKey = keyManager.GetNextReceiveKey("Reused address");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Act - Send to same address twice
 		await env.FundAddressAsync(receiveAddress, Money.Coins(0.5m), confirmations: 0);
@@ -126,7 +127,7 @@ public class WalletReceiveTests
 
 		// Assert
 		Assert.Equal(2, wallet.Coins.Count());
-		Assert.All(wallet.Coins, c => Assert.Equal(receiveKey.P2wpkhScript, c.ScriptPubKey));
+		Assert.All(wallet.Coins, c => Assert.Equal(receiveKey.P2Taproot, c.ScriptPubKey));
 
 		var amounts = wallet.Coins.Select(c => c.Amount).OrderBy(a => a).ToList();
 		Assert.Equal(Money.Coins(0.3m), amounts[0]);
@@ -146,7 +147,7 @@ public class WalletReceiveTests
 		var wallet = env.CreateWallet(keyManager);
 
 		var receiveKey = keyManager.GetNextReceiveKey("Initial funding");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet
 		await env.FundAddressAsync(receiveAddress, Money.Coins(2m), confirmations: 1);

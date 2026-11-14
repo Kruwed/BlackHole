@@ -34,7 +34,6 @@ public partial class CoinModel : ReactiveObject
 		Labels = coin.GetLabels(anonScoreTarget);
 		Key = coin.Outpoint.GetHashCode();
 		BannedUntilUtc = coin.BannedUntilUtc;
-		ScriptType = ScriptType.FromEnum(coin.ScriptType);
 
 		IsExcludedFromCoinJoin = coin.IsExcludedFromCoinJoin;
 		IsConfirmed = coin.Confirmed;
@@ -59,8 +58,6 @@ public partial class CoinModel : ReactiveObject
 	public PrivacyLevel PrivacyLevel { get; }
 
 	public LabelsArray Labels { get; }
-
-	public ScriptType ScriptType { get; }
 
 	public DateTimeOffset? BannedUntilUtc { get; }
 

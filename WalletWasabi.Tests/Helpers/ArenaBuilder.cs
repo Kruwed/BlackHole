@@ -83,5 +83,5 @@ public class ArenaBuilder
 	public static ArenaBuilder From(WabiSabiConfig cfg, IRPCClient mockRpc, Prison prison) => new() { Config = cfg, Rpc = mockRpc, Prison = prison };
 
 	private static RoundParametersFactory CreateRoundParametersFactory(WabiSabiConfig cfg) =>
-		WabiSabiFactory.CreateRoundParametersFactory(cfg, Constants.P2wpkhInputVirtualSize + Constants.P2wpkhOutputVirtualSize);
+		WabiSabiFactory.CreateRoundParametersFactory(cfg, WabiSabiFactory.VsizeOfOneInputAndOneOutput);
 }

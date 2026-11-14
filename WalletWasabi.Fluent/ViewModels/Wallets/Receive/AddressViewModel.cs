@@ -18,15 +18,12 @@ public partial class AddressViewModel : ViewModelBase, IDisposable
 	private readonly CompositeDisposable _disposables = new();
 
 	[AutoNotify] private string _addressText;
-	[AutoNotify] private ScriptType _scriptType;
 	[AutoNotify] private LabelsArray _labels;
 
 	public AddressViewModel(UiContext uiContext, AddressFunc onEdit, AddressAction onShow, IAddress address) : base(uiContext)
 	{
 		Address = address;
 		_addressText = address.ShortenedText;
-
-		_scriptType = address.ScriptType;
 
 		this.WhenAnyValue(x => x.Address.Labels)
 			.BindTo(this, viewModel => viewModel.Labels)

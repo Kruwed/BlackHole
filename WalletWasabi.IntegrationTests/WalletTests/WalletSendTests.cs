@@ -1,3 +1,4 @@
+using WalletWasabi.Blockchain.Keys;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,7 +42,7 @@ public class WalletSendTests
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
 		var receiveKey = keyManager.GetNextReceiveKey("Funding");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet with confirmed coins
 		await env.FundAddressAsync(receiveAddress, Money.Coins(2m), confirmations: 1);
@@ -122,7 +123,7 @@ public class WalletSendTests
 		var wallet = env.CreateWallet(keyManager);
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
-		var receiveAddress = keyManager.GetNextReceiveKey("Funding").GetP2wpkhAddress(env.Network);
+		var receiveAddress = keyManager.GetNextReceiveKey("Funding").GetAddress(env.Network);
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
 		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
 
@@ -168,7 +169,7 @@ public class WalletSendTests
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
 		var receiveKey = keyManager.GetNextReceiveKey("Funding");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
 		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
@@ -230,7 +231,7 @@ public class WalletSendTests
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
 		var receiveKey = keyManager.GetNextReceiveKey("Funding");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Send unconfirmed funds (no block generation)
 		var txid = await env.RpcClient.SendToAddressAsync(receiveAddress, Money.Coins(1m));
@@ -292,9 +293,9 @@ public class WalletSendTests
 		var key2 = keyManager.GetNextReceiveKey("UTXO 2");
 		var key3 = keyManager.GetNextReceiveKey("UTXO 3");
 
-		await env.FundAddressAsync(key1.GetP2wpkhAddress(env.Network), Money.Coins(0.3m), confirmations: 0);
-		await env.FundAddressAsync(key2.GetP2wpkhAddress(env.Network), Money.Coins(0.5m), confirmations: 0);
-		await env.FundAddressAsync(key3.GetP2wpkhAddress(env.Network), Money.Coins(1.0m), confirmations: 1);
+		await env.FundAddressAsync(key1.GetAddress(env.Network), Money.Coins(0.3m), confirmations: 0);
+		await env.FundAddressAsync(key2.GetAddress(env.Network), Money.Coins(0.5m), confirmations: 0);
+		await env.FundAddressAsync(key3.GetAddress(env.Network), Money.Coins(1.0m), confirmations: 1);
 
 		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
 

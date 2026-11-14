@@ -19,7 +19,6 @@ using WalletWasabi.Fluent.ViewModels.Wallets.Home.History;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.Tiles;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 using WalletWasabi.Wallets;
-using ScriptType = WalletWasabi.Fluent.Models.Wallets.ScriptType;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
@@ -41,7 +40,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasMusicBoxBeenDisplayed;
 	[AutoNotify] private bool _isMusicBoxFlyoutDisplayed;
 
-	[AutoNotify] private ICommand _defaultReceiveCommand;
 	[AutoNotify] private ICommand _defaultSendCommand;
 
 	// This proxy fixes a stack overflow bug in Avalonia
@@ -132,17 +130,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		this.WhenAnyValue(x => x.Settings.DefaultSendWorkflow)
 			.Subscribe(value => DefaultSendCommand = value == SendWorkflow.Automatic ? SendCommand : SendManualControlCommand);
 
-		SegwitReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel, ScriptType.SegWit));
-		TaprootReceiveCommand = SeveralReceivingScriptTypes ?
-			ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel, ScriptType.Taproot)) :
-			null;
-		_defaultReceiveCommand = SegwitReceiveCommand;
-
-		this.WhenAnyValue(x => x.Settings.DefaultReceiveScriptType)
-			.Subscribe(value =>
-				DefaultReceiveCommand = value == ScriptType.SegWit || TaprootReceiveCommand is null
-					? SegwitReceiveCommand
-					: TaprootReceiveCommand);
+		ReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel));
 
 		WalletInfoCommand = ReactiveCommand.CreateFromTask(async () =>
 		{
@@ -208,8 +196,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public bool IsLoggedIn => WalletModel.Auth.IsLoggedIn;
 
-	public bool SeveralReceivingScriptTypes => WalletModel.SeveralReceivingScriptTypes;
-
 	public IObservable<bool> IsMusicBoxVisible { get; }
 
 	public CoinJoinStateViewModel? CoinJoinStateViewModel { get; private set; }
@@ -225,8 +211,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public ICommand SendManualControlCommand { get; }
 
-	public ICommand SegwitReceiveCommand { get; private set; }
-	public ICommand? TaprootReceiveCommand { get; private set; }
+	public ICommand ReceiveCommand { get; }
 
 	public ICommand WalletInfoCommand { get; private set; }
 
@@ -286,7 +271,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	{
 		return new ISearchItem[]
 		{
-			new ActionableItem("Receive", "Display wallet receive dialog", () => { DefaultReceiveCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Receive", "Action", }) { Icon = "wallet_action_receive", IsDefault = true, Priority = 2 },
+			new ActionableItem("Receive", "Display wallet receive dialog", () => { ReceiveCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Receive", "Action", }) { Icon = "wallet_action_receive", IsDefault = true, Priority = 2 },
 			new ActionableItem("Coinjoin Settings", "Display wallet coinjoin settings", () => { CoinJoinSettingsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Settings", }) { Icon = "wallet_action_coinjoin", IsDefault = true, Priority = 3 },
 			new ActionableItem("Wallet Settings", "Display wallet settings", () => { WalletSettingsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Settings", }) { Icon = "settings_wallet_regular", IsDefault = true, Priority = 4 },
 			new ActionableItem("Exclude Coins", "Display exclude coins", () => { NavigateToExcludedCoinsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Exclude", "Coins", "Coinjoin", "Freeze", "UTXO", }) { Icon = "exclude_coins", IsDefault = true, Priority = 5 },

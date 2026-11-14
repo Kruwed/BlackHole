@@ -232,15 +232,18 @@ public class CoinJoinClientTests
 
 		var outputs = new[]
 		{
-			Output.FromDenomination(Money.Coins(1m), ScriptType.P2WPKH, feeRate),
-			Output.FromDenomination(Money.Coins(2m), ScriptType.P2WPKH, feeRate),
+			Output.FromDenomination(Money.Coins(1m), ScriptType.Taproot, feeRate),
+			Output.FromDenomination(Money.Coins(2m), ScriptType.Taproot, feeRate),
 			Output.FromDenomination(Money.Coins(3m), ScriptType.Taproot, feeRate),
 			Output.FromDenomination(Money.Coins(4m), ScriptType.Taproot, feeRate),
 		};
 
 		var password = "satoshi";
-		var km = ServiceFactory.CreateKeyManager(password, true);
+		var km = ServiceFactory.CreateKeyManager(password);
 		var destinationProvider = new InternalDestinationProvider(km);
+
+		// The wallet only makes Taproot outputs, so that is all a decomposition can ask it for.
+		Assert.Equal([ScriptType.Taproot], destinationProvider.SupportedScriptTypes);
 
 		var txOuts = OutputProvider.GetTxOuts(outputs, destinationProvider);
 
@@ -249,6 +252,10 @@ public class CoinJoinClientTests
 
 		// No address reuse.
 		Assert.Distinct(txOuts.Select(x => x.ScriptPubKey));
+
+		// Every output goes to a Taproot address of the wallet.
+		Assert.All(txOuts, txOut => Assert.True(txOut.ScriptPubKey.IsScriptType(ScriptType.Taproot)));
+		Assert.All(txOuts, txOut => Assert.True(km.TryGetKeyForScriptPubKey(txOut.ScriptPubKey, out _)));
 
 		// Verify if all the outputs are generated with correct ScriptType and Value.
 		List<TxOut> toCheck = txOuts.ToList();

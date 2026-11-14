@@ -37,10 +37,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	Network Network { get; }
 
-	IEnumerable<ScriptPubKeyType> AvailableScriptPubKeyTypes { get; }
-
-	bool SeveralReceivingScriptTypes { get; }
-
 	WalletTransactionsModel Transactions { get; }
 
 	IObservable<Amount> Balances { get; }
@@ -152,10 +148,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public string Name => Wallet.WalletName;
 
 	public Network Network => Wallet.Network;
-
-	public IEnumerable<ScriptPubKeyType> AvailableScriptPubKeyTypes => Wallet.KeyManager.AvailableScriptPubKeyTypes;
-
-	public bool SeveralReceivingScriptTypes => AvailableScriptPubKeyTypes.Contains(ScriptPubKeyType.TaprootBIP86);
 
 	public WalletTransactionsModel Transactions { get; }
 

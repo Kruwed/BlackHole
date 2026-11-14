@@ -77,7 +77,7 @@ public class BobClientTests
 		Assert.Equal(Phase.OutputRegistration, round.Phase);
 
 		using var destinationKey = new Key();
-		var destination = destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit);
+		var destination = destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86);
 
 		var bobClient = new BobClient(round.Id, bobArenaClient);
 

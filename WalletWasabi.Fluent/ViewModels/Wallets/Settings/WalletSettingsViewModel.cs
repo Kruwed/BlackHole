@@ -8,7 +8,6 @@ using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using ScriptType = WalletWasabi.Fluent.Models.Wallets.ScriptType;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 
@@ -28,9 +27,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
     private readonly IWalletModel _wallet;
     [AutoNotify] private string _walletName;
     [AutoNotify] private int _selectedTab;
-    [AutoNotify] private ScriptType _defaultReceiveScriptType;
-    [AutoNotify] private bool _isSegWitDefaultReceiveScriptType;
-    [AutoNotify] private PreferredScriptPubKeyType _changeScriptPubKeyType;
     [AutoNotify] private SendWorkflow _defaultSendWorkflow;
     [AutoNotify] private bool _isAutomaticDefaultSendWorkflow;
 
@@ -83,21 +79,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
             Navigate().Back();
         }, canSave);
 
-        _defaultReceiveScriptType = walletModel.Settings.DefaultReceiveScriptType;
-        this.WhenAnyValue(x => x.DefaultReceiveScriptType)
-            .Subscribe(value => IsSegWitDefaultReceiveScriptType = value == ScriptType.SegWit);
-
-        _changeScriptPubKeyType = walletModel.Settings.ChangeScriptPubKeyType switch
-        {
-            PreferredScriptPubKeyType.Specified s => s.ScriptType switch
-            {
-                ScriptPubKeyType.TaprootBIP86 => PreferredScriptPubKeyType.Specified.Taproot,
-                ScriptPubKeyType.Segwit => PreferredScriptPubKeyType.Specified.SegWit,
-                _ => throw new ArgumentOutOfRangeException()
-            },
-            _ => walletModel.Settings.ChangeScriptPubKeyType
-        };
-
         DefaultSendWorkflow = walletModel.Settings.DefaultSendWorkflow;
         this.WhenAnyValue(x => x.DefaultSendWorkflow)
             .Subscribe(value => IsAutomaticDefaultSendWorkflow = value == SendWorkflow.Automatic);
@@ -122,33 +103,7 @@ public partial class WalletSettingsViewModel : RoutableViewModel
                 walletModel.Settings.DefaultSendWorkflow = value;
                 walletModel.Settings.Save();
             });
-
-        this.WhenAnyValue(x => x.DefaultReceiveScriptType)
-            .Skip(1)
-            .Subscribe(value =>
-            {
-                walletModel.Settings.DefaultReceiveScriptType = value;
-                walletModel.Settings.Save();
-            });
-
-        this.WhenAnyValue(x => x.ChangeScriptPubKeyType)
-            .Skip(1)
-            .Subscribe(value =>
-            {
-                walletModel.Settings.ChangeScriptPubKeyType = value;
-                walletModel.Settings.Save();
-            });
     }
-
-    public bool SeveralReceivingScriptTypes => _wallet.SeveralReceivingScriptTypes;
-
-    public IEnumerable<ScriptType> ReceiveScriptTypes { get; } = [ScriptType.SegWit, ScriptType.Taproot];
-    public IEnumerable<PreferredScriptPubKeyType> ChangeScriptPubKeyTypes { get; } =
-    [
-        PreferredScriptPubKeyType.Unspecified.Instance,
-        PreferredScriptPubKeyType.Specified.SegWit,
-        PreferredScriptPubKeyType.Specified.Taproot
-    ];
 
     public IEnumerable<SendWorkflow> SendWorkflows { get; } = Enum.GetValues<SendWorkflow>();
 

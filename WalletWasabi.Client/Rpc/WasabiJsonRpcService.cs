@@ -130,12 +130,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		var km = activeWallet.KeyManager;
-		var segwit = new JsonRpcResult
-		{
-			["name"] = "segwit",
-			["publicKey"] = km.SegwitExtPubKey.ToString(Global.Network),
-			["keyPath"] = $"m/{km.SegwitAccountKeyPath}"
-		};
 		var info = new JsonRpcResult
 		{
 			["walletName"] = activeWallet.WalletName,
@@ -146,22 +140,16 @@ public class WasabiJsonRpcService : IJsonRpcService
 			["isAutoCoinjoin"] = activeWallet.KeyManager.AutoCoinJoin,
 			["isNonPrivateCoinIsolation"] = activeWallet.KeyManager.NonPrivateCoinIsolation,
 			["onlyUsePrivateFundsForPayments"] = activeWallet.KeyManager.OnlyUsePrivateFundsForPayments,
-			["accounts"] = new[] { segwit }
-		};
-
-		if (km.TaprootExtPubKey is { } taprootExtPubKey)
-		{
-			info["accounts"] = new[]
+			["accounts"] = new[]
 			{
-				segwit,
 				new JsonRpcResult
 				{
 					["name"] = "taproot",
-					["publicKey"] = taprootExtPubKey.ToString(Global.Network),
+					["publicKey"] = km.TaprootExtPubKey.ToString(Global.Network),
 					["keyPath"] = $"m/{km.TaprootAccountKeyPath}"
 				}
-			};
-		}
+			}
+		};
 
 		if (activeWallet.Loaded)
 		{
@@ -176,15 +164,13 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	[JsonRpcMethod("getnewaddress")]
-	public JsonRpcResult GenerateReceiveAddress(string label, bool taproot = true)
+	public JsonRpcResult GenerateReceiveAddress(string label)
 	{
 		AssertWalletIsLoaded();
 		label = Guard.NotNullOrEmptyOrWhitespace(nameof(label), label, true);
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
-		var hdKey = taproot
-			? activeWallet.KeyManager.GetNextReceiveKey(new LabelsArray(label), ScriptPubKeyType.TaprootBIP86)
-			: activeWallet.KeyManager.GetNextReceiveKey(new LabelsArray(label));
+		var hdKey = activeWallet.KeyManager.GetNextReceiveKey(new LabelsArray(label));
 
 		return new JsonRpcResult
 		{
@@ -495,7 +481,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["label"] = x.Labels.ToString(),
 				["scriptPubKey"] = x.GetAssumedScriptPubKey().ToString(),
 				["pubkey"] = x.PubKey.ToString(),
-				["pubKeyHash"] = x.PubKey.Hash.ToString(),
 				["address"] = x.GetAddress(Global.Network).ToString()
 			}).ToImmutableArray();
 	}

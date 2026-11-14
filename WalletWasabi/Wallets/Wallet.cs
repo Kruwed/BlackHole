@@ -197,9 +197,9 @@ public class Wallet : BackgroundService
 			: mapByTxid.Values.OrderByBlockchain().ToList();
 	}
 
-	public HdPubKey GetNextReceiveAddress(IEnumerable<string> destinationLabels, ScriptPubKeyType scriptPubKeyType)
+	public HdPubKey GetNextReceiveAddress(IEnumerable<string> destinationLabels)
 	{
-		return KeyManager.GetNextReceiveKey(new LabelsArray(destinationLabels), scriptPubKeyType);
+		return KeyManager.GetNextReceiveKey(new LabelsArray(destinationLabels));
 	}
 
 	public int GetPrivacyPercentage()

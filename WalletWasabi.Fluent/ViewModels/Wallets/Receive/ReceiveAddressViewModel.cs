@@ -22,7 +22,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		Address = model.Text;
 		ShortenedAddress = model.ShortenedText;
 		Labels = model.Labels;
-		ScriptType = model.ScriptType;
 		IsAutoCopyEnabled = isAutoCopyEnabled;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
@@ -51,8 +50,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 	public bool AddressHasBeenShortened => Address != ShortenedAddress;
 
 	public LabelsArray Labels { get; }
-
-	public ScriptType ScriptType { get; }
 
 	public IObservable<bool[,]> QrCode { get; }
 

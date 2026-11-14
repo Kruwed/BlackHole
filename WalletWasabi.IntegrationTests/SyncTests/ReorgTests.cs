@@ -1,3 +1,4 @@
+using WalletWasabi.Blockchain.Keys;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -69,7 +70,7 @@ public class ReorgTests
 		var wallet = env.CreateWallet(keyManager);
 
 		var receiveKey = keyManager.GetNextReceiveKey("Pre-reorg funding");
-		var receiveAddress = receiveKey.GetP2wpkhAddress(env.Network);
+		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet and confirm
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
@@ -168,7 +169,7 @@ public class ReorgTests
 		for (int i = 0; i < NumberOfCoins; i++)
 		{
 			var receiveKey = keyManager.GetNextReceiveKey($"Funding {i + 1}");
-			var address = receiveKey.GetP2wpkhAddress(env.Network);
+			var address = receiveKey.GetAddress(env.Network);
 
 			// Send coins and mine a block to confirm each one
 			await env.RpcClient.SendToAddressAsync(address, Money.Coins(1m));

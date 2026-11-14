@@ -80,7 +80,7 @@ public class CoinJoinCoinSelectionTests
 		var coinJoinCoinSelector = new CoinJoinCoinSelector(consolidationMode: false, anonScoreTarget: 10, semiPrivateThreshold: 0, generator);
 		var coins = coinJoinCoinSelector.SelectCoinsForRound(
 			coins: coinsToSelectFrom,
-			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.P2WPKH, ScriptType.Taproot]),
+			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.Taproot]),
 			liquidityClue: Constants.MaximumNumberOfBitcoinsMoney);
 
 		Assert.Empty(coins);
@@ -95,8 +95,8 @@ public class CoinJoinCoinSelectionTests
 		var km = KeyManager.CreateNew(out _, "", Network.Main);
 		var coinsToSelectFrom = new[]
 		{
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00006900m), anonymitySet: 1),
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008710m + 0.00006900m), anonymitySet: 1)
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00005800m), anonymitySet: 1),
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008710m + 0.00005800m), anonymitySet: 1)
 		};
 		var roundParams = WabiSabiFactory.CreateRoundParameters(new()
 		{
@@ -109,7 +109,7 @@ public class CoinJoinCoinSelectionTests
 		var coinJoinCoinSelector = new CoinJoinCoinSelector(consolidationMode: false, anonScoreTarget: 10, semiPrivateThreshold: 0, generator);
 		var coins = coinJoinCoinSelector.SelectCoinsForRound(
 			coins: coinsToSelectFrom,
-			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.P2WPKH, ScriptType.Taproot]),
+			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.Taproot]),
 			liquidityClue: Constants.MaximumNumberOfBitcoinsMoney);
 
 		Assert.Empty(coins);
@@ -124,8 +124,8 @@ public class CoinJoinCoinSelectionTests
 		var km = KeyManager.CreateNew(out _, "", Network.Main);
 		var coinsToSelectFrom = new[]
 		{
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00006900m), anonymitySet: 1),
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00006900m), anonymitySet: 1)
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00005800m), anonymitySet: 1),
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.00008711m + 0.00005800m), anonymitySet: 1)
 		};
 		var roundParams = WabiSabiFactory.CreateRoundParameters(new()
 		{
@@ -138,7 +138,7 @@ public class CoinJoinCoinSelectionTests
 		var coinJoinCoinSelector = new CoinJoinCoinSelector(consolidationMode: false, anonScoreTarget: 10, semiPrivateThreshold: 0, generator);
 		var coins = coinJoinCoinSelector.SelectCoinsForRound(
 			coins: coinsToSelectFrom,
-			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.P2WPKH, ScriptType.Taproot]),
+			UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.Taproot]),
 			liquidityClue: Constants.MaximumNumberOfBitcoinsMoney);
 
 		Assert.NotEmpty(coins);

@@ -195,10 +195,10 @@ public partial class FluentNavigate
 		return new FluentDialog<string?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void Receive(IWalletModel wallet, Models.Wallets.ScriptType scriptType, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void Receive(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 #pragma warning disable CA2000 // Dispose objects before losing scope
-		UiContext.Navigate(navigationTarget).To(new ReceiveViewModel(UiContext, wallet, scriptType), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ReceiveViewModel(UiContext, wallet), navigationMode);
 #pragma warning restore CA2000 // Dispose objects before losing scope
 	}
 

@@ -2,6 +2,7 @@ using NBitcoin;
 using System.IO;
 using System.Linq;
 using System.Security;
+using System.Text.Json.Nodes;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.Keys;
@@ -33,37 +34,33 @@ public class KeyManagerTests
 		}
 
 		// Every wallet has its own seed.
-		Assert.NotEqual(manager.SegwitExtPubKey, manager2.SegwitExtPubKey);
-		Assert.NotEqual(manager.SegwitExtPubKey, manager3.SegwitExtPubKey);
-		Assert.NotEqual(manager2.SegwitExtPubKey, manager3.SegwitExtPubKey);
+		Assert.NotEqual(manager.TaprootExtPubKey, manager2.TaprootExtPubKey);
+		Assert.NotEqual(manager.TaprootExtPubKey, manager3.TaprootExtPubKey);
+		Assert.NotEqual(manager2.TaprootExtPubKey, manager3.TaprootExtPubKey);
 
 		Assert.NotNull(manager.ChainCode);
 		Assert.NotNull(manager.EncryptedSecret);
-		Assert.NotNull(manager.SegwitExtPubKey);
 		Assert.NotNull(manager.TaprootExtPubKey);
 		Assert.NotNull(manager.SilentPaymentScanExtPubKey);
 		Assert.NotNull(manager.SilentPaymentSpendExtPubKey);
 
 		Assert.NotNull(manager2.ChainCode);
 		Assert.NotNull(manager2.EncryptedSecret);
-		Assert.NotNull(manager2.SegwitExtPubKey);
 		Assert.NotNull(manager2.TaprootExtPubKey);
 		Assert.NotNull(manager2.SilentPaymentScanExtPubKey);
 		Assert.NotNull(manager2.SilentPaymentSpendExtPubKey);
 
 		Assert.NotNull(manager3.ChainCode);
 		Assert.NotNull(manager3.EncryptedSecret);
-		Assert.NotNull(manager3.SegwitExtPubKey);
 		Assert.NotNull(manager3.TaprootExtPubKey);
 		Assert.NotNull(manager3.SilentPaymentScanExtPubKey);
 		Assert.NotNull(manager3.SilentPaymentSpendExtPubKey);
 
-		var sameManager = new KeyManager(manager.EncryptedSecret, manager.ChainCode, manager.MasterFingerprint, manager.SegwitExtPubKey, manager.TaprootExtPubKey,
+		var sameManager = new KeyManager(manager.EncryptedSecret, manager.ChainCode, manager.MasterFingerprint, manager.TaprootExtPubKey,
 			manager.SilentPaymentScanExtPubKey, manager.SilentPaymentSpendExtPubKey, null, new BlockchainState(Network.Main));
 
 		Assert.Equal(manager.ChainCode, sameManager.ChainCode);
 		Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
-		Assert.Equal(manager.SegwitExtPubKey, sameManager.SegwitExtPubKey);
 		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
 		Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
 		Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
@@ -73,53 +70,49 @@ public class KeyManagerTests
 	public void CanRecover()
 	{
 		string password = "password";
-		var segwitAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit);
 		var manager = KeyManager.CreateNew(out Share[] shares, password, Network.Main);
 
 		// Any two of the three shares recover the wallet.
 		foreach (var backup in new[] { shares[..2], shares[1..], new[] { shares[2], shares[0] } })
 		{
-			var sameManager = KeyManager.Recover(backup, password, Network.Main, segwitAccountKeyPath);
+			var sameManager = KeyManager.Recover(backup, password, Network.Main);
 
 			Assert.Equal(manager.ChainCode, sameManager.ChainCode);
 			Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
-			Assert.Equal(manager.SegwitExtPubKey, sameManager.SegwitExtPubKey);
 			Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
 			Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
 			Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
 		}
 
 		// One share is not enough, and neither are more shares than the threshold.
-		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares[..1], password, Network.Main, segwitAccountKeyPath));
-		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares, password, Network.Main, segwitAccountKeyPath));
+		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares[..1], password, Network.Main));
+		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares, password, Network.Main));
 
-		var differentManager = KeyManager.Recover(shares[..2], password, Network.Main, KeyPath.Parse("m/999'/999'/999'"), null, null, 55);
-		Assert.Equal(manager.ChainCode, differentManager.ChainCode);
-		Assert.Equal(manager.EncryptedSecret, differentManager.EncryptedSecret);
-		Assert.NotEqual(manager.SegwitExtPubKey, differentManager.SegwitExtPubKey);
-		Assert.Equal(manager.TaprootExtPubKey, differentManager.TaprootExtPubKey);
-		Assert.Equal(manager.SilentPaymentScanExtPubKey, differentManager.SilentPaymentScanExtPubKey);
-		Assert.Equal(manager.SilentPaymentSpendExtPubKey, differentManager.SilentPaymentSpendExtPubKey);
+		// A wider gap limit only means more keys of the same account.
+		var widerManager = KeyManager.Recover(shares[..2], password, Network.Main, filePath: null, minGapLimit: 55);
+		Assert.Equal(manager.ChainCode, widerManager.ChainCode);
+		Assert.Equal(manager.EncryptedSecret, widerManager.EncryptedSecret);
+		Assert.Equal(manager.TaprootExtPubKey, widerManager.TaprootExtPubKey);
+		Assert.Equal(manager.SilentPaymentScanExtPubKey, widerManager.SilentPaymentScanExtPubKey);
+		Assert.Equal(manager.SilentPaymentSpendExtPubKey, widerManager.SilentPaymentSpendExtPubKey);
 
-		var newKey = differentManager.GenerateNewKey("some-label", KeyState.Clean, true);
-		Assert.Equal(newKey.Index, differentManager.MinGapLimit);
-		Assert.Equal("999'/999'/999'/1/55", newKey.FullKeyPath.ToString());
+		var newKey = widerManager.GenerateNewKey("some-label", KeyState.Clean, true);
+		Assert.Equal(newKey.Index, widerManager.MinGapLimit);
+		Assert.Equal("86'/0'/0'/1/55", newKey.FullKeyPath.ToString());
 	}
 
 	[Fact]
 	public void PasswordIsNotPartOfTheBackup()
 	{
-		var segwitAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit);
 		var manager = KeyManager.CreateNew(out Share[] shares, "password", Network.Main);
 
 		// The shares alone decide the keys: recovering with another password gives the very same wallet...
 		foreach (var newPassword in new[] { "differentPassword", "" })
 		{
-			var recovered = KeyManager.Recover(shares[..2], newPassword, Network.Main, segwitAccountKeyPath);
+			var recovered = KeyManager.Recover(shares[..2], newPassword, Network.Main);
 
 			Assert.Equal(manager.MasterFingerprint, recovered.MasterFingerprint);
 			Assert.Equal(manager.ChainCode, recovered.ChainCode);
-			Assert.Equal(manager.SegwitExtPubKey, recovered.SegwitExtPubKey);
 			Assert.Equal(manager.TaprootExtPubKey, recovered.TaprootExtPubKey);
 			Assert.Equal(manager.SilentPaymentScanExtPubKey, recovered.SilentPaymentScanExtPubKey);
 			Assert.Equal(manager.SilentPaymentSpendExtPubKey, recovered.SilentPaymentSpendExtPubKey);
@@ -127,7 +120,7 @@ public class KeyManagerTests
 
 			// ... whose secret is encrypted with the new password only.
 			Assert.NotEqual(manager.EncryptedSecret, recovered.EncryptedSecret);
-			var freshlyLoaded = KeyManager.Recover(shares[..2], newPassword, Network.Main, segwitAccountKeyPath);
+			var freshlyLoaded = KeyManager.Recover(shares[..2], newPassword, Network.Main);
 			Assert.Throws<SecurityException>(() => freshlyLoaded.GetMasterExtKey("password"));
 		}
 	}
@@ -145,10 +138,8 @@ public class KeyManagerTests
 		Assert.Equal(manager.MinGapLimit, newLastKey.Index - lastKey.Index);
 	}
 
-	[Theory]
-	[InlineData(ScriptPubKeyType.Segwit)]
-	[InlineData(ScriptPubKeyType.TaprootBIP86)]
-	public void CanGetReceiveKeyAfterReloadingAWalletBeyondItsGapLimit(ScriptPubKeyType scriptPubKeyType)
+	[Fact]
+	public void CanGetReceiveKeyAfterReloadingAWalletBeyondItsGapLimit()
 	{
 		var filePath = "wallet-beyond-gap-limit.json";
 		var labels = new LabelsArray("who-knows");
@@ -162,14 +153,14 @@ public class KeyManagerTests
 			for (var i = 0; i <= minGapLimit; i++)
 			{
 				// Each call leads to storing the new key in the file.
-				manager.GetNextReceiveKey(labels, scriptPubKeyType);
+				manager.GetNextReceiveKey(labels);
 			}
 		}
 
 		// Deserialize the wallet. Then generate a new key beyond the gap limit, it should not crash.
 		{
 			var sameManager = KeyManager.FromFile(filePath);
-			var key = sameManager.GetNextReceiveKey(labels, scriptPubKeyType);
+			var key = sameManager.GetNextReceiveKey(labels);
 			Assert.Equal(minGapLimit + 1, key.Index);
 		}
 
@@ -200,21 +191,15 @@ public class KeyManagerTests
 
 		manager.ToFile(); // assert it does not throw
 
-		void Generate500keys(ScriptPubKeyType scriptPubKeyType)
+		for (int i = 0; i < 1000; i++)
 		{
-			for (int i = 0; i < 500; i++)
-			{
-				var isInternal = Random.Shared.Next(2) == 0;
-				var label = RandomString.AlphaNumeric(21);
-				var keyState = (KeyState)Random.Shared.Next(3);
-				manager.GenerateNewKey(label, keyState, isInternal, scriptPubKeyType);
-			}
-
-			manager.ToFile();
+			var isInternal = Random.Shared.Next(2) == 0;
+			var label = RandomString.AlphaNumeric(21);
+			var keyState = (KeyState)Random.Shared.Next(3);
+			manager.GenerateNewKey(label, keyState, isInternal);
 		}
 
-		Generate500keys(ScriptPubKeyType.Segwit);
-		Generate500keys(ScriptPubKeyType.TaprootBIP86);
+		manager.ToFile();
 
 		Assert.True(File.Exists(filePath));
 
@@ -222,7 +207,6 @@ public class KeyManagerTests
 
 		Assert.Equal(manager.ChainCode, sameManager.ChainCode);
 		Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
-		Assert.Equal(manager.SegwitExtPubKey, sameManager.SegwitExtPubKey);
 		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
 		Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
 		Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
@@ -354,7 +338,7 @@ public class KeyManagerTests
 			Assert.Equal(isInternal, generatedKey.IsInternal);
 			Assert.Equal(label, generatedKey.Labels);
 			Assert.Equal(keyState, generatedKey.KeyState);
-			Assert.StartsWith(KeyManager.GetAccountKeyPath(network, ScriptPubKeyType.Segwit).ToString(), generatedKey.FullKeyPath.ToString());
+			Assert.StartsWith(KeyManager.GetAccountKeyPath(network).ToString(), generatedKey.FullKeyPath.ToString());
 		}
 	}
 
@@ -366,20 +350,19 @@ public class KeyManagerTests
 		var manager = KeyManager.CreateNew(out _, password, network);
 
 		var labels = new LabelsArray("who-knows");
-		var segwitKey = manager.GetNextReceiveKey(labels, ScriptPubKeyType.Segwit);
-		var taprootKey = manager.GetNextReceiveKey(labels, ScriptPubKeyType.TaprootBIP86);
+		var taprootKey = manager.GetNextReceiveKey(labels);
 		var silentPaymentScanKey = manager.GetNextReceiveKey(labels, KeyPurpose.Scan);
 		var silentPaymentSpendKey = manager.GetNextReceiveKey(labels, KeyPurpose.Spend);
-		Assert.Equal("84'/0'/0'/0/0", segwitKey.FullKeyPath.ToString());
 		Assert.Equal("86'/0'/0'/0/0", taprootKey.FullKeyPath.ToString());
 		Assert.Equal("352'/0'/0'/1'/0", silentPaymentScanKey.FullKeyPath.ToString());
 		Assert.Equal("352'/0'/0'/0'/0", silentPaymentSpendKey.FullKeyPath.ToString());
 	}
 
 	[Fact]
-	public void AlternatesScriptTypeForChange()
+	public void EveryAddressIsATaprootAddress()
 	{
 		var keyManager = KeyManager.CreateNew(out _, "", Network.Main);
+
 		var keysForChange = Enumerable
 			.Range(0, 10)
 			.Select(_ =>
@@ -390,15 +373,64 @@ public class KeyManagerTests
 			})
 			.ToList();
 
-		static bool IsScriptType(HdPubKey key, ScriptPubKeyType scriptType) =>
-			key.FullKeyPath.GetScriptTypeFromKeyPath() == scriptType;
+		var keysForReceive = Enumerable
+			.Range(0, 10)
+			.Select(i => keyManager.GetNextReceiveKey(new LabelsArray($"payer {i}")))
+			.ToList();
 
-		static bool IsTaproot(HdPubKey key) => IsScriptType(key, ScriptPubKeyType.TaprootBIP86);
-		static bool IsSegwit(HdPubKey key) => IsScriptType(key, ScriptPubKeyType.Segwit);
+		Assert.All(keysForChange, key => Assert.StartsWith("86'/0'/0'/1/", key.FullKeyPath.ToString()));
+		Assert.All(keysForReceive, key => Assert.StartsWith("86'/0'/0'/0/", key.FullKeyPath.ToString()));
+		Assert.Equal(10, keysForChange.Distinct().Count());
+		Assert.Equal(10, keysForReceive.Distinct().Count());
 
-		Assert.Contains(keysForChange, IsTaproot);
-		Assert.Contains(keysForChange, IsSegwit);
-		Assert.Equal(keysForChange.Count(IsTaproot), keysForChange.Count(IsSegwit));
+		foreach (var key in keysForChange.Concat(keysForReceive))
+		{
+			var address = key.GetAddress(Network.Main);
+			Assert.IsType<TaprootAddress>(address);
+			Assert.StartsWith("bc1p", address.ToString());
+			Assert.Equal(address.ScriptPubKey, key.GetAssumedScriptPubKey());
+			Assert.Equal(address.ScriptPubKey, key.P2Taproot);
+
+			Assert.True(keyManager.TryGetKeyForScriptPubKey(address.ScriptPubKey, out var foundKey));
+			Assert.Equal(key, foundKey);
+
+			// The SegWit v0 address of the very same key is not an address of the wallet.
+			Assert.False(keyManager.TryGetKeyForScriptPubKey(key.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit), out _));
+			Assert.False(key.ContainsScript(key.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit)));
+		}
+
+		// No key of the wallet is outside the Taproot account, apart from the silent payment keys.
+		Assert.All(
+			keyManager.GetKeys(),
+			key => Assert.Matches(@"^(86'/0'/0'/[01]/\d+|352'/0'/0'/[01]'/\d+)$", key.FullKeyPath.ToString()));
+	}
+
+	[Fact]
+	public void WalletFilesWithKeysOfOtherAccountsAreRefused()
+	{
+		var filePath = "wallet-with-segwit-key.json";
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+
+		// Handing out an address generates the keys of the account and writes them into the file.
+		manager.GetNextReceiveKey(new LabelsArray("someone"));
+
+		// A wallet file whose keys all belong to the Taproot account loads.
+		Assert.Equal(manager.TaprootExtPubKey, KeyManager.FromFile(filePath).TaprootExtPubKey);
+
+		// Rewriting the file as it is does no harm...
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		File.WriteAllText(filePath, json.ToJsonString());
+		Assert.Equal(manager.TaprootExtPubKey, KeyManager.FromFile(filePath).TaprootExtPubKey);
+
+		// ... but turning one of its keys into a key of a SegWit v0 (BIP84) account does, as a file of another wallet software has them.
+		var firstKey = json["HdPubKeys"]![0]!;
+		Assert.StartsWith("86'/0'/0'/", firstKey["FullKeyPath"]!.GetValue<string>());
+		firstKey["FullKeyPath"] = "84'/0'/0'/0/0";
+		File.WriteAllText(filePath, json.ToJsonString());
+
+		Assert.ThrowsAny<Exception>(() => KeyManager.FromFile(filePath));
+
+		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	private static void DeleteFileAndDirectoryIfExists(string filePath)

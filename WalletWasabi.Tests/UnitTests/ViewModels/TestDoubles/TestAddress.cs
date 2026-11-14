@@ -7,17 +7,15 @@ namespace WalletWasabi.Tests.UnitTests.ViewModels.TestDoubles;
 
 public class TestAddress : ReactiveObject, IAddress
 {
-	public TestAddress(string address, ScriptType scriptType)
+	public TestAddress(string address)
 	{
 		Text = address;
 		ShortenedText = address;
-		ScriptType = scriptType;
 	}
 
 	public string Text { get; }
 	public string ShortenedText { get; }
 	public LabelsArray Labels { get; private set; }
-	public ScriptType ScriptType { get; }
 
 	public bool IsUsed
 	{

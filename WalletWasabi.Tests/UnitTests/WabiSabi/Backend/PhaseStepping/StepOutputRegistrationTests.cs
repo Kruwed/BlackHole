@@ -47,14 +47,14 @@ public class StepOutputRegistrationTests
 		var bobClient = new BobClient(round.Id, arenaClient);
 		using var destinationKey1 = new Key();
 		await bobClient.RegisterOutputAsync(
-			destinationKey1.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey1.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1.Take(ProtocolConstants.CredentialNumber),
 			token);
 
 		using var destinationKey2 = new Key();
 		await bobClient.RegisterOutputAsync(
-			destinationKey2.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey2.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials2.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials2.Take(ProtocolConstants.CredentialNumber),
 			token);
@@ -92,7 +92,7 @@ public class StepOutputRegistrationTests
 		var bobClient = new BobClient(round.Id, arenaClient);
 		using var destinationKey = new Key();
 		await bobClient.RegisterOutputAsync(
-			destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1.Take(ProtocolConstants.CredentialNumber),
 			token);
@@ -132,13 +132,13 @@ public class StepOutputRegistrationTests
 		using var destinationKey1 = new Key();
 		using var destinationKey2 = new Key();
 		await bobClient.RegisterOutputAsync(
-			destinationKey1.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey1.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1.Take(ProtocolConstants.CredentialNumber),
 			token);
 
 		await bobClient.RegisterOutputAsync(
-			destinationKey2.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey2.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials2.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials2.Take(ProtocolConstants.CredentialNumber),
 			token);
@@ -184,7 +184,7 @@ public class StepOutputRegistrationTests
 		var bobClient = new BobClient(round.Id, arenaClient);
 		using var destinationKey = new Key();
 		await bobClient.RegisterOutputAsync(
-			destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			destinationKey.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1.Take(ProtocolConstants.CredentialNumber),
 			token);
@@ -322,13 +322,13 @@ public class StepOutputRegistrationTests
 		var out2b = keyManager2.GetNextReceiveKey("o2b");
 
 		var bob1a = bobClient1.RegisterOutputAsync(
-			out1a.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			out1a.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1a.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1a.Take(ProtocolConstants.CredentialNumber),
 			token);
 
 		var bob1b = bobClient1.RegisterOutputAsync(
-			out1b.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+			out1b.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 			amountCredentials1b.Take(ProtocolConstants.CredentialNumber),
 			vsizeCredentials1b.Take(ProtocolConstants.CredentialNumber),
 			token);
@@ -345,7 +345,7 @@ public class StepOutputRegistrationTests
 				{
 					// Trying to register the same script again and again.
 					await bobClient2.RegisterOutputAsync(
-						out1a.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit),
+						out1a.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86),
 						amountCredentials2a.Take(ProtocolConstants.CredentialNumber),
 						vsizeCredentials2a.Take(ProtocolConstants.CredentialNumber),
 						combinedCts.Token);

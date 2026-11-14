@@ -19,7 +19,7 @@ public record WalletOutput(SmartCoin Coin)
 
 	public static WalletOutput Create(Money amount, HdPubKey hdPubKey)
 	{
-		ForeignOutput output = ForeignOutput.Create(amount, hdPubKey.P2wpkhScript);
+		ForeignOutput output = ForeignOutput.Create(amount, hdPubKey.P2Taproot);
 		SmartTransaction smartTransaction = new(output.Transaction, Height.Unknown);
 		SmartCoin smartCoin = new(smartTransaction, output.Index, hdPubKey);
 		smartTransaction.TryAddWalletOutput(smartCoin);

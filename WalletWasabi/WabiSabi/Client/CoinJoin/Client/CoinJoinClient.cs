@@ -155,18 +155,21 @@ public class CoinJoinClient
 
 			coinCandidates = coinCandidatesFunc().ToArray();
 
+			// The wallet only has Taproot coins and only makes Taproot outputs. This must be checked first: the
+			// selection parameters cannot even be computed for a round that the wallet has no output type for.
+			if (!roundParameters.AllowedInputTypes.Contains(ScriptType.Taproot) || !roundParameters.AllowedOutputTypes.Contains(ScriptType.Taproot))
+			{
+				myCoins = [];
+				excludeRound = currentRoundState.Id;
+				Logger.LogInfo(FormatLog("Skipping the round since it doesn't support Taproot inputs and outputs.", currentRoundState));
+
+				continue;
+			}
+
 			var liquidityClue = _liquidityClueProvider.GetLiquidityClue(roundParameters.MaxAmountCredentialValue);
 			var utxoSelectionParameters = UtxoSelectionParameters.FromRoundParameters(roundParameters, _outputProvider.DestinationProvider.SupportedScriptTypes);
 
 			myCoins = _coinSelector(coinCandidates, utxoSelectionParameters, liquidityClue);
-
-			if (!roundParameters.AllowedInputTypes.Contains(ScriptType.P2WPKH) || !roundParameters.AllowedOutputTypes.Contains(ScriptType.P2WPKH))
-			{
-				excludeRound = currentRoundState.Id;
-				Logger.LogInfo(FormatLog("Skipping the round since it doesn't support P2WPKH inputs and outputs.", currentRoundState));
-
-				continue;
-			}
 
 			if (myCoins.IsEmpty)
 			{

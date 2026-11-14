@@ -94,16 +94,6 @@ public static class NBitcoinExtensions
 		return Money.Satoshis((me.Satoshi / 100m) * perc);
 	}
 
-	public static string ToZPrv(this ExtKey extKey, Network network)
-	{
-		var data = extKey.ToBytes();
-		var version = (network == Network.Main)
-			? new byte[] { (0x04), (0xB2), (0x43), (0x0C) }
-			: new byte[] { (0x04), (0x5F), (0x18), (0xBC) };
-
-		return Encoders.Base58Check.EncodeData(version.Concat(data).ToArray());
-	}
-
 	public static SmartTransaction ExtractSmartTransaction(this PSBT psbt)
 	{
 		var extractedTx = psbt.ExtractTransaction();

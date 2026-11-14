@@ -80,23 +80,6 @@ public static partial class Encode
 			("BirthHeight", UInt(nonNullBirthHeight.Height)),
 		]);
 
-	public static JsonNode PreferredScriptPubKeyType(PreferredScriptPubKeyType t) =>
-		t switch
-		{
-			PreferredScriptPubKeyType.Specified {ScriptType: NBitcoin.ScriptPubKeyType.Segwit} => String("Segwit"),
-			PreferredScriptPubKeyType.Specified {ScriptType: NBitcoin.ScriptPubKeyType.TaprootBIP86} => String("Taproot"),
-			PreferredScriptPubKeyType.Unspecified _ => String("Random"),
-			_ => throw new ArgumentOutOfRangeException(nameof(t))
-		};
-
-	public static JsonNode ScriptPubKeyType(ScriptPubKeyType w) =>
-		w switch
-		{
-			NBitcoin.ScriptPubKeyType.Segwit => "Segwit",
-			NBitcoin.ScriptPubKeyType.TaprootBIP86 => "Taproot",
-			_ => throw new ArgumentOutOfRangeException(nameof(w))
-		};
-
 	public static JsonNode SendWorkflow(SendWorkflow w) =>
 		w switch
 		{
@@ -183,23 +166,6 @@ public static partial class Decode
 
 	public static Decoder<BitcoinEncryptedSecretNoEC> BitcoinEncryptedSecretNoEC =>
 		String.Map(s => new BitcoinEncryptedSecretNoEC(s, NBitcoin.Network.Main));
-
-	public static Decoder<PreferredScriptPubKeyType> PreferredScriptPubKeyType =>
-		String.Map(s => s switch
-		{
-			"Segwit" => new PreferredScriptPubKeyType.Specified(NBitcoin.ScriptPubKeyType.Segwit),
-			"Taproot" => new PreferredScriptPubKeyType.Specified(NBitcoin.ScriptPubKeyType.TaprootBIP86),
-			"Random" => (PreferredScriptPubKeyType)WalletWasabi.Models.PreferredScriptPubKeyType.Unspecified.Instance,
-			_ => throw new Exception($"Unknown ScriptPubKeyType '{s}'")
-		}).Catch();
-
-	public static Decoder<ScriptPubKeyType> ScriptPubKeyType =>
-		String.Map(s => s switch
-		{
-			"Segwit" => NBitcoin.ScriptPubKeyType.Segwit,
-			"Taproot" => NBitcoin.ScriptPubKeyType.TaprootBIP86,
-			_ => throw new Exception($"Unknown ScriptPubKeyType '{s}'")
-		}).Catch();
 
 	public static Decoder<SendWorkflow> SendWorkflow =>
 		String.Map(s => s switch

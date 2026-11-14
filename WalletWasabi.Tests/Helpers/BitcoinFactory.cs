@@ -72,7 +72,7 @@ public static class BitcoinFactory
 
 		foreach (var output in ownOutputs)
 		{
-			outputs.Add((new TxOut(output.value, output.hdpk.P2wpkhScript), (output.anonset, output.hdpk)));
+			outputs.Add((new TxOut(output.value, output.hdpk.P2Taproot), (output.anonset, output.hdpk)));
 		}
 
 		if (orderByAmount)

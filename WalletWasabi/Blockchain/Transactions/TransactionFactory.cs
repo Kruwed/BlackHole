@@ -414,10 +414,6 @@ public class TransactionBuilderWithSilentPaymentSupport
 				{
 					return key.Tweak();
 				}
-				if (key.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit) == spk)
-				{
-					return key;
-				}
 			}
 
 			throw new InvalidOperationException("Key not found for script pub key");

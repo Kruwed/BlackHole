@@ -22,15 +22,15 @@ public class HdPubKeyCache : IEnumerable<HdPubKeyInfo>
 	{
 		foreach (var key in keys)
 		{
-			AddKey(key, key.FullKeyPath.GetScriptTypeFromKeyPath());
+			AddKey(key);
 		}
 
 		return keys;
 	}
 
-	public void AddKey(HdPubKey hdPubKey, ScriptPubKeyType scriptPubKeyType)
+	public void AddKey(HdPubKey hdPubKey)
 	{
-		var info = new HdPubKeyInfo(hdPubKey, scriptPubKeyType);
+		var info = new HdPubKeyInfo(hdPubKey);
 		_hdPubKeyInfos.Add(info);
 		HdPubKeyIndexedByScriptPubKey[info.ScriptPubKey] = info.HdPubKey;
 	}

@@ -55,9 +55,11 @@ public class TransactionFactoryTests
 		using Key key = new();
 		var payment = new PaymentIntent(key, MoneyRequest.CreateAllRemaining(subtractFee: true));
 
-		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(44.25m).Build();
+		// A Taproot input and a P2PKH output make 103 vbytes: 48.544 sat/vb take exactly half of the 10 000 sats.
+		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(48.544m).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 		var output = Assert.Single(result.OuterWalletOutputs);
+		Assert.Equal(Money.Satoshis(5000), result.Fee);
 		Assert.Equal(result.Fee, output.Amount); // edge case! paid amount equal to paid fee
 
 		// The transaction cost is higher than the intended payment.
@@ -373,7 +375,8 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(20m).Build();
 		var ex = Assert.Throws<OutputTooSmallException>(() => transactionFactory.BuildTransaction(txParameters));
 
-		Assert.Equal(Money.Satoshis(3240), ex.Value.Abs());
+		// A Taproot input, three P2PKH outputs and a Taproot change make 214 vbytes: 4280 sats do not fit into an output of 1000 sats.
+		Assert.Equal(Money.Satoshis(3280), ex.Value.Abs());
 	}
 
 	[Fact]
@@ -599,7 +602,7 @@ public class TransactionFactoryTests
 		var txParameters = CreateBuilder().SetPayment(payment).SetFeeRate(12m).Build();
 		TransactionSizeException ex = Assert.Throws<TransactionSizeException>(() => transactionFactory.BuildTransaction(txParameters));
 		Assert.Equal(paymentAmount, ex.Target);
-		Assert.Equal(Money.Coins(0.24209089m), ex.MaximumPossible);
+		Assert.Equal(Money.Coins(0.26498776m), ex.MaximumPossible);
 	}
 
 	[Fact]
@@ -734,45 +737,48 @@ public class TransactionFactoryTests
 	[Fact]
 	public void HowFeeRateAffectsFeeAndNumberOfOutputs()
 	{
+		// A Taproot input, a P2PKH output and a Taproot change output make a transaction of 146 vbytes.
+		// The change is 1409 sats minus the fee. It is dropped once it is below 330 sats, the dust limit of a Taproot output.
+
 		// Fee rate: 5.0 sat/vb.
 		{
 			BuildTransactionResult txResult = ComputeTxResult(5.0m);
 			Assert.Equal(2, txResult.Transaction.Transaction.Outputs.Count);
-			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(689m), txResult.Transaction.Transaction.Outputs);
-			Assert.Equal(7.2m, txResult.FeePercentOfSent);
-			Assert.Equal(Money.Satoshis(720), txResult.Fee);
+			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(679m), txResult.Transaction.Transaction.Outputs);
+			Assert.Equal(7.3m, txResult.FeePercentOfSent);
+			Assert.Equal(Money.Satoshis(730), txResult.Fee);
 		}
 
 		// Fee rate: 6.0 sat/vb.
 		{
 			BuildTransactionResult txResult = ComputeTxResult(6.0m);
 			Assert.Equal(2, txResult.Transaction.Transaction.Outputs.Count);
-			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(545m), txResult.Transaction.Transaction.Outputs);
-			Assert.Equal(8.64m, txResult.FeePercentOfSent);
-			Assert.Equal(Money.Satoshis(864), txResult.Fee);
+			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(533m), txResult.Transaction.Transaction.Outputs);
+			Assert.Equal(8.76m, txResult.FeePercentOfSent);
+			Assert.Equal(Money.Satoshis(876), txResult.Fee);
 		}
 
 		// Fee rate: 7.0 sat/vb.
 		{
 			BuildTransactionResult txResult = ComputeTxResult(7.0m);
 			Assert.Equal(2, txResult.Transaction.Transaction.Outputs.Count);
-			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(401m), txResult.Transaction.Transaction.Outputs);
-			Assert.Equal(10.08m, txResult.FeePercentOfSent);
-			Assert.Equal(Money.Satoshis(1008), txResult.Fee);
+			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(387m), txResult.Transaction.Transaction.Outputs);
+			Assert.Equal(10.22m, txResult.FeePercentOfSent);
+			Assert.Equal(Money.Satoshis(1022), txResult.Fee);
 		}
 
-		// Fee rate: 7.74 sat/vb.
+		// Fee rate: 7.39 sat/vb. The change is 331 sats, just above the dust limit.
 		{
-			BuildTransactionResult txResult = ComputeTxResult(7.74m);
+			BuildTransactionResult txResult = ComputeTxResult(7.39m);
 			Assert.Equal(2, txResult.Transaction.Transaction.Outputs.Count);
-			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(295m), txResult.Transaction.Transaction.Outputs);
-			Assert.Equal(11.14m, txResult.FeePercentOfSent);
-			Assert.Equal(Money.Satoshis(1114), txResult.Fee);
+			AssertOutputValues(mainValue: Money.Satoshis(10000m), changeValue: Money.Satoshis(331m), txResult.Transaction.Transaction.Outputs);
+			Assert.Equal(10.78m, txResult.FeePercentOfSent);
+			Assert.Equal(Money.Satoshis(1078), txResult.Fee);
 		}
 
-		// Fee rate: 7.75 sat/vb. There is only ONE output now!
+		// Fee rate: 7.4 sat/vb. The change would be 329 sats, so there is only ONE output now!
 		{
-			BuildTransactionResult txResult = ComputeTxResult(7.75m);
+			BuildTransactionResult txResult = ComputeTxResult(7.4m);
 			Assert.Single(txResult.Transaction.Transaction.Outputs);
 			Assert.Equal(Money.Satoshis(10000m), txResult.Transaction.Transaction.Outputs[0].Value);
 			Assert.Equal(14.09m, txResult.FeePercentOfSent);

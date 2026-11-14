@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Windows.Input;
@@ -23,13 +22,11 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 public partial class ReceiveViewModel : RoutableViewModel, IDisposable
 {
 	private readonly IWalletModel _wallet;
-	private readonly ScriptType _scriptType;
 	private readonly CompositeDisposable _disposables = new();
 
-	public ReceiveViewModel(UiContext uiContext, IWalletModel wallet, WalletWasabi.Fluent.Models.Wallets.ScriptType scriptType) : base(uiContext)
+	public ReceiveViewModel(UiContext uiContext, IWalletModel wallet) : base(uiContext)
 	{
 		_wallet = wallet;
-		_scriptType = scriptType;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
@@ -52,8 +49,6 @@ public partial class ReceiveViewModel : RoutableViewModel, IDisposable
 
 	public AddressesModel AddressesModel { get; }
 
-	public List<ScriptType> SupportedScriptTypes { get; } = [ScriptType.SegWit, ScriptType.Taproot];
-
 	public SuggestionLabelsViewModel SuggestionLabels { get; }
 
 	public ICommand ShowExistingAddressesCommand { get; }
@@ -69,7 +64,7 @@ public partial class ReceiveViewModel : RoutableViewModel, IDisposable
 	private void OnNext()
 	{
 		SuggestionLabels.ForceAdd = true;
-		var address = _wallet.Addresses.NextReceiveAddress(SuggestionLabels.Labels, ScriptType.ToScriptPubKeyType(_scriptType));
+		var address = _wallet.Addresses.NextReceiveAddress(SuggestionLabels.Labels);
 		SuggestionLabels.Labels.Clear();
 
 		Navigate().To().ReceiveAddress(_wallet, address, UiContext.Services.GetAutocopy());

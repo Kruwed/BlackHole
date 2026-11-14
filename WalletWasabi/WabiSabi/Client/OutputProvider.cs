@@ -40,19 +40,13 @@ public class OutputProvider
 	internal static IEnumerable<TxOut> GetTxOuts(IEnumerable<Output> outputValues, IDestinationProvider destinationProvider)
 	{
 		// Get as many destinations as outputs we need.
-		var taprootOutputCount = outputValues.Count(output => output.ScriptType is ScriptType.Taproot);
-		var taprootScripts = new Stack<IDestination>(destinationProvider.GetNextDestinations(taprootOutputCount, preferTaproot: true));
-		var segwitOutputCount = outputValues.Count(output => output.ScriptType is ScriptType.P2WPKH);
-		var segwitScripts = new Stack<IDestination>(destinationProvider.GetNextDestinations(segwitOutputCount, preferTaproot: false));
+		var outputs = outputValues.ToArray();
+		var destinations = new Stack<IDestination>(destinationProvider.GetNextDestinations(outputs.Length));
 
 		List<TxOut> outputTxOuts = new();
-		foreach (var output in outputValues)
+		foreach (var output in outputs)
 		{
-			var destinationStack = output.ScriptType is ScriptType.Taproot
-				? taprootScripts
-				: segwitScripts;
-
-			var destination = destinationStack.Pop();
+			var destination = destinations.Pop();
 			var txOut = new TxOut(output.Amount, destination.ScriptPubKey);
 			outputTxOuts.Add(txOut);
 		}

@@ -22,8 +22,7 @@ public class PocketSelectionTests
 		var km = KeyManager.Recover(
 			ServiceFactory.CreateBackup(ServiceFactory.FixedSeed),
 			pw,
-			Network.Main,
-			KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit));
+			Network.Main);
 		var address = BitcoinAddress.Create("bc1q7v7qfhwx55erxkc66nsv39x4azwufvy6zq8ya4", Network.Main);
 		var info = new TransactionInfo(address, 100)
 		{

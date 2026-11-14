@@ -54,40 +54,12 @@
             <!-- Receive button -->
             <Button
               Classes="function"
-              Command="{Binding SegwitReceiveCommand}"
-              IsVisible="{Binding SeveralReceivingScriptTypes, Converter={x:Static BoolConverters.Not}}">
+              Command="{Binding ReceiveCommand}">
               <StackPanel Orientation="Horizontal">
                <PathIcon Data="{StaticResource wallet_action_receive}" />
                 <TextBlock Text="Receive" />
               </StackPanel>
             </Button>
-            <SubActionButton Content="Receive"
-                             Command="{Binding DefaultReceiveCommand}"
-                             VerticalAlignment="Bottom"
-                             HorizontalAlignment="Right"
-                             Icon="{StaticResource wallet_action_receive}"
-                             IsVisible="{Binding SeveralReceivingScriptTypes}">
-              <SubActionButton.SubCommands>
-                <UICommandCollection>
-                  <UICommand Name="SegWit Address"
-                             Command="{Binding SegwitReceiveCommand}"
-                             IsDefault="{Binding Settings.IsSegWitDefaultReceiveScriptType}">
-                    <UICommand.Icon>
-                      <PathIcon Data="{StaticResource segwit_short}"
-                                Classes="Icon"/>
-                    </UICommand.Icon>
-                  </UICommand>
-                  <UICommand Name="Taproot Address"
-                             Command="{Binding TaprootReceiveCommand}"
-                             IsDefault="{Binding Settings.IsSegWitDefaultReceiveScriptType, Converter={x:Static BoolConverters.Not}}">
-                    <UICommand.Icon>
-                      <PathIcon Data="{StaticResource taproot_short}"
-                                Classes="Icon" />
-                    </UICommand.Icon>
-                  </UICommand>
-                </UICommandCollection>
-              </SubActionButton.SubCommands>
-            </SubActionButton>
 
 
             <Panel>

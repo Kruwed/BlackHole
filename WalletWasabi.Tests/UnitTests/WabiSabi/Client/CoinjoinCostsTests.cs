@@ -20,8 +20,8 @@ namespace WalletWasabi.Tests.UnitTests.WabiSabi.Client;
 public class CoinjoinCostsTests
 {
 	private const decimal SatoshiPerByte = 10m;
-	private static readonly Money InputFee = Money.Satoshis(SatoshiPerByte * Constants.P2wpkhInputVirtualSize);
-	private static readonly Money OutputFee = Money.Satoshis(SatoshiPerByte * Constants.P2wpkhOutputVirtualSize);
+	private static readonly Money InputFee = Money.Satoshis(SatoshiPerByte * Constants.P2trInputVirtualSize);
+	private static readonly Money OutputFee = Money.Satoshis(SatoshiPerByte * Constants.P2trOutputVirtualSize);
 
 	[Fact]
 	public void WalletPaysForItsOwnInputsAndOutputs()
@@ -146,7 +146,7 @@ public class CoinjoinCostsTests
 	private static Script NewScript()
 	{
 		using var key = new Key();
-		return key.PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit);
+		return key.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86);
 	}
 
 	/// <summary>Builds the state a coinjoin transaction is created from, one registration at a time.</summary>

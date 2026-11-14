@@ -14,6 +14,7 @@ using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Crypto;
 using WalletWasabi.Crypto.Randomness;
+using WalletWasabi.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.WabiSabi.Client;
 using WalletWasabi.WabiSabi.Client.RoundStateAwaiters;
@@ -81,16 +82,18 @@ public static class WabiSabiFactory
 				MinRegistrableAmount = Money.Coins(0.0001m),
 				MaxRegistrableAmount = Money.Coins(430)
 			}),
-			[ScriptType.P2WPKH, ScriptType.Taproot]);
+			[ScriptType.Taproot]);
 
 	public static Round CreateRound(RoundParameters parameters) =>
 		new(parameters, InsecureRandom.Instance);
 
+	/// <summary>Enough vsize for one input and one output of a wallet, which are both Taproot.</summary>
+	public const int VsizeOfOneInputAndOneOutput = Constants.P2trInputVirtualSize + Constants.P2trOutputVirtualSize;
+
 	public static Round CreateRound(WabiSabiConfig cfg) =>
 		CreateRound(CreateRoundParameters(cfg) with
 		{
-			MaxVsizeAllocationPerAlice =
-				Constants.P2wpkhInputVirtualSize + Constants.P2wpkhOutputVirtualSize // enough vsize for one input and one output
+			MaxVsizeAllocationPerAlice = VsizeOfOneInputAndOneOutput
 		});
 
 	public static MockRpcClient CreatePreconfiguredRpcClient(params Coin[] coins)
@@ -264,7 +267,10 @@ public static class WabiSabiFactory
 			new[] { alice.CalculateRemainingAmountCredentials(round.Parameters.MiningFeeRate).Satoshi },
 			amZeroCredentials, // FIXME doesn't make much sense
 			CancellationToken.None);
-		long startingVsizeCredentialAmount = vsize ?? alice.CalculateRemainingVsizeCredentials(round.Parameters.MaxVsizeAllocationPerAlice);
+		script ??= BitcoinFactory.CreateScript();
+
+		// A valid registration presents exactly as much vsize as the output takes.
+		long startingVsizeCredentialAmount = vsize ?? script.EstimateOutputVsize();
 		var (vsCredentialRequest, weValid) = vsClient.CreateRequest(
 			new[] { startingVsizeCredentialAmount },
 			vsZeroCredentials, // FIXME doesn't make much sense
@@ -275,7 +281,6 @@ public static class WabiSabiFactory
 		var amountCredentials = amClient.HandleResponse(amResp, amValid);
 		var vsizeCredentials = vsClient.HandleResponse(weResp, weValid);
 
-		script ??= BitcoinFactory.CreateScript();
 		var (realAmountCredentialRequest, _) = amClient.CreateRequest(
 			amountCredentials,
 			CancellationToken.None);

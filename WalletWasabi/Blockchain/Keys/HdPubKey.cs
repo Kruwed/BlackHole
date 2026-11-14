@@ -8,7 +8,6 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 {
 	public const int DefaultHighAnonymitySet = int.MaxValue;
 
-	private readonly Lazy<Script> _p2wpkhScript;
 	private readonly Lazy<Script> _p2Taproot;
 	private Cluster _cluster;
 
@@ -20,7 +19,6 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 		Labels = labels;
 		KeyState = keyState;
 
-		_p2wpkhScript = new Lazy<Script>(() => PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit), isThreadSafe: true);
 		_p2Taproot = new Lazy<Script>(() => PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86), isThreadSafe: true);
 
 		Index = (int)FullKeyPath.Indexes[4];
@@ -65,7 +63,6 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 
 	public ECPubKey? TweakData { get; set; }
 
-	public Script P2wpkhScript => _p2wpkhScript.Value;
 	public Script P2Taproot => _p2Taproot.Value;
 
 	public int Index { get; }
@@ -105,18 +102,8 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 		kmToFile?.ToFile();
 	}
 
-	public BitcoinWitPubKeyAddress GetP2wpkhAddress(Network network) => (BitcoinWitPubKeyAddress)PubKey.GetAddress(ScriptPubKeyType.Segwit, network);
-
-	public bool ContainsScript(Script scriptPubKey)
-	{
-		var scripts = new[]
-		{
-			P2wpkhScript,
-			P2Taproot
-		};
-
-		return scripts.Contains(scriptPubKey);
-	}
+	public bool ContainsScript(Script scriptPubKey) =>
+		P2Taproot == scriptPubKey;
 
 	#region Equality
 

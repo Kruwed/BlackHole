@@ -44,8 +44,6 @@ public partial class WalletRepository : ReactiveObject
 	public string? DefaultWalletName { get; }
 	public bool HasWallet => _services.HasWallet();
 
-	private KeyPath AccountKeyPath => KeyManager.GetAccountKeyPath(_services.GetNetwork(), ScriptPubKeyType.Segwit);
-
 	public void StoreLastSelectedWallet(IWalletModel wallet)
 	{
 		_services.SetLastSelectedWallet(wallet.Name);
@@ -122,8 +120,6 @@ public partial class WalletRepository : ReactiveObject
 				backup.Shares,
 				backup.Password,
 				_services.GetNetwork(),
-				AccountKeyPath,
-				null,
 				"", // Make sure it is not saved into a file yet.
 				minGapLimit.Value,
 				birthHeight: birthHeight);
