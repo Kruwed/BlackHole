@@ -9,7 +9,6 @@ using NBitcoin.DataEncoders;
 using NBitcoin.Protocol;
 using NBitcoin.RPC;
 using WalletWasabi.BitcoinRpc;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Logging;
@@ -22,11 +21,10 @@ namespace WalletWasabi.IntegrationTests.BitcoinCore;
 
 public class CoreNode
 {
-	public CoreNode(string dataDir, Network network, MempoolService mempoolService, CoreConfig config, EndPoint p2pEndPoint, EndPoint rpcEndPoint, IRPCClient rpcClient)
+	public CoreNode(string dataDir, Network network, CoreConfig config, EndPoint p2pEndPoint, EndPoint rpcEndPoint, IRPCClient rpcClient)
 	{
 		DataDir = dataDir;
 		Network = network;
-		MempoolService = mempoolService;
 		Config = config;
 		P2pEndPoint = p2pEndPoint;
 		RpcEndPoint = rpcEndPoint;
@@ -39,7 +37,6 @@ public class CoreNode
 	private BitcoindRpcProcessBridge? Bridge { get; set; }
 	public string DataDir { get; }
 	public Network Network { get; }
-	public MempoolService MempoolService { get; }
 
 	public CoreConfig Config { get; }
 
@@ -100,7 +97,7 @@ public class CoreNode
 			coreNodeParams.Network);
 		CachedRpcClient cachedRpcClient = new(rpcClient, coreNodeParams.Cache);
 
-		CoreNode coreNode = new(coreNodeParams.DataDir, coreNodeParams.Network, coreNodeParams.MempoolService, coreConfig, p2pEndPoint, rpcEndPoint, cachedRpcClient);
+		CoreNode coreNode = new(coreNodeParams.DataDir, coreNodeParams.Network, coreConfig, p2pEndPoint, rpcEndPoint, cachedRpcClient);
 
 		if (coreNodeParams.TryRestart)
 		{
@@ -269,11 +266,6 @@ public class CoreNode
 		}
 
 		return coreNode;
-	}
-
-	public async Task<Node> CreateNewP2pNodeAsync()
-	{
-		return await Node.ConnectAsync(Network, P2pEndPoint).ConfigureAwait(false);
 	}
 
 	/// <param name="onlyOwned">Only stop if this node owns the process.</param>

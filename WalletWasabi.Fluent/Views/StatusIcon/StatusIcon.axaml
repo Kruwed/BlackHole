@@ -84,13 +84,13 @@
               </StatusItem.Icon>
             </StatusItem>
 
-            <StatusItem Title="Network Tip" StatusText="{Binding HealthMonitor.BlockchainTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
+            <StatusItem Title="Chain Tip" StatusText="{Binding HealthMonitor.BlockchainTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
               <StatusItem.Icon>
                 <PathIcon Data="{StaticResource block_height}" />
               </StatusItem.Icon>
             </StatusItem>
 
-            <StatusItem Title="Client Tip" StatusText="{Binding HealthMonitor.ClientTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
+            <StatusItem Title="Wallet Tip" StatusText="{Binding HealthMonitor.ClientTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
               <StatusItem.Icon>
                 <PathIcon Data="{StaticResource block_height}" />
               </StatusItem.Icon>
@@ -99,13 +99,6 @@
             <StatusItem Title="Tor" StatusText="{Binding HealthMonitor.TorStatus, Converter={x:Static converters:StatusConverters.TorStatusToString}}">
               <StatusItem.Icon>
                 <PathIcon Data="{StaticResource tor_icon}" />
-              </StatusItem.Icon>
-            </StatusItem>
-
-            <StatusItem
-              Title="Peers" StatusText="{Binding HealthMonitor.Peers, Mode=OneWay, StringFormat={}{0} connected}">
-              <StatusItem.Icon>
-                <PathIcon Data="{StaticResource entities_regular}" />
               </StatusItem.Icon>
             </StatusItem>
 

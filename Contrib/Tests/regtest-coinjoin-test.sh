@@ -43,7 +43,6 @@ bitcoind \
   -server \
   -rpcuser=regtest \
   -rpcpassword=regtest \
-  -blockfilterindex=1 \
   -fallbackfee=0.0001 \
   -daemon
 

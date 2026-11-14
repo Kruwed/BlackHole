@@ -12,6 +12,8 @@ public class HdPubKeyCache : IEnumerable<HdPubKeyInfo>
 	public IEnumerable<HdPubKey> HdPubKeys =>
 		this.Select(x => x.HdPubKey);
 
+	public int Count => _hdPubKeyInfos.Count;
+
 	public bool TryGetPubKey(Script destination, [NotNullWhen(true)] out HdPubKey? hdPubKey) =>
 		HdPubKeyIndexedByScriptPubKey.TryGetValue(destination, out hdPubKey);
 

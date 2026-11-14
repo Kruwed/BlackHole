@@ -4,8 +4,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NBitcoin;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Blockchain.Analysis.Clustering;
-using WalletWasabi.Blockchain.Blocks;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.Transactions;
@@ -15,7 +15,6 @@ using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Helpers;
 using WalletWasabi.Services;
 using WalletWasabi.Services.Terminate;
-using WalletWasabi.Storages;
 using WalletWasabi.Tor;
 using WalletWasabi.Wallets;
 
@@ -28,8 +27,6 @@ public class Services : IServices
 
 	private readonly Global _global;
 	private readonly TorSettings _torSettings;
-	private readonly FilterManager _filterManager;
-	private readonly FilterHeaderChain _filterHeaders;
 	private readonly AllTransactionStore _transactionStore;
 	private readonly IHttpClientFactory _httpClientFactory;
 	private readonly TransactionBroadcaster _transactionBroadcaster;
@@ -41,8 +38,6 @@ public class Services : IServices
 	{
 		Guard.NotNull(nameof(global.DataDir), global.DataDir);
 		Guard.NotNull(nameof(global.TorSettings), global.TorSettings);
-		Guard.NotNull(nameof(global.FilterManager), global.FilterManager);
-		Guard.NotNull(nameof(global.FilterHeaders), global.FilterHeaders);
 		Guard.NotNull(nameof(global.TransactionStore), global.TransactionStore);
 		Guard.NotNull(nameof(global.BitcoinRpcHttpClientFactory), global.BitcoinRpcHttpClientFactory);
 		Guard.NotNull(nameof(global.Config), global.Config);
@@ -54,8 +49,6 @@ public class Services : IServices
 
 		_global = global;
 		_torSettings = global.TorSettings;
-		_filterManager = global.FilterManager;
-		_filterHeaders = global.FilterHeaders;
 		_transactionStore = global.TransactionStore;
 		_httpClientFactory = global.BitcoinRpcHttpClientFactory;
 		_transactionBroadcaster = global.TransactionBroadcaster;
@@ -79,15 +72,9 @@ public class Services : IServices
 	public EventBus EventBus { get; }
 
 	// Chain info
-	public uint GetTipHeight() => _filterHeaders.TipHeight;
-	public uint GetServerTipHeight() => _filterHeaders.ServerTipHeight;
-	public int GetHashesLeft() => _filterHeaders.HashesLeft;
-	public SmartHeader? GetTip() => _filterHeaders.Tip;
-	public uint GetBlockHeadersTipHeight() => _global.GetBlockHeadersTipHeight();
-	public int GetPeerCount() => _global.GetPeerCount();
-
-	// Filters info
-	public uint? GetMinimumBlockHeight() => _filterManager.GetMinimumBlockHeight();
+	public uint GetNodeTipHeight() => _status.BestNetworkHeight;
+	public ConnectedRpcStatus? GetNodeStatus() => _status.BitcoinRpcStatus is { IsOk: true } status ? status.Value : null;
+	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
 	// Transactions info
 	public bool TryGetTransaction(uint256 hash, [NotNullWhen(true)] out SmartTransaction? tx) => _transactionStore.TryGetTransaction(hash, out tx);

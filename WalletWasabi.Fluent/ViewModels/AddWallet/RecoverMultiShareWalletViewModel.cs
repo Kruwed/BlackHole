@@ -5,7 +5,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using WalletWasabi.Blockchain.BlockFilters;
+using WalletWasabi.Extensions;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.ViewModels.Dialogs;
@@ -110,9 +110,12 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 
 	public ObservableCollection<string> Mnemonics { get; } = new();
 
+	/// <summary>
+	/// Every block from the birth height on is fetched from the node. Wallets are Taproot only, so nothing can be found before Taproot.
+	/// </summary>
 	private uint CalculateBirthHeight()
 	{
-		return FilterCheckpoints.GetWasabiGenesisFilter(UiContext.ApplicationSettings.Network).Header.Height;
+		return UiContext.ApplicationSettings.Network.TaprootActivationHeight;
 	}
 
 	private async Task OnNextAsync(WalletCreationOptions.RecoverWallet options)
@@ -156,19 +159,6 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 				options = options with { Backup = recoveryWordsBackup, MinGapLimit = MinGapLimit, BirthHeight = BirthHeight};
 				var walletSettings = await UiContext.WalletRepository.NewWalletAsync(options);
 
-				var filterMinHeight = UiContext.Services.GetMinimumBlockHeight();
-				if (filterMinHeight is { } minHeight && BirthHeight < minHeight)
-				{
-					UiContext.WalletRepository.SaveWallet(walletSettings);
-
-					await ShowErrorAsync(
-						"Restart required",
-						"Wasabi needs to download older block filters for this wallet. The application will restart to begin this process.",
-						"Wallet recovery");
-					AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true);
-					return;
-				}
-
 				Navigate().To().AddedWalletPage(walletSettings, options);
 			}
 			catch (Exception ex)
@@ -184,7 +174,7 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 
 	private async Task OnAdvancedRecoveryOptionsDialogAsync()
 	{
-		var result= await Navigate().To().AdvancedRecoveryOptions(MinGapLimit, BirthHeight).GetResultAsync();
+		var result = await Navigate().To().AdvancedRecoveryOptions(MinGapLimit, BirthHeight, CalculateBirthHeight()).GetResultAsync();
 		if (result is { } parameters)
 		{
 			MinGapLimit = parameters.MinGapLimit;

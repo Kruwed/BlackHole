@@ -17,12 +17,10 @@ public partial class HealthMonitor : ReactiveObject
 	[AutoNotify] private uint _clientTip;
 	[AutoNotify] private TorStatus _torStatus;
 	[AutoNotify] private Result<ConnectedRpcStatus, string> _bitcoinRpcStatus;
-	[AutoNotify] private int _peers;
-	[AutoNotify] private bool _isP2pConnected;
 	[AutoNotify] private HealthMonitorState _state;
 
-	private const string NoBitcoinRpcConfigured = "Not configured";
-	private const string NoBitcoinRpcDetected = "Not detected";
+	/// <summary>What is told about the node until it answers, or fails to, for the first time.</summary>
+	private const string BitcoinRpcNotAskedYet = "is being contacted...";
 
 	public HealthMonitor(IServices services)
 	{
@@ -30,8 +28,7 @@ public partial class HealthMonitor : ReactiveObject
 		UseTor = services.GetUseTor();
 		TorStatus = UseTor == TorMode.Disabled ? TorStatus.TurnedOff : TorStatus.NotRunning;
 
-		var statusMessage = string.IsNullOrWhiteSpace(services.Config.BitcoinRpcUri) ? NoBitcoinRpcConfigured : NoBitcoinRpcDetected;
-		_bitcoinRpcStatus = Result<ConnectedRpcStatus, string>.Fail(statusMessage);
+		_bitcoinRpcStatus = Result<ConnectedRpcStatus, string>.Fail(BitcoinRpcNotAskedYet);
 
 		// Priority Fee
 		services.EventBus.AsObservable<MiningFeeRatesChanged>()
@@ -40,14 +37,14 @@ public partial class HealthMonitor : ReactiveObject
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(priorityFee => PriorityFee = priorityFee.SatoshiPerByte);
 
-		// Blockchain Tip
+		// Blockchain Tip: the height of the chain, as the node tells it.
 		services.EventBus.AsObservable<NetworkTipHeightChanged>()
 			.Select(value => value.Height)
 			.WhereNotNull()
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(blockchainTip => BlockchainTip = blockchainTip);
 
-		// Local Tip
+		// Local Tip: the last block that the wallet processed.
 		services.EventBus.AsObservable<ClientTipHeightChanged>()
 			.Select(value => value.Height)
 			.WhereNotNull()
@@ -66,25 +63,6 @@ public partial class HealthMonitor : ReactiveObject
 			.BindTo(this, x => x.TorStatus)
 			.DisposeWith(Disposables);
 
-		var nodesCount = 0;
-		var peerAddedObservable = services.EventBus.AsObservable<P2pNodeAdded>();
-		peerAddedObservable.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(_ => nodesCount++)
-			.DisposeWith(Disposables);
-		var peerRemovedObservable = services.EventBus.AsObservable<P2pNodeRemoved>();
-		peerRemovedObservable.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(_ => nodesCount--)
-			.DisposeWith(Disposables);
-
-		// Peers
-		Observable.Merge( peerAddedObservable.ToSignal().Merge(peerRemovedObservable.ToSignal())
-			.Merge(services.EventBus.AsObservable<TorConnectionStateChanged>().ToSignal()))
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Select(_ =>
-				  UseTor != TorMode.Disabled && TorStatus == TorStatus.NotRunning ? 0 : nodesCount)
-			.BindTo(this, x => x.Peers)
-			.DisposeWith(Disposables);
-
 		// Bitcoin Core Status
 		services.EventBus.AsObservable<RpcStatusChanged>()
 			.Select(x => x.Status)
@@ -92,17 +70,9 @@ public partial class HealthMonitor : ReactiveObject
 			.Subscribe(x => BitcoinRpcStatus = x)
 			.DisposeWith(Disposables);
 
-		// Is P2P Connected
-		// The source of the p2p connection comes from if we use Core for it or the network.
-		this.WhenAnyValue(x => x.Peers)
-			.Select(peerCount => peerCount > 0)
-			.BindTo(this, x => x.IsP2pConnected)
-			.DisposeWith(Disposables);
-
 		// State
 		this.WhenAnyValue(
 				x => x.TorStatus,
-				x => x.Peers,
 				x => x.BlockchainTip,
 				x => x.ClientTip,
 				x => x.BitcoinRpcStatus)
@@ -126,23 +96,26 @@ public partial class HealthMonitor : ReactiveObject
 	{
 		var torConnected = UseTor == TorMode.Disabled || TorStatus == TorStatus.Running;
 
-		if (torConnected && BlockchainTip > 0 && BlockchainTip == ClientTip)
-		{
-			return HealthMonitorState.Ready;
-		}
-		if (torConnected && BlockchainTip > ClientTip && Peers > 0)
-		{
-			return HealthMonitorState.Loading;
-		}
-
 		return _bitcoinRpcStatus.Match(
-			r => torConnected
-				? r.Synchronized
-					? HealthMonitorState.Ready
-					: HealthMonitorState.BitcoinRpcSynchronizing
-				: HealthMonitorState.Loading,
-			e => e == NoBitcoinRpcConfigured || e == NoBitcoinRpcDetected
-				? HealthMonitorState.Ready
+			node =>
+			{
+				if (!torConnected)
+				{
+					return HealthMonitorState.Loading;
+				}
+
+				if (!node.Synchronized)
+				{
+					return HealthMonitorState.BitcoinRpcSynchronizing;
+				}
+
+				// A wallet that is behind the node is still processing blocks. Without a wallet there is nothing to wait for.
+				return ClientTip > 0 && ClientTip < node.Blocks
+					? HealthMonitorState.Loading
+					: HealthMonitorState.Ready;
+			},
+			e => e == BitcoinRpcNotAskedYet
+				? HealthMonitorState.Loading
 				: HealthMonitorState.BitcoinRpcIssueDetected);
 	}
 }

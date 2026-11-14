@@ -37,10 +37,11 @@ public static class SmartTransactionExtensions
 		return known.Concat(unknown);
 	}
 
+	/// <param name="blockchainTipHeight">Height of the tip of the chain. A transaction that is in a block has one confirmation at least, whatever the tip is said to be.</param>
 	public static uint GetConfirmations(this SmartTransaction transaction, uint blockchainTipHeight)
 		=> transaction.Height switch
 		{
-			ChainHeight(var height) => blockchainTipHeight - height + 1,
+			ChainHeight(var height) => blockchainTipHeight >= height ? blockchainTipHeight - height + 1 : 1,
 			_ => 0
 		};
 

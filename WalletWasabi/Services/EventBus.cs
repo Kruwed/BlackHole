@@ -1,8 +1,5 @@
-using System.Net;
 using WalletWasabi.BitcoinRpc;
 using WalletWasabi.FeeRateEstimation;
-using NBitcoin.Protocol;
-using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.WabiSabi.Client.Batching;
@@ -111,27 +108,17 @@ public class EventBus
 public record MiningFeeRatesChanged(FeeRateEstimations AllFeeEstimate);
 public record NetworkTipHeightChanged(uint Height);
 public record ClientTipHeightChanged(uint Height);
+public record WalletSyncStatusChanged(WalletSyncStatus Status);
 public record TorConnectionStateChanged(bool IsTorRunning);
 
 public record RpcStatusChanged(Result<ConnectedRpcStatus, string> Status);
-public record FilterProcessed(FilterModel Filter);
 public record Tick(DateTime DateTime);
 
-public record P2pNodeAdded(EndPoint EndPoint, Node Node);
-public record P2pNodeRemoved(EndPoint EndPoint, Node Node);
 public record CpfpInfoArrived;
 
 public record WalletLoaded(Wallet Wallet);
 
 public record NewTransactionInMempool(SmartTransaction Transaction);
-public record ChainReorganized(ChainHeight InvalidBlockHeight, uint256 InvalidBlockHash);
-public record FiltersReceived(FilterModel[] Filters);
 public record WalletRelevantTransactionProcessed(ProcessedResult Result);
-public record NodeDisconnectedQuickly(EndPoint EndPoint, Node Node);
-public record MisbehavingNodeDetected(EndPoint EndPoint, Node Node);
-public record NodeTimeoutDownloadingBlock(EndPoint EndPoint, Node Node);
-public record FilterHeadersTipChanged(uint Height);
-public record BlockHeadersTipChanged(uint Height);
-public record BlockDownloaded(uint Height);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);
 public record CoinjoinCostsAdded(uint256 TransactionId, CoinjoinCosts Costs);

@@ -38,9 +38,6 @@ public class WalletReceiveTests
 		var fundingAmount = Money.Coins(1m);
 		await env.FundAddressAsync(receiveAddress, fundingAmount, confirmations: 1);
 
-		// Sync filters so wallet can discover the transaction
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
 		// Start the wallet to process filters
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
@@ -81,8 +78,6 @@ public class WalletReceiveTests
 		await env.FundAddressAsync(address2, Money.Coins(1.0m), confirmations: 0);
 		await env.FundAddressAsync(address3, Money.Coins(1.5m), confirmations: 1); // Only last one confirms all
 
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
@@ -117,8 +112,6 @@ public class WalletReceiveTests
 		await env.FundAddressAsync(receiveAddress, Money.Coins(0.5m), confirmations: 0);
 		await env.FundAddressAsync(receiveAddress, Money.Coins(0.3m), confirmations: 1);
 
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
@@ -151,8 +144,6 @@ public class WalletReceiveTests
 
 		// Fund the wallet
 		await env.FundAddressAsync(receiveAddress, Money.Coins(2m), confirmations: 1);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(

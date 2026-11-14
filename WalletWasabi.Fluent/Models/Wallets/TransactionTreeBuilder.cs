@@ -116,7 +116,7 @@ public class TransactionTreeBuilder
 	{
 		var itemType = GetItemType(transactionSummary);
 		var date = transactionSummary.FirstSeen.ToLocalTime();
-		var serverHeight = _services.GetServerTipHeight();
+		var serverHeight = _services.GetTipHeight();
 		var confirmations = transactionSummary.GetConfirmations(serverHeight);
 		var status = GetItemStatus(transactionSummary, serverHeight);
 		var haveFeeEstimations = _wallet.FeeRateEstimations is not null;
@@ -158,7 +158,7 @@ public class TransactionTreeBuilder
 			Date = parent.Date.ToLocalTime(),
 			DateString = parent.DateString,
 			DateToolTipString = parent.DateToolTipString,
-			Confirmations = transactionSummary.GetConfirmations(_services.GetServerTipHeight()),
+			Confirmations = transactionSummary.GetConfirmations(_services.GetTipHeight()),
 			BlockHeight = transactionSummary.Height is Height.ChainHeight(var h) ? h : 0u,
 			HexFunction = transactionSummary.Hex,
 			WalletInputs = transactionSummary.WalletInputs,
@@ -238,7 +238,7 @@ public class TransactionTreeBuilder
 	private async Task<CoinJoinTransactionModel> CreateCoinjoinTransactionAsync(int index, TransactionSummary transactionSummary, CancellationToken cancellationToken)
 	{
 		var date = transactionSummary.FirstSeen.ToLocalTime();
-		var serverHeight = _services.GetServerTipHeight();
+		var serverHeight = _services.GetTipHeight();
 		var confirmations = transactionSummary.GetConfirmations(serverHeight);
 		var status = GetItemStatus(transactionSummary, serverHeight);
 

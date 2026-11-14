@@ -58,8 +58,8 @@ public class TransactionProcessorTests
 		var km2 = KeyManager.Recover(shares[..WalletGenerator.DefaultShamirThreshold], "pw", Network.Main);
 
 		var eventBus = new EventBus();
-		var tp1 = new TransactionProcessor(txStore, null, km1, eventBus);
-		var tp2 = new TransactionProcessor(txStore, null, km2, eventBus);
+		var tp1 = new TransactionProcessor(txStore, km1, eventBus);
+		var tp2 = new TransactionProcessor(txStore, km2, eventBus);
 
 		// A receive to a key both instances of the wallet control (identical derivation).
 		var receiveKey = km1.GetNextReceiveKey();
@@ -1621,7 +1621,6 @@ public class TransactionProcessorTests
 		eventBus = new EventBus();
 		return new TransactionProcessor(
 			transactionStore,
-			null,
 			keyManager,
 			eventBus);
 	}

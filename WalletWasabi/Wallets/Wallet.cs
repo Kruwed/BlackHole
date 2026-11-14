@@ -1,14 +1,12 @@
 using Microsoft.Extensions.Hosting;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Blockchain.Analysis.Clustering;
-using WalletWasabi.Blockchain.Blocks;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Crypto.Randomness;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
-using WalletWasabi.Storages;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client;
 using WalletWasabi.WabiSabi.Client.Batching;
@@ -23,23 +21,22 @@ public class Wallet : BackgroundService
 {
 	private readonly ComposedDisposable _disposables = new();
 
+	/// <param name="rpcClient">The RPC interface of the user's node. The wallet learns everything about the chain from it.</param>
+	/// <param name="watchMempool">Whether the wallet looks at the unconfirmed transactions of the node too, or only at its blocks.</param>
 	public static WalletFactory CreateFactory(
-		Network network, FilterManager filterManager, AllTransactionStore transactionStore, FilterHeaderChain filterHeaderChain,
-		MempoolService mempoolService, ServiceConfiguration serviceConfiguration, BlockProvider blockProvider,
-		EventBus eventBus, CpfpInfoProvider cpfpInfoProvider) =>
-		keyManager => new Wallet(network, keyManager, filterManager, transactionStore, filterHeaderChain, blockProvider, mempoolService, serviceConfiguration, cpfpInfoProvider, eventBus);
+		Network network, IRPCClient rpcClient, AllTransactionStore transactionStore,
+		ServiceConfiguration serviceConfiguration, EventBus eventBus, CpfpInfoProvider cpfpInfoProvider, bool watchMempool = true) =>
+		keyManager => new Wallet(network, keyManager, rpcClient, transactionStore, serviceConfiguration, cpfpInfoProvider, eventBus, watchMempool);
 
 	private Wallet(
 		Network network,
 		KeyManager keyManager,
-		FilterManager filterManager,
+		IRPCClient rpcClient,
 		AllTransactionStore transactionStore,
-		FilterHeaderChain filterHeaderChain,
-		BlockProvider blockProvider,
-		MempoolService mempoolService,
 		ServiceConfiguration serviceConfiguration,
 		CpfpInfoProvider cpfpInfoProvider,
-		EventBus eventBus)
+		EventBus eventBus,
+		bool watchMempool)
 	{
 		Password = "";
 		Network = network;
@@ -47,18 +44,15 @@ public class Wallet : BackgroundService
 		ServiceConfiguration = serviceConfiguration;
 		CpfpInfoProvider = cpfpInfoProvider;
 		DestinationProvider = new InternalDestinationProvider(KeyManager);
-		_filterManager = filterManager;
 		TransactionStore = transactionStore;
-		FilterHeaderChain = filterHeaderChain;
 
-		TransactionProcessor = new TransactionProcessor(TransactionStore, mempoolService, keyManager, eventBus);
-		WalletFilterProcessor = new WalletFilterProcessor(keyManager, TransactionStore, _filterManager, FilterHeaderChain, TransactionProcessor, blockProvider, eventBus);
+		TransactionProcessor = new TransactionProcessor(TransactionStore, keyManager, eventBus);
+		Synchronizer = new WalletSynchronizer(rpcClient, keyManager, TransactionStore, TransactionProcessor, eventBus, onSynchronizedFirst: LoadDummyMempool, watchMempool: watchMempool);
 		Coins = TransactionProcessor.Coins;
 		BatchedPayments = new PaymentBatch(Coins);
 		OutputProvider = new PaymentAwareOutputProvider(DestinationProvider, BatchedPayments, RandomnessProviders.Secure);
 		_eventBus = eventBus;
 		WalletId = new WalletId(Guid.NewGuid());
-		_lastFilterProcess = keyManager.GetBestHeight();
 
 		_eventBus.Subscribe<MiningFeeRatesChanged>(e => FeeRateEstimations = e.AllFeeEstimate)
 			.DisposeUsing(_disposables);
@@ -68,15 +62,10 @@ public class Wallet : BackgroundService
 
 		_eventBus.Subscribe<NewTransactionInMempool>(e => Mempool_TransactionReceived(e.Transaction))
 			.DisposeUsing(_disposables);
-		_eventBus.Subscribe<FilterProcessed>(e => _lastFilterProcess = e.Filter.Header.Height)
-			.DisposeUsing(_disposables);
 	}
 
 	private readonly EventBus _eventBus;
-	private readonly FilterManager _filterManager;
-	private ChainHeight _lastFilterProcess;
 	public AllTransactionStore TransactionStore { get; }
-	public FilterHeaderChain FilterHeaderChain { get; }
 
 	public WalletId WalletId { get; }
 	public bool Loaded { get; private set; }
@@ -94,7 +83,9 @@ public class Wallet : BackgroundService
 	public TransactionProcessor TransactionProcessor { get; }
 
 	public CpfpInfoProvider CpfpInfoProvider { get; }
-	public WalletFilterProcessor WalletFilterProcessor { get; }
+
+	/// <summary>Keeps the wallet up to date with the user's node.</summary>
+	public WalletSynchronizer Synchronizer { get; }
 
 	public bool IsLoggedIn { get; private set; }
 	public string Password { get; set; }
@@ -223,13 +214,15 @@ public class Wallet : BackgroundService
 	/// <inheritdoc/>
 	public override async Task StartAsync(CancellationToken cancellationToken)
 	{
-		await WalletFilterProcessor.StartAsync(cancellationToken).ConfigureAwait(false);
-		Logger.LogTrace(FormatLog("Wallet filter processor is started.", this));
-
-		await LoadWalletStateAsync(cancellationToken).ConfigureAwait(false);
+		LoadWalletState();
 		Logger.LogTrace(FormatLog("State is loaded.", this));
 
-		LoadDummyMempool();
+		// The blocks that the wallet did not see yet come from the node. The unconfirmed transactions
+		// that the wallet remembers are loaded when that is done, see the synchronizer.
+		await Synchronizer.StartAsync(cancellationToken).ConfigureAwait(false);
+		Logger.LogTrace(FormatLog("Waiting for the synchronization with the node to finish.", this));
+		await Synchronizer.InitialSynchronizationFinished.WaitAsync(cancellationToken).ConfigureAwait(false);
+
 		LoadExcludedCoins();
 
 		await base.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -288,8 +281,8 @@ public class Wallet : BackgroundService
 	public override async Task StopAsync(CancellationToken cancel)
 	{
 		await base.StopAsync(cancel).ConfigureAwait(false);
-		await WalletFilterProcessor.StopAsync(cancel).ConfigureAwait(false);
-		WalletFilterProcessor.Dispose();
+		await Synchronizer.StopAsync(cancel).ConfigureAwait(false);
+		Synchronizer.Dispose();
 
 		_disposables.Dispose();
 	}
@@ -336,39 +329,21 @@ public class Wallet : BackgroundService
 		}
 	}
 
-	private async Task LoadWalletStateAsync(CancellationToken cancellationToken)
+	/// <summary>
+	/// Loads what the wallet knew about the chain when it ran the last time.
+	/// </summary>
+	private void LoadWalletState()
 	{
 		// Make sure that the keys are asserted in case of an empty HdPubKeys array.
 		KeyManager.GetKeys();
 
 		TransactionProcessor.Process(TransactionStore.ConfirmedStore.GetTransactions());
-
-		int i = 0;
-		while (true)
-		{
-			var lastFilterProcess = _lastFilterProcess;
-			var serverTipHeight = FilterHeaderChain.ServerTipHeight;
-
-			if (serverTipHeight > ChainHeight.Genesis && lastFilterProcess >= serverTipHeight)
-			{
-				break;
-			}
-
-			i++;
-
-			// Every ten seconds, log a message to indicate that the wallet is waiting for filters to be processed.
-			if (i % 100 == 0)
-			{
-				Logger.LogDebug(FormatLog($"Waiting until filters are processed ({lastFilterProcess} < {serverTipHeight})", this));
-			}
-
-			await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-		}
-
-		Logger.LogTrace(FormatLog("Waiting for initial synchronization to finish.", this));
-		await WalletFilterProcessor.InitialSynchronizationFinished.WaitAsync(cancellationToken).ConfigureAwait(false);
 	}
 
+	/// <summary>
+	/// Loads the unconfirmed transactions that the wallet remembers. This is done once the wallet processed every block,
+	/// which tells the transactions that got confirmed in the meantime from those that are still waiting.
+	/// </summary>
 	private void LoadDummyMempool()
 	{
 		if (TransactionStore.MempoolStore.IsEmpty())
@@ -376,32 +351,24 @@ public class Wallet : BackgroundService
 			return;
 		}
 
-		// Only clean the mempool if we're fully synchronized.
-		if (FilterHeaderChain.HashesLeft == 0)
+		var txsToProcess = new List<SmartTransaction>();
+		foreach (var tx in TransactionStore.MempoolStore.GetTransactions())
 		{
-			var txsToProcess = new List<SmartTransaction>();
-			foreach (var tx in TransactionStore.MempoolStore.GetTransactions())
+			var txid = tx.GetHash();
+			if (DateTimeOffset.UtcNow - tx.FirstSeen < TimeSpan.FromDays(ServiceConfiguration.DropUnconfirmedTransactionsAfterDays))
 			{
-				var txid = tx.GetHash();
-				if (DateTimeOffset.UtcNow - tx.FirstSeen < TimeSpan.FromDays(ServiceConfiguration.DropUnconfirmedTransactionsAfterDays))
+				txsToProcess.Add(tx);
+			}
+			else
+			{
+				if (TransactionStore.MempoolStore.TryRemove(txid, out _))
 				{
-					txsToProcess.Add(tx);
-				}
-				else
-				{
-					if (TransactionStore.MempoolStore.TryRemove(txid, out _))
-					{
-						Logger.LogInfo(FormatLog($"Transaction {txid} dropped after {ServiceConfiguration.DropUnconfirmedTransactionsAfterDays} days being unconfirmed.", this));
-					}
+					Logger.LogInfo(FormatLog($"Transaction {txid} dropped after {ServiceConfiguration.DropUnconfirmedTransactionsAfterDays} days being unconfirmed.", this));
 				}
 			}
+		}
 
-			TransactionProcessor.Process(txsToProcess);
-		}
-		else
-		{
-			TransactionProcessor.Process(TransactionStore.MempoolStore.GetTransactions());
-		}
+		TransactionProcessor.Process(txsToProcess);
 	}
 
 	public void ExcludeCoinFromCoinJoin(OutPoint outpoint, bool exclude = true)

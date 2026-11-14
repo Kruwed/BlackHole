@@ -41,7 +41,7 @@ public partial class CoinModel : ReactiveObject
 		IsBanned = coin.IsBanned;
 		BannedUntilUtcToolTip = $"Can't participate in coinjoin until: {coin.BannedUntilUtc}";
 
-		var confirmations = coin.GetConfirmations(services.GetServerTipHeight());
+		var confirmations = coin.GetConfirmations(services.GetTipHeight());
 		Confirmations = confirmations;
 		ConfirmedToolTip = TextHelpers.GetConfirmationText(confirmations);
 	}
@@ -82,7 +82,7 @@ public partial class CoinModel : ReactiveObject
 		this.WhenAnyValue(c => c.Coin.BannedUntilUtc).Select(_ => Coin.IsBanned).BindTo(this, x => x.IsBanned).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.BannedUntilUtc).WhereNotNull().Subscribe(x => BannedUntilUtcToolTip = $"Can't participate in coinjoin until: {x:g}").DisposeWith(disposable);
 
-		this.WhenAnyValue(c => c.Coin.Height).Select(_ => Coin.GetConfirmations(_services.GetServerTipHeight())).Subscribe(
+		this.WhenAnyValue(c => c.Coin.Height).Select(_ => Coin.GetConfirmations(_services.GetTipHeight())).Subscribe(
 			confirmations =>
 			{
 				Confirmations = confirmations;

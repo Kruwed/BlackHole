@@ -9,14 +9,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
-using NBitcoin.Protocol;
 using NBitcoin.RPC;
 using Nito.AsyncEx;
-using WalletWasabi.BitcoinP2p;
 using WalletWasabi.BitcoinRpc;
-using WalletWasabi.Blockchain.BlockFilters;
-using WalletWasabi.Blockchain.Blocks;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client.Configuration;
@@ -30,7 +25,6 @@ using WalletWasabi.Logging;
 using WalletWasabi.Models;
 using WalletWasabi.Rpc;
 using WalletWasabi.Services;
-using WalletWasabi.Services.NodesManagement;
 using WalletWasabi.Services.Terminate;
 using WalletWasabi.Storages;
 using WalletWasabi.Tor;
@@ -44,7 +38,6 @@ using WalletWasabi.WabiSabi.Models;
 using WalletWasabi.Wallets;
 using WalletWasabi.WebClients.Wasabi;
 using static WalletWasabi.Services.Workers;
-using ChainHeight = WalletWasabi.Models.Height.ChainHeight;
 
 namespace WalletWasabi.Client;
 
@@ -76,41 +69,29 @@ public class Global
 		HostedServices = new HostedServices();
 		HostedServices.DisposeUsing(_disposables);
 
-		_mempoolService = new MempoolService(EventBus);
-		FilterHeaders = new FilterHeaderChain();
 		var networkWorkFolderPath = Path.Combine(DataDir, "BitcoinStore", Network.ToString());
-		var fileSystemBlockRepository = new FileSystemBlockRepository(Path.Combine(networkWorkFolderPath, "Blocks"), Network);
 
 		TransactionStore = new AllTransactionStore(networkWorkFolderPath, Network);
 		TransactionStore.DisposeUsing(_disposables);
 
-		FilterManager = new FilterManager(Path.Combine(networkWorkFolderPath, "IndexStore"), Network, FilterHeaders, EventBus);
-		FilterManager.DisposeUsing(_disposables);
-
-		var p2PDataDir = GetBitcoinP2PNetworkDirectory();
-		_blockHeaders = ConfigureBlockHeaderChain(p2PDataDir);
-
-		_p2pConnectionManager = ConfigureP2pConnectionManager();
 		BitcoinRpcHttpClientFactory = BuildHttpClientFactory();
 		_bitcoinRpcClient = ConfigureBitcoinRpcClient();
 		var cpfpProvider = ConfigureCpfpInfoProvider();
-		var blockProvider = ConfigureBlockProvider(_p2pConnectionManager, fileSystemBlockRepository);
 
+		// The wallet learns about the chain and about unconfirmed transactions from the user's node, and from nowhere else.
 		var walletFactory = Wallet.CreateFactory(
 			Config.Network,
-			FilterManager,
+			_bitcoinRpcClient,
 			TransactionStore,
-			FilterHeaders,
-			_mempoolService,
 			Config.ServiceConfiguration,
-			blockProvider,
 			EventBus,
-			cpfpProvider);
+			cpfpProvider,
+			watchMempool: !Config.BlockOnlyMode);
 
 		var walletDirectories = new WalletDirectories(Config.Network, DataDir);
 		WalletManager = new WalletManager(Config.Network, walletDirectories, walletFactory);
 
-		TransactionBroadcaster = new TransactionBroadcaster(_bitcoinRpcClient, _mempoolService);
+		TransactionBroadcaster = new TransactionBroadcaster(_bitcoinRpcClient, EventBus);
 
 		_ticker = new Timer(_ => EventBus.Publish(new Tick(DateTime.UtcNow)));
 		_ticker.DisposeUsing(_disposables);
@@ -121,14 +102,11 @@ public class Global
 	private readonly AsyncLock _initializationAsyncLock = new();
 	private readonly CancellationTokenSource _stoppingCts = new();
 
-	private readonly P2pConnectionManager _p2pConnectionManager;
 	private TorManager? _torManager;
 	private readonly IRPCClient _bitcoinRpcClient;
 	private CoinPrison? _coinPrison;
-	private readonly ConcurrentChain _blockHeaders;
 	private readonly Timer _ticker;
 	private readonly ComposedDisposable _disposables = new();
-	private readonly MempoolService _mempoolService;
 	private readonly ComposedAsyncDisposable _asyncDisposables = new();
 
 	public StatusContainer Status { get; }
@@ -138,8 +116,6 @@ public class Global
 	public string DataDir { get; }
 	public TorSettings TorSettings { get; }
 
-	public FilterHeaderChain FilterHeaders { get; }
-	public FilterManager FilterManager { get; }
 	public AllTransactionStore TransactionStore { get; }
 	public Config Config { get; }
 	public WalletManager WalletManager { get; }
@@ -149,127 +125,6 @@ public class Global
 	public JsonRpcServer? RpcServer { get; private set; }
 	public Uri? OnionServiceUri { get; private set; }
 	public EventBus EventBus { get; }
-
-	private string GetBitcoinP2PNetworkDirectory() => Path.Combine(DataDir, "BitcoinP2pNetwork");
-
-	private BlockProvider ConfigureBlockProvider(P2pConnectionManager p2pConnectionManager, FileSystemBlockRepository fileSystemBlockRepository)
-	{
-		var fileSystemBlockProvider = BlockProviders.FileSystemBlockProvider(fileSystemBlockRepository);
-		var p2PBlockProvider = BlockProviders.P2pBlockProvider(p2pConnectionManager.GetSingleUseNodeAsync);
-
-		BlockProvider[] blockProviders = [fileSystemBlockProvider, BlockProviders.RpcBlockProvider(_bitcoinRpcClient), p2PBlockProvider];
-
-		return BlockProviders.CachedBlockProvider(
-			BlockProviders.ComposedBlockProvider(blockProviders),
-			fileSystemBlockRepository);
-	}
-
-	private ConcurrentChain ConfigureBlockHeaderChain(string p2PDataDir)
-	{
-		var blockHeadersFilePath = Path.Combine(p2PDataDir, $"BlockHeaders{Network}.dat");
-
-		if (Network == Network.RegTest)
-		{
-			DeleteBlockHeadersFile(blockHeadersFilePath);
-			return new ConcurrentChain(Network);
-		}
-
-		var blockHeaders = Result<byte[], Exception>
-			.Catch(() => File.SafelyReadAllBytes(blockHeadersFilePath))
-			.Match(
-				bytes => bytes switch
-				{
-					[] => new ConcurrentChain(Network),
-					_ => new ConcurrentChain(bytes, Network)
-				},
-				_ => new ConcurrentChain(Network));
-
-		return blockHeaders;
-	}
-
-	private static void DeleteBlockHeadersFile(string blockHeadersFilePath)
-	{
-		foreach (var path in new[] { blockHeadersFilePath, $"{blockHeadersFilePath}.old", $"{blockHeadersFilePath}.new" })
-		{
-			if (File.Exists(path))
-			{
-				File.Delete(path);
-			}
-		}
-	}
-
-	private P2pConnectionManager ConfigureP2pConnectionManager()
-	{
-		if (Network == Network.RegTest)
-		{
-			if (Network.SeedNodes is List<NetworkAddress> addresses)
-			{
-				addresses.Add(new NetworkAddress(IPAddress.Loopback, Network.DefaultPort));
-			}
-		}
-
-		if (Network == Network.Main)
-		{
-			var extras = new[]
-			{
-				"[::ffff:89.58.60.208]:8333", "141.8.29.139:8333", "176.126.73.74:8333", "51.37.212.201:8333",
-				"[::ffff:109.224.84.149]:8333", "[::ffff:123.202.192.214]:8333", "[::ffff:130.180.58.210]:8333",
-				"[::ffff:144.2.65.179]:8333", "[::ffff:158.174.102.68]:8333", "[::ffff:158.248.16.134]:8333",
-				"[::ffff:176.198.90.204]:8333", "[::ffff:176.9.150.253]:8333", "[::ffff:178.192.9.193]:8333",
-				"[::ffff:178.26.46.97]:8333", "[::ffff:184.181.44.154]:8333", "[::ffff:217.92.137.136]:8333",
-				"[::ffff:218.146.42.163]:8333", "[::ffff:24.134.6.165]:8333", "[::ffff:45.130.58.202]:8333",
-				"[::ffff:45.41.51.43]:8333", "[::ffff:46.226.18.135]:8333", "[::ffff:46.229.238.187]:8333",
-				"[::ffff:46.59.13.35]:8333", "[::ffff:47.181.150.194]:8333", "[::ffff:5.161.244.95]:8333",
-				"[::ffff:62.177.111.78]:8333", "[::ffff:64.130.52.77]:8333", "[::ffff:71.185.186.173]:8333",
-				"[::ffff:80.253.94.252]:8333", "[::ffff:82.67.127.46]:8333", "[::ffff:84.196.182.49]:8333",
-				"[::ffff:86.242.20.49]:8333", "[::ffff:86.254.150.8]:8333", "[::ffff:87.236.195.198]:8333",
-				"[::ffff:95.90.138.145]:8333", "179.51.86.34:8333", "188.63.47.92:8333",
-				"54.248.26.73:8333", "82.67.161.60:8333", "92.252.69.140:8333", "92.98.3.189:8333",
-				"[::ffff:109.202.209.123]:8333", "[::ffff:121.99.109.132]:8333", "[::ffff:13.48.242.195]:8333",
-				"[::ffff:137.175.247.16]:8333", "[::ffff:141.195.182.138]:8333", "[::ffff:141.224.209.201]:8333",
-				"[::ffff:15.134.155.244]:8333", "[::ffff:15.222.135.69]:8333", "[::ffff:159.196.59.9]:8333",
-				"[::ffff:167.235.98.250]:8333", "[::ffff:174.165.47.165]:8333", "[::ffff:176.34.50.242]:8333",
-				"[::ffff:178.26.219.209]:8333", "[::ffff:18.102.201.234]:8333", "[::ffff:181.115.88.2]:8333",
-				"[::ffff:188.34.193.226]:8333", "[::ffff:194.160.169.63]:8333", "[::ffff:194.42.111.175]:8333",
-				"[::ffff:203.12.2.113]:8333", "[::ffff:213.144.146.33]:8333", "[::ffff:3.23.202.194]:8333",
-				"[::ffff:3.24.243.206]:8333", "[::ffff:38.172.231.13]:8333", "[::ffff:43.200.189.153]:8333",
-				"[::ffff:43.202.209.174]:8333", "[::ffff:45.142.17.140]:8333", "[::ffff:47.130.216.204]:8333",
-				"[::ffff:5.56.248.2]:8333", "[::ffff:50.106.24.94]:8333", "[::ffff:51.158.54.195]:8333",
-				"[::ffff:51.44.200.138]:8333", "[::ffff:52.74.41.162]:8333", "[::ffff:54.246.85.218]:8333",
-				"[::ffff:56.125.205.1]:8333", "[::ffff:56.125.249.13]:8333", "[::ffff:56.126.1.10]:8333",
-				"[::ffff:56.126.33.251]:8333", "[::ffff:65.109.125.160]:8333", "[::ffff:68.103.11.30]:8333",
-				"[::ffff:68.231.1.158]:8333", "[::ffff:71.179.175.122]:8333", "[::ffff:72.210.34.27]:8333",
-				"[::ffff:72.253.193.231]:8333", "[::ffff:76.31.239.16]:8333", "[::ffff:77.162.78.194]:8333",
-				"[::ffff:79.160.240.207]:8333", "[::ffff:82.66.107.156]:8333", "[::ffff:85.0.91.69]:8333",
-				"[::ffff:85.3.52.172]:8333", "[::ffff:88.153.65.113]:8333", "[::ffff:89.217.193.252]:8333",
-				"[::ffff:89.56.142.128]:8333", "[::ffff:89.56.206.21]:8333", "[::ffff:90.11.72.52]:8333",
-				"[::ffff:90.189.215.153]:8333", "[::ffff:92.148.116.20]:8333", "[::ffff:93.56.5.69]:8333",
-				"[::ffff:93.89.130.246]:8333"
-			};
-
-			if (Network.SeedNodes is List<NetworkAddress> addresses)
-			{
-				addresses.AddRange(extras.Select(IPEndPoint.Parse).Select(x => new NetworkAddress(x)));
-			}
-		}
-
-		var torEndpoint = Config.UseTor != TorMode.Disabled ? TorSettings.SocksEndpoint : null;
-		IDnsResolver dnsResolver = torEndpoint is not null
-			? new DnsSocksResolver(torEndpoint){ StreamIsolation = true }
-			: DnsResolver.Instance;
-
-		var manager = new P2pConnectionManager(Network, EventBus, dnsResolver, connectionTimeout: TimeSpan.FromSeconds(15), torSocks5: torEndpoint);
-
-		manager.AddBehavior(new BlockHeadersChainBehavior(_blockHeaders, FilterHeaders, EventBus));
-
-		if (!Config.BlockOnlyMode)
-		{
-			manager.AddBehavior(new P2pBehavior(_mempoolService));
-		}
-
-		manager.DisposeUsing(_disposables);
-		return manager;
-	}
 
 	/// <summary>
 	/// Creates the client of the RPC interface of the user's node. The node is the only source of blockchain data,
@@ -335,13 +190,14 @@ public class Global
 
 	private void ConfigureFeeRateUpdater(CancellationToken cancellationToken)
 	{
-		// The fee rate estimations come from the user's node.
+		// The fee rate estimations come from the user's node. They are good for a quarter of an hour.
+		// While the node cannot be asked, it is tried again every few seconds: there is nobody else to ask.
 		var feeRateUpdater = Spawn("FeeRateUpdater",
 			Service("Mining Fee Rate Updater",
 				Periodically(
-					TimeSpan.FromMinutes(15),
+					TimeSpan.FromSeconds(10),
 					FeeRateEstimations.Empty,
-					FeeRateEstimationUpdater.CreateUpdater(FeeRateProviders.RpcAsync(_bitcoinRpcClient), EventBus))), cancellationToken);
+					FeeRateEstimationUpdater.CreateUpdater(FeeRateProviders.RpcAsync(_bitcoinRpcClient), EventBus, refreshPeriod: TimeSpan.FromMinutes(15)))), cancellationToken);
 		feeRateUpdater.DisposeUsing(_disposables);
 		EventBus.Subscribe<Tick>(_ => feeRateUpdater.Post(new FeeRateEstimationUpdater.UpdateMessage()))
 			.DisposeUsing(_disposables);
@@ -358,80 +214,13 @@ public class Global
 		rpcMonitor.DisposeUsing(_disposables);
 		EventBus.Subscribe<Tick>(_ => rpcMonitor.Post(new RpcMonitor.CheckMessage()))
 			.DisposeUsing(_disposables);
-	}
 
-	private async Task ConfigureSynchronizerAsync(CancellationToken cancellationToken)
-	{
-		var supportsBlockFiltersResult = await _bitcoinRpcClient.SupportsBlockFiltersAsync(cancellationToken).ConfigureAwait(false);
-
-		var filtersProvider = supportsBlockFiltersResult
-			.Map(_ => FilterProviders.CreateBitcoinRpcFilterProvider(_bitcoinRpcClient, _blockHeaders))
-			.Match(
-				rpcProvider => rpcProvider,
-				_ =>
-				{
-					var tip = FilterManager.GetTip()!.Header;
-					var synchronizationState = new FilterSynchronizationState(_blockHeaders, FilterHeaders, tip.Height, EventBus);
-					_p2pConnectionManager.AddBehavior(new CompactFilterBehavior(synchronizationState, _blockHeaders, EventBus));
-
-					return FilterProviders.CreateBitcoinP2pFilterProvider(FilterHeaders, _blockHeaders, synchronizationState);
-				});
-
-
-		var (pause, resume, serviceLoop) =
-			Continuously(Synchronizer.CreateFilterGenerator(filtersProvider, FilterManager, FilterHeaders, EventBus));
-
-		if (supportsBlockFiltersResult.IsOk)
-		{
-			EventBus.Subscribe<RpcStatusChanged>(e =>
-			{
-				var action = e.Status.Match(
-					x => x.Synchronized ? resume : pause,
-					_ => pause);
-				action();
-			}).DisposeUsing(_disposables);
-		}
-		else
-		{
-			var errorBecauseIndexIsDisabled = supportsBlockFiltersResult.Error;
-			if( errorBecauseIndexIsDisabled)
-			{
-				Logger.LogInfo("\nWasabi is connected to a bitcoin RPC that doesn't provides compact filters (BIP158)."
-								+ "\nCompact filters are disabled by default in Bitcoin and you have to enable them."
-								+ "\nIf you are using your own node then edit the bitcoin.conf file and add the line:"
-								+ "\nblockfilterindex=1"
-								+ "\n"
-								+ "\nIf you are connected to a personal server product, some of them allow the user to enable"
-								+ "\nthe block filters (BIP158) in the UI while others require you to edit the bitcoin config"
-								+ "\nfile manually."
-								+ "\n"
-								+ "\nRemember to restart your bitcoin node after changing the configuration and wait for"
-								+ "\nwait for it to create the filters, what can take some time."
-								+ "\n-----------------------------------------------------------------------------------------");
-			}
-			else if(!string.IsNullOrWhiteSpace(Config.BitcoinRpcUri))
-			{
-				Logger.LogWarning($"Was not able to connect to the Bitcoin RPC server '{Config.BitcoinRpcUri}' with the credentials provided. " +
-				                  "Please configure valid RPC credentials in settings and restart.");
-			}
-			else
-			{
-				Logger.LogInfo("No Bitcoin Node RPC was configured. Trying P2P synchronization.");
-			}
-
-			await resume().ConfigureAwait(false);
-		}
-
-		Spawn("Synchronizer", Service("Wasabi Index-Based Synchronizer", serviceLoop), cancellationToken)
-			.DisposeUsing(_disposables);
-
+		// The node tells the height of the chain.
 		EventBus.Subscribe<RpcStatusChanged>(e =>
 		{
 			if (e.Status.IsOk)
 			{
-				var serverTip = (uint)e.Status.Value.Headers;
-				FilterHeaders.SetServerTipHeight(new ChainHeight(serverTip));
-				EventBus.Publish(new NetworkTipHeightChanged(serverTip));
+				EventBus.Publish(new NetworkTipHeightChanged((uint)e.Status.Value.Headers));
 			}
 		}).DisposeUsing(_disposables);
 	}
@@ -445,7 +234,16 @@ public class Global
 					CpfpInfoUpdater.Create(_bitcoinRpcClient, EventBus))),
 			_stoppingCts.Token);
 		cpfpUpdater.DisposeUsing(_disposables);
-		EventBus.Subscribe<FilterProcessed>(_ => cpfpUpdater.Post(new CpfpInfoMessage.UpdateMessage()))
+
+		// A new block or a new transaction of the wallet can change what the unconfirmed transactions effectively pay.
+		EventBus.Subscribe<WalletSyncStatusChanged>(e =>
+		{
+			if (e.Status is WalletSyncStatus.Synchronized)
+			{
+				cpfpUpdater.Post(new CpfpInfoMessage.UpdateMessage());
+			}
+		}).DisposeUsing(_disposables);
+		EventBus.Subscribe<WalletRelevantTransactionProcessed>(_ => cpfpUpdater.Post(new CpfpInfoMessage.UpdateMessage()))
 			.DisposeUsing(_disposables);
 		return new CpfpInfoProvider(cpfpUpdater);
 	}
@@ -455,27 +253,13 @@ public class Global
 		try
 		{
 			await TransactionStore.InitializeAsync(cancellationToken).ConfigureAwait(false);
-			await FilterManager.InitializeAsync(CalculateSafestHeight(), cancellationToken).ConfigureAwait(false);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			Logger.LogError($"Bitcoin storage got corrupted. Resetting the wallet to the first block to rescan. Exception: {ex}");
-			WalletManager.SetMaxBestHeight(CalculateSafestHeight());
+			WalletManager.RescanWallet();
 			throw;
 		}
-	}
-
-	private ChainHeight CalculateSafestHeight()
-	{
-		var checkpointHeight = FilterCheckpoints.GetMostRecentCheckpoint(Network).Header.Height;
-		var transactionHeight = TransactionStore.TryGetOldestKnownTransactionHeight(out var h)
-			? h > Constants.ResyncHeightMargin
-				? h - Constants.ResyncHeightMargin
-				: h
-			: checkpointHeight;
-		var birthHeight = WalletManager.GetBirthHeight();
-		var bestHeight = WalletManager.GetBestHeight();
-		return (ChainHeight) Height.Min(checkpointHeight, ((ChainHeight?[]) [transactionHeight, birthHeight, bestHeight]).DropNulls());
 	}
 
 	public async Task InitializeAsync(bool initializeSleepInhibitor, TerminateService terminateService, CancellationToken cancellationToken)
@@ -495,11 +279,6 @@ public class Global
 				StartTorProcessManagerAsync(linkedCtsToken),
 				InitializeBitcoinStoreAsync(linkedCtsToken))
 				.ConfigureAwait(false);
-
-			// Bitcoin P2P network can be started after filters are initialized.
-			_p2pConnectionManager.Start(linkedCtsToken);
-
-			await ConfigureSynchronizerAsync(linkedCtsToken).ConfigureAwait(false);
 
 			if (_disposeRequested)
 			{
@@ -644,10 +423,6 @@ public class Global
 		return InputVerifiers.CreateRpcVerifier(_bitcoinRpcClient);
 	}
 
-	public ImmutableArray<Node> GetNodes() => _p2pConnectionManager.Nodes;
-	public uint GetBlockHeadersTipHeight() => (uint)(_blockHeaders.Tip?.Height ?? 0);
-	public int GetPeerCount() => _p2pConnectionManager.Nodes.Length;
-
 	public async Task DisposeAsync()
 	{
 		// Dispose method may be called just once.
@@ -676,14 +451,6 @@ public class Global
 				catch (Exception ex)
 				{
 					Logger.LogError($"Error during {nameof(WalletManager.RemoveAndStopAsync)}: {ex}");
-				}
-
-				if (Network != Network.RegTest && _blockHeaders.Tip is not null)
-				{
-					var p2PDataDir = GetBitcoinP2PNetworkDirectory();
-					var blockHeadersFilePath = Path.Combine(p2PDataDir, $"BlockHeaders{Network}.dat");
-					File.SafelyWriteAllBytes(blockHeadersFilePath, _blockHeaders.ToBytes());
-					Logger.LogInfo("Block headers saved.");
 				}
 
 				if (RpcServer is { } rpcServer)

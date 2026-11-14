@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using NBitcoin;
 using NBitcoin.RPC;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Models;
@@ -35,7 +34,7 @@ public class TransactionBroadcasterTests
 		var eventBus = new EventBus();
 		var announcedTransactions = new List<SmartTransaction>();
 		using var subscription = eventBus.Subscribe<NewTransactionInMempool>(e => announcedTransactions.Add(e.Transaction));
-		var broadcaster = new TransactionBroadcaster(rpc, new MempoolService(eventBus));
+		var broadcaster = new TransactionBroadcaster(rpc, eventBus);
 
 		var tx = BitcoinFactory.CreateSmartTransaction(height: Height.Unknown);
 
@@ -59,7 +58,7 @@ public class TransactionBroadcasterTests
 		var eventBus = new EventBus();
 		var announcedTransactions = new List<SmartTransaction>();
 		using var subscription = eventBus.Subscribe<NewTransactionInMempool>(e => announcedTransactions.Add(e.Transaction));
-		var broadcaster = new TransactionBroadcaster(rpc, new MempoolService(eventBus));
+		var broadcaster = new TransactionBroadcaster(rpc, eventBus);
 
 		var tx = BitcoinFactory.CreateSmartTransaction(height: Height.Unknown);
 
@@ -81,7 +80,7 @@ public class TransactionBroadcasterTests
 			OnSendRawTransactionAsync = _ => throw new SocketException((int)SocketError.ConnectionRefused)
 		};
 
-		var broadcaster = new TransactionBroadcaster(rpc, new MempoolService(new EventBus()));
+		var broadcaster = new TransactionBroadcaster(rpc, new EventBus());
 		var tx = BitcoinFactory.CreateSmartTransaction(height: Height.Unknown);
 
 		var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => broadcaster.SendTransactionAsync(tx));
@@ -98,7 +97,7 @@ public class TransactionBroadcasterTests
 			OnSendRawTransactionAsync = _ => throw new OperationCanceledException()
 		};
 
-		var broadcaster = new TransactionBroadcaster(rpc, new MempoolService(new EventBus()));
+		var broadcaster = new TransactionBroadcaster(rpc, new EventBus());
 		var tx = BitcoinFactory.CreateSmartTransaction(height: Height.Unknown);
 
 		await Assert.ThrowsAsync<OperationCanceledException>(() => broadcaster.SendTransactionAsync(tx));

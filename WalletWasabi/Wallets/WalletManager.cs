@@ -224,18 +224,18 @@ public class WalletManager
 			? keyManager
 			: null;
 
-	public void SetMaxBestHeight(uint bestHeight)
+	/// <summary>
+	/// Makes the wallet look for its transactions again, from the first block that can have any. For when what it knew about them is lost.
+	/// </summary>
+	public void RescanWallet()
 	{
-		KeyManagerOnNetwork?.SetMaxBestHeight(bestHeight);
+		if (KeyManagerOnNetwork is { } keyManager)
+		{
+			keyManager.SetResyncParameters(keyManager.GetBirthHeight() ?? Network.TaprootActivationHeight, keyManager.MinGapLimit);
+		}
 	}
 
-	/// <summary>The height that the wallet was created at, if it is known.</summary>
-	public ChainHeight? GetBirthHeight() =>
-		KeyManagerOnNetwork?.GetBirthHeight() is { } birthHeight && birthHeight > 0
-			? birthHeight
-			: null;
-
-	/// <summary>The height that the wallet is synchronized to.</summary>
+	/// <summary>The height that the wallet is synchronized to. Not known for a new wallet that did not reach the node yet.</summary>
 	public ChainHeight? GetBestHeight() =>
 		KeyManagerOnNetwork?.GetBestHeight();
 }

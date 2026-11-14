@@ -37,7 +37,8 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 
 		TransactionProcessed =
 			services.EventBus.AsObservable<WalletRelevantTransactionProcessed>().ToSignal()
-				.Merge(services.EventBus.AsObservable<FiltersReceived>().ToSignal())
+				// A new block changes the confirmations of the transactions.
+				.Merge(services.EventBus.AsObservable<ClientTipHeightChanged>().ToSignal())
 				.Sample(TimeSpan.FromSeconds(1))
 				.ObserveOn(RxApp.MainThreadScheduler)
 				.StartWith(Unit.Default);

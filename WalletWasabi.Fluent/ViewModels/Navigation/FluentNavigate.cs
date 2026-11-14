@@ -207,9 +207,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new SendSuccessViewModel(UiContext, finalTransaction, title, caption), navigationMode);
 	}
 
-	public FluentDialog<(int MinGapLimit, uint BirthHeight)?> AdvancedRecoveryOptions(int minGapLimit, uint genesisHeight, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<(int MinGapLimit, uint BirthHeight)?> AdvancedRecoveryOptions(int minGapLimit, uint birthHeight, uint earliestBirthHeight, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new AdvancedRecoveryOptionsViewModel(UiContext, minGapLimit, genesisHeight);
+		var dialog = new AdvancedRecoveryOptionsViewModel(UiContext, minGapLimit, birthHeight, earliestBirthHeight);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 

@@ -80,9 +80,10 @@ public partial class WalletRepository : ReactiveObject
 		var keyManager = await Task.Run(
 				() =>
 				{
+					// Nothing concerns a new wallet up to the tip of the chain. If the node did not tell it yet, the wallet learns it when it reaches the node.
 					var walletGenerator = new WalletGenerator(_services.GetNetwork())
 					{
-						TipHeight = _services.GetTipHeight()
+						TipHeight = _services.GetNodeTipHeight() is var tipHeight and > 0 ? new Height.ChainHeight(tipHeight) : null
 					};
 
 					return walletGenerator.GenerateWallet(

@@ -90,6 +90,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	public void RescanWallet(uint startingHeight, int minGapLimit)
 	{
-		_keyManager.SetResyncParameters(startingHeight + Constants.ResyncHeightMargin, minGapLimit);
+		_keyManager.SetResyncParameters(startingHeight, minGapLimit);
 	}
 }

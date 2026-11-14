@@ -11,7 +11,7 @@ namespace WalletWasabi.IntegrationTests.SyncTests;
 
 /// <summary>
 /// Integration tests for blockchain reorganization handling.
-/// Tests wallet and filter behavior during chain reorgs.
+/// Tests how the wallet follows its node through chain reorgs.
 /// </summary>
 [Collection("Integration tests")]
 public class ReorgTests
@@ -24,40 +24,44 @@ public class ReorgTests
 	}
 
 	[Fact(Timeout = 120_000)] // 2 minute timeout
-	public async Task Reorg_ShallowReorg_FiltersReorganizedAsync()
+	public async Task Reorg_ShallowReorg_WalletFollowsTheNodeAsync()
 	{
 		// Arrange
 		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
 
-		// Mine some blocks and sync
-		await env.RpcClient.GenerateAsync(5);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		var keyManager = env.CreateKeyManager();
+		var wallet = env.CreateWallet(keyManager);
 
-		var preTip = env.FilterManager.GetTip();
-		Assert.NotNull(preTip);
-		var preHeight = (uint)preTip.Header.Height;
-		var preBlockHash = preTip.Header.BlockHash;
+		// Mine some blocks and synchronize
+		await env.RpcClient.GenerateAsync(5);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
+		await env.WaitForWalletToCatchUpAsync(wallet);
+
+		var (preHeight, preBlockHashes) = keyManager.GetProcessedBlocks();
+		Assert.NotNull(preHeight);
+		var preBlockHash = preBlockHashes[^1];
+		Assert.Equal(preBlockHash, await env.RpcClient.GetBlockHashAsync((int)preHeight.Height));
 
 		// Act - Invalidate the last block to simulate a reorg
 		await env.RpcClient.InvalidateBlockAsync(preBlockHash);
 
-		// Mine a different block (creates a reorg)
+		// Mine different blocks (creates a reorg)
 		await env.RpcClient.GenerateAsync(2);
 
-		// Re-sync filters - this should detect the reorg and handle it
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		// The wallet detects the reorg and follows the node
+		await env.WaitForWalletToCatchUpAsync(wallet);
 
 		// Assert
-		var postTip = env.FilterManager.GetTip();
-		Assert.NotNull(postTip);
+		var (postHeight, postBlockHashes) = keyManager.GetProcessedBlocks();
+		Assert.NotNull(postHeight);
+		Assert.Equal(preHeight.Height + 1, postHeight.Height);
 
-		// The new tip should be at the same or higher height
-		var postHeight = (uint)postTip.Header.Height;
-		Assert.True(postHeight >= preHeight);
+		// The block that was dropped is not among the processed blocks any more, the one that took its place is.
+		Assert.DoesNotContain(preBlockHash, postBlockHashes);
+		Assert.Equal(await env.RpcClient.GetBlockHashAsync((int)preHeight.Height), postBlockHashes[^2]);
+		Assert.Equal(await env.RpcClient.GetBlockHashAsync((int)postHeight.Height), postBlockHashes[^1]);
 
-		// The block hash should be different (reorg happened)
-		// Note: This might not always be true depending on implementation
-		// The key assertion is that we don't crash and filters are consistent
+		await wallet.StopAsync(TestContext.Current.CancellationToken);
 	}
 
 	[Fact(Timeout = 120_000)] // 2 minute timeout
@@ -79,9 +83,6 @@ public class ReorgTests
 		var tipHeight = await env.RpcClient.GetBlockCountAsync();
 		var blockToInvalidate = await env.RpcClient.GetBlockHashAsync(tipHeight);
 
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
-
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
@@ -92,24 +93,32 @@ public class ReorgTests
 		Assert.Single(wallet.Coins);
 		var coin = wallet.Coins.First();
 		Assert.True(coin.Confirmed);
+		Assert.Equal(blockToInvalidate, coin.Transaction.BlockHash);
 
-		// Act - Invalidate the block containing our transaction
+		// Act - Invalidate the block containing our transaction. The node does not have a block at that height any more.
 		await env.RpcClient.InvalidateBlockAsync(blockToInvalidate);
 
-		// Re-mine a different block (without our tx)
+		// The wallet shows what the node has: the transaction is unconfirmed again.
+		await env.WaitForConditionAsync(
+			() => wallet.Coins.All(c => !c.Confirmed),
+			TimeSpan.FromSeconds(30));
+
+		Assert.False(Assert.Single(wallet.Coins).Confirmed);
+
+		// Another block confirms the transaction again: Bitcoin Core puts the transactions of the dropped block back into its mempool.
 		await env.RpcClient.GenerateAsync(1);
 
-		// Re-sync
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		await env.WaitForConditionAsync(
+			() => wallet.Coins.All(c => c.Confirmed),
+			TimeSpan.FromSeconds(30));
 
-		// Note: The wallet would need to reprocess filters to detect the reorg
-		// This is a simplified test - in reality, the wallet needs to be notified
-		// of the reorg and reprocess relevant blocks
+		coin = Assert.Single(wallet.Coins);
+		Assert.Equal(Money.Coins(1m), coin.Amount);
+		Assert.NotNull(coin.Transaction.BlockHash);
+		Assert.NotEqual(blockToInvalidate, coin.Transaction.BlockHash);
+		Assert.Equal(await env.RpcClient.GetBlockHashAsync(tipHeight), coin.Transaction.BlockHash);
 
 		await wallet.StopAsync(TestContext.Current.CancellationToken);
-
-		// The key assertion here is that the test completes without crashing
-		// A full implementation would verify coin state changes
 	}
 
 	[Fact(Timeout = 120_000)] // 2 minute timeout
@@ -118,16 +127,20 @@ public class ReorgTests
 		// Arrange
 		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
 
+		var keyManager = env.CreateKeyManager();
+		var wallet = env.CreateWallet(keyManager);
+
 		// Mine initial blocks
 		await env.RpcClient.GenerateAsync(10);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
+		await env.WaitForWalletToCatchUpAsync(wallet);
 
-		var initialTip = env.FilterManager.GetTip();
-		Assert.NotNull(initialTip);
+		var (initialHeight, initialBlockHashes) = keyManager.GetProcessedBlocks();
+		Assert.NotNull(initialHeight);
 
 		// Get a block 5 blocks back to invalidate
 		var reorgDepth = 5;
-		var heightToInvalidate = (int)(uint)initialTip.Header.Height - reorgDepth + 1;
+		var heightToInvalidate = (int)initialHeight.Height - reorgDepth + 1;
 		var blockToInvalidate = await env.RpcClient.GetBlockHashAsync(heightToInvalidate);
 
 		// Act - Create a deep reorg
@@ -136,17 +149,26 @@ public class ReorgTests
 		// Mine more blocks than we invalidated to create a longer chain
 		await env.RpcClient.GenerateAsync(reorgDepth + 2);
 
-		// Re-sync
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		await env.WaitForWalletToCatchUpAsync(wallet);
 
 		// Assert
-		var newTip = env.FilterManager.GetTip();
-		Assert.NotNull(newTip);
+		var (newHeight, newBlockHashes) = keyManager.GetProcessedBlocks();
+		Assert.NotNull(newHeight);
 
-		// The new chain should be longer
-		var newHeight = (uint)newTip.Header.Height;
-		var oldHeight = (uint)initialTip.Header.Height;
-		Assert.True(newHeight >= oldHeight - (uint)reorgDepth + 1);
+		// The new chain is longer
+		Assert.Equal(initialHeight.Height + 2, newHeight.Height);
+
+		// None of the dropped blocks is left among the processed blocks, and the wallet has the blocks of the node.
+		var droppedBlockHashes = initialBlockHashes.TakeLast(reorgDepth).ToArray();
+		Assert.Empty(newBlockHashes.Intersect(droppedBlockHashes));
+
+		for (int i = 0; i < reorgDepth + 2; i++)
+		{
+			var height = (int)newHeight.Height - i;
+			Assert.Equal(await env.RpcClient.GetBlockHashAsync(height), newBlockHashes[^(i + 1)]);
+		}
+
+		await wallet.StopAsync(TestContext.Current.CancellationToken);
 	}
 
 	[Fact(Timeout = 180_000)] // 3 minute timeout
@@ -177,9 +199,7 @@ public class ReorgTests
 			originalBlockHashes.Add(blockHashes[0]);
 		}
 
-		// Sync filters and start the wallet
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
+		// Start the wallet: it synchronizes with the node
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		// Wait for all coins to be discovered and confirmed
@@ -208,10 +228,9 @@ public class ReorgTests
 		// (Bitcoin Core puts reorged transactions back in the mempool)
 		await env.RpcClient.GenerateAsync(NumberOfCoins + 3);
 
-		// Re-sync filters (this should trigger ChainReorganized events)
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
+		// Wait for the wallet to follow the node through the reorg
+		await env.WaitForWalletToCatchUpAsync(wallet);
 
-		// Wait for wallet to process the reorg and re-sync
 		// The coins will either:
 		// 1. Be re-confirmed at different block hashes (if re-mined), OR
 		// 2. Remain unconfirmed (if not re-mined)
@@ -235,9 +254,9 @@ public class ReorgTests
 			TimeSpan.FromSeconds(60));
 
 		// Verify the new chain is longer and different
-		var newTip = env.FilterManager.GetTip();
-		Assert.NotNull(newTip);
-		Assert.True((uint)newTip.Header.Height > baseHeight + NumberOfCoins);
+		var newHeight = keyManager.GetBestHeight();
+		Assert.NotNull(newHeight);
+		Assert.True(newHeight.Height > baseHeight + NumberOfCoins);
 
 		// Verify that the chain at the first funding block height is now different
 		// (proving the reorg happened and created a new chain)

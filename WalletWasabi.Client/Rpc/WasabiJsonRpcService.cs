@@ -15,6 +15,7 @@ using WalletWasabi.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Rpc;
+using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client.Batching;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
@@ -45,7 +46,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		AssertWalletIsLoaded();
-		var serverTipHeight = Global.FilterHeaders.ServerTipHeight;
+		var tipHeight = GetTipHeight(activeWallet);
 		return activeWallet.Coins.Where(x => !x.IsSpent()).Select(
 			x => new JsonRpcResult
 			{
@@ -54,7 +55,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["amount"] = x.Amount.Satoshi,
 				["anonymityScore"] = x.AnonymitySet,
 				["confirmed"] = x.Confirmed,
-				["confirmations"] = x.Transaction.GetConfirmations(serverTipHeight),
+				["confirmations"] = x.Transaction.GetConfirmations(tipHeight),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
 				["address"] = x.HdPubKey.GetAddress(Global.Network).ToString(),
 				["excludedFromCoinjoin"] = x.IsExcludedFromCoinJoin
@@ -67,7 +68,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		AssertWalletIsLoaded();
-		var serverTipHeight = Global.FilterHeaders.ServerTipHeight;
+		var tipHeight = GetTipHeight(activeWallet);
 		if (activeWallet.Coins is not { } coinRegistry)
 		{
 			throw new ArgumentException($"{nameof(activeWallet.Coins)} was not {typeof(CoinsRegistry)}.");
@@ -80,7 +81,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["amount"] = x.Amount.Satoshi,
 				["anonymityScore"] = x.AnonymitySet,
 				["confirmed"] = x.Confirmed,
-				["confirmations"] = x.Transaction.GetConfirmations(serverTipHeight),
+				["confirmations"] = x.Transaction.GetConfirmations(tipHeight),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
 				["address"] = x.HdPubKey.GetAddress(Global.Network).ToString(),
 				["spentBy"] = x.SpenderTransaction?.GetHash().ToString()
@@ -97,8 +98,11 @@ public class WasabiJsonRpcService : IJsonRpcService
 	{
 		Global.WalletManager.AssertWalletCanBeAdded();
 
-		var walletGenerator = new WalletGenerator(Global.Network);
-		walletGenerator.TipHeight = Global.FilterHeaders.TipHeight;
+		// Nothing concerns a new wallet up to the tip of the chain. If the node did not tell it yet, the wallet learns it when it reaches the node.
+		var walletGenerator = new WalletGenerator(Global.Network)
+		{
+			TipHeight = Global.Status.BestNetworkHeight > 0 ? new Height.ChainHeight(Global.Status.BestNetworkHeight) : null
+		};
 		var backup = WalletGenerator.GenerateShares(threshold, shares);
 		var keyManager = walletGenerator.GenerateWallet(password, backup.Take(threshold).ToArray());
 		Global.WalletManager.AddWallet(keyManager);
@@ -110,20 +114,29 @@ public class WasabiJsonRpcService : IJsonRpcService
 	/// </summary>
 	/// <param name="shares">As many shares as the threshold of the backup requires.</param>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
+	/// <param name="birthHeight">
+	/// Height of the first block to look for the transactions of the wallet in. Every block from there on is fetched from the node,
+	/// so a height shortly before the first transaction of the wallet saves time. By default the block that Taproot activated at.
+	/// </param>
 	/// <remarks>There is a single wallet: the call fails if it exists already.</remarks>
 	[JsonRpcMethod("recoverwallet", initializable: false)]
-	public void RecoverWallet(string[] shares, string password = "")
+	public void RecoverWallet(string[] shares, string password = "", uint? birthHeight = null)
 	{
 		Global.WalletManager.AssertWalletCanBeAdded();
 
-		var walletGenerator = new WalletGenerator(Global.Network);
-		walletGenerator.TipHeight = 0;
 		if (!TryParseShares(shares, out var parsedShares))
 		{
 			throw new ArgumentException("Invalid value for shares");
 		}
 
-		var keyManager = walletGenerator.GenerateWallet(password, parsedShares);
+		// The wallet must open with exactly the entered password.
+		PasswordHelper.Guard(password);
+
+		var keyManager = KeyManager.Recover(
+			parsedShares,
+			password,
+			Global.Network,
+			birthHeight: birthHeight is { } height ? new Height.ChainHeight(height) : null);
 		Global.WalletManager.AddWallet(keyManager);
 	}
 
@@ -203,9 +216,11 @@ public class WasabiJsonRpcService : IJsonRpcService
 	[JsonRpcMethod("getstatus", initializable: false)]
 	public JsonRpcResult GetStatus()
 	{
-		var smartHeaderChain = Global.FilterHeaders;
+		// Everything about the chain comes from the user's node.
+		var nodeStatus = Global.Status.BitcoinRpcStatus;
+		var node = nodeStatus is { IsOk: true } ? nodeStatus.Value : null;
 
-		return new JsonRpcResult
+		var status = new JsonRpcResult
 		{
 			["torStatus"] = (Global.Config.UseTor, Global.Status.IsTorRunning) switch
 			{
@@ -214,21 +229,28 @@ public class WasabiJsonRpcService : IJsonRpcService
 				(_, false) => "Not running"
 			},
 			["onionService"] = Global.OnionServiceUri?.ToString() ?? "Unavailable",
-			["bestBlockchainHeight"] = smartHeaderChain.TipHeight.ToString(),
-			["bestBlockchainHash"] = smartHeaderChain.TipHash?.ToString() ?? "",
-			["filtersCount"] = smartHeaderChain.HashCount,
-			["filtersLeft"] = smartHeaderChain.HashesLeft,
 			["network"] = Global.Network.Name,
-			["peers"] = Global.GetNodes().Select(
-				x => new JsonRpcResult
-				{
-					["isConnected"] = x.IsConnected,
-					["lastSeen"] = x.LastSeen,
-					["endpoint"] = x.Peer.Endpoint.ToString(),
-					["userAgent"] = x.PeerVersion.UserAgent,
-				}).ToArray(),
+			["bitcoinNode"] = nodeStatus is null
+				? "Not asked yet"
+				: nodeStatus.Match(s => s.ToString() ?? "", e => e),
+			["bestBlockchainHeight"] = node?.Blocks.ToString() ?? "",
+			["bestBlockchainHash"] = node?.BestBlockHash.ToString() ?? "",
 		};
+
+		if (Global.WalletManager.Wallet is { } wallet)
+		{
+			status["walletHeight"] = wallet.KeyManager.GetBestHeight()?.Height.ToString() ?? "";
+			status["walletSynchronization"] = wallet.Synchronizer.Status.ToUserFriendlyString();
+		}
+
+		return status;
 	}
+
+	/// <summary>
+	/// The height that the confirmations of the wallet's transactions are counted to: the last block that the wallet processed.
+	/// </summary>
+	private static uint GetTipHeight(Wallet wallet) =>
+		wallet.KeyManager.GetBestHeight()?.Height ?? 0;
 
 	[JsonRpcMethod("build")]
 	public string BuildTransaction(PaymentInfo[] payments, OutPoint[] coins, int? feeTarget = null, decimal? feeRate = null, string? password = null)

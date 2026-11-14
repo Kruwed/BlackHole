@@ -151,11 +151,6 @@ public class RpcClientBase : IRPCClient
 		return await RpcClient.GetBlockAsync(blockHash, GetBlockVerbosity.WithFullTxAndPrevouts, cancellationToken).ConfigureAwait(false);
 	}
 
-	public virtual async Task<BlockFilter> GetBlockFilterAsync(uint256 blockId, CancellationToken cancellationToken = default)
-	{
-		return await RpcClient.GetBlockFilterAsync(blockId, cancellationToken).ConfigureAwait(false);
-	}
-
 	public virtual async Task<uint256[]> GenerateToAddressAsync(int nBlocks, BitcoinAddress address, CancellationToken cancellationToken = default)
 	{
 		return await RpcClient.GenerateToAddressAsync(nBlocks, address, cancellationToken).ConfigureAwait(false);

@@ -3,8 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NBitcoin;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Blockchain.Analysis.Clustering;
-using WalletWasabi.Blockchain.Blocks;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client.Configuration;
@@ -24,14 +24,14 @@ public interface IServices
 	Config Config { get; }
 	EventBus EventBus { get; }
 
-	uint GetTipHeight();
-	uint GetServerTipHeight();
-	int GetHashesLeft();
-	SmartHeader? GetTip();
-	uint GetBlockHeadersTipHeight();
-	int GetPeerCount();
+	/// <summary>Height of the chain, as the user's node tells it. Zero as long as the node did not answer.</summary>
+	uint GetNodeTipHeight();
 
-	uint? GetMinimumBlockHeight();
+	/// <summary>What the user's node told about itself the last time, if it answered.</summary>
+	ConnectedRpcStatus? GetNodeStatus();
+
+	/// <summary>Height of the last block that the wallet processed. The confirmations of its transactions are counted to there. Zero without a wallet.</summary>
+	uint GetTipHeight();
 
 	bool TryGetTransaction(uint256 hash, [NotNullWhen(true)] out SmartTransaction? tx);
 

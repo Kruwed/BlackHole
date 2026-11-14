@@ -1,5 +1,4 @@
 using NBitcoin.DataEncoders;
-using NBitcoin.Protocol;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using WalletWasabi.Blockchain.Transactions;
@@ -8,65 +7,6 @@ namespace WalletWasabi.Extensions;
 
 public static class NBitcoinExtensions
 {
-	/// <summary>
-	/// Downloads the block (which is assumed to exist) from the given peer node.
-	/// </summary>
-	/// <returns>The requested block.</returns>
-	/// <exception cref="InvalidOperationException">The peer does not serve blocks at all, or the block was not found, or the peer was disconnected.</exception>
-	/// <exception cref="OperationCanceledException">The operation was canceled.</exception>
-	/// <seealso href="https://github.com/bitcoin/bitcoin/blob/ab7e668cc6af5d716ad40166d1f88235a2f6d25d/test/functional/p2p_getdata.py#L25-L44"/>
-	public static async Task<Block> DownloadBlockAsync(this Node node, uint256 hash, CancellationToken cancellationToken)
-	{
-		if (node.State == NodeState.Connected)
-		{
-			await node.VersionHandshakeAsync(cancellationToken).ConfigureAwait(false);
-		}
-
-		if (!node.CanServeBlocks)
-		{
-			throw new InvalidOperationException($"Node '{node.RemoteSocketEndpoint}' does not serve blocks (neither NODE_NETWORK nor NODE_NETWORK_LIMITED).");
-		}
-
-		using var listener = node.CreateListener();
-
-		// Ask for a specific block. 
-		var getData = new GetDataPayload(new InventoryVector(InventoryType.MSG_BLOCK, hash));
-		await node.SendMessageAsync(getData).ConfigureAwait(false);
-		cancellationToken.ThrowIfCancellationRequested();
-
-		// Send a ping message. 
-		// Note: If the block is not known by the remote node, it will send a pong immediately. If the block is known, it will send the block first and then the pong.
-		ulong pingNonce = RandomUtils.GetUInt64();
-		await node.SendMessageAsync(new PingPayload { Nonce = pingNonce }).ConfigureAwait(false);
-
-		while (true)
-		{
-			if (!node.IsConnected)
-			{
-				throw new InvalidOperationException($"Node '{node.RemoteSocketEndpoint}' disconnected while downloading block '{hash}'.");
-			}
-
-			cancellationToken.ThrowIfCancellationRequested();
-			var incomingMessage = await listener.ReceiveMessageAsync(cancellationToken).ConfigureAwait(false);
-			var payload = incomingMessage.Message.Payload;
-
-			if (payload is BlockPayload b && b.Object.GetHash() == hash)
-			{
-				return b.Object;
-			}
-
-			// If we receive the pong, it means the block was not found.
-			// However, there is an exception: a limited peer disconnects us (instead of sending a pong) if the block is deeper than NODE_NETWORK_LIMITED_MIN_BLOCKS (288) + 2.
-			if (payload is PongPayload pong && pong.Nonce == pingNonce)
-			{
-				throw new InvalidOperationException($"Node {node.RemoteSocketEndpoint} does not have block {hash}.");
-			}
-		}
-	}
-
-	/// <summary>
-	/// Based on transaction data, it decides if it's possible that native segwit script played a part in this transaction.
-	/// </summary>
 	public static bool SegWitInvolved(this Transaction me) =>
 		me.Inputs.Any(i => Script.IsNullOrEmpty(i.ScriptSig)) ||
 		me.Outputs.Any(o => o.ScriptPubKey.IsScriptType(ScriptType.Witness));
@@ -369,20 +309,5 @@ public static class NBitcoinExtensions
 	{
 		var ceilFee = (long)Math.Ceiling(feeRate.SatoshiPerByte * virtualSize);
 		return Money.Satoshis(ceilFee);
-	}
-
-	extension(Node node)
-	{
-		public bool SupportsCompactFilters =>
-			node.PeerVersion?.Services.HasFlag(NodeServices.NODE_COMPACT_FILTERS) == true;
-
-		public bool SupportsNetwork =>
-			node.PeerVersion?.Services.HasFlag(NodeServices.Network) == true;
-
-		public bool SupportsNetworkLimited =>
-			node.PeerVersion?.Services.HasFlag(NodeServices.NODE_NETWORK_LIMITED) == true;
-
-		public bool CanServeBlocks =>
-			node.SupportsNetwork || node.SupportsNetworkLimited;
 	}
 }

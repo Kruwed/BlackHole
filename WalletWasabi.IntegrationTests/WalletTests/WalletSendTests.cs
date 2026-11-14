@@ -45,10 +45,7 @@ public class WalletSendTests
 
 		// Fund the wallet with confirmed coins
 		await env.FundAddressAsync(receiveAddress, Money.Coins(2m), confirmations: 1);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
-		using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-		await wallet.StartAsync(cts.Token);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
 			() => wallet.Coins.Any(c => c.Confirmed),
@@ -97,7 +94,7 @@ public class WalletSendTests
 		await env.RpcClient.GenerateAsync(1);
 
 		// Broadcast the transaction
-		var broadcaster = new TransactionBroadcaster(env.RpcClient, env.MempoolService);
+		var broadcaster = new TransactionBroadcaster(env.RpcClient, env.EventBus);
 		await broadcaster.SendTransactionAsync(txResult.Transaction);
 
 		// Verify transaction is in mempool
@@ -123,8 +120,6 @@ public class WalletSendTests
 
 		var receiveAddress = keyManager.GetNextReceiveKey().GetAddress(env.Network);
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
 		await wallet.StartAsync(TestContext.Current.CancellationToken);
 		try
 		{
@@ -142,7 +137,7 @@ public class WalletSendTests
 				OverrideFeeOverpaymentProtection: false);
 			var factory = new TransactionFactory(env.Network, keyManager, wallet.Coins, RegTestEnvironment.DefaultPassword);
 			var selector = new LockTimeSelector(new FixedRandom(randomValue));
-			var result = factory.BuildTransaction(parameters, () => selector.GetLockTimeBasedOnDistribution(wallet.FilterHeaderChain.TipHeight));
+			var result = factory.BuildTransaction(parameters, () => selector.GetLockTimeBasedOnDistribution(wallet.KeyManager.GetBestHeight()!.Height));
 
 			await env.RpcClient.GenerateAsync(1);
 
@@ -170,10 +165,7 @@ public class WalletSendTests
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
-		using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-		await wallet.StartAsync(cts.Token);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
 			() => wallet.Coins.Any(c => c.Confirmed),
@@ -235,10 +227,7 @@ public class WalletSendTests
 
 		// We need at least one block for filters to exist
 		await env.RpcClient.GenerateAsync(1);
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
-		using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-		await wallet.StartAsync(cts.Token);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
 			() => wallet.Coins.Any(),
@@ -293,10 +282,7 @@ public class WalletSendTests
 		await env.FundAddressAsync(key2.GetAddress(env.Network), Money.Coins(0.5m), confirmations: 0);
 		await env.FundAddressAsync(key3.GetAddress(env.Network), Money.Coins(1.0m), confirmations: 1);
 
-		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
-
-		using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-		await wallet.StartAsync(cts.Token);
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
 
 		await env.WaitForConditionAsync(
 			() => wallet.Coins.Count() >= 3,

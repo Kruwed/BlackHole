@@ -20,7 +20,6 @@ public record SyncProgressCardModel(uint Initial, uint Current, uint? Target)
 	public double Percent => Target switch
 	{
 		null => 0,
-		0 => 0,
 		{ } target when target <= Initial => Current >= target ? 100 : 0,
 		{ } target => Math.Clamp(100.0 * ((double)Current - Initial) / (target - Initial), 0, 100)
 	};
@@ -28,74 +27,33 @@ public record SyncProgressCardModel(uint Initial, uint Current, uint? Target)
 	public bool IsComplete => IsTargetKnown && Percent >= 100;
 }
 
+/// <param name="Status">What the wallet is doing to catch up with the user's node.</param>
+/// <param name="NodeBlocks">The blocks that the node has, of those that it knows about.</param>
+/// <param name="Blocks">The blocks that the wallet processed, of those that the chain has.</param>
 public record WalletLoadProgress(
-	uint? ChainTip,
-	SyncProgressCardModel Peers,
-	SyncProgressCardModel BlockHeaders,
-	SyncProgressCardModel FilterHeaders,
-	SyncProgressCardModel CompactFilters,
+	WalletSyncStatus Status,
+	SyncProgressCardModel NodeBlocks,
 	SyncProgressCardModel Blocks);
 
 public partial class WalletLoadWorkflow
 {
-	private const uint TargetPeers = 12;
-
 	private readonly IServices _services;
 	private readonly CompositeDisposable _disposables = new();
 	private readonly Wallet _wallet;
-	private uint _blockHeadersTip;
-	private uint _filterHeadersTip;
-	private uint _compactFiltersTip;
-	private uint _walletSyncHeight;
 	private readonly Subject<WalletLoadProgress> _progress;
 	[AutoNotify] private bool _isLoading;
 
-	// The progress of every stage syncing the wallet is measured from.
-	private readonly uint _walletStartHeight;
+	/// <summary>The progress of processing the blocks is measured from here. A new wallet learns its height from the node.</summary>
+	private uint? _walletStartHeight;
 
 	public WalletLoadWorkflow(IServices services, Wallet wallet)
 	{
 		_services = services;
 		_wallet = wallet;
 		_progress = new();
-
-		var tipHeight = services.GetTipHeight();
-		var walletBestHeight = (uint)wallet.KeyManager.GetBestHeight();
-
-		_blockHeadersTip = services.GetBlockHeadersTipHeight();
-		_filterHeadersTip = tipHeight;
-		_compactFiltersTip = tipHeight;
-		_walletSyncHeight = walletBestHeight;
-
-		// Wallets created before the birth height was introduced don't have one.
-		_walletStartHeight = wallet.KeyManager.GetBirthHeight() is { } birthHeight ? (uint)birthHeight : walletBestHeight;
+		_walletStartHeight = wallet.KeyManager.GetBestHeight()?.Height;
 
 		UpdateProgress();
-
-		services.EventBus.AsObservable<BlockHeadersTipChanged>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(x => _blockHeadersTip = x.Height)
-			.DisposeWith(_disposables);
-
-		services.EventBus.AsObservable<FilterHeadersTipChanged>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(x => _filterHeadersTip = x.Height)
-			.DisposeWith(_disposables);
-
-		services.EventBus.AsObservable<ClientTipHeightChanged>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(x =>
-			{
-				_compactFiltersTip = x.Height;
-				// Initially the filters' height is initialized but the filter headers' is not
-				_filterHeadersTip = uint.Max(_filterHeadersTip, _compactFiltersTip);
-			})
-			.DisposeWith(_disposables);
-
-		services.EventBus.AsObservable<BlockDownloaded>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(x => _walletSyncHeight = x.Height)
-			.DisposeWith(_disposables);
 
 		LoadCompleted = services.EventBus.AsObservable<WalletLoaded>()
 			.ObserveOn(RxApp.MainThreadScheduler)
@@ -131,8 +89,6 @@ public partial class WalletLoadWorkflow
 	{
 		IsLoading = true;
 
-		await WaitForHeightsAsync().ConfigureAwait(false);
-
 		try
 		{
 			await Task.Run(async () => await _services.StartWalletAsync(_wallet));
@@ -147,38 +103,18 @@ public partial class WalletLoadWorkflow
 		}
 	}
 
-	private async Task WaitForHeightsAsync()
-	{
-		// Wait until "server tip height" is initialized.
-		var waitForNetworkHeight = _services.EventBus.WaitForEventAsync<NetworkTipHeightChanged>(
-			() => _services.GetServerTipHeight() > 0);
-
-		// Wait until "client tip height" is initialized.
-		var waitForClientHeight = _services.EventBus.WaitForEventAsync<ClientTipHeightChanged>(
-			() => _services.GetTip() is not null);
-
-		await Task.WhenAll(waitForNetworkHeight, waitForClientHeight).ConfigureAwait(false);
-	}
-
 	private void UpdateProgress()
 	{
-		var networkTipHeight = _services.GetServerTipHeight();
-		var clientTipHeight = _services.GetTipHeight();
+		var node = _services.GetNodeStatus();
+		var walletHeight = _wallet.KeyManager.GetBestHeight()?.Height;
+		_walletStartHeight ??= walletHeight;
 
-		var tipHeight = Math.Max(networkTipHeight, clientTipHeight);
-
-		// Avoid showing a progress of 100% when the network tip height is not initialized yet.
-		uint? chainTip = networkTipHeight > 0 ? tipHeight : null;
+		// The node knows the height of the chain from the headers, also while it is still downloading the blocks.
+		uint? chainTip = node is not null ? (uint)Math.Max(node.Headers, node.Blocks) : null;
 
 		_progress.OnNext(new WalletLoadProgress(
-			ChainTip: chainTip,
-			Peers: new SyncProgressCardModel(0, (uint)_services.GetPeerCount(), TargetPeers),
-
-			// Block headers are synced for the whole chain, not only for the range the wallet is scanned in.
-			BlockHeaders: new SyncProgressCardModel(0, _blockHeadersTip, chainTip),
-
-			FilterHeaders: new SyncProgressCardModel(_walletStartHeight, _filterHeadersTip, chainTip),
-			CompactFilters: new SyncProgressCardModel(_walletStartHeight, _compactFiltersTip, chainTip),
-			Blocks: new SyncProgressCardModel(_walletStartHeight, _walletSyncHeight, chainTip)));
+			Status: _wallet.Synchronizer.Status,
+			NodeBlocks: new SyncProgressCardModel(0, (uint)(node?.Blocks ?? 0), chainTip),
+			Blocks: new SyncProgressCardModel(_walletStartHeight ?? 0, walletHeight ?? 0, walletHeight is null ? null : chainTip)));
 	}
 }

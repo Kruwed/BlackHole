@@ -46,22 +46,4 @@ public class NodeBuildingTests
 			await coreNode.TryStopAsync();
 		}
 	}
-
-	[Fact]
-	public async Task P2pWorksAsync()
-	{
-		var coreNode = await TestNodeBuilder.CreateAsync();
-		using var node = await coreNode.CreateNewP2pNodeAsync();
-		try
-		{
-			var blocks = node.GetBlocks(new[] { Network.RegTest.GenesisHash });
-			var genesis = Assert.Single(blocks);
-			Assert.Equal(genesis.GetHash(), Network.RegTest.GenesisHash);
-		}
-		finally
-		{
-			node.Disconnect();
-			await coreNode.TryStopAsync();
-		}
-	}
 }

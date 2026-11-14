@@ -14,14 +14,15 @@ public partial class AdvancedRecoveryOptionsViewModel : DialogViewModelBase<(int
 	[AutoNotify] private string _minGapLimit;
 	[AutoNotify] private string _birthHeight;
 
-	private readonly uint _wasabiGenesisHeight;
+	private readonly uint _earliestBirthHeight;
 
-	public AdvancedRecoveryOptionsViewModel(UiContext uiContext, int minGapLimit,
-		Height.ChainHeight wasabiGenesisHeight) : base(uiContext)
+	/// <param name="birthHeight">Height of the first block that is looked through for the transactions of the wallet.</param>
+	/// <param name="earliestBirthHeight">Nothing of the wallet can be found before this height.</param>
+	public AdvancedRecoveryOptionsViewModel(UiContext uiContext, int minGapLimit, uint birthHeight, uint earliestBirthHeight) : base(uiContext)
 	{
 		_minGapLimit = minGapLimit.ToString();
-		_wasabiGenesisHeight = wasabiGenesisHeight;
-		_birthHeight = wasabiGenesisHeight.Height.ToString(CultureInfo.InvariantCulture);
+		_earliestBirthHeight = earliestBirthHeight;
+		_birthHeight = birthHeight.ToString(CultureInfo.InvariantCulture);
 
 		this.ValidateProperty(x => x.MinGapLimit, ValidateMinGapLimit);
 		this.ValidateProperty(x => x.BirthHeight, ValidateBirthHeight);
@@ -47,11 +48,11 @@ public partial class AdvancedRecoveryOptionsViewModel : DialogViewModelBase<(int
 
 	private void ValidateBirthHeight(IValidationErrors errors)
 	{
-		if (!uint.TryParse(BirthHeight, out var height) || height < _wasabiGenesisHeight)
+		if (!uint.TryParse(BirthHeight, out var height) || height < _earliestBirthHeight)
 		{
 			errors.Add(
 				ErrorSeverity.Error,
-				$"Must be a number greater than or equal to {_wasabiGenesisHeight}.");
+				$"Must be a number greater than or equal to {_earliestBirthHeight}.");
 		}
 	}
 }

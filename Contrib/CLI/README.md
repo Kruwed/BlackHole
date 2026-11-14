@@ -19,22 +19,17 @@ $ ./wcli.sh getstatus
 
 {
   "torStatus": "Running",
-  "backendStatus": "Connected",
+  "onionService": "Unavailable",
+  "network": "Main",
+  "bitcoinNode": "is synchronized",
   "bestBlockchainHeight": "2432219",
   "bestBlockchainHash": "0000000000000013081887ac34a2bc356a99a3979a808a4e5d63358412cecc68",
-  "filtersCount": 5001,
-  "filtersLeft": 0,
-  "network": "Main",
-  "peers": [
-    {
-      "isConnected": true,
-      "lastSeen": 1794210150,
-      "endpoint": "[::ffff:148.251.1.20]:18343",
-      "userAgent": "/Satoshi:31.1.0/"
-    }
-  ]
+  "walletHeight": "2432219",
+  "walletSynchronization": "Synchronized with the Bitcoin node."
 }
 ```
+
+Everything about the blockchain comes from the RPC interface of your own Bitcoin node: `bitcoinNode`, `bestBlockchainHeight` and `bestBlockchainHash` tell what the node said the last time, `walletHeight` is the last block that the wallet processed and `walletSynchronization` tells what the wallet is doing to catch up with the node. The last two are there once the wallet exists.
 
 ```bash
 $ ./wcli.sh getwalletinfo

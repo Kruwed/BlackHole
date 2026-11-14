@@ -7,7 +7,6 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
-using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Io;
 using WalletWasabi.Models;
@@ -192,8 +191,9 @@ public class KeyManager
 		var encryptedSecret = extKey.PrivateKey.GetEncryptedBitcoinSecret(password, network);
 
 		HDFingerprint masterFingerprint = extKey.Neuter().PubKey.GetHDFingerPrint();
-		var birthHeight = FilterCheckpoints.GetMostRecentCheckpoint(network).Header.Height;
-		BlockchainState blockchainState = new(network, birthHeight: birthHeight);
+
+		// Where the history of the wallet starts is told once the height of the chain is known, see StartAt.
+		BlockchainState blockchainState = new(network);
 
 		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network);
 		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
@@ -206,6 +206,7 @@ public class KeyManager
 
 	/// <param name="shares">As many SLIP-39 shares as their threshold requires. They alone determine the keys of the wallet.</param>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
+	/// <param name="birthHeight">Height of the first block to look for the transactions of the wallet in. By default the block that Taproot activated at.</param>
 	public static KeyManager Recover(Share[] shares, string password, Network network, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
 	{
 		password ??= "";
@@ -225,8 +226,9 @@ public class KeyManager
 		ExtPubKey silentPaymentScanExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Scan)).Neuter();
 		ExtPubKey silentPaymentSpendExtPubKey = extKey.Derive(GetAccountKeyPath(network, KeyPurpose.Spend)).Neuter();
 
-		birthHeight ??= FilterCheckpoints.GetWasabiGenesisFilter(network).Header.Height;
-		var blockchainState = new BlockchainState(network, height: birthHeight, birthHeight: birthHeight);
+		birthHeight ??= network.TaprootActivationHeight;
+		var blockchainState = new BlockchainState(network, birthHeight: birthHeight);
+		blockchainState.ScanFrom(birthHeight);
 		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, taprootAccountKeyPath);
 		km.AssertCleanKeysIndexedNoLock();
 		return km;
@@ -366,16 +368,13 @@ public class KeyManager
 		};
 
 	/// <summary>
-	/// This function can only be called for wallet synchronization.
-	/// It's unsafe because it doesn't assert that the GapLimit is respected.
-	/// GapLimit should be enforced whenever a transaction is discovered.
+	/// The number of keys that the wallet watches. It grows when a key is used for the first time, to keep the gap of clean keys.
 	/// </summary>
-	public byte[][] UnsafeGetSynchronizationInfos()
+	public int GetKeyCount()
 	{
 		lock (_criticalStateLock)
 		{
-			// A copy must be returned because the cache may change.
-			return _hdPubKeyCache.Select(x => x.ScriptPubKeyBytes).ToArray();
+			return _hdPubKeyCache.Count;
 		}
 	}
 
@@ -561,11 +560,22 @@ public class KeyManager
 
 	#region _blockchainState
 
-	public ChainHeight GetBestHeight()
+	/// <summary>Height of the last block that the wallet processed.</summary>
+	/// <returns><c>null</c> as long as the wallet does not know where its history starts, see <see cref="StartAt"/>.</returns>
+	public ChainHeight? GetBestHeight()
 	{
 		lock (_criticalStateLock)
 		{
 			return _blockchainState.Height;
+		}
+	}
+
+	/// <summary>Height of the last block that the wallet processed, with the hashes of the last processed blocks. The last hash is the one of that block.</summary>
+	public (ChainHeight? Height, ImmutableArray<uint256> BlockHashes) GetProcessedBlocks()
+	{
+		lock (_criticalStateLock)
+		{
+			return (_blockchainState.Height, [.. _blockchainState.BlockHashes]);
 		}
 	}
 
@@ -582,11 +592,31 @@ public class KeyManager
 		}
 	}
 
-	public void SetBestHeight(ChainHeight height, bool toFile = true)
+	/// <summary>
+	/// Tells a new wallet the height of the chain: nothing up to there concerns it.
+	/// </summary>
+	/// <remarks>Does nothing if the wallet knows already where its history starts.</remarks>
+	public void StartAt(ChainHeight tipHeight)
 	{
 		lock (_criticalStateLock)
 		{
-			_blockchainState.Height = height;
+			if (_blockchainState.Height is null)
+			{
+				_blockchainState.StartAt(tipHeight);
+				ToFileNoLock();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Remembers the block as the last one that the wallet processed. The blocks that were processed before it stay remembered
+	/// only when it is the next one after them.
+	/// </summary>
+	public void SetBestBlock(ChainHeight height, uint256 blockHash, bool toFile = true)
+	{
+		lock (_criticalStateLock)
+		{
+			_blockchainState.SetProcessedBlock(height, blockHash);
 			if (toFile)
 			{
 				ToFileNoLock();
@@ -594,25 +624,31 @@ public class KeyManager
 		}
 	}
 
+	/// <summary>
+	/// Makes the wallet look for its transactions again, from the given block on.
+	/// </summary>
 	public void SetResyncParameters(ChainHeight newStartingHeight, int newMinGapLimit)
 	{
 		lock (_criticalStateLock)
 		{
-			_blockchainState.Height = newStartingHeight;
+			_blockchainState.ScanFrom(newStartingHeight);
 			MinGapLimit = newMinGapLimit;
 			ToFileNoLock();
 		}
 	}
 
+	/// <summary>
+	/// Sets the wallet back to the given height, if it is above it. The blocks above are going to be processed again.
+	/// </summary>
 	public void SetMaxBestHeight(ChainHeight newHeight)
 	{
 		lock (_criticalStateLock)
 		{
 			var prevHeight = _blockchainState.Height;
-			if (newHeight < prevHeight)
+			if (_blockchainState.RewindTo(newHeight))
 			{
-				SetBestHeight(newHeight);
-				Logger.LogWarning($"Wallet height has been set back by {prevHeight - newHeight}. From {prevHeight} to {newHeight}.");
+				ToFileNoLock();
+				Logger.LogWarning($"Wallet height has been set back by {prevHeight!.Height - newHeight.Height}. From {prevHeight} to {newHeight}.");
 			}
 		}
 	}

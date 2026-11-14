@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
 using NBitcoin;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Helpers;
 using WalletWasabi.IntegrationTests.BitcoinCore.Endpointing;
 
@@ -10,7 +9,6 @@ public class CoreNodeParams
 {
 	public CoreNodeParams(
 		Network network,
-		MempoolService mempoolService,
 		string dataDir,
 		bool tryRestart,
 		bool tryDeleteDataDir,
@@ -25,7 +23,6 @@ public class CoreNodeParams
 		IMemoryCache cache)
 	{
 		Network = network;
-		MempoolService = mempoolService;
 		DataDir = dataDir;
 		TryRestart = tryRestart;
 		TryDeleteDataDir = tryDeleteDataDir;
@@ -42,7 +39,6 @@ public class CoreNodeParams
 
 	public string DataDir { get; }
 	public Network Network { get; }
-	public MempoolService MempoolService { get; }
 	public bool TryRestart { get; }
 	public bool TryDeleteDataDir { get; }
 	public int? TxIndex { get; }

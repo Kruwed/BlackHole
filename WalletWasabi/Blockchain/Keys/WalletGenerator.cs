@@ -20,7 +20,9 @@ public class WalletGenerator
 	}
 
 	public Network Network { get; private set; }
-	public uint TipHeight { get; set; }
+
+	/// <summary>Height of the chain, if the node told it already. Nothing up to there concerns a new wallet.</summary>
+	public ChainHeight? TipHeight { get; set; }
 
 	/// <summary>
 	/// Creates the wallet that the given SLIP-39 shares back up.
@@ -35,7 +37,12 @@ public class WalletGenerator
 
 		var km = KeyManager.CreateNew(shares, password, Network);
 
-		km.SetBestHeight(TipHeight);
+		// Otherwise the wallet starts at the tip that the node tells when the wallet reaches it for the first time.
+		if (TipHeight is { } tipHeight)
+		{
+			km.StartAt(tipHeight);
+		}
+
 		return km;
 	}
 

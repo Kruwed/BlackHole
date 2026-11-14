@@ -16,7 +16,6 @@ public class MockRpcClient : IRPCClient
 	public Func<uint256, Task<BlockHeader>>? OnGetBlockHeaderAsync { get; set; }
 	public Func<Task<BlockchainInfo>>? OnGetBlockchainInfoAsync { get; set; }
 	public Func<uint256, Task<GetBlockRPCResponse>>? OnGetVerboseBlockAsync { get; set; }
-	public Func<uint256, Task<BlockFilter>>? OnGetBlockFilterAsync { get; set; }
 	public Func<Transaction, uint256>? OnSendRawTransactionAsync { get; set; }
 	public Func<Task<MemPoolInfo>>? OnGetMempoolInfoAsync { get; set; }
 	public Func<uint256, Task<MempoolEntry?>>? OnGetMempoolEntryAsync { get; set; }
@@ -143,11 +142,6 @@ public class MockRpcClient : IRPCClient
 		return OnGetVerboseBlockAsync?.Invoke(blockHash) ?? NotImplementedTask<GetBlockRPCResponse>(nameof(GetVerboseBlockAsync));
 	}
 
-	public Task<BlockFilter> GetBlockFilterAsync(uint256 blockId, CancellationToken cancellationToken = default)
-	{
-		return OnGetBlockFilterAsync?.Invoke(blockId) ?? NotImplementedTask<BlockFilter>(nameof(GetBlockFilterAsync));
-	}
-
 	public Task<uint256> SendRawTransactionAsync(Transaction transaction, CancellationToken cancellationToken = default)
 	{
 		return OnSendRawTransactionAsync switch
@@ -198,11 +192,6 @@ public class MockRpcClient : IRPCClient
 	}
 
 	public Task<RPCClient> CreateWalletAsync(string walletNameOrPath, CreateWalletOptions? options = null, CancellationToken cancellationToken = default)
-	{
-		throw new NotImplementedException();
-	}
-
-	public Task<bool> SupportsBlockFiltersAsync(CancellationToken cancellationToken)
 	{
 		throw new NotImplementedException();
 	}

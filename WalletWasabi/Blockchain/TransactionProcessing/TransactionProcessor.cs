@@ -1,6 +1,5 @@
 using WalletWasabi.Blockchain.Analysis;
 using WalletWasabi.Blockchain.Analysis.Clustering;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Cache;
 using WalletWasabi.Models;
@@ -10,7 +9,6 @@ namespace WalletWasabi.Blockchain.TransactionProcessing;
 
 public class TransactionProcessor(
 	AllTransactionStore transactionStore,
-	MempoolService? mempoolService,
 	KeyManager keyManager,
 	EventBus eventBus)
 {
@@ -48,6 +46,100 @@ public class TransactionProcessor(
 
 	public IEnumerable<ProcessedResult> Process(params SmartTransaction[] txs)
 		=> Process(txs as IEnumerable<SmartTransaction>);
+
+	/// <summary>
+	/// Processes the transactions of a block that concern the wallet.
+	/// </summary>
+	/// <returns>What became of those transactions. Empty if nothing in the block concerns the wallet.</returns>
+	public IReadOnlyList<ProcessedResult> ProcessBlock(Block block, ChainHeight height)
+	{
+		var blockHash = block.GetHash();
+		var blockTime = block.Header.BlockTime;
+		var transactions = block.Transactions;
+		var results = new List<ProcessedResult>();
+
+		lock (Lock)
+		{
+			// Using a key for the first time makes the wallet watch more keys. The transactions of the block that were
+			// passed over by then may pay to those, so the block is gone through again until no more keys turn up.
+			var processedIndexes = new HashSet<int>();
+			var lateTransactionIds = new HashSet<uint256>();
+			var isFirstPass = true;
+			int keyCount;
+
+			do
+			{
+				keyCount = KeyManager.GetKeyCount();
+
+				for (int i = 0; i < transactions.Count; i++)
+				{
+					var transaction = transactions[i];
+					bool process;
+
+					if (processedIndexes.Contains(i))
+					{
+						// Once is enough, unless a coin that the transaction spends turned up only after it was processed.
+						process = lateTransactionIds.Count > 0 && transaction.Inputs.Any(input => lateTransactionIds.Contains(input.PrevOut.Hash));
+					}
+					else
+					{
+						process = ConcernsWallet(transaction);
+					}
+
+					if (process)
+					{
+						var tx = new SmartTransaction(transaction, height, blockHash, blockIndex: i, firstSeen: blockTime);
+
+						if (processedIndexes.Add(i) && !isFirstPass)
+						{
+							lateTransactionIds.Add(tx.GetHash());
+						}
+
+						results.Add(ProcessNoLock(tx));
+					}
+				}
+
+				isFirstPass = false;
+			}
+			while (KeyManager.GetKeyCount() != keyCount);
+		}
+
+		foreach (var result in results.Where(x => x.IsNews))
+		{
+			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
+		}
+
+		return results;
+	}
+
+	/// <summary>
+	/// Tells if the transaction has anything to do with the wallet: it pays to the wallet, it spends a coin of the wallet,
+	/// or it spends what a transaction of the wallet spends too.
+	/// </summary>
+	/// <remarks>Cheap enough to be asked about every transaction of the chain.</remarks>
+	public bool ConcernsWallet(Transaction transaction)
+	{
+		foreach (var output in transaction.Outputs)
+		{
+			if (KeyManager.TryGetKeyForScriptPubKey(output.ScriptPubKey, out _))
+			{
+				return true;
+			}
+		}
+
+		if (!transaction.IsCoinBase)
+		{
+			foreach (var input in transaction.Inputs)
+			{
+				if (Coins.IsKnownPrevOut(input.PrevOut))
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
 
 	/// <summary>
 	/// Was the transaction already processed by the transaction processor?
@@ -89,7 +181,7 @@ public class TransactionProcessor(
 
 		uint256 txId = tx.GetHash();
 
-		// Unconfirmed transactions come from untrusted peers, so never let one spend our coins without our signatures.
+		// Never let an unconfirmed transaction spend our coins without our signatures.
 		// Context: https://github.com/spesmilo/electrum/security/advisories/GHSA-6jp4-8v48-cc5v
 		var myInputs = Coins.GetMyInputs(tx);
 		if (!tx.Confirmed && !AreSignaturesValid(tx.Transaction, myInputs))
@@ -98,14 +190,6 @@ public class TransactionProcessor(
 		}
 
 		// If we already have the transaction, then let's work on that.
-		if (mempoolService?.TryGetFromBroadcastStore(txId, out var foundEntry) is true)
-		{
-			// If we already have the transaction in the broadcast store, then let's work on that.
-			foundEntry.Transaction.TryUpdate(tx);
-			tx = foundEntry.Transaction;
-			result = new ProcessedResult(tx);
-		}
-
 		if (TransactionStore.TryGetTransaction(txId, out var foundTx))
 		{
 			foundTx.TryUpdate(tx);
@@ -229,7 +313,6 @@ public class TransactionProcessor(
 			var alreadyKnown = coin.SpenderTransaction == tx;
 			result.SpentCoins.Add(coin);
 			Coins.Spend(coin, tx);
-			mempoolService?.TrySpend(coin, tx);
 			result.RestoredCoins.Remove(coin);
 
 			if (!alreadyKnown)

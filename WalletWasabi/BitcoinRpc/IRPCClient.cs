@@ -63,8 +63,6 @@ public interface IRPCClient
 
 	Task<GetBlockRPCResponse> GetVerboseBlockAsync(uint256 blockHash, CancellationToken cancellationToken = default);
 
-	Task<BlockFilter> GetBlockFilterAsync(uint256 blockHash, CancellationToken cancellationToken = default);
-
 	Task<uint256[]> GenerateToAddressAsync(int nBlocks, BitcoinAddress address, CancellationToken cancellationToken = default);
 
 	Task<RPCClient> CreateWalletAsync(string walletNameOrPath, CreateWalletOptions? options = null, CancellationToken cancellationToken = default);

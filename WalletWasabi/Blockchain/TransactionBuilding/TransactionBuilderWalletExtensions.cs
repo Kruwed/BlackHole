@@ -47,7 +47,8 @@ public static class TransactionBuilderWalletExtensions
 			parameters,
 			lockTimeSelector: () =>
 			{
-				var currentTipHeight = wallet.FilterHeaderChain.TipHeight;
+				// The wallet builds transactions when it is synchronized, so the last block that it processed is the tip of the chain.
+				var currentTipHeight = wallet.KeyManager.GetBestHeight()?.Height ?? 0;
 				return LockTimeSelector.Instance.GetLockTimeBasedOnDistribution(currentTipHeight);
 			});
 	}

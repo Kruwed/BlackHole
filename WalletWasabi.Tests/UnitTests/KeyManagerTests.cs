@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text.Json.Nodes;
-using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Models;
@@ -312,47 +311,169 @@ public class KeyManagerTests
 	}
 
 	[Fact]
-	public void CanSerializeHeightCorrectly()
+	public void NewWalletLearnsWhereItStartsFromTheTipOfTheChain()
 	{
-		var filePath = "wallet-serialization.json";
+		var filePath = "wallet-start-height.json";
 		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
-		manager.SetBestHeight(500_000);
-		manager.ToFile();
+
+		// It was created before the node told the height of the chain.
+		Assert.Null(manager.GetBestHeight());
+		Assert.Null(manager.GetBirthHeight());
+		Assert.Null(KeyManager.FromFile(filePath).GetBestHeight());
+
+		// Nothing concerns a new wallet up to the tip of the chain.
+		manager.StartAt(900_000);
+		Assert.Equal(new Height.ChainHeight(900_000), manager.GetBestHeight());
+		Assert.Equal(new Height.ChainHeight(900_000), manager.GetBirthHeight());
+
+		// That is told once.
+		manager.StartAt(950_000);
+		Assert.Equal(new Height.ChainHeight(900_000), manager.GetBestHeight());
+		Assert.Equal(new Height.ChainHeight(900_000), manager.GetBirthHeight());
 
 		var sameManager = KeyManager.FromFile(filePath);
-		Assert.Equal(new Height.ChainHeight(499_899), sameManager.GetBestHeight());
+		Assert.Equal(new Height.ChainHeight(900_000), sameManager.GetBestHeight());
+		Assert.Equal(new Height.ChainHeight(900_000), sameManager.GetBirthHeight());
+		Assert.Empty(sameManager.GetProcessedBlocks().BlockHashes);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	[Fact]
-	public void CanSerializeHeightBelowResyncMargin()
+	public void RecoveredWalletStartsAtItsBirthHeight()
 	{
-		// The resync margin is subtracted when persisting the height. Networks whose first filter
-		// is the genesis block can legitimately sit below that margin, so the subtraction must not
-		// wrap around instead of being floored at zero.
-		var filePath = "wallet-serialization-below-resync-margin.json";
+		var shares = WalletGenerator.GenerateShares().Take(WalletGenerator.DefaultShamirThreshold).ToArray();
+
+		// Wallets are Taproot only, so by default the block that Taproot activated at is the first one to look into.
+		var manager = KeyManager.Recover(shares, "", Network.Main);
+		Assert.Equal(new Height.ChainHeight(709_632), manager.GetBirthHeight());
+		Assert.Equal(new Height.ChainHeight(709_631), manager.GetBestHeight());
+
+		manager = KeyManager.Recover(shares, "", Network.Main, birthHeight: new Height.ChainHeight(850_000));
+		Assert.Equal(new Height.ChainHeight(850_000), manager.GetBirthHeight());
+		Assert.Equal(new Height.ChainHeight(849_999), manager.GetBestHeight());
+
+		// The other networks are looked through from their first block. Nothing concerns a wallet in the genesis block.
+		manager = KeyManager.Recover(shares, "", Network.RegTest);
+		Assert.Equal(new Height.ChainHeight(0), manager.GetBirthHeight());
+		Assert.Equal(new Height.ChainHeight(0), manager.GetBestHeight());
+	}
+
+	[Fact]
+	public void RemembersTheLastProcessedBlocks()
+	{
+		static uint256 BlockHash(uint height) => new(height);
+
+		var filePath = "wallet-processed-blocks.json";
 		var manager = KeyManager.CreateNew(out _, "", Network.RegTest, filePath);
-		manager.SetBestHeight(0);
+		manager.StartAt(10);
+
+		for (uint height = 11; height <= 15; height++)
+		{
+			manager.SetBestBlock(height, BlockHash(height), toFile: false);
+		}
+
+		var (bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(15), bestHeight);
+		Assert.Equal(new[] { BlockHash(11), BlockHash(12), BlockHash(13), BlockHash(14), BlockHash(15) }, blockHashes);
+
+		// The height is exactly what gets saved, and only when asked for.
+		Assert.Equal(new Height.ChainHeight(10), KeyManager.FromFile(filePath).GetBestHeight());
 		manager.ToFile();
 
-		var sameManager = KeyManager.FromFile(filePath);
-		Assert.Equal(new Height.ChainHeight(0), sameManager.GetBestHeight());
+		var (savedHeight, savedBlockHashes) = KeyManager.FromFile(filePath).GetProcessedBlocks();
+		Assert.Equal(bestHeight, savedHeight);
+		Assert.Equal(blockHashes, savedBlockHashes);
+
+		// Only the newest blocks are remembered.
+		for (uint height = 16; height <= 200; height++)
+		{
+			manager.SetBestBlock(height, BlockHash(height), toFile: false);
+		}
+
+		(bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(200), bestHeight);
+		Assert.Equal(BlockchainState.MaxRememberedBlocks, blockHashes.Length);
+		Assert.Equal(BlockHash(100), blockHashes[0]);
+		Assert.Equal(BlockHash(200), blockHashes[^1]);
+
+		// Going back forgets the blocks above, e.g. those that a reorganization of the chain dropped.
+		manager.SetMaxBestHeight(197);
+
+		(bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(197), bestHeight);
+		Assert.Equal(BlockchainState.MaxRememberedBlocks - 3, blockHashes.Length);
+		Assert.Equal(BlockHash(197), blockHashes[^1]);
+		Assert.Equal(new Height.ChainHeight(197), KeyManager.FromFile(filePath).GetBestHeight());
+
+		// It never raises the height.
+		manager.SetMaxBestHeight(500);
+		Assert.Equal(new Height.ChainHeight(197), manager.GetBestHeight());
+
+		// Blocks that do not follow each other tell nothing about what is between them.
+		manager.SetBestBlock(300, BlockHash(300));
+		(bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(300), bestHeight);
+		Assert.Equal(new[] { BlockHash(300) }, blockHashes);
+
+		// Going back further than what is remembered leaves nothing to compare.
+		manager.SetMaxBestHeight(250);
+		(bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(250), bestHeight);
+		Assert.Empty(blockHashes);
+
+		// A resync starts with the given block.
+		manager.SetResyncParameters(50, manager.MinGapLimit);
+		(bestHeight, blockHashes) = manager.GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(49), bestHeight);
+		Assert.Empty(blockHashes);
+
+		manager.SetResyncParameters(0, manager.MinGapLimit);
+		Assert.Equal(new Height.ChainHeight(0), manager.GetBestHeight());
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	[Fact]
-	public void BestHeightNeverPrecedesFirstFilter()
+	public void LoadsTheHeightOfWalletFilesWithoutBlockHashes()
 	{
-		// Filters are only available from the first checkpoint onwards, and the wallet asks for the
-		// filter right after its best height, so a lower height makes that filter unfetchable.
-		var firstFilterHeight = FilterCheckpoints.GetWasabiGenesisFilter(Network.Main).Header.Height;
-		var manager = KeyManager.CreateNew(out _, "", Network.Main);
+		// That is how the wallet file tells the height when no block was processed since it was set.
+		var filePath = "wallet-height-only.json";
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.StartAt(800_000);
+		manager.SetBestBlock(800_001, uint256.One);
 
-		manager.SetBestHeight(0);
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		var blockchainState = json["BlockchainState"]!.AsObject();
+		Assert.Equal("800001", blockchainState["Height"]!.GetValue<string>());
+		Assert.Single(blockchainState["BlockHashes"]!.AsArray());
 
-		Assert.Equal(firstFilterHeight, manager.GetBestHeight());
+		blockchainState.Remove("BlockHashes");
+		File.WriteAllText(filePath, json.ToJsonString());
+
+		var (bestHeight, blockHashes) = KeyManager.FromFile(filePath).GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(800_001), bestHeight);
+		Assert.Empty(blockHashes);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
+	public void UnreadableHeightIsNotTakenForANewWallet()
+	{
+		// A wallet without a height starts at the tip of the chain. A wallet file with a damaged height must not end up there:
+		// it would never look at the blocks that have its transactions.
+		var filePath = "wallet-damaged-height.json";
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.StartAt(800_000);
+
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		json["BlockchainState"]!["Height"] = "eight hundred thousand";
+		File.WriteAllText(filePath, json.ToJsonString());
+
+		Assert.ThrowsAny<Exception>(() => KeyManager.FromFile(filePath));
+
+		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	[Fact]

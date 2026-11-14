@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using NBitcoin;
 using NBitcoin.Secp256k1;
@@ -62,19 +63,29 @@ public static partial class Encode
 		String(s.ToWif());
 
 	public static JsonNode WalletHeight(ChainHeight height) =>
-		String(Math.Max(0L, (long)height.Height - Constants.ResyncHeightMargin).ToString());
+		String(height.Height.ToString());
 
-	public static JsonNode BlockchainState(BlockchainState s) =>
-		Object(s.BirthHeight is not {} nonNullBirthHeight
-		? [
-			("Network", Network(s.Network)),
-			("Height", WalletHeight(s.Height)),
-		]
-		: [
-			("Network", Network(s.Network)),
-			("Height", WalletHeight(s.Height)),
-			("BirthHeight", UInt(nonNullBirthHeight.Height)),
-		]);
+	public static JsonNode BlockchainState(BlockchainState s)
+	{
+		List<(string, JsonNode?)> properties = [("Network", Network(s.Network))];
+
+		if (s.Height is { } height)
+		{
+			properties.Add(("Height", WalletHeight(height)));
+		}
+
+		if (s.BirthHeight is { } birthHeight)
+		{
+			properties.Add(("BirthHeight", UInt(birthHeight.Height)));
+		}
+
+		if (s.BlockHashes.Count > 0)
+		{
+			properties.Add(("BlockHashes", Array(s.BlockHashes.Select(UInt256))));
+		}
+
+		return Object(properties);
+	}
 
 	public static JsonNode SerializableException(SerializableException e) =>
 		Object([
@@ -144,9 +155,21 @@ public static partial class Decode
 	public static Decoder<BlockchainState> BlockchainState =>
 		Object(get => new BlockchainState(
 			get.Required("Network", Network),
-			get.Required("Height", WalletHeight),
-			get.Optional("BirthHeight", WalletHeight)
+			OptionalButValid(get, "Height", WalletHeight),
+			OptionalButValid(get, "BirthHeight", WalletHeight),
+			OptionalButValid(get, "BlockHashes", Array(UInt256))
 			));
+
+	/// <summary>
+	/// Decodes a field that can be missing. A value that is there has to be valid: an unreadable height
+	/// must not be taken for a wallet that has no height yet.
+	/// </summary>
+	private static T? OptionalButValid<T>(Getters get, string fieldName, Decoder<T> decoder) where T : class =>
+		get.Value.ValueKind == JsonValueKind.Object
+		&& get.Value.TryGetProperty(fieldName, out var property)
+		&& property.ValueKind != JsonValueKind.Null
+			? get.Required(fieldName, decoder)
+			: null;
 
 	public static Decoder<BitcoinEncryptedSecretNoEC> BitcoinEncryptedSecretNoEC =>
 		String.Map(s => new BitcoinEncryptedSecretNoEC(s, NBitcoin.Network.Main));

@@ -92,7 +92,7 @@ public class Config
 			[nameof(JsonRpcPassword)] = "The user password that is authorized to make requests to the Json RPC server",
 			[nameof(JsonRpcServerPrefixes)] = "The Json RPC server prefixes",
 			[nameof(RpcOnionEnabled)] = "Publish the Json RPC Server as a Tor Onion service",
-			[nameof(BlockOnlyMode)] = "Wasabi listens only for blocks and not for transactions",
+			[nameof(BlockOnlyMode)] = "The wallet looks only at the blocks of the node and not at its unconfirmed transactions",
 			[nameof(LogLevel)] = "The level of detail in the logs: trace, debug, info, warning, error, or critical",
 			[nameof(LogModes)] = "The logging modes: console, and file (for multiple values use comma as a separator)",
 			[nameof(EnableGpu)] = "Use a GPU to render the user interface",

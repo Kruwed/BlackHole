@@ -37,7 +37,6 @@ RegTest is a local network in which users can generate blocks and coins for test
     regtest.disablewallet = 0
     regtest.softwareexpiry = 0
     regtest.listenonion = 0
-    regtest.blockfilterindex = 1
     ```
 5. Save it.
 6. Close Bitcoin Core to confirm changes and open it again with: `bitcoin-qt -regtest`.

@@ -1,16 +1,16 @@
 using System.Net.Sockets;
 using NBitcoin.RPC;
 using WalletWasabi.BitcoinRpc;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Models;
+using WalletWasabi.Services;
 
 namespace WalletWasabi.Blockchain.TransactionBroadcasting;
 
 /// <summary>
 /// Broadcasts the transactions of the wallet. They only ever leave through the user's own node.
 /// </summary>
-public class TransactionBroadcaster(IRPCClient rpcClient, MempoolService mempoolService)
+public class TransactionBroadcaster(IRPCClient rpcClient, EventBus eventBus)
 {
 	/// <exception cref="InvalidOperationException">The node did not take the transaction. The message tells why.</exception>
 	public async Task SendTransactionAsync(SmartTransaction tx, CancellationToken cancellationToken = default)
@@ -51,15 +51,7 @@ public class TransactionBroadcaster(IRPCClient rpcClient, MempoolService mempool
 			transaction.SetUnconfirmed();
 		}
 
-		mempoolService.TryAddToBroadcastStore(transaction);
-		mempoolService.ReportSuccessfullyBroadcastedTransaction(transaction);
-	}
-}
-
-public static class NetworkExtensions
-{
-	extension(Network network)
-	{
-		public int MinBroadcastNodes => network == Network.RegTest ? 1 : 2;
+		// The wallet processes it right away. It does not wait until the mempool of the node is looked at the next time.
+		eventBus.Publish(new NewTransactionInMempool(transaction));
 	}
 }

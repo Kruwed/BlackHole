@@ -22,7 +22,7 @@
     </DockPanel>
 
     <DockPanel
-      ToolTip.Tip="Wasabi will download blocks from this full node.">
+      ToolTip.Tip="The RPC interface of your own full node. The wallet gets blocks, unconfirmed transactions and fee rates from it and broadcasts its transactions through it. Nobody else is asked.">
       <TextBlock Text="Bitcoin RPC Endpoint" />
         <TextBox Text="{Binding BitcoinRpcUri}">
           <Interaction.Behaviors>

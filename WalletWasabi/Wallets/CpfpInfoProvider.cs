@@ -38,8 +38,8 @@ public class CpfpInfoProvider(MailboxProcessor<CpfpInfoMessage> cpfpUpdater)
 /// </summary>
 public static class CpfpInfoUpdater
 {
-	/// <summary>The cached information is not refreshed more often than this.</summary>
-	private static readonly TimeSpan MinimumRefreshPeriod = TimeSpan.FromSeconds(30);
+	/// <summary>The cached information is not refreshed more often than this, however many blocks and transactions arrive.</summary>
+	private static readonly TimeSpan MinimumRefreshPeriod = TimeSpan.FromSeconds(10);
 
 	public static MessageHandler<CpfpInfoMessage, Unit> Create(IRPCClient rpcClient, EventBus eventBus)
 	{

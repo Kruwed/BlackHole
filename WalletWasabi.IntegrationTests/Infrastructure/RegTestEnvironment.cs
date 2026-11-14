@@ -5,53 +5,46 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
-using WalletWasabi.BitcoinP2p;
 using WalletWasabi.BitcoinRpc;
-using WalletWasabi.Blockchain.Blocks;
 using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.IntegrationTests.BitcoinCore;
 using WalletWasabi.Wallets;
-using ChainHeight = WalletWasabi.Models.Height.ChainHeight;
-using WalletWasabi.Storages;
 
 namespace WalletWasabi.IntegrationTests.Infrastructure;
 
 /// <summary>
 /// Comprehensive test environment for integration tests.
-/// Provides access to Bitcoin Core RPC, filter stores, transaction stores, and wallet infrastructure.
+/// Provides access to Bitcoin Core RPC, the transaction store, and wallet infrastructure.
 /// </summary>
 public sealed class RegTestEnvironment : IAsyncDisposable
 {
+	private readonly uint _tipHeightAtCreation;
+
 	private RegTestEnvironment(
 		IntegrationTestFixture fixture,
 		string workDir,
 		EventBus eventBus,
-		FilterManager filterManager,
 		AllTransactionStore transactionStore,
-		FilterHeaderChain filterHeaderChain,
-		CpfpInfoProvider cpfpInfoProvider)
+		CpfpInfoProvider cpfpInfoProvider,
+		uint tipHeightAtCreation)
 	{
 		Fixture = fixture;
 		WorkDir = workDir;
 		EventBus = eventBus;
-		FilterManager = filterManager;
 		TransactionStore = transactionStore;
-		FilterHeaderChain = filterHeaderChain;
 		CpfpInfoProvider = cpfpInfoProvider;
 		ServiceConfiguration = new ServiceConfiguration();
+		_tipHeightAtCreation = tipHeightAtCreation;
 	}
 
 	public IntegrationTestFixture Fixture { get; }
 	public string WorkDir { get; }
 	public EventBus EventBus { get; }
-	public FilterManager FilterManager { get; }
 	public AllTransactionStore TransactionStore { get; }
-	public FilterHeaderChain FilterHeaderChain { get; }
 	public CpfpInfoProvider CpfpInfoProvider { get; }
 	public ServiceConfiguration ServiceConfiguration { get; }
 
@@ -61,7 +54,6 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 	public IRPCClient RpcClient => Fixture.WalletRpcClient;
 	public Network Network => RpcClient.Network;
 	public CoreNode BitcoinCoreNode => Fixture.BitcoinCoreNode;
-	public MempoolService MempoolService => BitcoinCoreNode.MempoolService;
 
 	public const string DefaultPassword = "password";
 
@@ -83,14 +75,6 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 		Directory.CreateDirectory(workDir);
 
 		var eventBus = new EventBus();
-		var filterHeaderChain = new FilterHeaderChain();
-
-		var filterManager = new FilterManager(
-			Path.Combine(workDir, "filters"),
-			fixture.BitcoinCoreNode.Network,
-			filterHeaderChain,
-			eventBus);
-		await filterManager.InitializeAsync(new ChainHeight(0u), CancellationToken.None).ConfigureAwait(false);
 
 		var transactionStore = new AllTransactionStore(
 			Path.Combine(workDir, "transactions"),
@@ -102,37 +86,38 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 		var cpfpInfoProvider = new CpfpInfoProvider(
 			Workers.Spawn(workerName, Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.Create(fixture.WalletRpcClient, eventBus))));
 
+		var tipHeight = (uint)await fixture.WalletRpcClient.GetBlockCountAsync(CancellationToken.None).ConfigureAwait(false);
+
 		return new RegTestEnvironment(
 			fixture,
 			workDir,
 			eventBus,
-			filterManager,
 			transactionStore,
-			filterHeaderChain,
-			cpfpInfoProvider);
+			cpfpInfoProvider,
+			tipHeight);
 	}
 
 	/// <summary>
-	/// Creates a new KeyManager for testing.
+	/// Creates a new KeyManager for testing: the wallet of a test is created at the tip that the chain had when the test began.
+	/// Whatever the test does to the chain after that is for the wallet to find.
 	/// </summary>
 	public KeyManager CreateKeyManager(string? password = null)
 	{
-		return KeyManager.CreateNew(out _, password ?? DefaultPassword, Network);
+		var keyManager = KeyManager.CreateNew(out _, password ?? DefaultPassword, Network);
+		keyManager.StartAt(_tipHeightAtCreation);
+		return keyManager;
 	}
 
 	/// <summary>
-	/// Creates a Wallet instance (not started).
+	/// Creates a Wallet instance (not started). Starting it synchronizes it with the node.
 	/// </summary>
 	public Wallet CreateWallet(KeyManager keyManager)
 	{
 		var factory = Wallet.CreateFactory(
 			Network,
-			FilterManager,
+			RpcClient,
 			TransactionStore,
-			FilterHeaderChain,
-			MempoolService,
 			ServiceConfiguration,
-			CreateBlockProvider(),
 			EventBus,
 			CpfpInfoProvider);
 
@@ -140,146 +125,19 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Creates a block provider that fetches blocks via RPC.
+	/// Waits until the wallet processed every block that the node has at the moment.
 	/// </summary>
-	public BlockProvider CreateBlockProvider()
+	public async Task WaitForWalletToCatchUpAsync(Wallet wallet, TimeSpan? timeout = null)
 	{
-		return BlockProviders.RpcBlockProvider(RpcClient);
-	}
+		var nodeHeight = (uint)await RpcClient.GetBlockCountAsync().ConfigureAwait(false);
+		var nodeTip = await RpcClient.GetBlockHashAsync((int)nodeHeight).ConfigureAwait(false);
 
-	/// <summary>
-	/// Synchronizes filters from Bitcoin Core RPC using the production Synchronizer.
-	/// This fetches all compact block filters from the current tip and stores them.
-	/// </summary>
-	public async Task SyncFiltersRpcAsync(CancellationToken cancellationToken)
-	{
-		// Build block header chain from RPC - required for reorg detection
-		var blockHeaderChain = await BuildBlockHeaderChainAsync(cancellationToken).ConfigureAwait(false);
-
-		var filterProvider = FilterProviders.CreateBitcoinRpcFilterProvider(RpcClient, blockHeaderChain);
-
-		// Use the production Synchronizer's filter generator
-		var filterGenerator = Synchronizer.CreateFilterGenerator(filterProvider, FilterManager, FilterHeaderChain, EventBus);
-
-		// Run the synchronizer until we're caught up
-		while (true)
-		{
-			cancellationToken.ThrowIfCancellationRequested();
-
-			var tip = FilterManager.GetTip();
-			var currentHeight = await RpcClient.GetBlockCountAsync(cancellationToken).ConfigureAwait(false);
-
-			// Check if we're synced to the current chain tip
-			if (tip is not null && (uint)tip.Header.Height >= currentHeight)
-			{
-				// Verify we're on the right chain (not orphaned)
-				var currentHashAtTip = await RpcClient.GetBlockHashAsync((int)(uint)tip.Header.Height, cancellationToken).ConfigureAwait(false);
-				if (currentHashAtTip == tip.Header.BlockHash)
-				{
-					FilterHeaderChain.SetServerTipHeight((uint)currentHeight);
-					break; // Fully synced and on the right chain
-				}
-			}
-
-			// Run one iteration of the production synchronizer
-			await filterGenerator(Unit.Instance, cancellationToken).ConfigureAwait(false);
-		}
-	}
-
-	/// <summary>
-	/// Synchronizes filters from Bitcoin Core P2P network using the production Synchronizer.
-	/// This uses the compact filter protocol (BIP 157/158) to fetch filters from a connected peer.
-	/// </summary>
-	public async Task SyncFiltersP2PAsync(CancellationToken cancellationToken)
-	{
-		var blockHeaderChain = new ConcurrentChain(Network);
-
-		// Create the filter synchronization state
-		var tip = FilterManager.GetTip();
-		var tipHeight = tip?.Header.Height ?? ChainHeight.Genesis;
-		var synchronizationState = new FilterSynchronizationState(blockHeaderChain, FilterHeaderChain, tipHeight);
-
-		// Create a P2P connection to Bitcoin Core - behaviors must be added before handshake
-		var node = await BitcoinCoreNode.CreateNewP2pNodeAsync().ConfigureAwait(false);
-
-		// Add behaviors for syncing block headers and compact filters
-		node.Behaviors.Add(new BlockHeadersChainBehavior(blockHeaderChain, FilterHeaderChain, EventBus));
-		node.Behaviors.Add(new CompactFilterBehavior(synchronizationState, blockHeaderChain, EventBus));
-
-		// Start emitting tick events to drive the sync process
-		using var tickTimer = new Timer(
-			_ => EventBus.Publish(new Tick(DateTime.UtcNow)),
-			null,
-			TimeSpan.Zero,
-			TimeSpan.FromMilliseconds(1000));
-
-		// Connect and handshake
-		await node.VersionHandshakeAsync(cancellationToken);
-
-		// Get the target height from Bitcoin Core
-		var targetHeight = await RpcClient.GetBlockCountAsync(cancellationToken).ConfigureAwait(false);
-
-		// Wait for block headers to sync to target height (with timeout)
-		// This fixes a race condition where filter sync would start before block headers were ready
-		var headerSyncTimeout = TimeSpan.FromSeconds(30);
-		var headerSyncDeadline = DateTime.UtcNow + headerSyncTimeout;
-		while (blockHeaderChain.Tip?.Height < targetHeight)
-		{
-			if (DateTime.UtcNow > headerSyncDeadline)
-			{
-				throw new TimeoutException(
-					$"Block headers did not sync to target height {targetHeight} within {headerSyncTimeout.TotalSeconds}s. " +
-					$"Current height: {blockHeaderChain.Tip?.Height ?? 0}");
-			}
-			await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-		}
-
-		// Create the P2P filter provider
-		var filterProvider = FilterProviders.CreateBitcoinP2pFilterProvider(
-			FilterHeaderChain,
-			blockHeaderChain,
-			synchronizationState);
-
-		// Use the production Synchronizer's filter generator
-		var filterGenerator = Synchronizer.CreateFilterGenerator(filterProvider, FilterManager, FilterHeaderChain, EventBus);
-
-		// Run the synchronizer until we're caught up
-		while (true)
-		{
-			cancellationToken.ThrowIfCancellationRequested();
-
-			var currentTip = FilterManager.GetTip();
-
-			// Check if we're synced to the target height
-			if (currentTip is not null && (uint)currentTip.Header.Height >= targetHeight)
-			{
-				break;
-			}
-
-			// Run one iteration of the production synchronizer
-			await filterGenerator(Unit.Instance, cancellationToken).ConfigureAwait(false);
-		}
-	}
-
-	/// <summary>
-	/// Builds the block header chain from Bitcoin Core RPC.
-	/// This is needed for reorg detection in the filter provider.
-	/// </summary>
-	private async Task<ConcurrentChain> BuildBlockHeaderChainAsync(CancellationToken cancellationToken)
-	{
-		// ConcurrentChain(Network) already includes the genesis block
-		var chain = new ConcurrentChain(Network);
-		var currentHeight = await RpcClient.GetBlockCountAsync(cancellationToken).ConfigureAwait(false);
-
-		// Build chain from height 1 (genesis is already in chain) to current tip
-		for (int height = 1; height <= currentHeight; height++)
-		{
-			var blockHash = await RpcClient.GetBlockHashAsync(height, cancellationToken).ConfigureAwait(false);
-			var blockHeader = await RpcClient.GetBlockHeaderAsync(blockHash, cancellationToken).ConfigureAwait(false);
-			chain.SetTip(new ChainedBlock(blockHeader, blockHash, chain.Tip));
-		}
-
-		return chain;
+		await WaitForConditionAsync(
+			() => wallet.KeyManager.GetProcessedBlocks() is var (height, blockHashes)
+				&& height is not null
+				&& height.Height == nodeHeight
+				&& (blockHashes.IsEmpty || blockHashes[^1] == nodeTip),
+			timeout ?? TimeSpan.FromSeconds(60)).ConfigureAwait(false);
 	}
 
 	/// <summary>
@@ -363,7 +221,6 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 
 	public ValueTask DisposeAsync()
 	{
-		FilterManager.Dispose();
 		TransactionStore.Dispose();
 		return ValueTask.CompletedTask;
 	}

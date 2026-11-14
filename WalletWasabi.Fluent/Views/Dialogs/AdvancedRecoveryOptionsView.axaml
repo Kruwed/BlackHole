@@ -28,8 +28,8 @@
           <FocusOnAttachedBehavior />
         </Interaction.Behaviors>
       </TextBox>
-      <Label Content="Birth Height:" Target="TbBirthHeight" />
-      <TextBox Name="TbBirthHeight" Watermark="e.g., 481824"
+      <Label Content="_Birth Height (the first block to look for transactions in):" Target="TbBirthHeight" />
+      <TextBox Name="TbBirthHeight" Watermark="e.g., 709632"
                Text="{Binding BirthHeight}"
                DockPanel.Dock="Top"
                Width="350"

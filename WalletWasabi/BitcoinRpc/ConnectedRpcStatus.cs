@@ -16,7 +16,7 @@ public record ConnectedRpcStatus(
 		PeersCount.Match(
 			peersCount => (peersCount, Synchronized) switch
 			{
-				(0, _) => "is connecting...",
+				(0, _) => "has no peers",
 				(_, true) => "is synchronized",
 				(_, false) => "is synchronizing..."
 			},

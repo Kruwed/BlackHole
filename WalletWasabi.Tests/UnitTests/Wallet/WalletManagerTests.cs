@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using WalletWasabi.Blockchain.Blocks;
 using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.Blockchain.Mempool;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
@@ -137,27 +135,30 @@ public class WalletManagerTests
 	}
 
 	[Fact]
-	public async Task TellsTheHeightsOfTheWalletAsync()
+	public async Task TellsTheHeightOfTheWalletAsync()
 	{
 		using var environment = await TestEnvironment.CreateAsync();
 		var manager = environment.CreateWalletManager();
 
 		// Without a wallet there is nothing to synchronize.
-		Assert.Null(manager.GetBirthHeight());
 		Assert.Null(manager.GetBestHeight());
 
 		var keyManager = KeyManager.CreateNew(out _, "password", Network.Main);
-		keyManager.SetBestHeight(800_000);
 		manager.AddWallet(keyManager);
 
-		Assert.Equal(keyManager.GetBestHeight(), manager.GetBestHeight());
+		// A new wallet does not know where it starts until the node tells the height of the chain.
+		Assert.Null(manager.GetBestHeight());
 
-		manager.SetMaxBestHeight(700_000);
-		Assert.Equal(new Height.ChainHeight(700_000), manager.GetBestHeight());
+		keyManager.StartAt(800_000);
+		Assert.Equal(new Height.ChainHeight(800_000), manager.GetBestHeight());
 
-		// The height of the wallet is never raised by this.
-		manager.SetMaxBestHeight(900_000);
-		Assert.Equal(new Height.ChainHeight(700_000), manager.GetBestHeight());
+		keyManager.SetBestBlock(800_001, uint256.One);
+		Assert.Equal(new Height.ChainHeight(800_001), manager.GetBestHeight());
+
+		// A wallet that lost what it knew about its transactions looks for them again from its birth.
+		manager.RescanWallet();
+		Assert.Equal(new Height.ChainHeight(799_999), manager.GetBestHeight());
+		Assert.Equal(new Height.ChainHeight(799_999), KeyManager.FromFile(manager.WalletDirectories.WalletFilePath).GetBestHeight());
 
 		await manager.RemoveAndStopAsync(CancellationToken.None);
 	}
@@ -167,7 +168,6 @@ public class WalletManagerTests
 	/// </summary>
 	private sealed class TestEnvironment : IDisposable
 	{
-		private readonly FilterManager _filterManager;
 		private readonly AllTransactionStore _transactionStore;
 		private readonly MailboxProcessor<CpfpInfoMessage> _cpfpInfoUpdater;
 		private readonly WalletFactory _walletFactory;
@@ -176,21 +176,16 @@ public class WalletManagerTests
 		{
 			var network = Network.Main;
 			var eventBus = new EventBus();
-			var filterHeaderChain = new FilterHeaderChain();
 
 			WalletDirectories = new WalletDirectories(network, workDir);
-			_filterManager = new FilterManager(Path.Combine(workDir, "Filters"), network, filterHeaderChain, eventBus);
 			_transactionStore = new AllTransactionStore(SqliteStorageHelper.InMemoryDatabase, network);
 			_cpfpInfoUpdater = Workers.Spawn($"CpfpInfoProvider_{Guid.NewGuid():N}", Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.Create(new MockRpcClient(), eventBus)));
 
 			_walletFactory = WalletWasabi.Wallets.Wallet.CreateFactory(
 				network,
-				_filterManager,
+				new MockRpcClient(),
 				_transactionStore,
-				filterHeaderChain,
-				new MempoolService(eventBus),
 				new ServiceConfiguration(),
-				(_, _) => Task.FromResult<Block?>(null),
 				eventBus,
 				new CpfpInfoProvider(_cpfpInfoUpdater));
 		}
@@ -211,7 +206,6 @@ public class WalletManagerTests
 		{
 			_cpfpInfoUpdater.Dispose();
 			_transactionStore.Dispose();
-			_filterManager.Dispose();
 		}
 	}
 }

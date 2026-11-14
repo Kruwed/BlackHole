@@ -222,11 +222,15 @@ public class CoinsRegistry : ICoinsView
 		TransactionAmountsByTxid[txid] = TransactionAmountsByTxid.TryGetValue(txid, out Money? current) ? current + diff : diff;
 	}
 
+	/// <summary>
+	/// Makes the coins of the given block unconfirmed, and with them the coins that descend from them. For when the block is not part of the chain any more.
+	/// </summary>
 	public void SwitchToUnconfirmFromBlock(ChainHeight blockHeight)
 	{
 		lock (_lock)
 		{
-			foreach (SmartCoin coin in _coins)
+			// Spent coins too: the transaction that created them is not confirmed any more either.
+			foreach (SmartCoin coin in AsAllCoinsViewNoLock())
 			{
 				if (coin.Height != blockHeight)
 				{
@@ -248,6 +252,18 @@ public class CoinsRegistry : ICoinsView
 		lock (_lock)
 		{
 			return CoinsByTransactionId.ContainsKey(txid);
+		}
+	}
+
+	/// <returns>
+	/// <c>true</c> if a transaction that spends the outpoint concerns the wallet: the outpoint is a coin of the wallet (spent or not),
+	/// or a transaction that the wallet has coins from spends it as well.
+	/// </returns>
+	public bool IsKnownPrevOut(OutPoint prevOut)
+	{
+		lock (_lock)
+		{
+			return OutpointCoinCache.ContainsKey(prevOut) || TxidsByInputPrevOuts.ContainsKey(prevOut);
 		}
 	}
 
