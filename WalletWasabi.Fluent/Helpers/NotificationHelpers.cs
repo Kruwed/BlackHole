@@ -16,7 +16,6 @@ namespace WalletWasabi.Fluent.Helpers;
 public static class NotificationHelpers
 {
 	private const int DefaultNotificationTimeout = 10;
-	private const int DefaultErrorNotificationTimeout = 60;
 	private static WindowNotificationManager? NotificationManager;
 
 	public static void SetNotificationManager(Visual host)
@@ -36,29 +35,6 @@ public static class NotificationHelpers
 		if (NotificationManager is { } nm)
 		{
 			RxApp.MainThreadScheduler.Schedule(() => nm.Show(new Notification(title, message, NotificationType.Information, TimeSpan.FromSeconds(DefaultNotificationTimeout), onClick)));
-		}
-	}
-
-	/// <returns>The notification, for <see cref="Close"/> to take it back when it does not hold anymore. Nothing if it could not be shown.</returns>
-	public static INotification? ShowError(string title, string message, Action? onClick = null)
-	{
-		if (NotificationManager is not { } nm)
-		{
-			return null;
-		}
-
-		var notification = new Notification(title, message, NotificationType.Error, TimeSpan.FromSeconds(DefaultErrorNotificationTimeout), onClick);
-		RxApp.MainThreadScheduler.Schedule(() => nm.Show(notification));
-
-		return notification;
-	}
-
-	/// <summary>Takes a notification off the screen before its time is up.</summary>
-	public static void Close(INotification notification)
-	{
-		if (NotificationManager is { } nm)
-		{
-			RxApp.MainThreadScheduler.Schedule(() => nm.Close(notification));
 		}
 	}
 

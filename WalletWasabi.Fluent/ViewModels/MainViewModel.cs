@@ -3,14 +3,10 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using Avalonia.Controls.Notifications;
 using NBitcoin;
 using WalletWasabi.Fluent.Extensions;
-using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
-using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
-using WalletWasabi.Services;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.NavBar;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -32,9 +28,6 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify] private WindowState _windowState;
 	[AutoNotify] private bool _isOobeBackgroundVisible;
 	[AutoNotify] private bool _isCoinJoinActive;
-
-	/// <summary>The notification that the node cannot be reached, as long as nothing took it off the screen.</summary>
-	private INotification? _bitcoinRpcErrorNotification;
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -183,34 +176,6 @@ public partial class MainViewModel : ViewModelBase
 			.Switch()
 			.BindTo(this, x => x.IsCoinJoinActive);
 
-		var rpcStatuses = UiContext.Services.EventBus.AsObservable<RpcStatusChanged>()
-			.Select(x => x.Status);
-
-		rpcStatuses
-			.Where(x => !x.IsOk)
-			.ObserveOn(RxApp.MainThreadScheduler)
-			// Not while the user is telling where the node is: there the notification would only be in the way.
-			.Where(_ => DialogScreen.CurrentPage is not ConnectToFullNodeViewModel)
-			.Take(1)
-			.Subscribe(x =>
-			{
-				_bitcoinRpcErrorNotification = NotificationHelpers.ShowError(
-					"Could not connect to Bitcoin RPC",
-					$"\n>>Click here to verify Bitcoin RPC settings.<<",
-					onClick: () =>
-					{
-						SettingsPage.SelectedTab = 1; // Bitcoin Tab
-						_ = SettingsPage.Activate();
-					});
-
-				// The message is out of date as soon as the node answers.
-				rpcStatuses
-					.Where(status => status.IsOk)
-					.Take(1)
-					.ObserveOn(RxApp.MainThreadScheduler)
-					.Subscribe(_ => DismissBitcoinRpcError());
-			});
-
 		Notifications.StartListening();
 
 		if (UiContext.ApplicationSettings.Network != Network.Main)
@@ -222,19 +187,6 @@ public partial class MainViewModel : ViewModelBase
 	public void ApplyUiConfigWindowState()
 	{
 		WindowState = UiContext.ApplicationSettings.WindowState;
-	}
-
-	/// <summary>
-	/// Takes the notification that the node cannot be reached off the screen. It is out of date once the node answers,
-	/// and it is in the way where the user is about to tell where the node is.
-	/// </summary>
-	public void DismissBitcoinRpcError()
-	{
-		if (_bitcoinRpcErrorNotification is { } notification)
-		{
-			_bitcoinRpcErrorNotification = null;
-			NotificationHelpers.Close(notification);
-		}
 	}
 
 	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Same lifecycle as the application. Won't be disposed separately.")]

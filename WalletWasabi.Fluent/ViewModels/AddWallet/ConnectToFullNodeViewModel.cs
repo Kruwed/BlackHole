@@ -153,10 +153,6 @@ public partial class ConnectToFullNodeViewModel : RoutableViewModel
 		// The page is left with the back arrow: there is nothing to cancel.
 		SetupCancel(enableCancel: false, enableCancelOnEscape: false, enableCancelOnPressed: false);
 
-		// The notification that the node cannot be reached sends the user to the settings of the node. Here they are
-		// taking care of the node already, and in a small window the notification lies on the button of this page.
-		UiContext.MainViewModel?.DismissBitcoinRpcError();
-
 		var leaveCts = new CancellationTokenSource();
 		_leaveCts = leaveCts;
 
