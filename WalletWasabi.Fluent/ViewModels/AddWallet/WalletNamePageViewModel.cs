@@ -4,7 +4,6 @@ using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.Validation;
 using System.Threading.Tasks;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Fluent.Extensions;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
@@ -44,33 +43,15 @@ public partial class WalletNamePageViewModel : RoutableViewModel
 		switch (options)
 		{
 			case WalletCreationOptions.AddNewWallet add:
-				Navigate().To().WalletBackupType(add);
+				Navigate().To().MultiShareOptions(add);
 				break;
 
 			case WalletCreationOptions.RecoverWallet rec:
-				Navigate().To().WalletBackupType(rec);
-				break;
-
-			case WalletCreationOptions.ImportWallet imp:
-				await ImportWalletAsync(imp);
+				Navigate().To().RecoverMultiShareWallet(rec);
 				break;
 
 			default:
 				throw new InvalidOperationException($"{nameof(WalletCreationOptions)} not supported: {options?.GetType().Name}");
-		}
-	}
-
-	private async Task ImportWalletAsync(WalletCreationOptions.ImportWallet options)
-	{
-		try
-		{
-			var walletSettings = await UiContext.WalletRepository.NewWalletAsync(options);
-			Navigate().To().AddedWalletPage(walletSettings, options);
-		}
-		catch (Exception ex)
-		{
-			await ShowErrorAsync("Import wallet", ex.ToUserFriendlyString(), "Wasabi was unable to import your wallet.");
-			BackCommand.Execute(null);
 		}
 	}
 

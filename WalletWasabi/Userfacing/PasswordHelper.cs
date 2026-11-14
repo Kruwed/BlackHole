@@ -1,50 +1,20 @@
-using System.Collections.Generic;
-using System.Text;
 using NBitcoin;
-using System.Security;
-using WalletWasabi.Logging;
-using WalletWasabi.Models;
-using WalletWasabi.Blockchain.Keys;
 using System.Diagnostics.CodeAnalysis;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Extensions;
 
 namespace WalletWasabi.Userfacing;
 
+/// <summary>
+/// Rules for the wallet password. The password only encrypts the wallet secret in the wallet file:
+/// it takes no part in deriving the keys and it is not needed to recover the wallet from its backup.
+/// </summary>
 public static class PasswordHelper
 {
 	public const int MaxPasswordLength = 150;
-	public const string CompatibilityPasswordWarnMessage = "Compatibility passphrase was used! Please consider generating a new wallet to ensure recoverability!";
-	public const string MatchingMessage = "Passphrases don't match.";
+	public const string MatchingMessage = "Passwords don't match.";
 	public const string WhitespaceMessage = "Leading and trailing white spaces are not allowed!";
-	public static readonly string PasswordTooLongMessage = $"Passphrase is too long.";
-
-	public static string[] GetPossiblePasswords(string? originalPassword)
-	{
-		if (string.IsNullOrEmpty(originalPassword))
-		{
-			return new[] { "" };
-		}
-
-		var buggyClipboard = StringCutIssue(originalPassword);
-
-		List<string> possiblePasswords = new()
-		{
-			originalPassword,
-			buggyClipboard, // Should be here for every OP system. If I create a buggy wallet on OSX and transfer it to other system, it should also work.
-			$"{buggyClipboard[0..^1]}\ufffd" // Later I tested the functionality and experienced that the last character replaced by invalid character.
-		};
-
-		return possiblePasswords.ToArray();
-	}
-
-	private static string StringCutIssue(string text)
-	{
-		// On OSX Avalonia gets the string from the Clipboard as byte[] and size.
-		// The size was mistakenly taken from the size of the original string which is not correct because of the UTF8 encoding.
-		byte[] bytes = Encoding.UTF8.GetBytes(text);
-		var myString = Encoding.UTF8.GetString(bytes[..text.Length]);
-		return text[..myString.Length];
-	}
+	public const string PasswordTooLongMessage = "Password is too long.";
 
 	public static bool IsTooLong(string? password, out string? limitedPassword)
 	{
@@ -80,12 +50,11 @@ public static class PasswordHelper
 		return false;
 	}
 
-	public static bool TryPassword(KeyManager keyManager, string password, out string? compatibilityPasswordUsed)
+	public static bool TryPassword(KeyManager keyManager, string password)
 	{
-		compatibilityPasswordUsed = null;
 		try
 		{
-			GetMasterExtKey(keyManager, password, out compatibilityPasswordUsed);
+			GetMasterExtKey(keyManager, password);
 		}
 		catch
 		{
@@ -104,41 +73,18 @@ public static class PasswordHelper
 
 		if (IsTrimmable(password, out _)) // Password should be formatted, before entering here.
 		{
-			throw new FormatException("Leading and trailing white spaces are not allowed!");
+			throw new FormatException(WhitespaceMessage);
 		}
 	}
 
-	public static ExtKey GetMasterExtKey(KeyManager keyManager, string password, out string? compatibilityPassword)
+	/// <exception cref="FormatException">The password is too long or it has leading or trailing white spaces.</exception>
+	/// <exception cref="System.Security.SecurityException">The password is not the one of the wallet.</exception>
+	public static ExtKey GetMasterExtKey(KeyManager keyManager, string password)
 	{
-		password = Helpers.Guard.Correct(password); // Correct the password to ensure compatibility. User will be notified about this through TogglePasswordBox.
+		password = Helpers.Guard.Correct(password);
 
 		Guard(password);
 
-		compatibilityPassword = null;
-
-		Exception? resultException = null;
-
-		foreach (var pw in GetPossiblePasswords(password))
-		{
-			try
-			{
-				ExtKey result = keyManager.GetMasterExtKey(pw);
-
-				// Now the password is OK but if we had SecurityException before then we used a compatibility password.
-				if (resultException is not null)
-				{
-					compatibilityPassword = pw;
-					Logger.LogError(CompatibilityPasswordWarnMessage);
-				}
-
-				return result;
-			}
-			catch (SecurityException ex) // Any other exception - let it go.
-			{
-				resultException = ex;
-			}
-		}
-
-		throw resultException ?? new InvalidOperationException(); // Throw the last exception - Invalid password.
+		return keyManager.GetMasterExtKey(password);
 	}
 }

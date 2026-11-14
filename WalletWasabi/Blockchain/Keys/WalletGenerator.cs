@@ -26,38 +26,23 @@ public class WalletGenerator
 	public Network Network { get; private set; }
 	public uint TipHeight { get; set; }
 
-	public (KeyManager KeyManager, Mnemonic Mnemonic) GenerateWallet(string walletName, string password, Mnemonic? mnemonic = null)
+	/// <summary>
+	/// Creates the wallet that the given SLIP-39 shares back up.
+	/// </summary>
+	/// <param name="shares">As many shares as their threshold requires.</param>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
+	public KeyManager GenerateWallet(string walletName, string password, Share[] shares)
 	{
 		string walletFilePath = GetWalletFilePath(walletName, WalletsDir);
 
-		// Here we are not letting anything that will be autocorrected later. We need to generate the wallet exactly with the entered password because of compatibility.
+		// Here we are not letting anything that will be autocorrected later. The wallet must open with exactly the entered password.
 		PasswordHelper.Guard(password);
-
-		var km = mnemonic is null
-			? KeyManager.CreateNew(out mnemonic, password, Network)
-			: KeyManager.CreateNew(mnemonic, password, Network);
-		km.SetFilePath(walletFilePath);
-		km.SetBestHeight(TipHeight);
-		return (km, mnemonic);
-	}
-
-	public (KeyManager KeyManager, Share[] Shares) GenerateWallet(string walletName, string password, Share[]? shares = null)
-	{
-		string walletFilePath = GetWalletFilePath(walletName, WalletsDir);
-
-		// Here we are not letting anything that will be autocorrected later. We need to generate the wallet exactly with the entered password because of compatibility.
-		PasswordHelper.Guard(password);
-
-		shares ??= Shamir.Generate(
-			DefaultShamirThreshold,
-			DefaultShamirShares,
-			GenerateShamirEntropy()).Take(DefaultShamirThreshold).ToArray();
 
 		var km = KeyManager.CreateNew(shares, password, Network);
 
 		km.SetBestHeight(TipHeight);
 		km.SetFilePath(walletFilePath);
-		return (km, shares);
+		return km;
 	}
 
 	public static string GetWalletFilePath(string walletName, string walletsDir)
@@ -90,4 +75,10 @@ public class WalletGenerator
 	{
 		return RandomUtils.GetBytes(128 / 8);
 	}
+
+	/// <summary>
+	/// Splits fresh entropy into the SLIP-39 shares of a new wallet.
+	/// </summary>
+	public static Share[] GenerateShares(byte threshold = DefaultShamirThreshold, byte shares = DefaultShamirShares) =>
+		Shamir.Generate(threshold, shares, GenerateShamirEntropy());
 }

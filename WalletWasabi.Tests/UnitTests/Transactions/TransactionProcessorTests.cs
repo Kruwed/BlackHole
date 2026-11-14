@@ -53,8 +53,8 @@ public class TransactionProcessorTests
 		// fully private and excluding it from coinjoins.
 		using var txStore = await CreateTransactionStoreAsync();
 
-		var km1 = KeyManager.CreateNew(out var mnemonic, "pw", Network.Main);
-		var km2 = KeyManager.Recover(mnemonic, "pw", Network.Main, km1.SegwitAccountKeyPath, km1.TaprootAccountKeyPath);
+		var km1 = KeyManager.CreateNew(out var shares, "pw", Network.Main);
+		var km2 = KeyManager.Recover(shares[..WalletGenerator.DefaultShamirThreshold], "pw", Network.Main, km1.SegwitAccountKeyPath, km1.TaprootAccountKeyPath);
 
 		var eventBus = new EventBus();
 		var tp1 = new TransactionProcessor(txStore, null, km1, eventBus);

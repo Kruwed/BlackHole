@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.Extensions;
-using WalletWasabi.Helpers;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
@@ -62,7 +61,6 @@ public partial class WalletRepository : ReactiveObject
 		return options switch
 		{
 			WalletCreationOptions.AddNewWallet add => await CreateNewWalletAsync(add),
-			WalletCreationOptions.ImportWallet import => await ImportWalletAsync(import),
 			WalletCreationOptions.RecoverWallet recover => await RecoverWalletAsync(recover),
 			_ => throw new InvalidOperationException($"{nameof(WalletCreationOptions)} not supported: {options?.GetType().Name}")
 		};
@@ -83,11 +81,11 @@ public partial class WalletRepository : ReactiveObject
 
 	private async Task<WalletSettingsModel> CreateNewWalletAsync(WalletCreationOptions.AddNewWallet options)
 	{
-		var (walletName, walletBackup, _) = options;
+		var (walletName, backup) = options;
 
 		ArgumentException.ThrowIfNullOrEmpty(walletName);
-		ArgumentNullException.ThrowIfNull(walletBackup);
-		ArgumentNullException.ThrowIfNull(walletBackup.Password);
+		ArgumentNullException.ThrowIfNull(backup);
+		ArgumentNullException.ThrowIfNull(backup.Password);
 
 		var keyManager = await Task.Run(
 				() =>
@@ -99,72 +97,36 @@ public partial class WalletRepository : ReactiveObject
 						TipHeight = _services.GetTipHeight()
 					};
 
-					return walletBackup switch
-					{
-						RecoveryWordsBackup recoveryWordsBackup =>
-							walletGenerator.GenerateWallet(
-								walletName,
-								recoveryWordsBackup.Password,
-								recoveryWordsBackup.Mnemonic).KeyManager,
-						MultiShareBackup multiShareBackup =>
-							walletGenerator.GenerateWallet(
-								walletName,
-								multiShareBackup.Password,
-								multiShareBackup.Shares.Take(multiShareBackup.Settings.Threshold).ToArray()).KeyManager,
-						_ => throw new ArgumentOutOfRangeException(nameof(walletBackup))
-					};
+					return walletGenerator.GenerateWallet(
+						walletName,
+						backup.Password,
+						backup.Shares.Take(backup.Settings.Threshold).ToArray());
 				});
 
 		return new WalletSettingsModel(_services, keyManager, true);
 	}
 
-	private async Task<WalletSettingsModel> ImportWalletAsync(WalletCreationOptions.ImportWallet options)
-	{
-		var (walletName, filePath) = options;
-
-		ArgumentException.ThrowIfNullOrEmpty(walletName);
-		ArgumentException.ThrowIfNullOrEmpty(filePath);
-
-		var keyManager = await ImportWalletHelper.ImportWalletAsync(_services.WalletManager, walletName, filePath);
-		return new WalletSettingsModel(_services, keyManager, true);
-	}
-
 	private async Task<WalletSettingsModel> RecoverWalletAsync(WalletCreationOptions.RecoverWallet options)
 	{
-		var (walletName, walletBackup, minGapLimit, birthHeight) = options;
+		var (walletName, backup, minGapLimit, birthHeight) = options;
 
 		ArgumentException.ThrowIfNullOrEmpty(walletName);
 		ArgumentNullException.ThrowIfNull(minGapLimit);
-		ArgumentNullException.ThrowIfNull(walletBackup);
+		ArgumentNullException.ThrowIfNull(backup);
 
 		var keyManager = await Task.Run(() =>
 		{
 			var walletFilePath = _services.GetWalletFilePath(walletName);
 
-			var result = walletBackup switch
-			{
-				RecoveryWordsBackup recoveryWordsBackup =>
-					KeyManager.Recover(
-						recoveryWordsBackup.Mnemonic,
-						recoveryWordsBackup.Password,
-						_services.GetNetwork(),
-						AccountKeyPath,
-						null,
-						"", // Make sure it is not saved into a file yet.
-						minGapLimit.Value,
-						birthHeight: birthHeight),
-				MultiShareBackup multiShareBackup =>
-					KeyManager.Recover(
-						multiShareBackup.Shares,
-						multiShareBackup.Password,
-						_services.GetNetwork(),
-						AccountKeyPath,
-						null,
-						"", // Make sure it is not saved into a file yet.
-						minGapLimit.Value,
-						birthHeight: birthHeight),
-				_ => throw new ArgumentOutOfRangeException(nameof(walletBackup))
-			};
+			var result = KeyManager.Recover(
+				backup.Shares,
+				backup.Password,
+				_services.GetNetwork(),
+				AccountKeyPath,
+				null,
+				"", // Make sure it is not saved into a file yet.
+				minGapLimit.Value,
+				birthHeight: birthHeight);
 
 			// Set the filepath but we will only write the file later when the Ui workflow is done.
 			result.SetFilePath(walletFilePath);

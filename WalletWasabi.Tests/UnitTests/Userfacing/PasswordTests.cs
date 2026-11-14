@@ -1,120 +1,90 @@
-using System.Collections.Generic;
 using System.Security;
-using WalletWasabi.Helpers;
-using Xunit;
+using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
+using WalletWasabi.Helpers;
 using WalletWasabi.Tests.Helpers;
 using WalletWasabi.Userfacing;
-using NBitcoin;
+using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.Userfacing;
 
 public class PasswordTests
 {
 	[Fact]
-	public void ClipboardCutTest()
-	{
-		Dictionary<string, string> passwords = new()
-		{
-			{ "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯ºíö¾,¥¢½\\¹õèKeÁìÍSÈ@r±ØÙ2[r©UQÞ¶xN\"?:Ö@°&\n", "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯" },
-			{ "§'\" + !%/= ()ÖÜÓ'", "§'\" + !%/= ()Ö\ufffd" }
-		};
-
-		foreach (var pairs in passwords)
-		{
-			var original = pairs.Key;
-			var desired = pairs.Value;
-			var results = PasswordHelper.GetPossiblePasswords(original);
-			var foundCorrectPassword = false;
-
-			foreach (var pw in results)
-			{
-				if (pw == desired)
-				{
-					foundCorrectPassword = true;
-					break;
-				}
-			}
-
-			Assert.True(foundCorrectPassword);
-		}
-	}
-
-	[Fact]
 	public void FormattingTest()
 	{
-		string buggy = "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯";
-		string original = "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯ºíö¾,¥¢½\\¹õèKeÁìÍSÈ@r±ØÙ2[r©UQÞ¶xN\"?:Ö@°&\n";
+		string password = "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯\n";
 
-		// Creating a wallet with buggy password.
-		var keyManager = KeyManager.CreateNew(out _, Guard.Correct(buggy), Network.Main); // Every wallet was created with Guard.Correct before.
+		// Wallets are created with the corrected password.
+		var keyManager = KeyManager.CreateNew(out _, Guard.Correct(password), Network.Main);
 
 		// Password will be trimmed inside.
-		PasswordHelper.GetMasterExtKey(keyManager, original, out _);
+		PasswordHelper.GetMasterExtKey(keyManager, password);
 
 		// This should not throw format exception but pw is not correct.
-		Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength), out _));
+		Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength)));
 
 		// Password should be formatted, before entering here.
-		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength + 1), out _));
+		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength + 1)));
 
 		// Too long password with extra spaces.
 		var badPassword = $"   {RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength + 1)}   ";
 
 		// Password should be formatted, before entering here.
-		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
+		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword));
 
 		Assert.True(PasswordHelper.IsTrimmable(badPassword, out badPassword));
 
 		// Still too long.
-		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword!, out _));
+		Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword!));
 
 		Assert.True(PasswordHelper.IsTooLong(badPassword, out badPassword));
 
 		// This should not throw format exception but pw is not correct.
-		Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword!, out _));
+		Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword!));
 	}
 
 	[Fact]
-	public void CompatibilityTest()
+	public void GuardTest()
 	{
-		var buggy = "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯";
-		var original = "    w¾3AÍ-dCdï×¾M\\Øò¹ãÔÕýÈÝÁÐ9oEp¨}r:SR¦·ßNó±¥*W!¢ê#ikÇå<ðtÇf·a\\]§,à±H7«®È4nèNmæo4.qØ-¾ûda¯ºíö¾,¥¢½\\¹õèKeÁìÍSÈ@r±ØÙ2[r©UQÞ¶xN\"?:Ö@°&\n";
+		PasswordHelper.Guard("");
+		PasswordHelper.Guard("password");
+		PasswordHelper.Guard(RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength));
 
-		Assert.Throws<FormatException>(() => PasswordHelper.Guard(buggy));
-
-		Assert.True(PasswordHelper.IsTrimmable(buggy, out buggy));
-
-		// Creating a wallet with buggy password.
-		var keyManager = KeyManager.CreateNew(out _, buggy!, Network.Main);
-
-		Assert.True(PasswordHelper.IsTrimmable(original, out original));
-
-		Assert.False(PasswordHelper.TryPassword(keyManager, "falsePassword", out _));
-
-		// This should pass
-		Assert.NotNull(PasswordHelper.GetMasterExtKey(keyManager, original!, out _));
-
-		Assert.True(PasswordHelper.TryPassword(keyManager, buggy!, out var compatiblePasswordNotUsed));
-		Assert.Null(compatiblePasswordNotUsed);
-
-		Assert.True(PasswordHelper.TryPassword(keyManager, original!, out var compatiblePassword));
-		Assert.Equal(buggy, compatiblePassword);
+		Assert.Throws<FormatException>(() => PasswordHelper.Guard(" password"));
+		Assert.Throws<FormatException>(() => PasswordHelper.Guard("password\n"));
+		Assert.Throws<FormatException>(() => PasswordHelper.Guard(RandomString.AlphaNumeric(PasswordHelper.MaxPasswordLength + 1)));
 	}
 
 	[Fact]
-	public void EmptyNullTest()
+	public void OnlyTheExactPasswordOpensTheWallet()
 	{
-		string emptyPw = "";
-		string? nullPw = null;
+		var password = "§'\" + !%/= ()ÖÜÓ'";
+		var keyManager = KeyManager.CreateNew(out _, password, Network.Main);
 
-		var emptyPws = PasswordHelper.GetPossiblePasswords(emptyPw);
-		var nullPws = PasswordHelper.GetPossiblePasswords(nullPw);
+		Assert.False(PasswordHelper.TryPassword(keyManager, "falsePassword"));
+		Assert.False(PasswordHelper.TryPassword(keyManager, ""));
 
-		var emptyPwRes = Assert.Single(emptyPws);
-		var nullPwRes = Assert.Single(nullPws);
+		// A password that only resembles the right one is wrong as well.
+		Assert.False(PasswordHelper.TryPassword(keyManager, password[..^1]));
+		Assert.False(PasswordHelper.TryPassword(keyManager, $"{password[..^1]}\ufffd"));
+		Assert.False(PasswordHelper.TryPassword(keyManager, password.ToLowerInvariant()));
 
-		Assert.Equal("", emptyPwRes);
-		Assert.Equal("", nullPwRes);
+		Assert.True(PasswordHelper.TryPassword(keyManager, password));
+
+		// White spaces around the password are not part of it.
+		Assert.True(PasswordHelper.TryPassword(keyManager, $"  {password}\n"));
+	}
+
+	[Fact]
+	public void EmptyPasswordTest()
+	{
+		var keyManager = KeyManager.CreateNew(out _, "", Network.Main);
+
+		Assert.False(PasswordHelper.TryPassword(keyManager, "password"));
+
+		Assert.True(PasswordHelper.TryPassword(keyManager, ""));
+		Assert.True(PasswordHelper.TryPassword(keyManager, "   "));
+		Assert.True(PasswordHelper.TryPassword(keyManager, null!));
 	}
 }

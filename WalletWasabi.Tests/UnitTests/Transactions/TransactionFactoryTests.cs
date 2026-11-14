@@ -820,9 +820,7 @@ public class TransactionFactoryTests
 
 		var paymentAmount = Money.Coins(0.9m);
 
-		var mnemonic =
-			new Mnemonic("lizard include drift struggle blind impose meadow before tilt leopard abstract valid");
-		var keyManager = ServiceFactory.CreateKeyManager("password", mnemonic: mnemonic);
+		var keyManager = ServiceFactory.CreateKeyManager("password", seed: ServiceFactory.FixedSeed);
 
 		// Generates a pubkey to receive funds (1 BTC)
 		var pubkey = keyManager.GetNextReceiveKey(LabelsArray.Empty);
@@ -869,9 +867,7 @@ public class TransactionFactoryTests
 
 		var paymentAmount = Money.Coins(0.9m);
 
-		var mnemonic =
-			new Mnemonic("lizard include drift struggle blind impose meadow before tilt leopard abstract valid");
-		var keyManager = ServiceFactory.CreateKeyManager("password", mnemonic: mnemonic);
+		var keyManager = ServiceFactory.CreateKeyManager("password", seed: ServiceFactory.FixedSeed);
 
 		// Generates a pubkey to receive funds (1 BTC)
 		var pubkey = keyManager.GetNextReceiveKey(LabelsArray.Empty);

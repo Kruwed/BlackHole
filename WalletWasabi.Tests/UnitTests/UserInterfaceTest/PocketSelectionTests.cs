@@ -20,7 +20,7 @@ public class PocketSelectionTests
 	{
 		var pw = "";
 		var km = KeyManager.Recover(
-			new Mnemonic("all all all all all all all all all all all all"),
+			ServiceFactory.CreateBackup(ServiceFactory.FixedSeed),
 			pw,
 			Network.Main,
 			KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit));

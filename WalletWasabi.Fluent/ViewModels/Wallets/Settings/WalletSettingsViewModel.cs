@@ -104,8 +104,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
 
         WalletCoinJoinSettings = new WalletCoinJoinSettingsViewModel(UiContext, walletModel);
 
-        VerifyRecoveryWordsCommand = ReactiveCommand.Create(() => Navigate().To().WalletVerifyRecoveryWords(walletModel));
-
         ResyncWalletCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             var result = await UiContext.Navigate().To().ResyncWallet(walletModel.GetWalletStats().BirthHeight, walletModel.Settings.MinGapLimit).GetResultAsync();
@@ -155,7 +153,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
     public IEnumerable<SendWorkflow> SendWorkflows { get; } = Enum.GetValues<SendWorkflow>();
 
     public WalletCoinJoinSettingsViewModel WalletCoinJoinSettings { get; private set; }
-    public ICommand VerifyRecoveryWordsCommand { get; }
     public ICommand ResyncWalletCommand { get; }
 
     protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)

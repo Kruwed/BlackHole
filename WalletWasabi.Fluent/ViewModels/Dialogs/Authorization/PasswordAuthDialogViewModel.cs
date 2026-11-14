@@ -3,7 +3,7 @@ using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 
-[NavigationMetaData(Title = "Enter your passphrase", NavigationTarget = NavigationTarget.CompactDialogScreen)]
+[NavigationMetaData(Title = "Enter your password", NavigationTarget = NavigationTarget.CompactDialogScreen)]
 public partial class PasswordAuthDialogViewModel : AuthorizationDialogBase
 {
 	private readonly IWalletModel _wallet;
@@ -20,7 +20,7 @@ public partial class PasswordAuthDialogViewModel : AuthorizationDialogBase
 
 		EnableBack = false;
 
-		AuthorizationFailedMessage = $"The passphrase is incorrect.{Environment.NewLine}Please try again.";
+		AuthorizationFailedMessage = $"The password is incorrect.{Environment.NewLine}Please try again.";
 	}
 
 	public string ContinueText { get; init; }

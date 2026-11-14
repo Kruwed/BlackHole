@@ -26,30 +26,34 @@ public record Shamir
 	private const int ROUND_COUNT = 4;
 
 	/// <summary>
-	/// Generates SLIP-39 shares from a given seed.
+	/// Generates SLIP-39 shares from a given seed. The shares alone are enough to recover it: no passphrase is involved.
 	/// </summary>
 	/// <param name="threshold">Number of shares necessary to recombine the see.</param>
 	/// <param name="shares">Number of shares in which the seed will be splitted.</param>
 	/// <param name="seed">The secret to be split into shares.</param>
-	/// <param name="passphrase">The passphrase used for encryption.</param>
-	/// <param name="iterationExponent">Exponent to determine the number of iterations for the encryption algorithm.</param>
-	/// <param name="extendable"></param>
 	/// <returns>A list of shares that can be used to reconstruct the secret.</returns>
 	/// <exception cref="ArgumentException">Thrown when inputs do not meet the required constraints.</exception>
-	public static Share[] Generate(
-		uint8 threshold,
-		uint8 shares,
-		uint8[] seed,
-		string passphrase = "",
-		uint8 iterationExponent = 0,
-		bool extendable = true)
-	{
-		return Generate(1, [(threshold, shares)], seed, passphrase, iterationExponent, extendable);
-	}
+	public static Share[] Generate(uint8 threshold, uint8 shares, uint8[] seed) =>
+		Generate(1, [(threshold, shares)], seed);
 
 	/// <summary>
-	/// Generates SLIP-39 shares from a given seed.
+	/// Generates SLIP-39 shares from a given seed. The shares alone are enough to recover it: no passphrase is involved.
 	/// </summary>
+	/// <param name="groupThreshold">The number of groups required to reconstruct the secret.</param>
+	/// <param name="groups">Array of tuples where each tuple represents (groupThreshold, shareCount) for each group.</param>
+	/// <param name="seed">The secret to be split into shares.</param>
+	/// <returns>A list of shares that can be used to reconstruct the secret.</returns>
+	/// <exception cref="ArgumentException">Thrown when inputs do not meet the required constraints.</exception>
+	public static Share[] Generate(uint8 groupThreshold, Group[] groups, uint8[] seed) =>
+		Generate(groupThreshold, groups, seed, passphrase: "", iterationExponent: 0, extendable: true);
+
+	/// <summary>
+	/// Generates SLIP-39 shares with every parameter of the specification exposed.
+	/// </summary>
+	/// <remarks>
+	/// Wallets never use a passphrase. This overload only exists so that the implementation can be checked against
+	/// the official SLIP-39 test vectors, which all use one.
+	/// </remarks>
 	/// <param name="groupThreshold">The number of groups required to reconstruct the secret.</param>
 	/// <param name="groups">Array of tuples where each tuple represents (groupThreshold, shareCount) for each group.</param>
 	/// <param name="seed">The secret to be split into shares.</param>
@@ -58,13 +62,13 @@ public record Shamir
 	/// <param name="extendable"></param>
 	/// <returns>A list of shares that can be used to reconstruct the secret.</returns>
 	/// <exception cref="ArgumentException">Thrown when inputs do not meet the required constraints.</exception>
-	public static Share[] Generate(
+	internal static Share[] Generate(
 		uint8 groupThreshold,
 		Group[] groups,
 		uint8[] seed,
-		string passphrase = "",
-		uint8 iterationExponent = 0,
-		bool extendable = true)
+		string passphrase,
+		uint8 iterationExponent,
+		bool extendable)
 	{
 		var secret = seed;
 		// Validating seed strength and format
@@ -133,14 +137,23 @@ public record Shamir
 	}
 
 	/// <summary>
-	/// Combines shares to reconstruct the original secret.
+	/// Combines shares to reconstruct the original secret. The shares alone are enough: no passphrase is involved.
 	/// </summary>
 	/// <param name="shares">The array of shares to combine.</param>
-	/// <param name="passphrase">The passphrase used for decrypting the shares.</param>
-	/// <param name="extendable"></param>
 	/// <returns>The reconstructed secret.</returns>
 	/// <exception cref="ArgumentException">Thrown when the shares are insufficient or invalid.</exception>
-	public static uint8[] Combine(Share[] shares, string passphrase = "")
+	public static uint8[] Combine(Share[] shares) =>
+		Combine(shares, passphrase: "");
+
+	/// <summary>
+	/// Combines shares that were generated with a passphrase.
+	/// </summary>
+	/// <remarks>Only for checking the implementation against the official SLIP-39 test vectors, see <see cref="Generate(uint8, Group[], uint8[], string, uint8, bool)"/>.</remarks>
+	/// <param name="shares">The array of shares to combine.</param>
+	/// <param name="passphrase">The passphrase used for decrypting the shares.</param>
+	/// <returns>The reconstructed secret.</returns>
+	/// <exception cref="ArgumentException">Thrown when the shares are insufficient or invalid.</exception>
+	internal static uint8[] Combine(Share[] shares, string passphrase)
 	{
 		// Preprocess the shares to extract group and member information
 		var (id, iterationExponent, groupThreshold, groups) = Preprocess(shares);

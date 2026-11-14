@@ -6,9 +6,17 @@ using WalletWasabi.Userfacing;
 
 namespace WalletWasabi.Fluent.ViewModels.Dialogs;
 
-[NavigationMetaData(Title = "Add Passphrase", NavigationTarget = NavigationTarget.CompactDialogScreen)]
+[NavigationMetaData(Title = "Add Password", NavigationTarget = NavigationTarget.CompactDialogScreen)]
 public partial class CreatePasswordDialogViewModel : DialogViewModelBase<string?>
 {
+	public const string NewWalletCaption =
+		"The password encrypts the private key of the wallet on this computer. It is needed to open the wallet and to send.\n" +
+		"It is not part of your backup: the recovery shares alone restore the wallet.";
+
+	public const string RecoveredWalletCaption =
+		"Choose a password to encrypt the private key of the recovered wallet on this computer.\n" +
+		"It does not have to be the one the wallet had before.";
+
 	[AutoNotify] private string? _confirmPassword;
 	[AutoNotify] private string? _password;
 

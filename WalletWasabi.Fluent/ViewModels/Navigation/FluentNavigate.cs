@@ -76,11 +76,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new LoadingViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public void WalletVerifyRecoveryWords(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletVerifyRecoveryWordsViewModel(UiContext, wallet), navigationMode);
-	}
-
 	public FluentDialog<bool> PasswordAuthDialog(IWalletModel wallet, string continueText = "Continue", NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new PasswordAuthDialogViewModel(UiContext, wallet, continueText);
@@ -88,11 +83,6 @@ public partial class FluentNavigate
 		target.To(dialog, navigationMode);
 
 		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
-	public void RecoverWallet(WalletCreationOptions.RecoverWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new RecoverWalletViewModel(UiContext, options), navigationMode);
 	}
 
 	public void SpeedUpTransactionDialog(IWalletModel wallet, SpeedupTransaction speedupTransaction, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -257,11 +247,6 @@ public partial class FluentNavigate
 	public void CancelTransactionDialog(IWalletModel wallet, CancellingTransaction cancellingTransaction, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new CancelTransactionDialogViewModel(UiContext, wallet, cancellingTransaction), navigationMode);
-	}
-
-	public void RecoveryWords(WalletCreationOptions.AddNewWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new RecoveryWordsViewModel(UiContext, options), navigationMode);
 	}
 
 	public void OpenDataFolder(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -448,11 +433,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new WalletSettingsViewModel(UiContext, walletModel), navigationMode);
 	}
 
-	public void ConfirmRecoveryWords(WalletCreationOptions.AddNewWallet options, List<RecoveryWordViewModel> words, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new ConfirmRecoveryWordsViewModel(UiContext, options, words), navigationMode);
-	}
-
 	public void DocsLink(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new DocsLinkViewModel(UiContext), navigationMode);
@@ -494,11 +474,6 @@ public partial class FluentNavigate
 	public void CoordinatorTabSettings(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new CoordinatorTabSettingsViewModel(UiContext, settings), navigationMode);
-	}
-
-	public void WalletBackupType(WalletCreationOptions options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletBackupTypeViewModel(UiContext, options), navigationMode);
 	}
 
 	public FluentDialog<FeeRate> SendFee(Wallet wallet, TransactionInfo transactionInfo, bool isSilent, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

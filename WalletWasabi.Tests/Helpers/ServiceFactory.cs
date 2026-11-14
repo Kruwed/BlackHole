@@ -4,6 +4,7 @@ using System.Linq;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
+using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Tests.Helpers;
 
@@ -61,10 +62,17 @@ public static class ServiceFactory
 		return sCoins.ToArray();
 	}
 
-	public static KeyManager CreateKeyManager(string password = "blahblahblah", bool isTaprootAllowed = false, Mnemonic? mnemonic = null)
+	/// <summary>Seed for the tests that need the same keys in every run.</summary>
+	public static byte[] FixedSeed => Convert.FromHexString("000102030405060708090a0b0c0d0e0f");
+
+	/// <summary>A SLIP-39 backup of the given seed that consists of a single share.</summary>
+	public static Share[] CreateBackup(byte[] seed) =>
+		Shamir.Generate(threshold: 1, shares: 1, seed);
+
+	/// <param name="seed">Seed of the wallet. A random one is used if it is not given.</param>
+	public static KeyManager CreateKeyManager(string password = "blahblahblah", bool isTaprootAllowed = false, byte[]? seed = null)
 	{
-		mnemonic ??= new Mnemonic(Wordlist.English, WordCount.Twelve);
-		ExtKey extKey = mnemonic.DeriveExtKey(password);
+		ExtKey extKey = ExtKey.CreateFromSeed(seed ?? WalletGenerator.GenerateShamirEntropy());
 		var encryptedSecret = extKey.PrivateKey.GetEncryptedBitcoinSecret(password, Network.Main);
 
 		HDFingerprint masterFingerprint = extKey.Neuter().PubKey.GetHDFingerPrint();

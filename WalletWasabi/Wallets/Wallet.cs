@@ -211,14 +211,12 @@ public class Wallet : BackgroundService
 		return pcPrivate;
 	}
 
-	public bool TryLogin(string password, out string? compatibilityPasswordUsed)
+	public bool TryLogin(string password)
 	{
-		compatibilityPasswordUsed = null;
-
-		if (PasswordHelper.TryPassword(KeyManager, password, out compatibilityPasswordUsed))
+		if (PasswordHelper.TryPassword(KeyManager, password))
 		{
 			IsLoggedIn = true;
-			Password = compatibilityPasswordUsed ?? Guard.Correct(password);
+			Password = Guard.Correct(password);
 			KeyChain = new KeyChain(KeyManager, Password);
 		}
 

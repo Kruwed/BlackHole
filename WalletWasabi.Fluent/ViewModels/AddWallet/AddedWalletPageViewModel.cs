@@ -70,8 +70,8 @@ public partial class AddedWalletPageViewModel : RoutableViewModel
 		var password =
 			options switch
 			{
-				WalletCreationOptions.AddNewWallet add => add.SelectedWalletBackup?.Password,
-				WalletCreationOptions.RecoverWallet rec => rec.WalletBackup?.Password,
+				WalletCreationOptions.AddNewWallet add => add.Backup?.Password,
+				WalletCreationOptions.RecoverWallet rec => rec.Backup?.Password,
 				_ => null
 			};
 

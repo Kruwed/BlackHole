@@ -8,6 +8,7 @@ using System.Windows.Input;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
+using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Logging;
@@ -30,7 +31,7 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 
 	public RecoverMultiShareWalletViewModel(UiContext uiContext, WalletCreationOptions.RecoverWallet options) : base(uiContext)
 	{
-		var multiShareBackup = options.WalletBackup as MultiShareBackup;
+		var multiShareBackup = options.Backup;
 
 		_currentShare = multiShareBackup?.CurrentShare;
 		_requiredShares = multiShareBackup?.Settings.Threshold;
@@ -134,13 +135,13 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 				Password: "",
 				Shares: shares,
 				CurrentShare: (byte) shares.Length);
-			options = options with { WalletBackup = recoveryWordsBackup, MinGapLimit = MinGapLimit, BirthHeight = BirthHeight};
+			options = options with { Backup = recoveryWordsBackup, MinGapLimit = MinGapLimit, BirthHeight = BirthHeight};
 
 			Navigate().To().RecoverMultiShareWallet(options);
 		}
 		else
 		{
-			var password = await Navigate().To().CreatePasswordDialog("Add Passphrase", "If you used a passphrase when you created your wallet you must type it below, otherwise leave this empty.").GetResultAsync();
+			var password = await Navigate().To().CreatePasswordDialog("Add Password", CreatePasswordDialogViewModel.RecoveredWalletCaption).GetResultAsync();
 
 			if (password is null)
 			{
@@ -155,7 +156,7 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 					new MultiShareBackupSettings(Threshold: threshold, Shares: (byte)shares.Length),
 					password,
 					shares);
-				options = options with { WalletBackup = recoveryWordsBackup, MinGapLimit = MinGapLimit, BirthHeight = BirthHeight};
+				options = options with { Backup = recoveryWordsBackup, MinGapLimit = MinGapLimit, BirthHeight = BirthHeight};
 				var walletSettings = await UiContext.WalletRepository.NewWalletAsync(options);
 
 				var filterMinHeight = UiContext.Services.GetMinimumBlockHeight();

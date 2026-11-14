@@ -16,7 +16,7 @@ public class SmartCoinSelectorTests
 	public SmartCoinSelectorTests()
 	{
 		KeyManager = KeyManager.Recover(
-			new Mnemonic("all all all all all all all all all all all all"),
+			ServiceFactory.CreateBackup(ServiceFactory.FixedSeed),
 			"",
 			Network.Main,
 			KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit));

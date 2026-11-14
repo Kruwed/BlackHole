@@ -49,7 +49,7 @@
           <!-- Enter password -->
           <DockPanel DockPanel.Dock="Top"
                      VerticalAlignment="Bottom">
-            <CopyablePasswordTextBox DockPanel.Dock="Top" Text="{Binding Password}" Watermark="Passphrase" PasswordChar="•"
+            <CopyablePasswordTextBox DockPanel.Dock="Top" Text="{Binding Password}" Watermark="Password" PasswordChar="•"
                                      Classes="revealPasswordButton copyablePasswordTextBox"
                                      x:Name="Password">
               <Interaction.Behaviors>

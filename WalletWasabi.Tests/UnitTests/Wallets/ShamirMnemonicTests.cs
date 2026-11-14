@@ -19,19 +19,16 @@ public class ShamirMnemonicTests
 		var shares = Shamir.Generate(
 			threshold: 2,
 			shares: 3,
-			seed: MS,
-			passphrase: "TREZOR");
+			seed: MS);
 
 		var mnemonics = shares.Select(x => x.ToMnemonic(WordList.Wordlist)).ToArray();
 
 		var recoverdSeed12 = Shamir.Combine(
-			mnemonics.Take(2).Select(Share.FromMnemonic).ToArray(),
-			passphrase: "TREZOR");
+			mnemonics.Take(2).Select(Share.FromMnemonic).ToArray());
 		Assert.Equal(MS, recoverdSeed12);
 
 		var recoverdSeed23 = Shamir.Combine(
-			mnemonics.Skip(1).Select(Share.FromMnemonic).ToArray(),
-			passphrase: "TREZOR");
+			mnemonics.Skip(1).Select(Share.FromMnemonic).ToArray());
 
 		Assert.Equal(MS, recoverdSeed23);
 	}
@@ -59,10 +56,12 @@ public class ShamirMnemonicTests
 		);
 	}
 
+	// Wallets never use a passphrase: the parameter is internal and it is only exercised here and by the
+	// official test vectors, which were all generated with one.
 	[Fact]
 	public void TestPassphrase()
 	{
-		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR");
+		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR", iterationExponent: 0, extendable: true);
 		Assert.Equal(MS, Shamir.Combine(mnemonics[1..4], "TREZOR"));
 		Assert.NotEqual(MS, Shamir.Combine(mnemonics[1..4]));
 	}
@@ -70,18 +69,18 @@ public class ShamirMnemonicTests
 	[Fact]
 	public void TestNonExtendable()
 	{
-		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, extendable: false);
+		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, passphrase: "", iterationExponent: 0, extendable: false);
 		Assert.Equal(MS, Shamir.Combine(mnemonics[1..4]));
 	}
 
 	[Fact]
 	public void TestIterationExponent()
 	{
-		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR", iterationExponent: 1);
+		var mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR", iterationExponent: 1, extendable: true);
 		Assert.Equal(MS, Shamir.Combine(mnemonics[1..4], "TREZOR"));
 		Assert.NotEqual(MS, Shamir.Combine(mnemonics[1..4]));
 
-		mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR", iterationExponent: 2);
+		mnemonics = Shamir.Generate(1, [(3, 5)], MS, "TREZOR", iterationExponent: 2, extendable: true);
 		Assert.Equal(MS, Shamir.Combine(mnemonics[1..4], "TREZOR"));
 		Assert.NotEqual(MS, Shamir.Combine(mnemonics[1..4]));
 	}

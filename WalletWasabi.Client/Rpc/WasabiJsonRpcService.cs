@@ -19,6 +19,7 @@ using WalletWasabi.WabiSabi.Client.Batching;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using WalletWasabi.Wallets;
+using WalletWasabi.Wallets.Slip39;
 using JsonRpcResult = System.Collections.Generic.Dictionary<string, object?>;
 using JsonRpcResultList = System.Collections.Immutable.ImmutableArray<System.Collections.Generic.Dictionary<string, object?>>;
 
@@ -83,27 +84,37 @@ public class WasabiJsonRpcService : IJsonRpcService
 			}).ToImmutableArray();
 	}
 
+	/// <summary>
+	/// Creates a wallet and returns its SLIP-39 backup: <paramref name="shares"/> shares, any <paramref name="threshold"/> of which recover the wallet.
+	/// </summary>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
 	[JsonRpcMethod("createwallet", initializable: false)]
-	public object CreateWallet(string walletName, string password)
+	public object CreateWallet(string walletName, string password, byte threshold = WalletGenerator.DefaultShamirThreshold, byte shares = WalletGenerator.DefaultShamirShares)
 	{
 		var walletGenerator = new WalletGenerator(Global.WalletManager.WalletDirectories.WalletsDir, Global.Network);
 		walletGenerator.TipHeight = Global.FilterHeaders.TipHeight;
-		var (keyManager, mnemonic) = walletGenerator.GenerateWallet(walletName, password, mnemonic: null);
+		var backup = WalletGenerator.GenerateShares(threshold, shares);
+		var keyManager = walletGenerator.GenerateWallet(walletName, password, backup.Take(threshold).ToArray());
 		Global.WalletManager.AddWallet(keyManager);
-		return mnemonic.ToString();
+		return backup.Select(share => share.ToMnemonic(WordList.Wordlist)).ToArray();
 	}
 
+	/// <summary>
+	/// Recovers a wallet from the SLIP-39 shares of its backup.
+	/// </summary>
+	/// <param name="shares">As many shares as the threshold of the backup requires.</param>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
 	[JsonRpcMethod("recoverwallet", initializable: false)]
-	public void RecoverWallet(string walletName, string mnemonicStr, string password = "")
+	public void RecoverWallet(string walletName, string[] shares, string password = "")
 	{
 		var walletGenerator = new WalletGenerator(Global.WalletManager.WalletDirectories.WalletsDir, Global.Network);
 		walletGenerator.TipHeight = 0;
-		if (!TryParseMnemonic(mnemonicStr, out var mnemonic))
+		if (!TryParseShares(shares, out var parsedShares))
 		{
-			throw new ArgumentException("Invalid value for mnemonic");
+			throw new ArgumentException("Invalid value for shares");
 		}
 
-		var (keyManager, _) = walletGenerator.GenerateWallet(walletName, password, mnemonic);
+		var keyManager = walletGenerator.GenerateWallet(walletName, password, parsedShares);
 		Global.WalletManager.AddWallet(keyManager);
 	}
 
@@ -621,9 +632,9 @@ public class WasabiJsonRpcService : IJsonRpcService
 
 	private void AssertWalletIsLoggedIn(Wallet activeWallet, string password)
 	{
-		if (!activeWallet.IsLoggedIn && !activeWallet.TryLogin(password, out _))
+		if (!activeWallet.IsLoggedIn && !activeWallet.TryLogin(password))
 		{
-			throw new Exception($"'{activeWallet.WalletName}' wallet requires the passphrase to start coinjoining.");
+			throw new Exception($"'{activeWallet.WalletName}' wallet requires the password to start coinjoining.");
 		}
 	}
 
@@ -642,16 +653,16 @@ public class WasabiJsonRpcService : IJsonRpcService
 		}
 	}
 
-	private static bool TryParseMnemonic(string mnemonicStr, [NotNullWhen(true)] out Mnemonic? mnemonic)
+	private static bool TryParseShares(string[] mnemonics, [NotNullWhen(true)] out Share[]? shares)
 	{
 		try
 		{
-			mnemonic = new Mnemonic(mnemonicStr);
-			return true;
+			shares = mnemonics.Select(mnemonic => Share.FromMnemonic(mnemonic.Trim().ToLowerInvariant())).ToArray();
+			return shares.Length > 0;
 		}
 		catch (Exception)
 		{
-			mnemonic = null;
+			shares = null;
 			return false;
 		}
 	}

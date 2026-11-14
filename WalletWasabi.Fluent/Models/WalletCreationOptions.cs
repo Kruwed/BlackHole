@@ -1,45 +1,27 @@
-using NBitcoin;
-using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Fluent.Models;
 
 public abstract record WalletCreationOptions(string? WalletName = null)
 {
-	public record AddNewWallet(string? WalletName = null, WalletBackup? SelectedWalletBackup = null, WalletBackup[]? WalletBackups = null)
+	public record AddNewWallet(string? WalletName = null, MultiShareBackup? Backup = null)
 		: WalletCreationOptions(WalletName)
 	{
-		public AddNewWallet WithNewWalletBackups()
-		{
-			var recoveryWordsBackup = new RecoveryWordsBackup(
-				Password: "",
-				Mnemonic: new Mnemonic(Wordlist.English, WordCount.Twelve));
-
-			var multiShareBackupSettings = new MultiShareBackupSettings();
-
-			var multiShareBackup = new MultiShareBackup(
-				Settings: new MultiShareBackupSettings(),
-				Shares: Shamir.Generate(
-					multiShareBackupSettings.Threshold,
-					multiShareBackupSettings.Shares,
-					WalletGenerator.GenerateShamirEntropy()),
-				Password: "");
-
-			return this with
+		/// <summary>
+		/// Starts a backup with the default settings. Its shares are generated once the user has chosen how many to make.
+		/// </summary>
+		public AddNewWallet WithNewBackup() =>
+			this with
 			{
-				SelectedWalletBackup = recoveryWordsBackup,
-				WalletBackups = [recoveryWordsBackup, multiShareBackup]
+				Backup = new MultiShareBackup(
+					Settings: new MultiShareBackupSettings(),
+					Shares: [],
+					Password: "")
 			};
-		}
 	}
-
-	public record ImportWallet(
-		string? WalletName = null,
-		string? FilePath = null) : WalletCreationOptions(WalletName);
 
 	public record RecoverWallet(
 		string? WalletName = null,
-		WalletBackup? WalletBackup = null,
+		MultiShareBackup? Backup = null,
 		int? MinGapLimit = null,
 		uint? BirthHeight = null) : WalletCreationOptions(WalletName);
 }

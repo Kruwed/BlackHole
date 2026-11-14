@@ -4,7 +4,6 @@ using ReactiveUI;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Userfacing;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Login;
@@ -34,17 +33,12 @@ public partial class LoginViewModel : RoutableViewModel
 
 	private async Task OnNextAsync(IWalletModel walletModel)
 	{
-		var (success, compatibilityPasswordUsed) = await walletModel.Auth.TryLoginAsync(Password);
+		var success = await walletModel.Auth.TryLoginAsync(Password);
 
 		if (!success)
 		{
-			ErrorMessage = "The passphrase is incorrect!";
+			ErrorMessage = "The password is incorrect!";
 			return;
-		}
-
-		if (compatibilityPasswordUsed)
-		{
-			await ShowErrorAsync(Title, PasswordHelper.CompatibilityPasswordWarnMessage, "Compatibility password was used");
 		}
 
 		walletModel.Auth.CompleteLogin();

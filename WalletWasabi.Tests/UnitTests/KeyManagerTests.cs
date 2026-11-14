@@ -1,6 +1,7 @@
 using NBitcoin;
 using System.IO;
 using System.Linq;
+using System.Security;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.Keys;
@@ -8,6 +9,7 @@ using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Models;
 using WalletWasabi.Tests.Helpers;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
+using WalletWasabi.Wallets.Slip39;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests;
@@ -18,13 +20,22 @@ public class KeyManagerTests
 	public void CanCreateNew()
 	{
 		string password = "password";
-		var manager = KeyManager.CreateNew(out Mnemonic mnemonic, password, Network.Main);
-		var manager2 = KeyManager.CreateNew(out Mnemonic mnemonic2, "", Network.Main);
-		var manager3 = KeyManager.CreateNew(out Mnemonic mnemonic3, "P@ssw0rdé", Network.Main);
+		var manager = KeyManager.CreateNew(out Share[] shares, password, Network.Main);
+		var manager2 = KeyManager.CreateNew(out Share[] shares2, "", Network.Main);
+		var manager3 = KeyManager.CreateNew(out Share[] shares3, "P@ssw0rdé", Network.Main);
 
-		Assert.Equal(12, mnemonic.ToString().Split(' ').Length);
-		Assert.Equal(12, mnemonic2.ToString().Split(' ').Length);
-		Assert.Equal(12, mnemonic3.ToString().Split(' ').Length);
+		// The backup is made of SLIP-39 shares of 20 words each.
+		foreach (var backup in new[] { shares, shares2, shares3 })
+		{
+			Assert.Equal(WalletGenerator.DefaultShamirShares, backup.Length);
+			Assert.All(backup, share => Assert.Equal(WalletGenerator.DefaultShamirThreshold, share.MemberThreshold));
+			Assert.All(backup, share => Assert.Equal(20, share.ToMnemonic(WordList.Wordlist).Split(' ').Length));
+		}
+
+		// Every wallet has its own seed.
+		Assert.NotEqual(manager.SegwitExtPubKey, manager2.SegwitExtPubKey);
+		Assert.NotEqual(manager.SegwitExtPubKey, manager3.SegwitExtPubKey);
+		Assert.NotEqual(manager2.SegwitExtPubKey, manager3.SegwitExtPubKey);
 
 		Assert.NotNull(manager.ChainCode);
 		Assert.NotNull(manager.EncryptedSecret);
@@ -62,27 +73,63 @@ public class KeyManagerTests
 	public void CanRecover()
 	{
 		string password = "password";
-		var manager = KeyManager.CreateNew(out Mnemonic mnemonic, password, Network.Main);
-		var sameManager = KeyManager.Recover(mnemonic, password, Network.Main, KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit));
+		var segwitAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit);
+		var manager = KeyManager.CreateNew(out Share[] shares, password, Network.Main);
 
-		Assert.Equal(manager.ChainCode, sameManager.ChainCode);
-		Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
-		Assert.Equal(manager.SegwitExtPubKey, sameManager.SegwitExtPubKey);
-		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
-		Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
-		Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
+		// Any two of the three shares recover the wallet.
+		foreach (var backup in new[] { shares[..2], shares[1..], new[] { shares[2], shares[0] } })
+		{
+			var sameManager = KeyManager.Recover(backup, password, Network.Main, segwitAccountKeyPath);
 
-		var differentManager = KeyManager.Recover(mnemonic, "differentPassword", Network.Main, KeyPath.Parse("m/999'/999'/999'"), null, null, 55);
-		Assert.NotEqual(manager.ChainCode, differentManager.ChainCode);
-		Assert.NotEqual(manager.EncryptedSecret, differentManager.EncryptedSecret);
+			Assert.Equal(manager.ChainCode, sameManager.ChainCode);
+			Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
+			Assert.Equal(manager.SegwitExtPubKey, sameManager.SegwitExtPubKey);
+			Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
+			Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
+			Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
+		}
+
+		// One share is not enough, and neither are more shares than the threshold.
+		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares[..1], password, Network.Main, segwitAccountKeyPath));
+		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares, password, Network.Main, segwitAccountKeyPath));
+
+		var differentManager = KeyManager.Recover(shares[..2], password, Network.Main, KeyPath.Parse("m/999'/999'/999'"), null, null, 55);
+		Assert.Equal(manager.ChainCode, differentManager.ChainCode);
+		Assert.Equal(manager.EncryptedSecret, differentManager.EncryptedSecret);
 		Assert.NotEqual(manager.SegwitExtPubKey, differentManager.SegwitExtPubKey);
-		Assert.NotEqual(manager.TaprootExtPubKey, differentManager.TaprootExtPubKey);
-		Assert.NotEqual(manager.SilentPaymentScanExtPubKey, differentManager.SilentPaymentScanExtPubKey);
-		Assert.NotEqual(manager.SilentPaymentSpendExtPubKey, differentManager.SilentPaymentSpendExtPubKey);
+		Assert.Equal(manager.TaprootExtPubKey, differentManager.TaprootExtPubKey);
+		Assert.Equal(manager.SilentPaymentScanExtPubKey, differentManager.SilentPaymentScanExtPubKey);
+		Assert.Equal(manager.SilentPaymentSpendExtPubKey, differentManager.SilentPaymentSpendExtPubKey);
 
 		var newKey = differentManager.GenerateNewKey("some-label", KeyState.Clean, true);
 		Assert.Equal(newKey.Index, differentManager.MinGapLimit);
 		Assert.Equal("999'/999'/999'/1/55", newKey.FullKeyPath.ToString());
+	}
+
+	[Fact]
+	public void PasswordIsNotPartOfTheBackup()
+	{
+		var segwitAccountKeyPath = KeyManager.GetAccountKeyPath(Network.Main, ScriptPubKeyType.Segwit);
+		var manager = KeyManager.CreateNew(out Share[] shares, "password", Network.Main);
+
+		// The shares alone decide the keys: recovering with another password gives the very same wallet...
+		foreach (var newPassword in new[] { "differentPassword", "" })
+		{
+			var recovered = KeyManager.Recover(shares[..2], newPassword, Network.Main, segwitAccountKeyPath);
+
+			Assert.Equal(manager.MasterFingerprint, recovered.MasterFingerprint);
+			Assert.Equal(manager.ChainCode, recovered.ChainCode);
+			Assert.Equal(manager.SegwitExtPubKey, recovered.SegwitExtPubKey);
+			Assert.Equal(manager.TaprootExtPubKey, recovered.TaprootExtPubKey);
+			Assert.Equal(manager.SilentPaymentScanExtPubKey, recovered.SilentPaymentScanExtPubKey);
+			Assert.Equal(manager.SilentPaymentSpendExtPubKey, recovered.SilentPaymentSpendExtPubKey);
+			Assert.Equal(manager.GetMasterExtKey("password").GetWif(Network.Main), recovered.GetMasterExtKey(newPassword).GetWif(Network.Main));
+
+			// ... whose secret is encrypted with the new password only.
+			Assert.NotEqual(manager.EncryptedSecret, recovered.EncryptedSecret);
+			var freshlyLoaded = KeyManager.Recover(shares[..2], newPassword, Network.Main, segwitAccountKeyPath);
+			Assert.Throws<SecurityException>(() => freshlyLoaded.GetMasterExtKey("password"));
+		}
 	}
 
 	[Fact]

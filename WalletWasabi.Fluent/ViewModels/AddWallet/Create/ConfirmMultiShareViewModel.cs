@@ -5,6 +5,7 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet.Create;
@@ -50,7 +51,7 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 
 	public ConfirmMultiShareViewModel(UiContext uiContext, WalletCreationOptions.AddNewWallet options, Dictionary<int, List<RecoveryWordViewModel>> wordsDictionary) : base(uiContext)
 	{
-		var multiShareBackup = options.SelectedWalletBackup as MultiShareBackup;
+		var multiShareBackup = options.Backup;
 
 		ArgumentNullException.ThrowIfNull(multiShareBackup);
 
@@ -284,7 +285,7 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 	{
 		var options = _options;
 
-		if (options.SelectedWalletBackup is not MultiShareBackup multiShareBackup)
+		if (options.Backup is not { } multiShareBackup)
 		{
 			throw new ArgumentOutOfRangeException(nameof(options));
 		}
@@ -292,11 +293,8 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 		if ((_currentShare >= multiShareBackup.Settings.Shares && _currentSharePage >= _totalCurrenSharePages)
 		    || skip)
 		{
-			var dialogCaption = "Store your passphrase safely, it cannot be reset if lost.\n" +
-			                    "It's needed to open and to recover your wallet.\n" +
-			                    "It's a recovery words extension for more security.";
 			var password = await Navigate().To()
-				.CreatePasswordDialog("Add Passphrase", dialogCaption, enableEmpty: true).GetResultAsync();
+				.CreatePasswordDialog("Add Password", CreatePasswordDialogViewModel.NewWalletCaption, enableEmpty: true).GetResultAsync();
 
 			if (password is null)
 			{
@@ -305,7 +303,7 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 
 			options = options with
 			{
-				SelectedWalletBackup = multiShareBackup with
+				Backup = multiShareBackup with
 				{
 					Password = password
 				}
@@ -322,7 +320,7 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 
 			options = options with
 			{
-				SelectedWalletBackup = multiShareBackup with
+				Backup = multiShareBackup with
 				{
 					CurrentShare = nextShare,
 					CurrentSharePage = nextSharePage

@@ -195,23 +195,24 @@ public class KeyManager
 
 	public string WalletName => string.IsNullOrWhiteSpace(FilePath) ? "" : Path.GetFileNameWithoutExtension(FilePath);
 
-	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string? filePath = null)
+	/// <summary>
+	/// Creates a wallet from a fresh seed and gives back its SLIP-39 backup with the default threshold and share count.
+	/// </summary>
+	/// <param name="shares">All the shares of the backup.</param>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
+	public static KeyManager CreateNew(out Share[] shares, string password, Network network, string? filePath = null)
 	{
-		mnemonic = new Mnemonic(Wordlist.English, WordCount.Twelve);
-		return CreateNew(mnemonic, password, network, filePath);
+		shares = WalletGenerator.GenerateShares();
+
+		return CreateNew(shares.Take(WalletGenerator.DefaultShamirThreshold).ToArray(), password, network, filePath);
 	}
 
-	public static KeyManager CreateNew(Mnemonic mnemonic, string password, Network network, string? filePath = null)
-	{
-		password ??= "";
-		var seed = mnemonic.DeriveSeed(password);
-		return CreateNew(seed, password, network, filePath);
-	}
-
+	/// <param name="shares">As many SLIP-39 shares as their threshold requires. They alone determine the keys of the wallet.</param>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
 	public static KeyManager CreateNew(Share[] shares, string password, Network network, string? filePath = null)
 	{
 		password ??= "";
-		var seed = Shamir.Combine(shares, password);
+		var seed = Shamir.Combine(shares);
 		return CreateNew(seed, password, network, filePath);
 	}
 
@@ -235,17 +236,12 @@ public class KeyManager
 		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
 	}
 
-	public static KeyManager Recover(Mnemonic mnemonic, string password, Network network, KeyPath swAccountKeyPath, KeyPath? trAccountKeyPath = null, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
-	{
-		password ??= "";
-		var seed = mnemonic.DeriveSeed(password);
-		return Recover(seed, password, network, swAccountKeyPath, trAccountKeyPath, filePath, minGapLimit, birthHeight);
-	}
-
+	/// <param name="shares">As many SLIP-39 shares as their threshold requires. They alone determine the keys of the wallet.</param>
+	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
 	public static KeyManager Recover(Share[] shares, string password, Network network, KeyPath swAccountKeyPath, KeyPath? trAccountKeyPath = null, string? filePath = null, int minGapLimit = AbsoluteMinGapLimit, ChainHeight? birthHeight = null)
 	{
 		password ??= "";
-		var seed = Shamir.Combine(shares, password);
+		var seed = Shamir.Combine(shares);
 		return Recover(seed, password, network, swAccountKeyPath, trAccountKeyPath, filePath, minGapLimit, birthHeight);
 	}
 
@@ -451,7 +447,7 @@ public class KeyManager
 		{
 			if (!CryptographicOperations.FixedTimeEquals(passwordHash, storedPasswordHash))
 			{
-				throw new SecurityException("Invalid passphrase.");
+				throw new SecurityException("Invalid password.");
 			}
 
 			return masterKey;
@@ -473,7 +469,7 @@ public class KeyManager
 		}
 		catch (SecurityException ex)
 		{
-			throw new SecurityException("Invalid passphrase.", ex);
+			throw new SecurityException("Invalid password.", ex);
 		}
 	}
 

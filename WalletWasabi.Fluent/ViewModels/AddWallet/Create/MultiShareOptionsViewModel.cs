@@ -3,7 +3,6 @@ using System.Reactive.Linq;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet.Create;
 
@@ -15,7 +14,7 @@ public partial class MultiShareOptionsViewModel : RoutableViewModel
 
 	public MultiShareOptionsViewModel(UiContext uiContext, WalletCreationOptions.AddNewWallet options) : base(uiContext)
 	{
-		var multiShareBackup = options.SelectedWalletBackup as MultiShareBackup;
+		var multiShareBackup = options.Backup;
 
 		ArgumentNullException.ThrowIfNull(multiShareBackup);
 
@@ -116,7 +115,7 @@ public partial class MultiShareOptionsViewModel : RoutableViewModel
 
 	private void OnNext(WalletCreationOptions.AddNewWallet options)
 	{
-		if (options.SelectedWalletBackup is not MultiShareBackup multiShareBackup)
+		if (options.Backup is not { } multiShareBackup)
 		{
 			throw new ArgumentOutOfRangeException(nameof(options));
 		}
@@ -131,14 +130,11 @@ public partial class MultiShareOptionsViewModel : RoutableViewModel
 			return;
 		}
 
-		var shares = Shamir.Generate(
-			_threshold.Value,
-			_shares.Value,
-			WalletGenerator.GenerateShamirEntropy());
+		var shares = WalletGenerator.GenerateShares(_threshold.Value, _shares.Value);
 
 		options = options with
 		{
-			SelectedWalletBackup = multiShareBackup with
+			Backup = multiShareBackup with
 			{
 				Shares = shares,
 				Settings = new MultiShareBackupSettings(_threshold.Value, _shares.Value),

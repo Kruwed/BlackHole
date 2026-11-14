@@ -65,12 +65,7 @@
 
       <TextBlock Grid.ColumnSpan="2" Grid.Column="0" Grid.Row="1" TextAlignment="Center" Text="or" />
 
-      <TileButton Grid.Row="2" Grid.Column="0" Text="Import a wallet"
-                    Icon="{StaticResource import_regular}"
-                    Classes="bottomtext"
-                    Command="{Binding ImportWalletCommand}" />
-
-      <TileButton Grid.Row="2" Grid.Column="1" Text="Recover a wallet"
+      <TileButton Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Recover a wallet"
                     Icon="{StaticResource recover_arrow_right_regular}"
                     Classes="bottomtext"
                     Command="{Binding RecoverWalletCommand}" />

@@ -11,7 +11,7 @@ public partial class WalletInfoModel
 	public WalletInfoModel(Wallet wallet)
 	{
 		var network = wallet.Network;
-		var secret = PasswordHelper.GetMasterExtKey(wallet.KeyManager, wallet.Password, out _);
+		var secret = PasswordHelper.GetMasterExtKey(wallet.KeyManager, wallet.Password);
 
 		ExtendedMasterPrivateKey = secret.GetWif(network).ToWif();
 		ExtendedAccountPrivateKey = secret.Derive(wallet.KeyManager.SegwitAccountKeyPath).GetWif(network).ToWif();
