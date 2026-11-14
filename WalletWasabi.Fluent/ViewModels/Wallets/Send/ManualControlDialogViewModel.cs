@@ -25,12 +25,9 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 
 	private readonly IWalletModel _walletModel;
 	private readonly Wallet _wallet;
-	private readonly bool _donate;
 
-	public ManualControlDialogViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, bool donate = false) : base(uiContext)
+	public ManualControlDialogViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
 	{
-		_donate = donate;
-
 		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, ignorePrivacyMode: true, allowSelection: true);
 
 		var nextCommandCanExecute =
@@ -82,7 +79,7 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 	{
 		var coins = CoinList.Selection.GetSmartCoins().ToList();
 
-		var sendParameters = new SendFlowModel(_wallet, _walletModel, coins, UiContext.Services, _donate);
+		var sendParameters = new SendFlowModel(_wallet, _walletModel, coins, UiContext.Services);
 
 		Navigate().To().Send(_walletModel, sendParameters);
 	}

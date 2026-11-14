@@ -274,9 +274,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConfirmMultiShareViewModel(UiContext, options, wordsDictionary), navigationMode);
 	}
 
-	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, bool donate = false, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet, donate);
+		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 

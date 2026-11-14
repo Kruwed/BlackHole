@@ -11,17 +11,16 @@ namespace WalletWasabi.Fluent.Models.Transactions;
 
 public record SendFlowModel
 {
-	private SendFlowModel(Wallet wallet, ICoinsView availableCoins, ICoinListModel coinListModel, bool donate)
+	private SendFlowModel(Wallet wallet, ICoinsView availableCoins, ICoinListModel coinListModel)
 	{
 		Wallet = wallet;
 		AvailableCoins = availableCoins;
 		CoinList = coinListModel;
-		Donate = donate;
 	}
 
 	/// <summary>A send flow uses only the coins that the user picked for it.</summary>
-	public SendFlowModel(Wallet wallet, IWalletModel walletModel, IEnumerable<SmartCoin> coins, IServices services, bool donate = false):
-		this(wallet, new CoinsView(coins), new UserSelectionCoinListModel(wallet, walletModel, coins.ToArray(), services), donate)
+	public SendFlowModel(Wallet wallet, IWalletModel walletModel, IEnumerable<SmartCoin> coins, IServices services):
+		this(wallet, new CoinsView(coins), new UserSelectionCoinListModel(wallet, walletModel, coins.ToArray(), services))
 	{
 	}
 
@@ -32,8 +31,6 @@ public record SendFlowModel
 	public ICoinListModel CoinList { get; }
 
 	public TransactionInfo? TransactionInfo { get; init; } = null;
-
-	public bool Donate { get; init; }
 
 	public decimal AvailableAmountBtc => AvailableAmount.ToDecimal(MoneyUnit.BTC);
 

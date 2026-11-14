@@ -48,12 +48,9 @@ public partial class SendViewModel : RoutableViewModel
 
 	private Address? _parsedAddress;
 
-	[AutoNotify] private string _caption = "";
 	[AutoNotify] private string _to;
 	[AutoNotify] private decimal? _amountBtc;
 	[AutoNotify] private bool _isFixedAmount;
-	[AutoNotify] private bool _displaySilentPaymentInfo;
-	[AutoNotify] private bool _isFixedAddress;
 	[AutoNotify] private string? _bitcoinContent;
 	[AutoNotify] private bool _isPayToMany;
 	[AutoNotify] private bool _isPrimarySubtractFee;
@@ -156,8 +153,6 @@ public partial class SendViewModel : RoutableViewModel
 	public Amount? BalanceLatest => _balanceLatest.Value;
 
 	public bool IsQrButtonVisible => UiContext.QrCodeReader.IsPlatformSupported;
-
-	public bool IsNotInDonationWorkflow => !_parameters.Donate;
 
 	public ICommand PasteCommand { get; }
 
@@ -362,7 +357,7 @@ public partial class SendViewModel : RoutableViewModel
 	{
 		var isAutoPasteEnabled = UiContext.ApplicationSettings.AutoPaste;
 
-		if (string.IsNullOrEmpty(To) && isAutoPasteEnabled && IsNotInDonationWorkflow)
+		if (string.IsNullOrEmpty(To) && isAutoPasteEnabled)
 		{
 			await PasteIfValidAddressAsync();
 		}
@@ -454,7 +449,6 @@ public partial class SendViewModel : RoutableViewModel
 			_parsedAddress = null;
 			IsFixedAmount = false;
 			IsBip21 = false;
-			DisplaySilentPaymentInfo = false;
 			return;
 		}
 
@@ -466,7 +460,6 @@ public partial class SendViewModel : RoutableViewModel
 		if (!parseResult.IsOk)
 		{
 			_parsedAddress = null;
-			DisplaySilentPaymentInfo = false;
 			return;
 		}
 
@@ -484,21 +477,14 @@ public partial class SendViewModel : RoutableViewModel
 					IsFixedAmount = true;
 				}
 
-				DisplaySilentPaymentInfo = false;
 				break;
 
 			case Address.Bitcoin bitcoin:
 				To = bitcoin.Address.ToString();
-				DisplaySilentPaymentInfo = false;
 				break;
 
 			case Address.SilentPayment silentPayment:
 				To = silentPayment.Address.ToWip(_walletModel.Network);
-				DisplaySilentPaymentInfo = _parameters.Donate;
-				break;
-
-			default:
-				DisplaySilentPaymentInfo = false;
 				break;
 		}
 	}
@@ -526,13 +512,6 @@ public partial class SendViewModel : RoutableViewModel
 		RxApp.MainThreadScheduler.Schedule(async () => await OnAutoPasteAsync());
 
 		base.OnNavigatedTo(inHistory, disposables);
-
-		if (_parameters.Donate)
-		{
-			To = Constants.DonationAddress;
-			Caption = "Donate to The Wasabi Wallet Developers to continue maintaining the software";
-			IsFixedAddress = true;
-		}
 	}
 
 	protected override void OnNavigatedFrom(bool isInHistory)

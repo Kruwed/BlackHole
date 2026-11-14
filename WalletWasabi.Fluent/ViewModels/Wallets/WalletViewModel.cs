@@ -31,7 +31,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _isLoading;
 	[AutoNotify] private bool _isPointerOver;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSendButtonVisible;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isDonateButtonVisible;
 
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletBalanceZero;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _areAllCoinsPrivate;
@@ -63,11 +62,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			.Do(shouldAdd => UiContext.EditableSearchSource.Toggle(sendSearchItem, shouldAdd))
 			.Subscribe();
 
-		var donateSearchItem = CreateDonateItem();
-		this.WhenAnyValue(x => x.IsDonateButtonVisible)
-			.Do(shouldAdd => UiContext.EditableSearchSource.Toggle(donateSearchItem, shouldAdd))
-			.Subscribe();
-
 		walletModel.HasBalance
 			.Select(x => !x)
 			.BindTo(this, x => x.IsWalletBalanceZero);
@@ -78,9 +72,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		 // Keep the send button visible while the discreet mode is on. Otherwise its absence reveals an empty wallet.
 		 this.WhenAnyValue(x => x.IsWalletBalanceZero, x => x.UiContext.ApplicationSettings.PrivacyMode)
 		 	.Subscribe(_ => IsSendButtonVisible = !IsWalletBalanceZero || UiContext.ApplicationSettings.PrivacyMode);
-
-		 this.WhenAnyValue(x => x.IsSendButtonVisible)
-			 .Subscribe(_ => IsDonateButtonVisible = IsSendButtonVisible && WalletModel.Network == Network.Main);
 
 		 WalletModel.Privacy.IsWalletPrivate
 			 .BindTo(this, x => x.AreAllCoinsPrivate);
@@ -116,7 +107,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		// Sending always starts with the user picking the coins to spend.
 		SendCommand = ReactiveCommand.Create(() => Navigate().To().ManualControlDialog(walletModel, wallet));
-		DonateCommand = ReactiveCommand.Create(() => Navigate().To().ManualControlDialog(walletModel, wallet, donate: true));
 
 		ReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel));
 
@@ -188,7 +178,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	public IEnumerable<ActivatableViewModel> Tiles { get; }
 
 	public ICommand SendCommand { get; private set; }
-	public ICommand DonateCommand { get; private set; }
 
 	public ICommand ReceiveCommand { get; }
 
@@ -254,11 +243,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	private ISearchItem CreateSendItem()
 	{
 		return new ActionableItem("Send", "Display wallet send dialog", () => { SendCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Send", "Action", }) { Icon = "wallet_action_send", IsDefault = true, Priority = 1 };
-	}
-
-	private ISearchItem CreateDonateItem()
-	{
-		return new ActionableItem("Donate", "Donate to The Wasabi Wallet Developers", () => { DonateCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Send", "Action", "Donate" }) { Icon = "gift", IsDefault = true, Priority = 4 };
 	}
 
 	private ISearchItem CreateCoinJoinPaymentsItem()
