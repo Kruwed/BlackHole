@@ -72,22 +72,62 @@ public class ConfigTests
 	}
 
 	/// <summary>
-	/// Settings can only be changed in the application while no option was given on the command line or in the environment.
-	/// The node can be changed there unless the node itself was given.
+	/// Settings can only be changed in the application while none of them was given on the command line or in the environment.
+	/// Options that are not settings, like the log level, do not get in the way.
+	/// </summary>
+	[Theory]
+	[InlineData("--loglevel=debug")]
+	[InlineData("--logmodes=console,file")]
+	[InlineData("--blockonly=true")]
+	[InlineData("--rpconionenabled=true")]
+	[InlineData("--torfolder=/opt/tor")]
+	[InlineData("--torsocksport=9050")]
+	[InlineData("--torcontrolport=9051")]
+	[InlineData("--network=regtest")]
+	public void OptionsThatAreNotSettingsLeaveTheSettingsChangeable(string option)
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option]);
+		Assert.False(config.IsOverridden);
+
+		// Together with a setting they do not help: the setting was given.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option, "--usetor=disabled"]);
+		Assert.True(config.IsOverridden);
+	}
+
+	[Theory]
+	[InlineData("--coordinatoruri=https://coordinator.example/")]
+	[InlineData("--usetor=disabled")]
+	[InlineData("--terminatetoronexit=true")]
+	[InlineData("--torbridges=obfs4 192.0.2.1:443")]
+	[InlineData("--bitcoinrpcendpoint=http://node.example:8332/")]
+	[InlineData("--bitcoinrpccredentialstring=user:password")]
+	[InlineData("--jsonrpcserverenabled=true")]
+	[InlineData("--jsonrpcuser=user")]
+	[InlineData("--jsonrpcpassword=password")]
+	[InlineData("--jsonrpcserverprefixes=http://127.0.0.1:37128/")]
+	[InlineData("--coordinatoridentifier=Identifier")]
+	[InlineData("--maxcoinjoinminingfeerate=10")]
+	[InlineData("--absolutemininputcount=30")]
+	[InlineData("--maxdaysinmempool=7")]
+	[InlineData("--experimentalfeatures=feature")]
+	public void SettingsThatAreGivenAtTheStartLockTheSettings(string option)
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option]);
+		Assert.True(config.IsOverridden);
+	}
+
+	/// <summary>
+	/// The node can be changed in the application before there is a wallet, unless the node itself was given at the start.
 	/// </summary>
 	[Fact]
 	public void TellsWhetherTheNodeWasGivenAtTheStart()
 	{
 		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
-		Assert.False(config.IsBitcoinRpcOverridden);
-
-		// The network is the one option that leaves the settings changeable.
-		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--network=regtest"]);
 		Assert.False(config.IsOverridden);
 		Assert.False(config.IsBitcoinRpcOverridden);
 
-		// Another option locks the settings, but it says nothing about the node.
-		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--loglevel=debug"]);
+		// Another setting locks the settings, but it says nothing about the node.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--usetor=disabled"]);
 		Assert.True(config.IsOverridden);
 		Assert.False(config.IsBitcoinRpcOverridden);
 

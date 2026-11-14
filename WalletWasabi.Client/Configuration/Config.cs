@@ -54,24 +54,30 @@ public class Config
 			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs)
 		};
 
-		// Check if any config value is overridden (either by an environment value, or by a CLI argument).
-		foreach (string optionName in Data.Keys)
-		{
-			// It is allowed to override the network.
-			if (!string.Equals(optionName, nameof(Network)))
-			{
-				IValue optionValue = Data[optionName];
-
-				if (optionValue.Overridden)
-				{
-					IsOverridden = true;
-					break;
-				}
-			}
-		}
+		// Check if any setting is overridden (either by an environment value, or by a CLI argument).
+		// It is allowed to override the network, and options that are not settings do not count.
+		IsOverridden = Data.Any(option =>
+			option.Key != nameof(Network)
+			&& !StartupOnlyOptions.Contains(option.Key)
+			&& option.Value.Overridden);
 
 		ServiceConfiguration = new ServiceConfiguration(DropUnconfirmedTransactionsAfterDays);
 	}
+
+	/// <summary>
+	/// Options that are not settings: the config file does not have them, and nothing in the application changes them.
+	/// They can only be given when the application is started.
+	/// </summary>
+	private static readonly HashSet<string> StartupOnlyOptions =
+	[
+		nameof(TorFolder),
+		nameof(TorSocksPort),
+		nameof(TorControlPort),
+		nameof(RpcOnionEnabled),
+		nameof(BlockOnlyMode),
+		nameof(LogLevel),
+		nameof(LogModes)
+	];
 
 	private static readonly Dictionary<string, string> Help =
 		new()
@@ -139,11 +145,12 @@ public class Config
 	public static string LogLevel { get; } = GetStringValue("loglevel", "", Environment.GetCommandLineArgs()).EffectiveValue;
 	public static LogMode[] LogModes { get; } = GetLogModeArrayValue("LogModes", arrayValues: DefaultLogModes, Environment.GetCommandLineArgs()).EffectiveValue;
 
-	/// <summary>Whether a config option was overridden by a command line argument or an environment variable.</summary>
+	/// <summary>Whether a setting was overridden by a command line argument or an environment variable.</summary>
 	/// <remarks>
-	/// Changing config options in the UI while a config option is overridden would bring uncertainty if user understands consequences or not,
-	/// thus it is normally not allowed. However, there are exceptions as what options are taken into account, there is currently
-	/// one exception: <see cref="LogLevel"/>.
+	/// Changing settings in the UI while one of them is overridden would bring uncertainty if user understands consequences or not,
+	/// thus it is not allowed. Two kinds of options are not taken into account. The network: it chooses whose settings are used.
+	/// And the options that are not settings, like <see cref="LogLevel"/>: the config file does not have them, so they do not
+	/// get in the way of what is saved there.
 	/// </remarks>
 	public bool IsOverridden { get; }
 
