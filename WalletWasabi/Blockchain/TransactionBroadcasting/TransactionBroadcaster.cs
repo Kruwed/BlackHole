@@ -56,7 +56,9 @@ public class RpcBroadcaster(IRPCClient rpcClient) : IBroadcaster
 		}
 		catch (RPCException ex)
 		{
-			return BroadcastingResult.Fail(new BroadcastError.RpcError(ex.RPCCodeMessage));
+			// The code only tells the kind of the failure, the node's own message tells the reason (e.g. which policy rule was broken).
+			var reason = ex.Message == ex.RPCCodeMessage ? ex.RPCCodeMessage : $"{ex.RPCCodeMessage} ({ex.Message})";
+			return BroadcastingResult.Fail(new BroadcastError.RpcError(reason));
 		}
 		catch (SocketException se) when (se.SocketErrorCode == SocketError.ConnectionRefused)
 		{
