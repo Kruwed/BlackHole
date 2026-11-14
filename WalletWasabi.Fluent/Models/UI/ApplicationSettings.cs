@@ -50,7 +50,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private string _absoluteMinInputCount;
 
 	// General
-	[AutoNotify] private bool _autoPaste;
 	[AutoNotify] private bool _customChangeAddress;
 	[AutoNotify] private TorMode _useTor;
 	[AutoNotify] private bool _terminateTorOnExit;
@@ -89,7 +88,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_absoluteMinInputCount = persistentConfig.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture);
 
 		// General
-		_autoPaste = uiConfig.AutoPaste;
 		_customChangeAddress = uiConfig.IsCustomChangeAddress;
 		_terminateTorOnExit = persistentConfig.TerminateTorOnExit;
 		_enableGpu = persistentConfig.EnableGpu;
@@ -124,7 +122,6 @@ public partial class ApplicationSettings : ReactiveObject
 		AbsoluteMinInputCount = persistentConfig.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture);
 
 		// General
-		AutoPaste = uiConfig.AutoPaste;
 		CustomChangeAddress = uiConfig.IsCustomChangeAddress;
 		TerminateTorOnExit = persistentConfig.TerminateTorOnExit;
 		EnableGpu = persistentConfig.EnableGpu;
@@ -172,12 +169,11 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Save UiConfig on change
 		this.WhenAnyValue(
-				x => x.AutoPaste,
 				x => x.CustomChangeAddress,
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
 				x => x.WindowState,
-				(_, _, _, _, _) => Unit.Default)
+				(_, _, _, _) => Unit.Default)
 			.Skip(1)
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => ApplyUiConfigChanges())
@@ -324,7 +320,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 	private void ApplyUiConfigChanges()
 	{
-		_uiConfig.AutoPaste = AutoPaste;
 		_uiConfig.IsCustomChangeAddress = CustomChangeAddress;
 		_uiConfig.Oobe = Oobe;
 		_uiConfig.LastVersionHighlightsDisplayed = LastVersionHighlightsDisplayed;

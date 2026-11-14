@@ -2,7 +2,6 @@ using NBitcoin;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
-using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -99,7 +98,6 @@ public partial class SendViewModel : RoutableViewModel
 			.Subscribe(_ => IsPrimarySubtractFee = false);
 
 		PasteCommand = ReactiveCommand.CreateFromTask(async () => await OnPasteAsync());
-		AutoPasteCommand = ReactiveCommand.CreateFromTask(OnAutoPasteAsync);
 		InsertMaxCommand = ReactiveCommand.Create(() =>
 		{
 			// Clear all other subtract fee flags and set primary
@@ -155,8 +153,6 @@ public partial class SendViewModel : RoutableViewModel
 	public bool IsQrButtonVisible => UiContext.QrCodeReader.IsPlatformSupported;
 
 	public ICommand PasteCommand { get; }
-
-	public ICommand AutoPasteCommand { get; }
 
 	public ICommand QrCommand { get; }
 
@@ -353,16 +349,6 @@ public partial class SendViewModel : RoutableViewModel
 		}
 	}
 
-	private async Task OnAutoPasteAsync()
-	{
-		var isAutoPasteEnabled = UiContext.ApplicationSettings.AutoPaste;
-
-		if (string.IsNullOrEmpty(To) && isAutoPasteEnabled)
-		{
-			await PasteIfValidAddressAsync();
-		}
-	}
-
 	private async Task<string> GetClipboardTextAsync()
 	{
 		var text = await ApplicationHelper.GetTextAsync();
@@ -372,16 +358,6 @@ public partial class SendViewModel : RoutableViewModel
 	private async Task OnPasteAsync()
 	{
 		To = await GetClipboardTextAsync();
-	}
-
-	private async Task PasteIfValidAddressAsync()
-	{
-		var text = await GetClipboardTextAsync();
-
-		if (AddressParser.Parse(text, _walletModel.Network).IsOk)
-		{
-			To = text;
-		}
 	}
 
 	private async Task ShowQrCameraDialogAsync()
@@ -508,8 +484,6 @@ public partial class SendViewModel : RoutableViewModel
 				coinJoinManager.WalletEnteredSendWorkflow(_walletModel.Id);
 			}
 		}
-
-		RxApp.MainThreadScheduler.Schedule(async () => await OnAutoPasteAsync());
 
 		base.OnNavigatedTo(inHistory, disposables);
 	}

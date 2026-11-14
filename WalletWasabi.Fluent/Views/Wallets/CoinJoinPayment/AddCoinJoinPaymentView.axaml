@@ -58,7 +58,6 @@
                  AcceptsReturn="False">
           <Interaction.Behaviors>
             <FocusOnAttachedBehavior />
-            <ExecuteCommandOnActivatedBehavior Command="{Binding AutoPasteCommand}" />
             <FocusNextWhenValidBehavior />
             <WhitespacePasteRemovalBehavior />
             <WhitespaceInputRemovalBehavior />

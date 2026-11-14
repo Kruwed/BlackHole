@@ -1,6 +1,5 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reactive.Concurrency;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
@@ -51,15 +50,12 @@ public partial class AddCoinJoinPaymentViewModel : RoutableViewModel
 		NextCommand = ReactiveCommand.CreateFromTask(OnAddPaymentAsync, canExecute);
 
 		PasteCommand = ReactiveCommand.CreateFromTask(OnPasteAsync);
-		AutoPasteCommand = ReactiveCommand.CreateFromTask(OnAutoPasteAsync);
 		QrCommand = ReactiveCommand.Create(ShowQrCameraDialogAsync);
 	}
 
 	public bool IsQrButtonVisible => UiContext.QrCodeReader.IsPlatformSupported;
 
 	public ICommand PasteCommand { get; }
-
-	public ICommand AutoPasteCommand { get; }
 
 	public ICommand QrCommand { get; }
 
@@ -73,8 +69,6 @@ public partial class AddCoinJoinPaymentViewModel : RoutableViewModel
 			AmountBtc = null;
 			ClearValidations();
 		}
-
-		RxApp.MainThreadScheduler.Schedule(async () => await OnAutoPasteAsync());
 	}
 
 	private async Task ShowQrCameraDialogAsync()
@@ -84,16 +78,6 @@ public partial class AddCoinJoinPaymentViewModel : RoutableViewModel
 		if (!string.IsNullOrWhiteSpace(textContext))
 		{
 			To = textContext;
-		}
-	}
-
-	private async Task OnAutoPasteAsync()
-	{
-		var isAutoPasteEnabled = UiContext.Services.GetAutoPaste();
-
-		if (string.IsNullOrWhiteSpace(To) && isAutoPasteEnabled)
-		{
-			await OnPasteAsync();
 		}
 	}
 

@@ -9,10 +9,6 @@
              x:DataType="settings:GeneralSettingsTabViewModel">
   <StackPanel Classes="settingsLayout">
 
-    <DockPanel>
-      <TextBlock Text="Auto paste addresses" />
-      <ToggleSwitch IsChecked="{Binding Settings.AutoPaste}" />
-    </DockPanel>
     <!-- Temporarily remove from settings view for release
     TODO: Make Custom change address active/implement.
     <DockPanel>
