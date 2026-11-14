@@ -278,7 +278,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	/// <summary>
-	/// Unsafe, because no matter how big fee the user chooses, Wasabi will build the transaction.
+	/// Unsafe, because no matter how big fee the user chooses, the wallet will build the transaction.
 	/// Potentially, the user can burn his money using this method, so be careful!
 	/// </summary>
 	[JsonRpcMethod("buildunsafetransaction")]

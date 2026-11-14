@@ -92,7 +92,7 @@ public class TorManager : IAsyncDisposable
 		}
 
 		throw new InvalidOperationException($"No attempt to connect to Tor was successful. It seems no Tor instance is currently running.\n" +
-		                                    $"Please start Tor before opening Wasabi or set 'UseTor' to 'Enabled' in the configuration file.");
+		                                    $"Please start Tor before opening Black Hole or set 'UseTor' to 'Enabled' in the configuration file.");
 	}
 
 	/// <summary>
@@ -200,7 +200,7 @@ public class TorManager : IAsyncDisposable
 
 			try
 			{
-				// Is Tor already running? Either our Tor process from previous Wasabi Wallet run or possibly user's own Tor.
+				// Is Tor already running? Either our Tor process from a previous run or possibly user's own Tor.
 				bool isAlreadyRunning = await _processManager.IsTorRunningAsync(_settings.SocksEndpoint, cancellationToken).ConfigureAwait(false);
 
 				if (isAlreadyRunning)

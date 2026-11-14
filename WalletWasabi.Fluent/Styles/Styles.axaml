@@ -7,7 +7,7 @@
     <KeySpline x:Key="FluentKeySpline">0.4,0,0.6,1</KeySpline>
     <FontFamily x:Key="MonospacedFont">avares://WalletWasabi.Fluent/Assets/Fonts#Roboto Mono</FontFamily>
     <FontFamily x:Key="AmountsFont">avares://WalletWasabi.Fluent/Assets/Fonts#Amounts Mono</FontFamily>
-    <FontFamily x:Key="WasabiLogoTextFont">avares://WalletWasabi.Fluent/Assets/Fonts#Objectivity</FontFamily>
+    <FontFamily x:Key="LogoTextFont">avares://WalletWasabi.Fluent/Assets/Fonts#Objectivity</FontFamily>
     <x:Double x:Key="TagMaxWidth">120</x:Double>
   </Styles.Resources>
   <StyleInclude Source="avares://WalletWasabi.Fluent/Styles/ContextMenu.axaml" />

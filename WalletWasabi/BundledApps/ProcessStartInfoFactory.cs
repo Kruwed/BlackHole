@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace WalletWasabi.BundledApps;
 
 /// <summary>
-/// Factory for <see cref="ProcessStartInfo"/> with pre-defined properties as needed in Wasabi Wallet.
+/// Factory for <see cref="ProcessStartInfo"/> with pre-defined properties as needed in the application.
 /// </summary>
 public class ProcessStartInfoFactory
 {

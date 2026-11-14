@@ -3,11 +3,11 @@
     <PropertyGroup>
 		<DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
 		<NoWarn>1701;1702;1705;1591;1573;CA1031;CA1822</NoWarn>
-		<Product>Wasabi Wallet Coordinator</Product>
+		<Product>Black Hole Coordinator</Product>
 		<Copyright>MIT</Copyright>
-		<PackageTags>walletwasabi, wasabiwallet, wasabi, wallet, bitcoin, nbitcoin, tor, zerolink, wabisabi, coinjoin, fungibility, privacy, anonymity</PackageTags>
+		<PackageTags>blackhole, wallet, bitcoin, nbitcoin, tor, zerolink, wabisabi, coinjoin, fungibility, privacy, anonymity</PackageTags>
 		<RepositoryType>Git</RepositoryType>
-		<RepositoryUrl>https://github.com/WalletWasabi/WalletWasabi/</RepositoryUrl>
+		<RepositoryUrl>https://github.com/Kruwed/BlackHole/</RepositoryUrl>
 		<PathMap>$(MSBuildProjectDirectory)\=WalletWasabi.Coordinator</PathMap>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 		<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>

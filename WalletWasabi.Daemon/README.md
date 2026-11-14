@@ -1,7 +1,7 @@
-Wasabi Daemon
-=============
+Black Hole Daemon
+=================
 
-Wasabi daemon is a _headless_ Wasabi wallet designed to minimize the usage of resources (CPU, GPU, Memory, Bandwidth) with the goal of
+Black Hole daemon is a _headless_ Black Hole wallet designed to minimize the usage of resources (CPU, GPU, Memory, Bandwidth) with the goal of
 making it more suitable for running all the time in the background.
 
 ## Configuration
@@ -11,15 +11,15 @@ All configuration options available via `Config.json` file are also available as
 ### Command Line and Environment variables
 
 * Command line switches have the form `--switch_name=value` where _switch_name_ is the same name that is used in the config file (case insensitive).
-* Environment variables have the form `WASABI_SWITCHNAME` where _SWITCHNAME_ is the same name that is used in the config file.
+* Environment variables have the form `BLACKHOLE_SWITCHNAME` where _SWITCHNAME_ is the same name that is used in the config file.
 
 A few examples:
 
-| Config file                | Command line                | Environment variable             |
-|----------------------------|-----------------------------|----------------------------------|
-| Network: "TestNet"         | --network=testnet           | WASABI_NETWORK=testnet           |
-| JsonRpcServerEnabled: true | --jsonrpcserverenabled=true | WASABI_JSONRPCSERVERENABLED=true |
-| UseTor: true               | --usetor=true               | WASABI_USETOR=true               |
+| Config file                | Command line                | Environment variable                |
+|----------------------------|-----------------------------|-------------------------------------|
+| Network: "TestNet"         | --network=testnet           | BLACKHOLE_NETWORK=testnet           |
+| JsonRpcServerEnabled: true | --jsonrpcserverenabled=true | BLACKHOLE_JSONRPCSERVERENABLED=true |
+| UseTor: true               | --usetor=true               | BLACKHOLE_USETOR=true               |
 
 ### Values precedence
 
@@ -32,37 +32,39 @@ A few examples:
 There are a few special switches that are not present in the `Config.json` file and are only available using command line and/or variable environment:
 
 * **LogLevel** to specify the level of detail used during logging
-* **DataDir** to specify the path to the directory used during runtime.
-* **BlockOnly** to instruct wasabi to ignore p2p transactions
-* **LoadWallet** (`--loadwallet`, without a value) to instruct wasabi to open the wallet automatically after started.
+* **DataDir** to specify the path to the directory used during runtime. The default is `~/.blackhole/client`.
+* **BlockOnly** to make the wallet look only at the blocks of the Bitcoin node and not at its unconfirmed transactions
+* **LoadWallet** (`--loadwallet`, without a value) to open the wallet automatically after the start.
 
 ### Examples
 
-Run Wasabi and connect to the testnet Bitcoin network with Tor disabled and accept JSON RPC calls. Store everything in `$HOME/temp/wasabi-1`.
+Run the daemon on the testnet Bitcoin network with Tor disabled and accept JSON RPC calls. Store everything in `$HOME/temp/blackhole-1`.
 
 ```bash
-$ wasabi.daemon --usetor=false --datadir="$HOME/temp/wasabi-1" --network=testnet --jsonrpcserverenabled=true --blockonly=true
+$ blackholed --usetor=false --datadir="$HOME/temp/blackhole-1" --network=testnet --jsonrpcserverenabled=true --blockonly=true
 ```
 
-Run Wasabi Daemon and connect to the testnet Bitcoin network.
+Run the daemon on the testnet Bitcoin network.
 
 ```bash
-$ WASABI_NETWORK=testnet wasabi.daemon
+$ BLACKHOLE_NETWORK=testnet blackholed
 ```
 
-Run Wasabi and open the wallet
+Run the daemon and open the wallet
 
 ```bash
-$ wasabi.daemon --loadwallet
+$ blackholed --loadwallet
 ```
+
+`blackholed` is the name of the daemon in the release packages. From the source code it is started with `dotnet run --project WalletWasabi.Daemon --` followed by the same switches.
 
 ### Version
 
 ```bash
-$ wasabi.daemon --version
-Wasabi Daemon 2.0.3.0
+$ blackholed --version
+Black Hole Daemon 1.0.0
 ```
 
 ### Usage
 
-To interact with the daemon, use the [RPC server](https://docs.wasabiwallet.io/using-wasabi/RPC.html) or the [wcli script](https://github.com/WalletWasabi/WalletWasabi/tree/master/Contrib/CLI).
+To interact with the daemon, use its JSON RPC server, for example with the [wcli script](../Contrib/CLI).

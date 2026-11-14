@@ -24,7 +24,7 @@ public static class AppBuilderExtension
 				RenderingMode = enableGpu
 					? new[] { X11RenderingMode.Glx, X11RenderingMode.Software }
 					: new[] { X11RenderingMode.Software },
-				WmClass = "Wasabi Wallet"
+				WmClass = WalletWasabi.Helpers.Constants.AppName
 			});
 	}
 }

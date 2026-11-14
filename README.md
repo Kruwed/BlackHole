@@ -1,64 +1,56 @@
-<p align="center">
-  <a href="https://wasabiwallet.io">
-    <img src="https://github.com/WalletWasabi/WalletWasabi/blob/master/ui-ww.png">
-  </a>
-</p>
+# Black Hole
 
-<h3 align="center">
-    An open-source, non-custodial, privacy-focused Bitcoin wallet for desktop.
-</h3>
+An open-source, non-custodial, privacy-focused Bitcoin wallet for the Linux desktop that talks only to your own Bitcoin node.
 
-<h3 align="center">
-  <a href="https://wasabiwallet.io">
-    Website
-  </a>
-  <span> | </span>
-  <a href="https://docs.wasabiwallet.io/">
-    Documentation
-  </a>
-  <span> | </span>
-  <a href="https://github.com/WalletWasabi/WalletWasabi/discussions/5185">
-    Support
-  </a>
-  <span> | </span>
-  <a href="https://www.youtube.com/c/WasabiWallet">
-    YouTube
-  </a>
-  <span> | </span>
-  <a href="https://github.com/WalletWasabi/WalletWasabi/blob/master/PGP.txt">
-    PGP
-  </a>
-</h3>
-<br>
+Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWasabi). It keeps the Tor integration and the WabiSabi coinjoins of Wasabi Wallet and drops most of the rest.
 
-# [Download Wasabi](https://github.com/WalletWasabi/WalletWasabi/releases)
+## What it does
 
-<br>
+- **One wallet.** It is created and recovered with SLIP39 shares. The password encrypts the wallet file on the computer only; the shares alone recover the wallet.
+- **Taproot only.** Every address of the wallet is a Taproot (P2TR) address.
+- **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions are broadcast through it. The wallet scans the blocks of the node, starting with the block the wallet was created at.
+- **Coinjoins** with the WabiSabi coordinator that you choose, over Tor.
+- **Manual coin control** when sending.
 
-# Build From Source Code
+## What was removed from Wasabi Wallet
 
-### Get The Requirements
+Windows and macOS support, SegWit v0 addresses, hardware wallets, passphrases, BIP39 seed phrases, fiat exchange rates, the Branch and Bound search for changeless transactions, the dust attack limit, the Scheme scripting language, multiple wallets, confirmation time estimations, labels, the "ready to sign" signalling of coinjoins, compact block filter synchronization together with the peer to peer network stack, and every third party service (fee and exchange rate providers, block explorers, update checks).
 
-1. Get Git: https://git-scm.com/downloads
-2. Get .NET 10.0 SDK: https://dotnet.microsoft.com/download
-3. Optionally disable .NET's telemetry by executing in the terminal `export DOTNET_CLI_TELEMETRY_OPTOUT=1`.
+## Requirements
 
-### Get Wasabi
+- Linux on x64 or arm64.
+- A Bitcoin node with the RPC interface enabled, for example Bitcoin Core with `server=1`. The node must have the blocks since the creation of the wallet, so a pruned node only works while it still has them.
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) to build from source.
 
-Clone & Restore & Build
+## Build and run
 
 ```sh
-git clone --depth=1 --single-branch --branch=master https://github.com/WalletWasabi/WalletWasabi.git
-cd WalletWasabi/WalletWasabi.Fluent.Desktop
-dotnet build
+git clone https://github.com/Kruwed/BlackHole.git
+cd BlackHole/WalletWasabi.Fluent.Desktop
+dotnet run
 ```
 
-### Run Wasabi
+`WalletWasabi.Daemon` is the same wallet without the user interface; see its [README](WalletWasabi.Daemon/README.md). The names of the projects and of the namespaces are the ones of Wasabi Wallet.
 
-Run Wasabi with `dotnet run` from the `WalletWasabi.Fluent.Desktop` folder.
+## Connect it to your node
 
-### Update Wasabi
+Open *Settings → Bitcoin* and set
 
-```sh
-git pull
-```
+- **Bitcoin RPC Endpoint**: the address of the RPC interface of the node. The defaults are the ones of Bitcoin Core, `http://localhost:8332` on mainnet.
+- **Bitcoin RPC Credential String**: `rpcuser:rpcpassword`, or `cookiefile=` followed by the path of the cookie file of the node. Left empty, the cookie file in the default data folder of Bitcoin Core (`~/.bitcoin`) is used.
+
+The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `Config.json`.
+
+Recovering a wallet scans every block since the activation of Taproot unless you tell the height the wallet was created at (*Advanced Recovery Options*). On mainnet the full scan takes hours.
+
+## Data
+
+Black Hole keeps its data in `~/.blackhole/client`. It does not read or change the data of a Wasabi Wallet installation (`~/.walletwasabi`), and its Tor listens on other ports (37250 and 37251), so both can run on the same computer.
+
+## Coinjoin
+
+Set the coordinator in *Settings → Coordinator*. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
+
+## License
+
+[MIT](LICENSE.md), as Wasabi Wallet.

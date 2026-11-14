@@ -16,7 +16,7 @@ public abstract class OpenFileViewModel(UiContext uiContext) : TriggerCommandVie
 			}
 			catch (Exception ex)
 			{
-				await ShowErrorAsync("Open", ex.ToUserFriendlyString(), "Wasabi was unable to open the file");
+				await ShowErrorAsync("Open", ex.ToUserFriendlyString(), "Black Hole was unable to open the file");
 			}
 		});
 }

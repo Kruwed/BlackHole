@@ -34,14 +34,14 @@ ROOT_DIR=$(pwd)
 BUILD_DIR="$ROOT_DIR/build"
 
 # Executable name
-EXECUTABLE_NAME="wassabee"
-COORDINATOR_EXECUTABLE_NAME="wcoordinator"
+EXECUTABLE_NAME="blackhole"
+COORDINATOR_EXECUTABLE_NAME="blackhole-coordinator"
 
 # Directory where to save the generated packages
 PACKAGES_DIR="$ROOT_DIR/packages"
 
 # Common name for all packages
-PACKAGE_FILE_NAME_PREFIX="Wasabi-$VERSION"
+PACKAGE_FILE_NAME_PREFIX="BlackHole-$VERSION"
 
 ZIP="zip -r"
 SOURCE_ROOT=$(pwd -P)
@@ -121,7 +121,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
             /clp:ErrorsOnly
   done
 
-  # Rename executables as wassabee and wassabeed
+  # Rename executables as blackhole and blackholed
   mv $OUTPUT_DIR/{$DESKTOP,${EXECUTABLE_NAME}}
   mv $OUTPUT_DIR/{$DAEMON,${EXECUTABLE_NAME}d}
   if [[ "$PACKAGE_COORDINATOR" == "yes" ]]; then
@@ -153,7 +153,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
       --owner=0 \
       --group=0 \
       --numeric-owner \
-      --transform="s|^$BASE_NAME|WasabiWallet|" \
+      --transform="s|^$BASE_NAME|BlackHole|" \
       --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
       -pczf $PACKAGES_DIR/$PACKAGE_FILE_NAME.tar.gz \
       -C "$PARENT_DIR" \
@@ -172,7 +172,7 @@ done
 if [ "$CREATE_DEBIAN_PACKAGE" = "yes" ]; then
 # Create .deb package
 
-for DEBIAN_ZIP_PACKAGE in $PACKAGES_DIR/Wasabi*linux*.zip; do
+for DEBIAN_ZIP_PACKAGE in $PACKAGES_DIR/BlackHole*linux*.zip; do
 
 # Combine paths
 CURRENT_ARCH=$(echo "$DEBIAN_ZIP_PACKAGE" | grep -o 'arm64\|x64')
@@ -200,7 +200,7 @@ mkdir -p $DEBIAN_BIN
 mkdir -p $DEBIAN_USR/share/{applications,icons/hicolor}
 
 # Copy icon files
-for ICON_FILE in ./Contrib/Assets/WasabiLogo*.png; do
+for ICON_FILE in ./Contrib/Assets/BlackHoleLogo*.png; do
   SIZE=$(echo "$ICON_FILE" | grep -oP '\d+')
   ICON_DIR="$DEBIAN_USR/share/icons/hicolor/${SIZE}x${SIZE}/apps"
   mkdir -p "$ICON_DIR"
@@ -214,35 +214,36 @@ DEBIAN_PACKAGE_SIZE=$(du -ks --apparent-size "${BUILD_DIR}/${DEBIAN_FULL_PLATFOR
 DEBIAN_CONTROL_FILE_CONTENT="Package: ${EXECUTABLE_NAME}
 Priority: optional
 Section: utils
-Maintainer: Wasabi Wallet Team
+Maintainer: Black Hole Contributors
 Version: ${VERSION}
-Homepage: https://wasabiwallet.io
-Vcs-Git: git://github.com/WalletWasabi/WalletWasabi.git
-Vcs-Browser: https://github.com/WalletWasabi/WalletWasabi
+Homepage: https://github.com/Kruwed/BlackHole
+Vcs-Git: https://github.com/Kruwed/BlackHole.git
+Vcs-Browser: https://github.com/Kruwed/BlackHole
 Architecture: ${DEBIAN_CONTROL_FILE_ARCHITECTURE}
 License: Open Source (MIT)
 Installed-Size: ${DEBIAN_PACKAGE_SIZE}
 Recommends: policykit-1
 Description: open-source, non-custodial, privacy focused Bitcoin wallet
-  Built-in Tor, coinjoin, and coin control features."
+  Talks only to the user's Bitcoin node. Built-in Tor, coinjoin, and coin control features.
+  A fork of Wasabi Wallet."
 
 echo "${DEBIAN_CONTROL_FILE_CONTENT}" > $DEBIAN/control
 
 USR_LOCAL_BIN_DIR="/usr/local/bin"
-INSTALL_DIR="${USR_LOCAL_BIN_DIR}/wasabiwallet"
+INSTALL_DIR="${USR_LOCAL_BIN_DIR}/blackholewallet"
 
 # Create the desktop file content
 DEBIAN_DESKTOP_CONTENT="[Desktop Entry]
 Type=Application
-Name=Wasabi Wallet
-StartupWMClass=Wasabi Wallet
+Name=Black Hole
+StartupWMClass=Black Hole
 GenericName=Bitcoin Wallet
 Comment=Privacy focused Bitcoin wallet.
 Icon=${EXECUTABLE_NAME}
 Terminal=false
 Exec=${EXECUTABLE_NAME}
 Categories=Office;Finance;
-Keywords=bitcoin;wallet;crypto;blockchain;wasabi;privacy;anon;awesome;"
+Keywords=bitcoin;wallet;crypto;blockchain;blackhole;privacy;anon;coinjoin;"
 
 # Write the content to the file
 DEBIAN_DESKTOP="${DEBIAN_USR}/share/applications/${EXECUTABLE_NAME}.desktop"
@@ -250,7 +251,7 @@ echo "${DEBIAN_DESKTOP_CONTENT}" > $DEBIAN_DESKTOP
 chmod 0644 $DEBIAN_DESKTOP
 
 # Copy the build to into the debian package structure
-cp -a "${BUILD_DIR}/${DEBIAN_FULL_PLATFORM_NAME}" $DEBIAN_BIN/wasabiwallet
+cp -a "${BUILD_DIR}/${DEBIAN_FULL_PLATFORM_NAME}" $DEBIAN_BIN/blackholewallet
 
 # Create wrapper scripts
 echo "#!/usr/bin/env sh
@@ -260,14 +261,14 @@ echo "#!/usr/bin/env sh
 \"${INSTALL_DIR}/${EXECUTABLE_NAME}d\" \"\$@\"" > ${DEBIAN_BIN}/${EXECUTABLE_NAME}d
 
 # Remove execution to everything except for executables and their wrapper scripts
-chmod 0755 ${DEBIAN_BIN}/wasabiwallet
-find ${DEBIAN_BIN}/wasabiwallet -type f -exec chmod 644 {} \;
-find ${DEBIAN_BIN}/wasabiwallet -type d -not -path ${DEBIAN_BIN}/wasabiwallet -exec chmod 755 {} \;
-chmod 0755 ${DEBIAN_BIN}/wasabiwallet/${EXECUTABLE_NAME}{,d}
+chmod 0755 ${DEBIAN_BIN}/blackholewallet
+find ${DEBIAN_BIN}/blackholewallet -type f -exec chmod 644 {} \;
+find ${DEBIAN_BIN}/blackholewallet -type d -not -path ${DEBIAN_BIN}/blackholewallet -exec chmod 755 {} \;
+chmod 0755 ${DEBIAN_BIN}/blackholewallet/${EXECUTABLE_NAME}{,d}
 chmod 0755 ${DEBIAN_BIN}/${EXECUTABLE_NAME}{,d}
 
 # Make the bundled Tor binary executable
-DEBIAN_BUNDLED_BINARIES="${DEBIAN_BIN}/wasabiwallet/BundledApps/Binaries/${DEBIAN_FULL_PLATFORM_NAME}"
+DEBIAN_BUNDLED_BINARIES="${DEBIAN_BIN}/blackholewallet/BundledApps/Binaries/${DEBIAN_FULL_PLATFORM_NAME}"
 chmod 0755 "${DEBIAN_BUNDLED_BINARIES}/Tor/tor"
 
 if [[ "$PACKAGE_COORDINATOR" == "yes" ]]; then
@@ -276,7 +277,7 @@ if [[ "$PACKAGE_COORDINATOR" == "yes" ]]; then
   \"${INSTALL_DIR}/${COORDINATOR_EXECUTABLE_NAME}\" \"\$@\"" > ${DEBIAN_BIN}/${COORDINATOR_EXECUTABLE_NAME}
 
   # Remove execution to everything except for executables and their wrapper scripts
-  chmod 0755 ${DEBIAN_BIN}/wasabiwallet/${COORDINATOR_EXECUTABLE_NAME}
+  chmod 0755 ${DEBIAN_BIN}/blackholewallet/${COORDINATOR_EXECUTABLE_NAME}
   chmod 0755 ${DEBIAN_BIN}/${COORDINATOR_EXECUTABLE_NAME}
 
 fi
@@ -332,7 +333,7 @@ popd || exit
 
 APPIMAGETOOL="$APPIMAGETOOL_DIR/appimagetool"
 
-for LINUX_ZIP_PACKAGE in $PACKAGES_DIR/Wasabi*linux*.zip; do
+for LINUX_ZIP_PACKAGE in $PACKAGES_DIR/BlackHole*linux*.zip; do
 
 # Determine architecture from package name
 CURRENT_ARCH=$(echo "$LINUX_ZIP_PACKAGE" | grep -o 'arm64\|x64')
@@ -363,7 +364,7 @@ mkdir -p "$APPDIR_USR/share/icons/hicolor"
 cp -a "${BUILD_DIR}/${APPIMAGE_FULL_PLATFORM_NAME}/." "$APPDIR_BIN/"
 
 # Copy icon files to AppDir
-for ICON_FILE in ./Contrib/Assets/WasabiLogo*.png; do
+for ICON_FILE in ./Contrib/Assets/BlackHoleLogo*.png; do
   SIZE=$(echo "$ICON_FILE" | grep -oP '\d+')
   ICON_DIR="$APPDIR_USR/share/icons/hicolor/${SIZE}x${SIZE}/apps"
   mkdir -p "$ICON_DIR"
@@ -371,20 +372,20 @@ for ICON_FILE in ./Contrib/Assets/WasabiLogo*.png; do
 done
 
 # Copy the 256x256 icon to the root of AppDir (required by AppImage spec)
-cp "./Contrib/Assets/WasabiLogo256.png" "$APPDIR/$EXECUTABLE_NAME.png"
+cp "./Contrib/Assets/BlackHoleLogo256.png" "$APPDIR/$EXECUTABLE_NAME.png"
 
 # Create the desktop file
 APPIMAGE_DESKTOP_CONTENT="[Desktop Entry]
 Type=Application
-Name=Wasabi Wallet
-StartupWMClass=Wasabi Wallet
+Name=Black Hole
+StartupWMClass=Black Hole
 GenericName=Bitcoin Wallet
 Comment=Privacy focused Bitcoin wallet.
 Icon=${EXECUTABLE_NAME}
 Terminal=false
 Exec=${EXECUTABLE_NAME}
 Categories=Office;Finance;
-Keywords=bitcoin;wallet;crypto;blockchain;wasabi;privacy;anon;awesome;"
+Keywords=bitcoin;wallet;crypto;blockchain;blackhole;privacy;anon;coinjoin;"
 
 echo "${APPIMAGE_DESKTOP_CONTENT}" > "$APPDIR/$EXECUTABLE_NAME.desktop"
 chmod 0644 "$APPDIR/$EXECUTABLE_NAME.desktop"
@@ -435,27 +436,6 @@ for FILE in ./*; do
   gpg --armor --detach-sign --output "$FILE.asc" "$FILE"
 done
 gpg --sign --digest-algo sha256 -a --clearsign --armor --output SHA256SUMS.asc SHA256SUMS
-
-echo "
-#r \"nuget:NBitcoin\"
-open System
-open System.IO
-open System.Security.Cryptography
-open NBitcoin
-
-let args = Environment.GetCommandLineArgs()
-let wasabiPrivateKey = Key.Parse(args[3], Network.Main)
-args[2]
-|> File.ReadAllBytes
-|> SHA256.HashData
-|> uint256
-|> wasabiPrivateKey.Sign
-|> _.ToDER()
-|> Convert.ToBase64String
-|> Console.WriteLine
-" > signer.fsx
-dotnet fsi signer.fsx SHA256SUMS.asc $SIGNING_WASABI_KEY > SHA256SUMS.wasabisig
-rm signer.fsx
 
 popd || exit
 fi

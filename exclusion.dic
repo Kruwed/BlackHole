@@ -65,7 +65,7 @@ async
 wpkh
 sats
 args
-wassabee
+blackhole
 Metaco
 Circ
 Trezor
@@ -154,7 +154,6 @@ serializer
 regtest
 newtonsoft
 anonscore
-wasabisig
 privkey
 linux
 digicert
@@ -272,7 +271,7 @@ splitted
 onlybinaries
 generatekeys
 appleid
-wassabeed
+blackholed
 bitcoind'
 optin
 getfeerates

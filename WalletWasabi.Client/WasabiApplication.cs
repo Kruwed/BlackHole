@@ -29,7 +29,7 @@ public class WasabiApplication
 		Directory.CreateDirectory(Config.DataDir);
 		SetupLogger();
 		Config = new Config(LoadOrCreateConfigs(), wasabiAppBuilder.Arguments);
-		Logger.LogDebug($"Wasabi was started with these argument(s): {string.Join(" ", AppConfig.Arguments.DefaultIfEmpty("none"))}.");
+		Logger.LogDebug($"Black Hole was started with these argument(s): {string.Join(" ", AppConfig.Arguments.DefaultIfEmpty("none"))}.");
 
 		Global = new Global(Config.DataDir, Config);
 		SingleInstanceChecker = new(Config.DataDir);
@@ -114,7 +114,7 @@ public class WasabiApplication
 
 			if (!isFirst)
 			{
-				Logger.LogCritical($"Wasabi is already running. Please stop the other instance first.");
+				Logger.LogCritical("Black Hole is already running. Please stop the other instance first.");
 				return ExitCode.FailedAlreadyRunningError;
 			}
 		}

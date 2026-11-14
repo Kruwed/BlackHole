@@ -15,7 +15,7 @@
     </DockPanel>
 
     <DockPanel>
-      <TextBlock Text="Run Wasabi when computer starts" />
+      <TextBlock Text="Run Black Hole when computer starts" />
       <ToggleSwitch IsChecked="{Binding Settings.RunOnSystemStartup}" />
     </DockPanel>
 

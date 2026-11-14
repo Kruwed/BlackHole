@@ -14,11 +14,11 @@
       <DockPanel LastChildFill="True">
         <Viewbox DockPanel.Dock="Top" Margin="25,25,25,50" Width="112" VerticalAlignment="Center"
                  HorizontalAlignment="Center">
-          <Image Source="{DynamicResource wasabi_logo_dynamic}" />
+          <Image Source="{DynamicResource app_logo_dynamic}" />
         </Viewbox>
         <Viewbox ClipToBounds="False" DockPanel.Dock="Top" Width="220" VerticalAlignment="Center"
                  HorizontalAlignment="Center">
-          <ContentControl Template="{DynamicResource wasabi_logo_text_dynamic}"
+          <ContentControl Template="{DynamicResource app_logo_text_dynamic}"
                           VerticalAlignment="Center" ClipToBounds="False" />
         </Viewbox>
         <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Orientation="Vertical" Margin="0,5,0,50" Opacity="0.5">
@@ -75,6 +75,9 @@
               </ItemsControl.DataTemplates>
             </ItemsControl>
           </StackPanel>
+          <!-- Origin -->
+          <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0 0 0 10"
+                     Text="Black Hole is a fork of Wasabi Wallet." />
           <!-- License -->
           <DockPanel HorizontalAlignment="Center" DockPanel.Dock="Top">
             <TextBlock Margin=" 0 0 0 -0.5"

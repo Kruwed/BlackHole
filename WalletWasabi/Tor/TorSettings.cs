@@ -14,15 +14,16 @@ public record TorSettings
 	/// <summary>Tor binary file name without extension.</summary>
 	public const string TorBinaryFileName = "tor";
 
-	/// <summary>Default port assigned to Tor SOCKS5 for the Wasabi's bundled Tor.</summary>
-	public const int DefaultSocksPort = 37150;
+	/// <summary>Default port assigned to Tor SOCKS5 for the bundled Tor.</summary>
+	/// <remarks>Wasabi Wallet uses 37150 and 37151. The ports differ so that the application never takes the Tor of a Wasabi Wallet running on the same computer for its own.</remarks>
+	public const int DefaultSocksPort = 37250;
 
-	/// <summary>Default port assigned to Tor control for the Wasabi's bundled Tor.</summary>
-	public const int DefaultControlPort = 37151;
+	/// <summary>Default port assigned to Tor control for the bundled Tor.</summary>
+	public const int DefaultControlPort = 37251;
 
 	public TorSettings(
 		string dataDir,
-		string wasabiInstallationFolderPath,
+		string installationFolderPath,
 		bool terminateOnExit,
 		TorMode torMode = TorMode.Enabled,
 		int socksPort = DefaultSocksPort,
@@ -35,15 +36,15 @@ public record TorSettings
 		DataDir = dataDir;
 		IsCustomTorFolder = torFolder is not null;
 
-		bool defaultWasabiTorPorts = socksPort == DefaultSocksPort && controlPort == DefaultControlPort;
+		bool defaultTorPorts = socksPort == DefaultSocksPort && controlPort == DefaultControlPort;
 
-		if (defaultWasabiTorPorts)
+		if (defaultTorPorts)
 		{
 			// Use different ports when user overrides Tor folder to avoid accessing the same control_auth_cookie file.
 			if (IsCustomTorFolder)
 			{
-				socksPort = 37152;
-				controlPort = 37153;
+				socksPort = 37252;
+				controlPort = 37253;
 			}
 			else if (torMode == TorMode.EnabledOnlyRunning)
 			{
@@ -68,20 +69,20 @@ public record TorSettings
 
 		if (torMode == TorMode.EnabledOnlyRunning && terminateOnExit)
 		{
-			Logger.LogWarning("Wasabi is instructed to use a running Tor process. Terminate on exit was disabled.");
+			Logger.LogWarning("Black Hole is instructed to use a running Tor process. Terminate on exit was disabled.");
 		}
 
 		TorMode = torMode;
 		TerminateOnExit = TorMode != TorMode.EnabledOnlyRunning && terminateOnExit;
 
 		Log = log;
-		_geoIpPath = Path.Combine(wasabiInstallationFolderPath, "Tor", "Geoip", "geoip");
-		_geoIp6Path = Path.Combine(wasabiInstallationFolderPath, "Tor", "Geoip", "geoip6");
+		_geoIpPath = Path.Combine(installationFolderPath, "Tor", "Geoip", "geoip");
+		_geoIp6Path = Path.Combine(installationFolderPath, "Tor", "Geoip", "geoip6");
 	}
 
 	public TorMode TorMode { get; }
 
-	/// <summary>Full directory path where Wasabi user's profile data is stored.</summary>
+	/// <summary>Full directory path where the user's profile data is stored.</summary>
 	private string DataDir { get; }
 
 	/// <summary><c>true</c> if user specified a custom Tor folder to run a (possibly) different Tor binary than the bundled Tor, <c>false</c> otherwise.</summary>
@@ -99,7 +100,7 @@ public record TorSettings
 	/// <summary>Full path. Directory may not necessarily exist.</summary>
 	public string LogFilePath { get; }
 
-	/// <summary>Whether Tor should be terminated when Wasabi Wallet terminates.</summary>
+	/// <summary>Whether Tor should be terminated when the application terminates.</summary>
 	public bool TerminateOnExit { get; }
 
 	/// <summary>Array of bridges to use.</summary>
@@ -119,7 +120,7 @@ public record TorSettings
 	public string TorBinaryFilePath { get; }
 
 	/// <summary>Full path to Tor cookie file.</summary>
-	/// <remarks>The default port pair keeps the historical file name so that a Tor instance left running by a previous Wasabi version can still be used after an upgrade.</remarks>
+	/// <remarks>The file name tells the port pair, except for the default one, so that Tor instances started with different ports do not share a cookie.</remarks>
 	public string CookieAuthFilePath => SocksPort == DefaultSocksPort && ControlPort == DefaultControlPort
 		? Path.Combine(DataDir, "control_auth_cookie")
 		: Path.Combine(DataDir, $"control_auth_cookie_{SocksPort}_{ControlPort}");

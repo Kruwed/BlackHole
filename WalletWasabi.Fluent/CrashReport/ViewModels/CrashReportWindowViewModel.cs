@@ -31,11 +31,11 @@ public class CrashReportWindowViewModel : ViewModelBase
 
 	public ICommand CopyTraceCommand { get; }
 
-	public string Caption => $"A problem has occurred and Wasabi is unable to continue.";
+	public string Caption => "A problem has occurred and Black Hole is unable to continue.";
 
 	public string Link => AboutViewModel.BugReportLink;
 
 	public string Trace => SerializedException.ToString();
 
-	public string Title => "Wasabi has crashed";
+	public string Title => "Black Hole has crashed";
 }

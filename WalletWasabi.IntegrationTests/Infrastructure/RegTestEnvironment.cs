@@ -215,7 +215,7 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 
 	private static string GetWorkDir(string callerFilePath, string callerMemberName)
 	{
-		var dataDir = EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "IntegrationTests"));
+		var dataDir = EnvironmentHelpers.GetDataDir(Path.Combine(Constants.DataFolderName, "IntegrationTests"));
 		return Path.Combine(dataDir, EnvironmentHelpers.ExtractFileName(callerFilePath), callerMemberName);
 	}
 

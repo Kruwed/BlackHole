@@ -23,7 +23,7 @@ public class App : Application
 
 	public App()
 	{
-		Name = "Wasabi Wallet";
+		Name = WalletWasabi.Helpers.Constants.AppName;
 	}
 
 	public App(Func<Task> backendInitializeAsync, bool startInBg) : this()

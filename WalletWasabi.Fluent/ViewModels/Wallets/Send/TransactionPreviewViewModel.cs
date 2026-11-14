@@ -230,7 +230,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 				await ShowErrorAsync(
 					"Transaction Building",
 					"All the selected coins are being spent by a coinjoin right now. Select other coins or try again once the coinjoin has finished.",
-					"Wasabi was unable to create your transaction.");
+					"Black Hole was unable to create your transaction.");
 
 				return false;
 			}
@@ -264,7 +264,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			await ShowErrorAsync(
 				"Transaction Building",
 				"The transaction cannot be sent because its fee is more than the payment amount.",
-				"Wasabi was unable to create your transaction.");
+				"Black Hole was unable to create your transaction.");
 
 			return null;
 		}
@@ -278,7 +278,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			await ShowErrorAsync(
 				"Transaction Building",
 				"The selected coins are not enough to cover the payment and the transaction fee. Go back and select more coins or lower the amount.",
-				"Wasabi was unable to create your transaction.");
+				"Black Hole was unable to create your transaction.");
 
 			return null;
 		}
@@ -289,7 +289,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			await ShowErrorAsync(
 				"Transaction Building",
 				ex.ToUserFriendlyString(),
-				"Wasabi was unable to create your transaction.");
+				"Black Hole was unable to create your transaction.");
 
 			return null;
 		}
@@ -405,7 +405,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			await ShowErrorAsync(
 				"Transaction",
 				ex.ToUserFriendlyString(),
-				"Wasabi was unable to send your transaction.");
+				"Black Hole was unable to send your transaction.");
 		}
 		finally
 		{

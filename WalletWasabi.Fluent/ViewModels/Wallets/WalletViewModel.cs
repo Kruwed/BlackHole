@@ -26,8 +26,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets;
 [AppLifetime]
 public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 {
-	public static string FindCoordinatorLink { get; } = "https://docs.wasabiwallet.io/FAQ/FAQ-UseWasabi.html#how-do-i-find-a-coordinator";
-
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _isCoinJoining;
 
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _isLoading;
@@ -167,8 +165,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			}
 		});
 
-		CoordinatorHelpCommand = ReactiveCommand.CreateFromTask(() => UiContext.OpenBrowserAsync("https://docs.wasabiwallet.io/FAQ/FAQ-UseWasabi.html#how-do-i-find-a-coordinator"));
-
 		NavigateToExcludedCoinsCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().ExcludedCoins(WalletModel));
 
 		Tiles = GetTiles().ToList();
@@ -209,8 +205,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	public ICommand CoinJoinPaymentsCommand { get; private set; }
 
 	public ICommand NavigateToCoordinatorSettingsCommand { get; }
-
-	public ICommand CoordinatorHelpCommand { get; }
 
 	public ICommand NavigateToExcludedCoinsCommand { get; }
 

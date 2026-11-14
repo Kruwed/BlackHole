@@ -6,15 +6,19 @@ namespace WalletWasabi.Fluent.Helpers;
 
 public static class LinuxStartupHelper
 {
-	public static async Task AddOrRemoveDesktopFileAsync(bool runOnSystemStartup)
-	{
-		string pathToDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "autostart");
-		string pathToDesktopFile = Path.Combine(pathToDir, "Wasabi.desktop");
+	public const string DesktopFileName = "BlackHole.desktop";
 
-		IoHelpers.EnsureContainingDirectoryExists(pathToDesktopFile);
+	/// <summary>The folder of the desktop files that the desktop environment starts when the user logs in.</summary>
+	public static string DefaultAutostartDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "autostart");
+
+	public static async Task AddOrRemoveDesktopFileAsync(bool runOnSystemStartup, string? autostartDirectory = null)
+	{
+		string pathToDesktopFile = Path.Combine(autostartDirectory ?? DefaultAutostartDirectory, DesktopFileName);
 
 		if (runOnSystemStartup)
 		{
+			IoHelpers.EnsureContainingDirectoryExists(pathToDesktopFile);
+
 			string pathToExec = EnvironmentHelpers.GetExecutablePath();
 
 			string pathToExecWithArgs = $"{pathToExec} {StartupHelper.SilentArgument}";
@@ -33,7 +37,7 @@ public static class LinuxStartupHelper
 
 			await File.WriteAllTextAsync(pathToDesktopFile, fileContents).ConfigureAwait(false);
 		}
-		else
+		else if (File.Exists(pathToDesktopFile))
 		{
 			File.Delete(pathToDesktopFile);
 		}

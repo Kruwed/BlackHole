@@ -11,18 +11,18 @@
 
 	<PropertyGroup>
 		<NeutralLanguage>en-US</NeutralLanguage>
-		<AssemblyTitle>Wasabi Wallet Daemon</AssemblyTitle>
+		<AssemblyTitle>Black Hole Daemon</AssemblyTitle>
 		<Description>
-			Open-source, non-custodial, privacy focused Bitcoin wallet for Windows, Linux, and Mac. Built-in Tor, coinjoin, and coin control features.
+			Open-source, non-custodial, privacy focused Bitcoin wallet for Linux that talks only to the user's Bitcoin node. Built-in Tor, coinjoin, and coin control features. A fork of Wasabi Wallet.
 		</Description>
 		<Copyright>MIT</Copyright>
 		<PackageId>WalletWasabi.Daemon</PackageId>
 		<PackageTags>bitcoin-wallet;privacy;bitcoin;dotnet;nbitcoin;cross-platform;zerolink;wallet;wabisabi;coinjoin;tor</PackageTags>
-		<PackageProjectUrl>https://github.com/WalletWasabi/WalletWasabi/</PackageProjectUrl>
-		<PackageLicenseUrl>https://github.com/WalletWasabi/WalletWasabi/blob/master/LICENSE.md</PackageLicenseUrl>
+		<PackageProjectUrl>https://github.com/Kruwed/BlackHole/</PackageProjectUrl>
+		<PackageLicenseUrl>https://github.com/Kruwed/BlackHole/blob/master/LICENSE.md</PackageLicenseUrl>
 		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/WalletWasabi/WalletWasabi/</RepositoryUrl>
-		<Product>Wasabi Wallet Daemon</Product>
+		<RepositoryUrl>https://github.com/Kruwed/BlackHole/</RepositoryUrl>
+		<Product>Black Hole Daemon</Product>
 	</PropertyGroup>
 
 	<ItemGroup>

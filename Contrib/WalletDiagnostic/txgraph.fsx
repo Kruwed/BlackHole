@@ -6,15 +6,13 @@ open System.Net.Http
 open Common
 
 let args = Environment.GetCommandLineArgs()
-let walletname = args[2]
-let firstTxId = args[3] 
+let firstTxId = args[2]
 
-let getCoins (walletName: string) = 
-    walletName
-    |> Rpc.getListOfCoins
+let getCoins () =
+    Rpc.getListOfCoins ()
     |> Array.skipWhile (fun x -> x.Txid <> firstTxId)
 
-let coins = getCoins walletname
+let coins = getCoins ()
 
 let coinsGroupedByTx =
     coins

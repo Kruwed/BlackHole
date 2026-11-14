@@ -84,7 +84,7 @@ public class Config
 			[nameof(TorSocksPort)] = "Tor is started to listen with the specified SOCKS5 port",
 			[nameof(TorControlPort)] = "Tor is started to listen with the specified control port",
 			[nameof(TorBridges)] = "Tor is started with the set of specified bridges",
-			[nameof(TerminateTorOnExit)] = "Stop the Tor process when Wasabi is closed",
+			[nameof(TerminateTorOnExit)] = "Stop the Tor process when Black Hole is closed",
 			[nameof(BitcoinRpcCredentialString)] = "Credentials for authenticating against the bitcoin node rpc server",
 			[nameof(BitcoinRpcUri)] = "The RPC interface of the user's Bitcoin node. It is the only source of blockchain data, fees and the only way transactions are broadcast",
 			[nameof(JsonRpcServerEnabled)] = "Start the Json RPC Server and accept requests",
@@ -99,7 +99,7 @@ public class Config
 			[nameof(CoordinatorIdentifier)] = "-",
 			[nameof(MaxCoinjoinMiningFeeRate)] = "Max mining fee rate in sat/vB the client is willing to pay to participate into a round",
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
-			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Wasabi before dropping them",
+			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 		};
 	private Dictionary<string, IValue> Data { get; }
@@ -137,7 +137,7 @@ public class Config
 
 	public static string DataDir { get; } = GetStringValue(
 		"datadir",
-		EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "Client")),
+		EnvironmentHelpers.GetDataDir(Path.Combine(Constants.DataFolderName, "Client")),
 		Environment.GetCommandLineArgs()).EffectiveValue;
 
 	public static string LogLevel { get; } = GetStringValue("loglevel", "", Environment.GetCommandLineArgs()).EffectiveValue;
@@ -370,7 +370,7 @@ public class Config
 
 	private static bool GetEnvironmentVariable(string key, [NotNullWhen(true)] out string? envValue)
 	{
-		string envKey = $"WASABI_{key.ToUpperInvariant()}";
+		string envKey = $"BLACKHOLE_{key.ToUpperInvariant()}";
 
 		if (EnvironmentVariables.Contains(envKey))
 		{

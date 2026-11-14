@@ -7,11 +7,12 @@ public static class StartupHelper
 {
 	public const string SilentArgument = "startsilent";
 
-	public static async Task ModifyStartupSettingAsync(bool runOnSystemStartup)
+	/// <param name="autostartDirectory">The folder of the desktop file; the one of the desktop environment when it is not given.</param>
+	public static async Task ModifyStartupSettingAsync(bool runOnSystemStartup, string? autostartDirectory = null)
 	{
 		try
 		{
-			await LinuxStartupHelper.AddOrRemoveDesktopFileAsync(runOnSystemStartup).ConfigureAwait(false);
+			await LinuxStartupHelper.AddOrRemoveDesktopFileAsync(runOnSystemStartup, autostartDirectory).ConfigureAwait(false);
 		}
 		catch (Exception ex)
 		{

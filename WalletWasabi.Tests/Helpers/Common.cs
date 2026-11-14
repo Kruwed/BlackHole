@@ -8,7 +8,7 @@ namespace WalletWasabi.Tests.Helpers;
 
 public static class Common
 {
-	public static string DataDir => EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "Tests"));
+	public static string DataDir => EnvironmentHelpers.GetDataDir(Path.Combine(Constants.DataFolderName, "Tests"));
 
 	public static string GetWorkDir([CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "")
 	{

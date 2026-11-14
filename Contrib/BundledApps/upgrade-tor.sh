@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #!nix-shell -i bash -p _7zz
 #
-# Downloads, extracts and upgrades Tor from Tor Browser binaries for Wasabi Wallet
+# Downloads, extracts and upgrades Tor from Tor Browser binaries for Black Hole
 #
 # Requirements:
 #   - bash
@@ -17,7 +17,7 @@ shopt -s extglob nullglob
 # ──────────────────────────────────────────────────────────────────────────────
 show_help() {
     cat << 'EOF'
-Downloads, extracts and upgrades Tor from Tor Browser binaries for Wasabi Wallet
+Downloads, extracts and upgrades Tor from Tor Browser binaries for Black Hole
 
 Usage:
     ./upgrade-tor.sh <version> [OPTIONS]

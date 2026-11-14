@@ -1,17 +1,17 @@
 ## Release Highlights
 
-#### ❗ Security updates
-#### 🔧 Improved coinjoin stability
-#### 🌙 Payjoin discontinued
+#### A fork of Wasabi Wallet
+#### Only your own Bitcoin node
+#### One Taproot wallet, backed up with SLIP39 shares
 
 ## Release Summary
-Wasabi Wallet v2.8.5 includes security updates and polishes the coinjoin feature.
+Black Hole is a fork of Wasabi Wallet that keeps its Tor integration and its coinjoins and gets everything else from your own Bitcoin node.
 
-### ❗ Security updates
-Updates dependencies to address disclosed vulnerabilities & adds stricter transaction verification to protect against malicious servers.
+### A fork of Wasabi Wallet
+Black Hole builds on the Tor integration and the coinjoin implementation of Wasabi Wallet. Hardware wallets, fiat exchange rates, labels, the scripting language, multiple wallets and the Windows and macOS versions were removed.
 
-### 🔧 Improved coinjoin stability
-Fixes an edge case where clients would fail to construct outputs. Inputs from partially signed coinjoins containing payments are now prioritized for the next round. Amounts below 10,000 sats can no longer be queued for coinjoin payments and get stuck.
+### Only your own Bitcoin node
+The wallet reads the blocks, the unconfirmed transactions and the fee estimations from the RPC interface of your Bitcoin node and broadcasts its transactions through it. Apart from the coinjoin coordinator that you choose, nobody else is contacted.
 
-### 🌙 Payjoin discontinued
-Support for sending BIP78 payjoin transactions was removed to reduce code complexity and attack surface.
+### One Taproot wallet, backed up with SLIP39 shares
+There is a single wallet. It is created and recovered with SLIP39 shares and generates Taproot addresses only. The password protects the wallet file on this computer; the shares alone recover the wallet.

@@ -371,11 +371,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new AddedWalletPageViewModel(UiContext, walletSettings, options), navigationMode);
 	}
 
-	public void UserSupport(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new UserSupportViewModel(UiContext), navigationMode);
-	}
-
 	public FluentDialog<bool> NewCoordinatorConfirmationDialog(CoordinatorConnectionString coordinatorConnection, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new NewCoordinatorConfirmationDialogViewModel(UiContext, coordinatorConnection);
@@ -400,19 +395,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new MultiShareOptionsViewModel(UiContext, options), navigationMode);
 	}
 
-	public void FindCoordinatorLink(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new FindCoordinatorLinkViewModel(UiContext), navigationMode);
-	}
-
 	public void WalletSettings(IWalletModel walletModel, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new WalletSettingsViewModel(UiContext, walletModel), navigationMode);
-	}
-
-	public void DocsLink(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new DocsLinkViewModel(UiContext), navigationMode);
 	}
 
 	public FluentDialog<System.Reactive.Unit> WelcomePage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

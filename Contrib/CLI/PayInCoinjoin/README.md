@@ -84,7 +84,7 @@ The script: - Shows initial state - Starts coinjoin automatically - Detects when
 
 ## Setup
 
-#### Enable RPC in Wasabi's Config.json:
+#### Enable RPC in Config.json of Black Hole (`~/.blackhole/client/Config.json`):
 
 > "JsonRpcServerEnabled": true
 

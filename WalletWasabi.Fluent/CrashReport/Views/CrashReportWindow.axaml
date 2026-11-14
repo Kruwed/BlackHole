@@ -15,7 +15,7 @@
     <ContentArea EnableNext="True"
                           EnableCancel="True"
                           NextContent="Close"
-                          CancelContent="Restart Wasabi"
+                          CancelContent="Restart Black Hole"
                           FocusNext="True"
                           Title="{Binding Title}"
                           Caption="{Binding Caption}"

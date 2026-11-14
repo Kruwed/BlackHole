@@ -79,10 +79,10 @@ public static class EnvironmentHelpers
 	public static string GetExecutablePath()
 	{
 		var fullBaseDir = GetFullBaseDirectory();
-		var wassabeeFileName = Path.Combine(fullBaseDir, Constants.ExecutableName);
-		if (File.Exists(wassabeeFileName))
+		var executableFileName = Path.Combine(fullBaseDir, Constants.ExecutableName);
+		if (File.Exists(executableFileName))
 		{
-			return wassabeeFileName;
+			return executableFileName;
 		}
 		var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name ?? throw new NullReferenceException("Assembly or Assembly's Name was null.");
 		return Path.Combine(fullBaseDir, assemblyName);

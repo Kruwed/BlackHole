@@ -2,7 +2,7 @@
 
 ## What is RegTest?
 
-RegTest is a local network in which users can generate blocks and coins for testing. Running Wasabi in RegTest allows you to emulate network events and observe how Wasabi reacts. You don't need to download the blockchain.
+RegTest is a local network in which users can generate blocks and coins for testing. Running Black Hole in RegTest allows you to emulate network events and observe how Black Hole reacts. You don't need to download the blockchain.
 
 ## Bitcoin Core Setup
 
@@ -12,7 +12,7 @@ RegTest is a local network in which users can generate blocks and coins for test
     `-datadir` using example:
 
     ```
-     ~/bitcoin-[version number]/bin/bitcoin-qt -regtest -blockfilterindex -txindex -datadir=$HOME/.bitcoin/
+     ~/bitcoin-[version number]/bin/bitcoin-qt -regtest -txindex -datadir=$HOME/.bitcoin/
     ```
 
 4. Go to Bitcoin data directory.
@@ -52,20 +52,22 @@ RegTest is a local network in which users can generate blocks and coins for test
 
 You can force rebuilding the txindex with the `-reindex` command line argument. Bitcoin Core needs to be running during the next steps.
 
-# Wasabi Setup
+# Black Hole Setup
 
-Here you will have to build from source, follow [these instructions here](https://github.com/WalletWasabi/WalletWasabi#build-from-source-code).
+Here you will have to build from source, follow [these instructions here](../README.md#build-and-run).
+
+[Contrib/Tests/regtest-coinjoin-test.sh](../Contrib/Tests/regtest-coinjoin-test.sh) does everything below by itself with a coordinator and several wallets.
 
 ## Coordinator Setup
 
-1. Go to `WalletWasabi\WalletWasabi.Coordinator` folder.
+1. Go to `WalletWasabi.Coordinator` folder.
 2. Open the command line and enter:
 `dotnet run`
 3. You will get some errors, but the data directory will be created.
 4. Stop the application if it is still running with CTRL-C.
 5. Go to the Coordinator folder:
     ```
-    /home/{your username}/.walletwasabi/coordinator
+    /home/{your username}/.blackhole/coordinator
     ```
 6. Edit these lines in `Config.json`:
     ```
@@ -77,22 +79,23 @@ Here you will have to build from source, follow [these instructions here](https:
 7. Go to WalletWasabi.Coordinator folder.
 8. Open the command line and enter:
 `dotnet run`
-9. Wasabi.Coordinator is now running in RegTest network
+9. The coordinator is now running in RegTest network
 
 ## Client Setup
 
-1. Go to `WalletWasabi\WalletWasabi.Fluent.Desktop` folder.
-2. Open the command line and run the Wasabi Client with:
-`dotnet run`
-3. Go to Settings/Bitcoin and set the network to RegTest
-4. Close Wasabi and restart it with:
-`dotnet run`
-5. Generate a wallet in Wasabi named: R1.
-6. Generate a receive address in Wasabi, now go to Bitcoin Core to the Send tab.
-7. Send 1 BTC to that address.
-8. Generate a wallet in Wasabi named: R2.
-9. Generate a receive address in Wasabi, now go to Bitcoin Core to the Send tab.
-10. Send 1 BTC to that address.
-11. Now let the coinjoin happen automatically in both wallets.
-12. If you see `Waiting for confirmed funds` in the music box you can generate a block in Bitcoin Core to continue coinjoining:
+There is a single wallet in a data directory, and a coinjoin needs several participants, so every wallet runs in a client of its own with its own data directory.
+
+1. Go to `WalletWasabi.Fluent.Desktop` folder.
+2. Open the command line and run the first client with:
+`dotnet run -- --network=regtest --datadir=$HOME/.blackhole/regtest1 --bitcoinrpccredentialstring=rpcuser:rpcpassword`
+3. Create the wallet and write down its SLIP39 shares.
+4. Generate a receive address in Black Hole, now go to Bitcoin Core to the Send tab.
+5. Send 1 BTC to that address.
+6. Do the same with a second client and `--datadir=$HOME/.blackhole/regtest2`.
+7. Generate a block in Bitcoin Core so that the coins are confirmed:
 `generatetoaddress 1 <replace_new_address_here>`
+8. Now start the coinjoin in both wallets.
+9. If you see `Waiting for confirmed funds` in the music box you can generate a block in Bitcoin Core to continue coinjoining:
+`generatetoaddress 1 <replace_new_address_here>`
+
+On RegTest the clients use the coordinator at `http://localhost:37126/` unless another one is set.

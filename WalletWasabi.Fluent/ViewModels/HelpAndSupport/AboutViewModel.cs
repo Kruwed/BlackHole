@@ -6,16 +6,15 @@ using WalletWasabi.Helpers;
 namespace WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 
 [NavigationMetaData(
-	Title = "About Wasabi",
-	Caption = "Display Wasabi's current info",
+	Title = "About Black Hole",
+	Caption = "Display Black Hole's current info",
 	IconName = "info_regular",
 	Order = 4,
 	Category = "Help & Support",
 	Keywords = new[]
 	{
-			"About", "Software", "Version", "Source", "Code", "Github", "Website", "Coordinator", "Status", "Stats", "Tor", "Onion",
-			"User", "Support", "Bug", "Report", "FAQ", "Questions,", "Docs", "Documentation", "License", "Advanced", "Information",
-			"Hardware", "Wallet"
+			"About", "Software", "Version", "Source", "Code", "Github", "Bug", "Report", "License", "Information",
+			"Fork", "Wasabi", "Wallet"
 	},
 	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen)]
@@ -29,36 +28,8 @@ public partial class AboutViewModel : RoutableViewModel
 			{
 				new LinkViewModel(UiContext)
 				{
-					Link = DocsLink,
-					Description = "Documentation",
-					IsClickable = true
-				},
-				new SeparatorViewModel(UiContext),
-				new LinkViewModel(UiContext)
-				{
 					Link = SourceCodeLink,
 					Description = "Source Code (GitHub)",
-					IsClickable = true
-				},
-				new SeparatorViewModel(UiContext),
-				new LinkViewModel(UiContext)
-				{
-					Link = ClearnetLink,
-					Description = "Website (Clearnet)",
-					IsClickable = true
-				},
-				new SeparatorViewModel(UiContext),
-				new LinkViewModel(UiContext)
-				{
-					Link = TorLink,
-					Description = "Website (Tor)",
-					IsClickable = false
-				},
-				new SeparatorViewModel(UiContext),
-				new LinkViewModel(UiContext)
-				{
-					Link = UserSupportLink,
-					Description = "User Support",
 					IsClickable = true
 				},
 				new SeparatorViewModel(UiContext),
@@ -71,8 +42,8 @@ public partial class AboutViewModel : RoutableViewModel
 				new SeparatorViewModel(UiContext),
 				new LinkViewModel(UiContext)
 				{
-					Link = FAQLink,
-					Description = "FAQ",
+					Link = WasabiWalletLink,
+					Description = "Wasabi Wallet (GitHub)",
 					IsClickable = true
 				},
 			};
@@ -107,19 +78,12 @@ public partial class AboutViewModel : RoutableViewModel
 
 	public Version ClientVersion => Constants.ClientVersion;
 
-	public static string ClearnetLink => "https://wasabiwallet.io/";
+	public static string SourceCodeLink => "https://github.com/Kruwed/BlackHole/";
 
-	public static string TorLink => "http://wasabiukrxmkdgve5kynjztuovbg43uxcbcxn6y2okcrsg7gb6jdmbad.onion";
+	public static string BugReportLink => "https://github.com/Kruwed/BlackHole/issues/new?template=bug-report.md";
 
-	public static string SourceCodeLink => "https://github.com/WalletWasabi/WalletWasabi/";
+	/// <summary>The project Black Hole is a fork of.</summary>
+	public static string WasabiWalletLink => "https://github.com/WalletWasabi/WalletWasabi/";
 
-	public static string UserSupportLink => "https://github.com/WalletWasabi/WalletWasabi/discussions/5185";
-
-	public static string BugReportLink => "https://github.com/WalletWasabi/WalletWasabi/issues/new?template=bug-report.md";
-
-	public static string FAQLink => "https://docs.wasabiwallet.io/FAQ/";
-
-	public static string DocsLink => "https://docs.wasabiwallet.io/";
-
-	public static string LicenseLink => "https://github.com/WalletWasabi/WalletWasabi/blob/master/LICENSE.md";
+	public static string LicenseLink => "https://github.com/Kruwed/BlackHole/blob/master/LICENSE.md";
 }

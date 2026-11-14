@@ -13,7 +13,7 @@ public class CrashReportApp : Application
 
 	public CrashReportApp()
 	{
-		Name = "Wasabi Wallet Crash Report";
+		Name = "Black Hole Crash Report";
 	}
 
 	public CrashReportApp(SerializableException exception) : this()

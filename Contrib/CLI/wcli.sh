@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CONFIG="$HOME/.walletwasabi/client/Config.json"
+CONFIG="$HOME/.blackhole/client/Config.json"
 
 function config_extract() {
   jq -r "$1" "$CONFIG"

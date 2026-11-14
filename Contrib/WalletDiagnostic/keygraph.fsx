@@ -13,12 +13,8 @@ open Common
 type KeyInfo = { Path: string; State: int }
 
 
-let args = Environment.GetCommandLineArgs()
-let walletname = args[2]
-
-let getKeys (walletName: string) = 
-    walletName
-    |> Rpc.getListOfKeys 
+let getKeys () =
+    Rpc.getListOfKeys ()
     |> Array.map (fun x -> { Path=x.FullKeyPath; State=x.KeyState })
     |> List.ofArray
 
@@ -30,15 +26,14 @@ let filterByKeyPath (keys: KeyInfo list) (kp: string) =
 let stateToHeat (key: KeyInfo) =
     key.State
 
-let keys = getKeys walletname
-let intSegwit = filterByKeyPath keys "84'/1'/0'/1" |> List.map stateToHeat
-let extSegwit = filterByKeyPath keys "84'/1'/0'/0" |> List.map stateToHeat
+// The key paths are the ones of the test networks (coin type 1). On mainnet they are 86'/0'/0'/1 and 86'/0'/0'/0.
+let keys = getKeys ()
 let intTaproot= filterByKeyPath keys "86'/1'/0'/1" |> List.map stateToHeat
 let extTaproot= filterByKeyPath keys "86'/1'/0'/0" |> List.map stateToHeat
 
-let matrix = [ intSegwit; extSegwit; intTaproot; extTaproot ]
+let matrix = [ intTaproot; extTaproot ]
  
-let rownames = ["segwit Int"; "segwit Ext"; "taproot Int"; "taproot ext"]
+let rownames = ["taproot Int"; "taproot ext"]
 let colnames = []
 
 let heat =

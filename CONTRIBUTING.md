@@ -1,13 +1,10 @@
-# Contributing to Wasabi Wallet
+# Contributing to Black Hole
 
 ## How to be useful for the project
 
-- Any issue labelled as [good first issue](https://github.com/WalletWasabi/WalletWasabi/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) is good to start contributing to Wasabi.
 - Always focus on a specific issue in your pull request and avoid unrelated/unnecessary changes.
 - Avoid working on complex problems (fees, amount decomposition, coin selection...) without extensive research on the context, either on GitHub or asking to contributors.
 - Consider filing a new issue or explaining in an opened issue the change that you want to make, and wait for concept ACKs to work on the implementation.
-- Feel free to join the [Wasabi Slack Server](https://join.slack.com/t/tumblebit/shared_invite/enQtNjQ1MTQ2NzQ1ODI0LWIzOTg5YTM3YmNkOTg1NjZmZTQ3NmM1OTAzYmQyYzk1M2M0MTdlZDk2OTQwNzFiNTg1ZmExNzM0NjgzY2M0Yzg) to discuss with other contributors. 
-- [Community calls](https://meet.fulmo.org/community) are held on Mondays at 14:00 UTC, they can be used to ask questions, report a problem or just listen.
 
 ## Automatic code clean up
 
@@ -16,7 +13,7 @@
 **DO** use [CodeMaid](https://www.codemaid.net/), a Visual Studio extension to automatically clean up your code on saving the file.
 CodeMaid is a non-intrusive code cleanup tool.
 
-Wasabi's CodeMaid settings [can be found in the root of the repository](https://github.com/WalletWasabi/WalletWasabi/blob/master/CodeMaid.config). They are automatically picked up by Visual Studio when you open the project, assuming the CodeMaid extension is installed. Unfortunately CodeMaid has no Visual Studio Code extension yet. You can check out the progress on this [under this GitHub issue](https://github.com/codecadwallader/codemaid/issues/273).
+The CodeMaid settings [can be found in the root of the repository](CodeMaid.config). They are automatically picked up by Visual Studio when you open the project, assuming the CodeMaid extension is installed. Unfortunately CodeMaid has no Visual Studio Code extension yet. You can check out the progress on this [under this GitHub issue](https://github.com/codecadwallader/codemaid/issues/273).
 
 **Rider IDE:**
 
@@ -29,7 +26,7 @@ And also enable `Enable EditorConfig support` in `Settings -> Editor -> Code Sty
 
 ## .editorconfig
 
-Not only CodeMaid, but Visual Studio also enforces consistent coding style through [`.editorconfig`](https://github.com/WalletWasabi/WalletWasabi/blob/master/.editorconfig) file.
+Not only CodeMaid, but Visual Studio also enforces consistent coding style through [`.editorconfig`](.editorconfig) file.
 
 If you are using Visual Studio Code make sure to install "C# Dev Kit" extension and add the following settings to your settings file:
 
@@ -39,13 +36,14 @@ If you are using Visual Studio Code make sure to install "C# Dev Kit" extension 
 
 ## Technologies and scope
 
-- [.NET SDK](https://dotnet.microsoft.com/en-us/): free, open-source, cross-platform framework for building apps. SDK version path: [WalletWasabi/global.json](https://github.com/WalletWasabi/WalletWasabi/blob/master/global.json).
+- [.NET SDK](https://dotnet.microsoft.com/en-us/): free, open-source, cross-platform framework for building apps. SDK version path: [global.json](global.json).
 - [C#](https://dotnet.microsoft.com/en-us/languages/csharp): open-source programming language.
 - Model-View-ViewModel architecture (MVVM).
 - [Avalonia UI](https://www.avaloniaui.net/): framework to create cross-platform UI.
 - [xUnit](https://xunit.net/): create unit tests.
-- Dependencies path: [WalletWasabi/Directory.Packages.props](https://github.com/WalletWasabi/WalletWasabi/blob/master/Directory.Packages.props).
-- Developer's documentation path: [WalletWasabi/WalletWasabi.Documentation/](https://github.com/WalletWasabi/WalletWasabi/tree/master/WalletWasabi.Documentation).
+- Dependencies path: [Directory.Packages.props](Directory.Packages.props).
+- Developer's documentation path: [WalletWasabi.Documentation/](WalletWasabi.Documentation).
+- Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWasabi) and keeps the names of its projects and namespaces (`WalletWasabi.*`).
 
 # Code conventions
 
@@ -296,7 +294,7 @@ The ViewModel structure should reflect the UI structure as much as possible. Thi
 
 Examples:
 
- - ✔️ `MainViewModel` represents the Main Wasabi UI and references `NavBarViewModel`.
+ - ✔️ `MainViewModel` represents the Main UI and references `NavBarViewModel`.
  - ✔️ `NavBarViewModel` represents the left-side navigation bar and references `WalletListViewModel`.
  - ❌ `NavBarViewModel` code must NOT reference `MainViewModel` (its logical parent).
  - ❌ `WalletListViewModel` code must NOT reference `NavBarViewModel` (its logical parent).
@@ -304,9 +302,9 @@ Examples:
 
 ## UI Models
 
-The UI Model classes (which comprise the *Model* part of the MVVM pattern) sit as an abstraction layer between the UI and the larger Wasabi Object Model (which lives in the `WalletWasabi` project). This layer is responsible for:
+The UI Model classes (which comprise the *Model* part of the MVVM pattern) sit as an abstraction layer between the UI and the larger Object Model (which lives in the `WalletWasabi` project). This layer is responsible for:
 
- - Exposing Wasabi data and functionality in a UI-friendly manner. Usually in the form of Observables.
+ - Exposing data and functionality in a UI-friendly manner. Usually in the form of Observables.
 
  - Avoiding tight coupling between UI code and business logic. This is critical for testability of UI code, mainly ViewModels.
 

@@ -66,7 +66,7 @@ public class TerminateService
 	{
 		Logger.LogDebug("ProcessExit was called.");
 
-		// This must be a blocking call because after this the OS will terminate Wasabi process if exists.
+		// This must be a blocking call because after this the OS will terminate the process of the application if exists.
 		Terminate();
 	}
 

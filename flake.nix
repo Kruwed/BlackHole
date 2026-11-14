@@ -1,15 +1,14 @@
 {
-  description = "Wasabi Wallet flake";
+  description = "Black Hole flake";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   outputs = { self, nixpkgs }:
     let
         pkgs = import nixpkgs { system = "x86_64-linux"; config.permittedInsecurePackages = ["python3.13-ecdsa-0.19.1"]; };
         pkgsUnfree = import nixpkgs { system = "x86_64-linux"; config.permittedInsecurePackages = ["python3.13-ecdsa-0.19.1"]; config.allowUnfree = true; };
-        deployScript = pkgs.writeScriptBin "deploy" (builtins.readFile ./Contrib/deploy.sh);
         gitRev = if (builtins.hasAttr "rev" self) then self.rev else "dirty";
         buildWasabiModule = pkgs.buildDotnetModule {
-          pname = "wasabi";
+          pname = "blackhole";
           version = "2.0.0-${builtins.substring 0 8 (self.lastModifiedDate or self.lastModified or "19700101")}-${gitRev}";
           nugetDeps = ./deps.json; # nix build .#packages.x86_64-linux.all.passthru.fetch-deps
           dotnetFlags = [ "-p:CommitHash=${gitRev}"];
@@ -41,8 +40,8 @@
           dontDotnetFixup = true;
 
           preFixup = ''
-            wrapDotnetProgram $out/lib/${pname}/WalletWasabi.Fluent.Desktop $out/bin/wasabi
-            wrapDotnetProgram $out/lib/${pname}/WalletWasabi.Coordinator $out/bin/wasabi-coordinator
+            wrapDotnetProgram $out/lib/${pname}/WalletWasabi.Fluent.Desktop $out/bin/blackhole
+            wrapDotnetProgram $out/lib/${pname}/WalletWasabi.Coordinator $out/bin/blackhole-coordinator
           '';
 
           binaries = "BundledApps/Binaries/linux-x64";
@@ -140,7 +139,7 @@
           dotnet-sdk = pkgs.dotnetCorePackages.sdk_10_0;
         };
 
-        wasabi-shell =
+        blackhole-shell =
           with {
             libs = with pkgs; [
               xorg.libX11
@@ -154,7 +153,7 @@
             skiaSharp=toString ./. + "/WalletWasabi.Fluent.Desktop/bin/Debug/net10.0/runtimes/linux-x64/native";
           };
           pkgs.mkShell {
-            name = "wasabi-shell";
+            name = "blackhole-shell";
             buildInputs = libs;
             packages = [
               pkgs.dotnetCorePackages.sdk_10_0
@@ -192,7 +191,7 @@
               cp $(which tor) "$BUNDLED_APPS_BINARIES_PATH/Tor/"
               cp $(which bitcoind) "$BUNDLED_APPS_INTEGRATION_TEST_BINARIES_PATH/"
 
-              export PS1='\n\[\033[1;34m\][Wasabi:\w]\$\[\033[0m\] '
+              export PS1='\n\[\033[1;34m\][BlackHole:\w]\$\[\033[0m\] '
             '';
         };
     in
@@ -203,6 +202,6 @@
         integration-tests = buildWithIntegrationTests;
         all = buildWithAllTests;
       };
-      devShells.x86_64-linux.default = wasabi-shell;
+      devShells.x86_64-linux.default = blackhole-shell;
     };
 }

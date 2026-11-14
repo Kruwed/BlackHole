@@ -39,7 +39,7 @@ public class Startup(IConfiguration configuration)
 	// This method gets called by the runtime. Use this method to add services to the container.
 	public void ConfigureServices(IServiceCollection services)
 	{
-		string dataDir = Configuration["datadir"] ?? EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "Coordinator"));
+		string dataDir = Configuration["datadir"] ?? EnvironmentHelpers.GetDataDir(Path.Combine(Constants.DataFolderName, "Coordinator"));
 
 		// Set up logger.
 		LogLevel logLevel = Enum.TryParse(Configuration["loglevel"], ignoreCase: true, out LogLevel parsedLevel)
@@ -68,8 +68,8 @@ public class Startup(IConfiguration configuration)
 		services.AddSingleton(config);
 
 		var torSetting = new TorSettings(dataDir,
-			wasabiInstallationFolderPath: EnvironmentHelpers.GetFullBaseDirectory(),
-			true, TorMode.Enabled, 37155, 37156);
+			installationFolderPath: EnvironmentHelpers.GetFullBaseDirectory(),
+			true, TorMode.Enabled, 37255, 37256);
 
 		services.AddSingleton(torSetting);
 

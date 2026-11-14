@@ -8,7 +8,6 @@ public static class Constants
 	public const string RegTestCoordinatorUri = "http://localhost:37126/";
 
 	public const string WabiSabiFallBackCoordinatorExtPubKey = "xpub6C13JhXzjAhVRgeTcRSWqKEPe1vHi3Tmh2K9PN1cZaZFVjjSaj76y5NNyqYjc2bugj64LVDFYu8NZWtJsXNYKFb9J94nehLAPAKqKiXcebC";
-	public const string WasabiPubKey = "02c8ab8eea76c83788e246a1baee10c04a134ec11be6553946f6ae65e47ae9a608";
 
 	public const string DonationAddress = "sp1qq2exrz9xjumnvujw7zmav4r3vhfj9rvmd0aytjx0xesvzlmn48ctgqnqdgaan0ahmcfw3cpq5nxvnczzfhhvl3hmsps683cap4y696qecs7wejl3";
 
@@ -60,13 +59,16 @@ public static class Constants
 	public const string AlphaNumericCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	public const string CapitalAlphaNumericCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-	/// <summary>Executable file name of Wasabi Wallet Daemon application (without extension).</summary>
+	/// <summary>Executable file name of the daemon application (without extension).</summary>
 	public const string DaemonExecutableName = $"{ExecutableName}d";
 
-	/// <summary>Executable file name of Wasabi Wallet UI application (without extension).</summary>
-	public const string ExecutableName = "wassabee";
+	/// <summary>Executable file name of the UI application (without extension).</summary>
+	public const string ExecutableName = "blackhole";
 
-	public const string AppName = "Wasabi Wallet";
+	public const string AppName = "Black Hole";
+
+	/// <summary>Name of the folder in the user's home directory (lower-cased and prefixed with a dot) that holds the data of the applications.</summary>
+	public const string DataFolderName = "BlackHole";
 
 	public static readonly string DefaultMainNetBitcoinRpcUri = $"http://localhost:{DefaultMainNetBitcoinRpcPort}";
 	public static readonly string DefaultTestNetBitcoinRpcUri = $"http://localhost:{DefaultTestNetBitcoinRpcPort}";
@@ -85,23 +87,6 @@ public static class Constants
 
 	// Defined in hours. Do not modify these values or the order!
 	public static readonly int[] CoinJoinFeeRateMedianTimeFrames = new[] { 24, 168, 720 };
-
-	public static readonly string[] UserAgents = new[]
-	{
-		"/Satoshi:30.2.0/",
-		"/Satoshi:30.0.0/",
-		"/Satoshi:29.3.0/",
-		"/Satoshi:29.2.0/",
-		"/Satoshi:29.0.0/",
-		"/Satoshi:28.1.0/",
-		"/Satoshi:28.0.0/",
-		"/Satoshi:27.2.0/",
-		"/Satoshi:27.1.0/",
-		"/Satoshi:27.0.0/",
-		"/Satoshi:26.2.0/",
-		"/Satoshi:26.1.0/",
-		"/Satoshi:26.0.0/",
-	};
 
 	public static readonly int[] ConfirmationTargets = new[]
 	{

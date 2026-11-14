@@ -16,10 +16,10 @@
         ExtendClientAreaTitleBarHeightHint="50"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="Default, PreferSystemChrome"
-        Title="Wasabi Wallet"
+        Title="Black Hole"
         WindowState="{Binding WindowState, Mode=TwoWay}"
         Focusable="True"
-        Icon="/Assets/WasabiLogo.ico"
+        Icon="/Assets/BlackHoleLogo.ico"
         RenderOptions.BitmapInterpolationMode="HighQuality"
         RenderOptions.TextRenderingMode="SubpixelAntialias"
         RenderOptions.RequiresFullOpacityHandling="True">

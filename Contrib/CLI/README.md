@@ -1,6 +1,6 @@
-# Wasabi CLI
+# Black Hole CLI
 
-A bash script for effortless interaction with the Wasabi RPC Server.
+A bash script for effortless interaction with the RPC server of Black Hole. The server is off by default; turn it on with `"JsonRpcServerEnabled": true` in `~/.blackhole/client/Config.json`.
 
 USAGE:
 
@@ -10,7 +10,7 @@ $ ./wcli.sh command [ARGS,...]
 
 There is a single wallet, so the commands do not take a wallet name. Create it once with `createwallet` (it prints the SLIP-39 shares of the backup) or recover it with `recoverwallet`, then open it with `loadwallet`.
 
-The supported RPC commands are listed in the [documentation](https://docs.wasabiwallet.io/using-wasabi/RPC.html).
+The RPC commands are `getstatus`, `createwallet`, `recoverwallet`, `loadwallet`, `getwalletinfo`, `getnewaddress`, `listkeys`, `listcoins`, `listunspentcoins`, `gethistory`, `getfeerates`, `build`, `buildunsafetransaction`, `send`, `broadcast`, `speeduptransaction`, `canceltransaction`, `startcoinjoin`, `stopcoinjoin`, `excludefromcoinjoin`, `payincoinjoin`, `listpaymentsincoinjoin`, `cancelpaymentincoinjoin` and `stop`. They are the methods of [WasabiJsonRpcService.cs](../../WalletWasabi.Client/Rpc/WasabiJsonRpcService.cs).
 
 ## Examples
 
@@ -35,7 +35,7 @@ Everything about the blockchain comes from the RPC interface of your own Bitcoin
 $ ./wcli.sh getwalletinfo
 
 {
-  "walletFile": "/home/ricardo/.walletwasabi/client/Wallets/Wallet.json",
+  "walletFile": "/home/user/.blackhole/client/Wallets/Wallet.json",
   "state": "Started",
   "masterKeyFingerprint": "3442193e",
   "anonScoreTarget": 5,

@@ -1,20 +1,20 @@
 Wallet diagnostic
 ----------
 
-Toolset for observe the internal state of wallets.
+Toolset to observe the internal state of the wallet. The scripts ask the RPC server of Black Hole, so it must be enabled (without user name and password) and the wallet must be loaded.
 
-## Wasabi keys state generation
+## Keys state generation
 
-Create a visual representation from a Wasabi keys dump.
+Create a visual representation from a dump of the keys of the wallet.
 
 ### How to run it
 
-Run Wasabi, open the wallet you are interested in.
+Run Black Hole and open the wallet.
 
 Next open a terminal and enter:
 
 ```bash
-dotnet fsi keygraph.fsx <wallet-name>
+dotnet fsi keygraph.fsx
 ```
 
 ### The result
@@ -25,18 +25,18 @@ dotnet fsi keygraph.fsx <wallet-name>
 
 None
 
-## Wasabi CoinGraph generation
+## CoinGraph generation
 
-Create a visual representation from a Wasabi coins dump.
+Create a visual representation from a dump of the coins of the wallet.
 
 ### How to run it
 
-Run Wasabi, open the wallet you are interested in.
+Run Black Hole and open the wallet.
 
 Next open a terminal and enter:
 
 ```bash
-dotnet fsi txgraph.fsx <wallet-name> <initial-txid> | dot -Tpng | feh  -
+dotnet fsi txgraph.fsx <initial-txid> | dot -Tpng | feh  -
 ```
 
 ## The result

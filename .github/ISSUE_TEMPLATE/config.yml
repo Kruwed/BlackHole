@@ -1,11 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 📃 User documentation
-    url: https://docs.wasabiwallet.io/
-    about: Search for any information about Wasabi.
-  - name: 💪 Community support
-    url: https://github.com/WalletWasabi/WalletWasabi/discussions/categories/support
-    about: Feel free to ask anything.
-  - name: ❓ Other issue?
-    url: https://github.com/WalletWasabi/WalletWasabi/discussions/
-    about: Search on the community forum.
+  - name: Wasabi Wallet
+    url: https://github.com/WalletWasabi/WalletWasabi
+    about: Black Hole is a fork of Wasabi Wallet. Problems of Wasabi Wallet itself belong there.

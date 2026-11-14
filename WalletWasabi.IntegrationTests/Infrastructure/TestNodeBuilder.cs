@@ -34,7 +34,7 @@ public static class TestNodeBuilder
 			prune: 0,
 			disableWallet: 0,
 			mempoolReplacement: "fee,optin",
-			userAgent: $"/WasabiClient:{Constants.ClientVersion}/",
+			userAgent: $"/BlackHoleClient:{Constants.ClientVersion}/",
 			fallbackFee: Money.Coins(0.0002m), // https://github.com/bitcoin/bitcoin/pull/16524
 			new MemoryCache(new MemoryCacheOptions()));
 #pragma warning restore CA2000
@@ -51,7 +51,7 @@ public static class TestNodeBuilder
 
 	private static string GetWorkDir(string callerFilePath, string callerMemberName)
 	{
-		var dataDir = EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "IntegrationTests"));
+		var dataDir = EnvironmentHelpers.GetDataDir(Path.Combine(Constants.DataFolderName, "IntegrationTests"));
 		return Path.Combine(dataDir, EnvironmentHelpers.ExtractFileName(callerFilePath), callerMemberName);
 	}
 }

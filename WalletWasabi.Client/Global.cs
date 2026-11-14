@@ -52,7 +52,7 @@ public class Global
 		Config = config;
 		TorSettings = new TorSettings(
 			DataDir,
-			wasabiInstallationFolderPath: EnvironmentHelpers.GetFullBaseDirectory(),
+			installationFolderPath: EnvironmentHelpers.GetFullBaseDirectory(),
 			terminateOnExit: Config.TerminateTorOnExit,
 			torMode: Config.UseTor,
 			socksPort: config.TorSocksPort,

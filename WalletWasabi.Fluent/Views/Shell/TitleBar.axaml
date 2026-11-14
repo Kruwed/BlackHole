@@ -29,21 +29,21 @@
 
   <UserControl.Resources>
 
-    <DataTemplate x:Key="WasabiLogo">
+    <DataTemplate x:Key="Logo">
       <Viewbox Height="18" Width="18" IsHitTestVisible="False">
-        <ThemeImage Source="{DynamicResource wasabi_logo_dynamic}" />
+        <ThemeImage Source="{DynamicResource app_logo_dynamic}" />
       </Viewbox>
     </DataTemplate>
 
     <DataTemplate x:Key="Title">
       <StackPanel IsHitTestVisible="False" x:Name="Title"
                   VerticalAlignment="Center"
-                  TextElement.FontFamily="{StaticResource WasabiLogoTextFont}"
+                  TextElement.FontFamily="{StaticResource LogoTextFont}"
                   Classes="h7"
                   TextElement.FontWeight="Light" Orientation="Horizontal" ClipToBounds="False">
-        <TextBlock Text="WASABI" Foreground="{DynamicResource LogoFixedForegroundColor}" />
+        <TextBlock Text="BLACK" Foreground="{DynamicResource LogoFixedForegroundColor}" />
         <TextBlock Text="." Foreground="{DynamicResource LogoAccentColor}" />
-        <TextBlock Text="WALLET" Foreground="{DynamicResource LogoFixedForegroundColor}" />
+        <TextBlock Text="HOLE" Foreground="{DynamicResource LogoFixedForegroundColor}" />
       </StackPanel>
     </DataTemplate>
 
@@ -63,7 +63,7 @@
           <ColumnDefinition Width="1*" />
         </Grid.ColumnDefinitions>
 
-        <ContentControl ContentTemplate="{StaticResource WasabiLogo}" />
+        <ContentControl ContentTemplate="{StaticResource Logo}" />
 
         <ContentControl Grid.Column="2" ContentTemplate="{StaticResource SearchBar}" />
 

@@ -8,7 +8,7 @@ public class SingleInstanceChecker : IDisposable
 {
 	public SingleInstanceChecker(string dataDirectory)
 	{
-		LockFilePath = Path.Combine(dataDirectory, ".wasabi-lock");
+		LockFilePath = Path.Combine(dataDirectory, ".blackhole-lock");
 	}
 
 	private FileStream? _lockFileStream;

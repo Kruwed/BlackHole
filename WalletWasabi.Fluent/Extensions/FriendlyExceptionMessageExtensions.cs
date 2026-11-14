@@ -24,7 +24,7 @@ public static class FriendlyExceptionMessageExtensions
 		return ex switch
 		{
 			HttpRequestException => "Something went wrong. Please try again.",
-			UnauthorizedAccessException => "Wasabi was unable to perform this action due to a lack of permission.",
+			UnauthorizedAccessException => "Black Hole was unable to perform this action due to a lack of permission.",
 			_ => ex.Message
 		};
 	}
