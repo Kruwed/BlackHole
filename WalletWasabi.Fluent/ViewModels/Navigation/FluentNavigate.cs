@@ -157,11 +157,6 @@ public partial class FluentNavigate
 		return new FluentDialog<IEnumerable<SmartCoin>>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void BitcoinTabSettings(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new BitcoinTabSettingsViewModel(UiContext, settings), navigationMode);
-	}
-
 	public void TransactionPreview(IWalletModel walletModel, SendFlowModel sendFlow, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new TransactionPreviewViewModel(UiContext, walletModel, sendFlow), navigationMode);

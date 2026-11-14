@@ -15,7 +15,7 @@ public static class MainViewModelExtensions
 		AddWalletPageViewModel.RegisterLazy(() => new AddWalletPageViewModel(uiContext));
 		SettingsPageViewModel.Register(mainViewModel.SettingsPage);
 
-		BitcoinTabSettingsViewModel.RegisterLazy(() =>
+		ConnectionsSettingsTabViewModel.RegisterLazy(() =>
 		{
 			mainViewModel.SettingsPage.SelectedTab = 0;
 			return mainViewModel.SettingsPage;
@@ -24,12 +24,6 @@ public static class MainViewModelExtensions
 		CoordinatorTabSettingsViewModel.RegisterLazy(() =>
 		{
 			mainViewModel.SettingsPage.SelectedTab = 1;
-			return mainViewModel.SettingsPage;
-		});
-
-		ConnectionsSettingsTabViewModel.RegisterLazy(() =>
-		{
-			mainViewModel.SettingsPage.SelectedTab = 2;
 			return mainViewModel.SettingsPage;
 		});
 

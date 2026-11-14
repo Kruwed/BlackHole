@@ -1,32 +1,162 @@
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using NBitcoin;
+using NBitcoin.RPC;
+using ReactiveUI;
 using WalletWasabi.Fluent.Infrastructure;
+using WalletWasabi.Fluent.Models.UI;
+using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Models;
 
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 [AppLifetime]
 [NavigationMetaData(
 	Title = "Connections",
-	Caption = "Manage connections settings",
-	Order = 3,
+	Caption = "Manage Bitcoin node and Tor settings",
+	Order = 1,
 	Category = "Settings",
-	Keywords = new[]
-	{
-		"Settings", "Connections", "Network", "Anonymization",
-		"Tor", "Terminate", "Black", "Hole", "Shut", "Reset"
-	},
+	Keywords =
+	[
+		"Settings", "Connections", "Bitcoin", "Network", "Main", "TestNet", "TestNet4", "Signet", "RegTest", "Run", "Node", "Core", "Knots", "Version", "Startup",
+		"Stop", "Shutdown", "Rpc", "Endpoint", "Anonymization", "Tor", "Terminate", "Black", "Hole", "Shut", "Reset"
+	],
 	IconName = "settings_general_regular")]
 public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 {
+	[AutoNotify] private string _bitcoinRpcUri;
+	[AutoNotify] private string _bitcoinRpcCredentialString;
+	[AutoNotify] private string? _connectionStatusMessage;
+	[AutoNotify] private bool _connectionStatusIsSuccess;
+
 	public ConnectionsSettingsTabViewModel(UiContext uiContext, ApplicationSettings settings) : base(uiContext)
 	{
 		Settings = settings;
+
+		this.ValidateProperty(x => x.BitcoinRpcUri, ValidateBitcoinRpcUri);
+		this.ValidateProperty(x => x.BitcoinRpcCredentialString, ValidateBitcoinRpcCredentialString);
+
+		_bitcoinRpcUri = settings.BitcoinRpcUri;
+		_bitcoinRpcCredentialString = settings.BitcoinRpcCredentialString;
+
+		this.WhenAnyValue(x => x.Settings.BitcoinRpcUri)
+			.Subscribe(x => BitcoinRpcUri = x);
+
+		this.WhenAnyValue(x => x.Settings.BitcoinRpcCredentialString)
+			.Subscribe(x => BitcoinRpcCredentialString = x);
+
+		// Enable verify button only when URI is valid
+		var canVerify = this.WhenAnyValue(
+			x => x.BitcoinRpcUri,
+			(uri) => !string.IsNullOrWhiteSpace(uri) && Uri.TryCreate(uri, UriKind.Absolute, out _));
+
+		VerifyConnectionCommand = ReactiveCommand.CreateFromTask(VerifyConnectionAsync, canVerify);
+
+		// Clear status message when inputs change
+		this.WhenAnyValue(x => x.BitcoinRpcUri, x => x.BitcoinRpcCredentialString)
+			.Subscribe(_ => ConnectionStatusMessage = null);
 	}
 
 	public bool IsReadOnly => Settings.IsOverridden;
 
 	public ApplicationSettings Settings { get; }
 
+	public IEnumerable<Network> Networks { get; } = [Network.Main, Network.TestNet, Bitcoin.Instance.Signet, Network.RegTest];
+
 	public IReadOnlyList<TorMode> TorModes =>
 		Enum.GetValues<TorMode>();
+
+	public ICommand VerifyConnectionCommand { get; }
+
+	private void ValidateBitcoinRpcUri(IValidationErrors errors)
+	{
+		if (!string.IsNullOrWhiteSpace(BitcoinRpcUri))
+		{
+			if (!Uri.TryCreate(BitcoinRpcUri, UriKind.Absolute, out _))
+			{
+				errors.Add(ErrorSeverity.Error, "Invalid bitcoin rpc uri.");
+			}
+			else
+			{
+				Settings.BitcoinRpcUri = BitcoinRpcUri;
+			}
+		}
+		else
+		{
+			Settings.BitcoinRpcUri = "";
+		}
+	}
+
+	private void ValidateBitcoinRpcCredentialString(IValidationErrors errors)
+	{
+		if (string.IsNullOrWhiteSpace(BitcoinRpcCredentialString) || RPCCredentialString.TryParse(BitcoinRpcCredentialString, out _))
+		{
+			Settings.BitcoinRpcCredentialString = BitcoinRpcCredentialString;
+		}
+		else
+		{
+			errors.Add(ErrorSeverity.Error, "Invalid bitcoin rpc credential string.");
+		}
+	}
+
+	private async Task VerifyConnectionAsync()
+	{
+		try
+		{
+			// Parse credentials
+			RPCCredentialString credentials;
+			if (string.IsNullOrWhiteSpace(BitcoinRpcCredentialString))
+			{
+				// Use default credentials if empty
+				credentials = new RPCCredentialString();
+			}
+			else if (!RPCCredentialString.TryParse(BitcoinRpcCredentialString, out credentials!))
+			{
+				ConnectionStatusIsSuccess = false;
+				ConnectionStatusMessage = "Invalid credentials format";
+				return;
+			}
+
+
+			// Create RPC client
+			var rpcClient = new RPCClient(credentials, BitcoinRpcUri, Settings.Network);
+			if (new Uri(BitcoinRpcUri).DnsSafeHost.EndsWith(".onion", StringComparison.OrdinalIgnoreCase))
+			{
+				if (Settings.UseTor != TorMode.Disabled)
+				{
+					var httpClient = UiContext.Services.CreateHttpClient("test-rpc-connection");
+					rpcClient.HttpClient = httpClient;
+				}
+				else
+				{
+					ConnectionStatusIsSuccess = false;
+					ConnectionStatusMessage = "Tor is disabled. Impossible to verify onion service";
+					return;
+				}
+			}
+
+			// Test connection with GetBlockchainInfo
+			await rpcClient.GetBlockchainInfoAsync().ConfigureAwait(false);
+
+			// Success
+			ConnectionStatusIsSuccess = true;
+			ConnectionStatusMessage = "Connected successfully";
+		}
+		catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+		{
+			// Unauthorized
+			ConnectionStatusIsSuccess = false;
+			ConnectionStatusMessage = "Connection attempt failed (Unauthorized)";
+		}
+		catch (Exception)
+		{
+			// Connection failed
+			ConnectionStatusIsSuccess = false;
+			ConnectionStatusMessage = "Connection attempt failed";
+		}
+	}
 }
