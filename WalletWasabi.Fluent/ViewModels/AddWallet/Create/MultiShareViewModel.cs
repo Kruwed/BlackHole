@@ -5,7 +5,7 @@ using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet.Create;
 
-[NavigationMetaData(Title = "Multi-share")]
+[NavigationMetaData(Title = "Recovery Words")]
 public partial class MultiShareViewModel : RoutableViewModel
 {
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private byte _currentShare;
@@ -22,6 +22,11 @@ public partial class MultiShareViewModel : RoutableViewModel
 
 		MnemonicWords = CreateList(multiShareBackup.Shares[_currentShare - 1]);
 
+		// A backup that is not split is simply a list of words: nothing has to be said about shares.
+		Caption = _totalShares == 1
+			? $"Write down these {MnemonicWords.Count} words in the correct order and store them in a safe place. They are needed to recover your wallet."
+			: $"Share #{_currentShare} of {_totalShares}. Write down the multi-share words in the correct order and store them in a safe place. They are needed to recover your wallet.";
+
 		EnableBack = true;
 
 		NextCommand = ReactiveCommand.Create(() => OnNext(options));
@@ -30,6 +35,8 @@ public partial class MultiShareViewModel : RoutableViewModel
 	}
 
 	public List<RecoveryWordViewModel> MnemonicWords { get; }
+
+	public string Caption { get; }
 
 	private void OnNext(WalletCreationOptions.AddNewWallet options)
 	{

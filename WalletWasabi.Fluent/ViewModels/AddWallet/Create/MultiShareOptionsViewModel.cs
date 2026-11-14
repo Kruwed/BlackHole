@@ -109,7 +109,7 @@ public partial class MultiShareOptionsViewModel : RoutableViewModel
 		{
 			errors.Add(
 				ErrorSeverity.Error,
-				$"Can only generate one share for {nameof(Threshold)} equal 1.");
+				$"Several shares need a {nameof(Threshold)} of at least 2.");
 		}
 	}
 

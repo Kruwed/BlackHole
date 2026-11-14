@@ -7,8 +7,13 @@ namespace WalletWasabi.Blockchain.Keys;
 
 public class WalletGenerator
 {
-	public const byte DefaultShamirShares = 3;
-	public const byte DefaultShamirThreshold = 2;
+	/// <summary>
+	/// The backup of a new wallet, unless another one is asked for, is a single share: 20 words that recover the wallet on their own.
+	/// </summary>
+	public const byte DefaultShamirShares = 1;
+
+	/// <summary>How many of the shares it takes to recover the wallet. With a single share it is that share.</summary>
+	public const byte DefaultShamirThreshold = 1;
 	public const int MinShamirShares = 1;
 	public const int MaxShamirShares = 16;
 	public const int MinShamirThreshold = 1;

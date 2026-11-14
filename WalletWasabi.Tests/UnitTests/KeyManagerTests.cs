@@ -23,13 +23,16 @@ public class KeyManagerTests
 		var manager2 = KeyManager.CreateNew(out Share[] shares2, "", Network.Main);
 		var manager3 = KeyManager.CreateNew(out Share[] shares3, "P@ssw0rdé", Network.Main);
 
-		// The backup is made of SLIP-39 shares of 20 words each.
+		// Unless it is split, the backup is a single SLIP-39 share: 20 words that recover the wallet on their own.
 		foreach (var backup in new[] { shares, shares2, shares3 })
 		{
-			Assert.Equal(WalletGenerator.DefaultShamirShares, backup.Length);
-			Assert.All(backup, share => Assert.Equal(WalletGenerator.DefaultShamirThreshold, share.MemberThreshold));
-			Assert.All(backup, share => Assert.Equal(20, share.ToMnemonic(WordList.Wordlist).Split(' ').Length));
+			var share = Assert.Single(backup);
+			Assert.Equal(1, share.MemberThreshold);
+			Assert.Equal(20, share.ToMnemonic(WordList.Wordlist).Split(' ').Length);
 		}
+
+		Assert.Equal(1, WalletGenerator.DefaultShamirShares);
+		Assert.Equal(1, WalletGenerator.DefaultShamirThreshold);
 
 		// Every wallet has its own seed.
 		Assert.NotEqual(manager.TaprootExtPubKey, manager2.TaprootExtPubKey);
@@ -70,7 +73,48 @@ public class KeyManagerTests
 		string password = "password";
 		var manager = KeyManager.CreateNew(out Share[] shares, password, Network.Main);
 
-		// Any two of the three shares recover the wallet.
+		// The backup is one share, and its 20 words are all it takes: written down and typed in again, they give the same wallet.
+		var words = Assert.Single(shares).ToMnemonic(WordList.Wordlist);
+		Assert.Equal(20, words.Split(' ').Length);
+
+		var sameManager = KeyManager.Recover([Share.FromMnemonic(words)], password, Network.Main);
+
+		Assert.Equal(manager.ChainCode, sameManager.ChainCode);
+		Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
+		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
+		Assert.Equal(manager.SilentPaymentScanExtPubKey, sameManager.SilentPaymentScanExtPubKey);
+		Assert.Equal(manager.SilentPaymentSpendExtPubKey, sameManager.SilentPaymentSpendExtPubKey);
+
+		// The share of another wallet gives another wallet.
+		var otherManager = KeyManager.Recover(WalletGenerator.GenerateShares(), password, Network.Main);
+		Assert.NotEqual(manager.TaprootExtPubKey, otherManager.TaprootExtPubKey);
+
+		// A wider gap limit only means more keys of the same account.
+		var widerManager = KeyManager.Recover(shares, password, Network.Main, filePath: null, minGapLimit: 55);
+		Assert.Equal(manager.ChainCode, widerManager.ChainCode);
+		Assert.Equal(manager.EncryptedSecret, widerManager.EncryptedSecret);
+		Assert.Equal(manager.TaprootExtPubKey, widerManager.TaprootExtPubKey);
+		Assert.Equal(manager.SilentPaymentScanExtPubKey, widerManager.SilentPaymentScanExtPubKey);
+		Assert.Equal(manager.SilentPaymentSpendExtPubKey, widerManager.SilentPaymentSpendExtPubKey);
+
+		var newKey = widerManager.GenerateNewKey(KeyState.Clean, true);
+		Assert.Equal(newKey.Index, widerManager.MinGapLimit);
+		Assert.Equal("86'/0'/0'/1/55", newKey.FullKeyPath.ToString());
+	}
+
+	[Fact]
+	public void CanRecoverFromSplitBackup()
+	{
+		string password = "password";
+
+		// Whoever wants to can split the backup: here into three shares, any two of which recover the wallet.
+		var shares = WalletGenerator.GenerateShares(threshold: 2, shares: 3);
+		Assert.Equal(3, shares.Length);
+		Assert.All(shares, share => Assert.Equal(2, share.MemberThreshold));
+		Assert.All(shares, share => Assert.Equal(20, share.ToMnemonic(WordList.Wordlist).Split(' ').Length));
+
+		var manager = KeyManager.CreateNew(shares[..2], password, Network.Main);
+
 		foreach (var backup in new[] { shares[..2], shares[1..], new[] { shares[2], shares[0] } })
 		{
 			var sameManager = KeyManager.Recover(backup, password, Network.Main);
@@ -86,17 +130,8 @@ public class KeyManagerTests
 		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares[..1], password, Network.Main));
 		Assert.Throws<ArgumentException>(() => KeyManager.Recover(shares, password, Network.Main));
 
-		// A wider gap limit only means more keys of the same account.
-		var widerManager = KeyManager.Recover(shares[..2], password, Network.Main, filePath: null, minGapLimit: 55);
-		Assert.Equal(manager.ChainCode, widerManager.ChainCode);
-		Assert.Equal(manager.EncryptedSecret, widerManager.EncryptedSecret);
-		Assert.Equal(manager.TaprootExtPubKey, widerManager.TaprootExtPubKey);
-		Assert.Equal(manager.SilentPaymentScanExtPubKey, widerManager.SilentPaymentScanExtPubKey);
-		Assert.Equal(manager.SilentPaymentSpendExtPubKey, widerManager.SilentPaymentSpendExtPubKey);
-
-		var newKey = widerManager.GenerateNewKey(KeyState.Clean, true);
-		Assert.Equal(newKey.Index, widerManager.MinGapLimit);
-		Assert.Equal("86'/0'/0'/1/55", newKey.FullKeyPath.ToString());
+		// A threshold of one goes with a single share only.
+		Assert.Throws<ArgumentException>(() => WalletGenerator.GenerateShares(threshold: 1, shares: 2));
 	}
 
 	[Fact]
@@ -107,7 +142,7 @@ public class KeyManagerTests
 		// The shares alone decide the keys: recovering with another password gives the very same wallet...
 		foreach (var newPassword in new[] { "differentPassword", "" })
 		{
-			var recovered = KeyManager.Recover(shares[..2], newPassword, Network.Main);
+			var recovered = KeyManager.Recover(shares, newPassword, Network.Main);
 
 			Assert.Equal(manager.MasterFingerprint, recovered.MasterFingerprint);
 			Assert.Equal(manager.ChainCode, recovered.ChainCode);
@@ -118,7 +153,7 @@ public class KeyManagerTests
 
 			// ... whose secret is encrypted with the new password only.
 			Assert.NotEqual(manager.EncryptedSecret, recovered.EncryptedSecret);
-			var freshlyLoaded = KeyManager.Recover(shares[..2], newPassword, Network.Main);
+			var freshlyLoaded = KeyManager.Recover(shares, newPassword, Network.Main);
 			Assert.Throws<SecurityException>(() => freshlyLoaded.GetMasterExtKey("password"));
 		}
 	}

@@ -91,7 +91,7 @@
   </UserControl.Resources>
 
   <ContentArea Title="{Binding Title}"
-               Caption="Set number of shares and threshold."
+               Caption="By default the backup is a single share: 20 recovery words. To split it, raise the number of shares and the threshold."
                CancelContent="Cancel"
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}"

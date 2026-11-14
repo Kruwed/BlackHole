@@ -33,6 +33,28 @@ public class ShamirMnemonicTests
 		Assert.Equal(MS, recoverdSeed23);
 	}
 
+	/// <summary>
+	/// The backup that is not split: a single share with a threshold of one. Its 20 words are the whole secret.
+	/// </summary>
+	[Fact]
+	public void GenerateSingleShareAndRecover()
+	{
+		var share = Assert.Single(Shamir.Generate(threshold: 1, shares: 1, seed: MS));
+		Assert.Equal(1, share.MemberThreshold);
+
+		var mnemonic = share.ToMnemonic(WordList.Wordlist);
+		Assert.Equal(20, mnemonic.Split(' ').Length);
+
+		Assert.Equal(MS, Shamir.Combine([Share.FromMnemonic(mnemonic)]));
+
+		// Every backup gets words of its own, even for the same secret.
+		var otherMnemonic = Shamir.Generate(threshold: 1, shares: 1, seed: MS).Single().ToMnemonic(WordList.Wordlist);
+		Assert.Equal(MS, Shamir.Combine([Share.FromMnemonic(otherMnemonic)]));
+
+		// A threshold of one goes with one share only.
+		Assert.Throws<ArgumentException>(() => Shamir.Generate(threshold: 1, shares: 2, seed: MS));
+	}
+
 	[Fact]
 	public void TestBasicSharingRandom()
 	{

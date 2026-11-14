@@ -10,7 +10,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet.Create;
 
-[NavigationMetaData(Title = "Confirm Multi-share")]
+[NavigationMetaData(Title = "Confirm Recovery Words")]
 public partial class ConfirmMultiShareViewModel : RoutableViewModel
 {
 	private const int WordsToConfirmPerPage = 3;
@@ -151,7 +151,10 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 						? $"Incorrect word #{CurrentWord.Index} selected"
 						: $"Click the recovery word #{CurrentWord.Index}";
 
-				Caption = $"Share #{CurrentShare} of {TotalShares} - Page #{CurrentSharePage} of {TotalCurrenSharePages}. {currentWordMessage}";
+				// A backup that is not split has nothing to say about shares.
+				var share = TotalShares == 1 ? "" : $"Share #{CurrentShare} of {TotalShares} - ";
+
+				Caption = $"{share}Page #{CurrentSharePage} of {TotalCurrenSharePages}. {currentWordMessage}";
 			})
 			.DisposeWith(disposables);
 

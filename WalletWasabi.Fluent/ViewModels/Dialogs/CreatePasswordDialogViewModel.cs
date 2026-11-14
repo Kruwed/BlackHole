@@ -11,7 +11,7 @@ public partial class CreatePasswordDialogViewModel : DialogViewModelBase<string?
 {
 	public const string NewWalletCaption =
 		"The password encrypts the private key of the wallet on this computer. It is needed to open the wallet and to send.\n" +
-		"It is not part of your backup: the recovery shares alone restore the wallet.";
+		"It is not part of your backup: the recovery words alone restore the wallet.";
 
 	public const string RecoveredWalletCaption =
 		"Choose a password to encrypt the private key of the recovered wallet on this computer.\n" +

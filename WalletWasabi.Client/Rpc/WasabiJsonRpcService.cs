@@ -90,6 +90,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 
 	/// <summary>
 	/// Creates the wallet and returns its SLIP-39 backup: <paramref name="shares"/> shares, any <paramref name="threshold"/> of which recover the wallet.
+	/// Unless a threshold and a number of shares are given, the backup is a single share of 20 words.
 	/// </summary>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
 	/// <remarks>There is a single wallet: the call fails if it exists already.</remarks>

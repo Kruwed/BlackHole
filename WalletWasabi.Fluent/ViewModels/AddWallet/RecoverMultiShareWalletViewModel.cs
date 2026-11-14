@@ -16,7 +16,7 @@ using WalletWasabi.Wallets.Slip39;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
-[NavigationMetaData(Title = "Multi-share Words")]
+[NavigationMetaData(Title = "Recovery Words")]
 public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 {
 	private readonly Share[]? _shares;
@@ -40,7 +40,7 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 		BirthHeight = CalculateBirthHeight();
 		Caption = _currentShare is not null && _requiredShares is not null
 			? $"Enter share #{_currentShare + 1} of required {_requiredShares} shares."
-			: "Enter any share";
+			: "Enter your recovery words. If the backup is split into shares, enter any one of them.";
 
 		Suggestions = WordList.Wordlist;
 

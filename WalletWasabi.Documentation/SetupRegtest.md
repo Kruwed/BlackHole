@@ -88,7 +88,7 @@ There is a single wallet in a data directory, and a coinjoin needs several parti
 1. Go to `WalletWasabi.Fluent.Desktop` folder.
 2. Open the command line and run the first client with:
 `dotnet run -- --network=regtest --datadir=$HOME/.blackhole/regtest1 --bitcoinrpccredentialstring=rpcuser:rpcpassword`
-3. Create the wallet and write down its SLIP39 shares.
+3. Create the wallet and write down its recovery words.
 4. Generate a receive address in Black Hole, now go to Bitcoin Core to the Send tab.
 5. Send 1 BTC to that address.
 6. Do the same with a second client and `--datadir=$HOME/.blackhole/regtest2`.
