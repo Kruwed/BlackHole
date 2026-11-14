@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
 using NBitcoin;
 using WalletWasabi.Blockchain.TransactionProcessing;
+using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Logging;
@@ -46,11 +47,12 @@ public static class NotificationHelpers
 		}
 	}
 
-	public static void Show(IWalletModel wallet, ProcessedResult result, Action onClick)
+	/// <summary>Notifies about a transaction of the wallet.</summary>
+	public static void Show(ProcessedResult result, Action onClick)
 	{
 		if (TryGetNotificationInputs(result, out var message))
 		{
-			Show(wallet.Name, message, onClick);
+			Show(UiConstants.WalletTitle, message, onClick);
 		}
 	}
 

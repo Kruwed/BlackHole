@@ -141,45 +141,30 @@
     <!-- Separator -->
     <Separator DockPanel.Dock="Bottom" />
 
-    <!-- Wallet List -->
-    <DockPanel MaxWidth="75" LastChildFill="True">
-      <ListBox ItemsSource="{Binding Wallets}"
-               SelectedItem="{Binding SelectedWallet}"
-               Background="Transparent"
-               SelectingItemsControlBehavior.EnableSelectionAnimation="True">
-        <Interaction.Behaviors>
-          <ListBoxReselectingBehavior />
-        </Interaction.Behaviors>
-        <ListBox.ItemsPanel>
-          <ItemsPanelTemplate>
-            <StackPanel />
-          </ItemsPanelTemplate>
-        </ListBox.ItemsPanel>
-        <ListBox.DataTemplates>
-          <DataTemplate DataType="vmw:WalletPageViewModel">
-            <NavBarItem Classes.selected="{Binding IsSelected}">
-              <ToolTip.Tip>
-                <StackPanel>
-                  <TextBlock Text="{Binding Title}" />
-                </StackPanel>
-              </ToolTip.Tip>
-              <Panel>
-                <Ellipse Classes="loadingindicator"
-                         Classes.isLoading="{Binding IsLoading}"
-                         Classes.isLoggedIn="{Binding IsLoggedIn}"
-                         Classes.isCoinjoining="{Binding WalletViewModel.IsCoinJoining}" />
-                <StackPanel VerticalAlignment="Center" Spacing="2">
-                  <PathIcon Classes="new size24 wallet"
-                            Classes.isfocused="{Binding $parent[ListBoxItem].IsSelected}" />
-                  <LayoutTransformControl>
-                    <FadeOutTextControl Text="{Binding Title}" HorizontalAlignment="Center" FontSize="{StaticResource FontSizeH9}" />
-                  </LayoutTransformControl>
-                </StackPanel>
-              </Panel>
-            </NavBarItem>
-          </DataTemplate>
-        </ListBox.DataTemplates>
-      </ListBox>
-    </DockPanel>
+    <!-- Wallet -->
+    <NavBarItem Classes="selected"
+                DataContext="{Binding Wallet}"
+                x:DataType="vmw:WalletPageViewModel"
+                IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}"
+                Command="{Binding OpenCommand}"
+                VerticalAlignment="Top">
+      <ToolTip.Tip>
+        <StackPanel>
+          <TextBlock Text="{Binding Title}" />
+        </StackPanel>
+      </ToolTip.Tip>
+      <Panel>
+        <Ellipse Classes="loadingindicator"
+                 Classes.isLoading="{Binding IsLoading}"
+                 Classes.isLoggedIn="{Binding IsLoggedIn}"
+                 Classes.isCoinjoining="{Binding WalletViewModel.IsCoinJoining}" />
+        <StackPanel VerticalAlignment="Center" Spacing="2">
+          <PathIcon Classes="new size24 wallet isfocused" />
+          <LayoutTransformControl>
+            <FadeOutTextControl Text="{Binding Title}" HorizontalAlignment="Center" FontSize="{StaticResource FontSizeH9}" />
+          </LayoutTransformControl>
+        </StackPanel>
+      </Panel>
+    </NavBarItem>
   </DockPanel>
 </UserControl>

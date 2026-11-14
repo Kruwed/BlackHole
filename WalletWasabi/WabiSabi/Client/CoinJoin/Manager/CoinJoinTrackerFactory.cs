@@ -30,7 +30,7 @@ public class CoinJoinTrackerFactory
 	private readonly CancellationToken _cancellationToken;
 	private readonly LiquidityClueProvider _liquidityClueProvider;
 
-	public CoinJoinTracker CreateAndStart(Wallet wallet, Wallet outputWallet, Func<IEnumerable<SmartCoin>> coinCandidatesFunc, bool stopWhenAllMixed, bool overridePlebStop)
+	public CoinJoinTracker CreateAndStart(Wallet wallet, Func<IEnumerable<SmartCoin>> coinCandidatesFunc, bool stopWhenAllMixed, bool overridePlebStop)
 	{
 		_liquidityClueProvider.InitLiquidityClue(wallet);
 
@@ -38,9 +38,6 @@ public class CoinJoinTrackerFactory
 		{
 			throw new NotSupportedException("Wallet has no key chain.");
 		}
-
-		// The only use-case when we set consolidation mode to true, when we are mixing to another wallet.
-		wallet.ConsolidationMode = outputWallet.WalletId != wallet.WalletId;
 
 		var minAnonScoreForPayments = wallet.OnlyUsePrivateFundsForPayments ? wallet.AnonScoreTarget : 0;
 		var coinJoinCoinSelector = CoinJoinCoinSelector.FromWallet(wallet);
@@ -50,7 +47,7 @@ public class CoinJoinTrackerFactory
 		var coinJoinClient = new CoinJoinClient(
 			ArenaRequestHandlerFactory,
 			wallet.KeyChain,
-			outputWallet.OutputProvider,
+			wallet.OutputProvider,
 			_roundStatusProvider,
 			coinSelector,
 			_coinJoinConfiguration,
@@ -59,6 +56,6 @@ public class CoinJoinTrackerFactory
 			doNotRegisterInLastMinuteTimeLimit: TimeSpan.FromMinutes(1),
 			minAnonScoreForPayments: minAnonScoreForPayments);
 
-		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, stopWhenAllMixed, overridePlebStop, outputWallet, _cancellationToken);
+		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, stopWhenAllMixed, overridePlebStop, _cancellationToken);
 	}
 }

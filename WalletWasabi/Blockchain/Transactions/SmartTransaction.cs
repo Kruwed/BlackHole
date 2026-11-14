@@ -53,10 +53,10 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	public long[] OutputValues => _outputValues.Value;
 	public bool IsWasabi2Cj => _isWasabi2Cj.Value;
 
-	/// <summary>Coins those are on the input side of the tx and belong to ANY loaded wallet. Later if more wallets are loaded this list can increase.</summary>
+	/// <summary>Coins those are on the input side of the tx and belong to the wallet.</summary>
 	private readonly HashSet<SmartCoin> _walletInputsInternal;
 
-	/// <summary>Coins those are on the output side of the tx and belong to ANY loaded wallet. Later if more wallets are loaded this list can increase.</summary>
+	/// <summary>Coins those are on the output side of the tx and belong to the wallet.</summary>
 	private readonly HashSet<SmartCoin> _walletOutputsInternal;
 
 	/// <summary>Cached computation of <see cref="ForeignInputs"/> or <c>null</c> when re-computation is needed.</summary>

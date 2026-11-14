@@ -184,11 +184,6 @@ public partial class FluentNavigate
 #pragma warning restore CA2000 // Dispose objects before losing scope
 	}
 
-	public void WalletNamePage(WalletCreationOptions options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletNamePageViewModel(UiContext, options), navigationMode);
-	}
-
 	public FluentDialog<System.Reactive.Unit> ReleaseHighlightsDialog(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ReleaseHighlightsDialogViewModel(UiContext);

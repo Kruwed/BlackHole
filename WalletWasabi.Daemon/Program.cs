@@ -51,22 +51,19 @@ public static class WasabiAppExtensions
 	{
 		void ProcessCommands()
 		{
-			var arguments = app.AppConfig.Arguments;
-			var walletNames = ArgumentHelpers
-				.GetValues("wallet", arguments)
-				.Distinct();
-
-			foreach (var walletName in walletNames)
+			// The wallet is opened at start only when it is asked for. Otherwise the 'loadwallet' RPC opens it.
+			if (!app.AppConfig.Arguments.Contains("--loadwallet", StringComparer.InvariantCultureIgnoreCase))
 			{
-				try
-				{
-					var wallet = app.Global.WalletManager.GetWalletByName(walletName);
-					app.Global.WalletManager.StartWalletAsync(wallet).ConfigureAwait(false);
-				}
-				catch (InvalidOperationException)
-				{
-					Logger.LogWarning($"Wallet '{walletName}' was not found. Ignoring...");
-				}
+				return;
+			}
+
+			if (app.Global.WalletManager.Wallet is { } wallet)
+			{
+				app.Global.WalletManager.StartWalletAsync(wallet).ConfigureAwait(false);
+			}
+			else
+			{
+				Logger.LogWarning("There is no wallet to load. Ignoring...");
 			}
 		}
 

@@ -30,7 +30,7 @@
       </DockPanel.Styles>
 
       <StackPanel MaxWidth="400" DockPanel.Dock="Bottom" Spacing="30">
-        <TextBlock Text="{Binding WalletName}"
+        <TextBlock Text="{Binding WalletTitle}"
                    TextWrapping="Wrap"
                    TextAlignment="Center"
                    HorizontalAlignment="Center"

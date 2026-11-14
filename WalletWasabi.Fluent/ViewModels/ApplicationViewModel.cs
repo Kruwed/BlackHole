@@ -87,8 +87,8 @@ public partial class ApplicationViewModel : ViewModelBase, ICanShutdownProvider
 	{
 		// Main view can shutdown when:
 		// - no open dialog
-		// - or no wallets available
+		// - or there is no wallet yet
 		return !MainViewModel.IsDialogOpen()
-			   || !MainViewModel.NavBar.Wallets.Any();
+			   || !UiContext.WalletRepository.HasWallet;
 	}
 }

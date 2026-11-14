@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using System.Windows.Input;
 using ReactiveUI;
+using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -18,7 +19,6 @@ public partial class LoginViewModel : RoutableViewModel
 	{
 		_password = "";
 		_errorMessage = "";
-		WalletName = wallet.Name;
 
 		NextCommand = ReactiveCommand.CreateFromTask(async () => await OnNextAsync(wallet));
 
@@ -27,7 +27,7 @@ public partial class LoginViewModel : RoutableViewModel
 		EnableAutoBusyOn(NextCommand);
 	}
 
-	public string WalletName { get; }
+	public string WalletTitle => UiConstants.WalletTitle;
 
 	public ICommand OkCommand { get; }
 

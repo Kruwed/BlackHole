@@ -3,7 +3,7 @@ using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 
 namespace WalletWasabi.Fluent.ViewModels.Navigation;
 
-public interface INavigate : IWalletNavigation
+public interface INavigate
 {
 	INavigationStack<RoutableViewModel> HomeScreen { get; }
 

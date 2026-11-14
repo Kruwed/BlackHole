@@ -1,14 +1,14 @@
 using NBitcoin;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace WalletWasabi.Wallets;
 
 public class WalletDirectories
 {
 	public const string WalletsDirName = "Wallets";
-	public const string WalletFileExtension = "json";
+
+	/// <summary>There is a single wallet, so its file has a fixed name.</summary>
+	public const string WalletFileName = "Wallet.json";
 
 	public WalletDirectories(Network network, string workDir)
 	{
@@ -18,54 +18,14 @@ public class WalletDirectories
 			: Path.Combine(workDir, WalletsDirName, network.ToString());
 
 		Directory.CreateDirectory(WalletsDir);
+
+		WalletFilePath = Path.Combine(WalletsDir, WalletFileName);
 	}
 
 	public string WalletsDir { get; }
 
+	/// <summary>Path of the file of the wallet. The file exists only after the wallet was created or recovered.</summary>
+	public string WalletFilePath { get; }
+
 	public Network Network { get; }
-
-	public string GetWalletFilePaths(string walletName)
-	{
-		if (!walletName.EndsWith($".{WalletFileExtension}", StringComparison.OrdinalIgnoreCase))
-		{
-			walletName = $"{walletName}.{WalletFileExtension}";
-		}
-		return Path.Combine(WalletsDir, walletName);
-	}
-
-	public IEnumerable<FileInfo> EnumerateWalletFiles()
-	{
-		var walletsDirInfo = new DirectoryInfo(WalletsDir);
-		var walletsDirExists = walletsDirInfo.Exists;
-		var searchPattern = $"*.{WalletFileExtension}";
-		var searchOption = SearchOption.TopDirectoryOnly;
-		IEnumerable<FileInfo> result;
-
-		
-		if (!walletsDirExists)
-		{
-			return Enumerable.Empty<FileInfo>();
-		}
-
-		result = walletsDirInfo.EnumerateFiles(searchPattern, searchOption);
-		
-		return result.OrderByDescending(t => t.LastAccessTimeUtc);
-	}
-
-	public string GetNextWalletName(string prefix = "Random Wallet")
-	{
-		int i = 1;
-		var walletNames = EnumerateWalletFiles().Select(x => Path.GetFileNameWithoutExtension(x.Name));
-		while (true)
-		{
-			var walletName = i == 1 ? prefix : $"{prefix} {i}";
-
-			if (!walletNames.Contains(walletName))
-			{
-				return walletName;
-			}
-
-			i++;
-		}
-	}
 }

@@ -1,23 +1,18 @@
 using System.Reactive;
 using System.Reactive.Disposables;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
+/// <summary>
+/// The choice between creating and recovering the wallet. It is offered as long as there is no wallet: the application works with a single one.
+/// </summary>
 [NavigationMetaData(
 	Title = "Add Wallet",
 	Caption = "Create or recover",
-	Order = 2,
-	Category = "General",
-	Keywords = new[]
-		{ "Wallet", "Add", "Create", "New", "Recover" },
-	IconName = "nav_add_circle_24_regular",
-	IconNameFocused = "nav_add_circle_24_filled",
 	NavigationTarget = NavigationTarget.DialogScreen,
-	NavBarPosition = NavBarPosition.Bottom,
-	NavBarSelectionMode = NavBarSelectionMode.Button)]
+	Searchable = false)]
 public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 {
 	public AddWalletPageViewModel(UiContext uiContext) : base(uiContext)
@@ -33,13 +28,35 @@ public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 
 	private void OnCreateWallet()
 	{
-		var options = new WalletCreationOptions.AddNewWallet().WithNewBackup();
-		Navigate().To().WalletNamePage(options);
+		if (CanAddWallet())
+		{
+			Navigate().To().MultiShareOptions(new WalletCreationOptions.AddNewWallet().WithNewBackup());
+		}
 	}
 
 	private void OnRecoverWallet()
 	{
-		Navigate().To().WalletNamePage(new WalletCreationOptions.RecoverWallet());
+		if (CanAddWallet())
+		{
+			Navigate().To().RecoverMultiShareWallet(new WalletCreationOptions.RecoverWallet());
+		}
+	}
+
+	/// <summary>
+	/// Tells the user right away when a wallet cannot be added, e.g. because a wallet file that cannot be opened is in the way.
+	/// </summary>
+	private bool CanAddWallet()
+	{
+		try
+		{
+			UiContext.Services.WalletManager.AssertWalletCanBeAdded();
+			return true;
+		}
+		catch (InvalidOperationException ex)
+		{
+			Navigate().To().ShowErrorDialog(ex.Message, "Add Wallet", "A wallet cannot be added.", NavigationTarget.CompactDialogScreen);
+			return false;
+		}
 	}
 
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
@@ -48,15 +65,5 @@ public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 
 		var enableCancel = UiContext.WalletRepository.HasWallet;
 		SetupCancel(enableCancel: enableCancel, enableCancelOnEscape: enableCancel, enableCancelOnPressed: enableCancel);
-	}
-
-	public async Task Activate()
-	{
-		var mainViewModel = UiContext.MainViewModel
-			?? throw new InvalidOperationException("MainViewModel is not initialized.");
-
-		mainViewModel.IsOobeBackgroundVisible = true;
-		await NavigateDialogAsync(this, NavigationTarget.DialogScreen);
-		mainViewModel.IsOobeBackgroundVisible = false;
 	}
 }

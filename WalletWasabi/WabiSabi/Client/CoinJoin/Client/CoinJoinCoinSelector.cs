@@ -9,23 +9,19 @@ public class CoinJoinCoinSelector
 	public const int MaxInputsRegistrableByWallet = 10; // how many
 	public const int MaxWeightedAnonLoss = 3; // Maximum tolerable WeightedAnonLoss.
 
-	/// <param name="consolidationMode">If true it attempts to select as many coins as it can.</param>
 	/// <param name="anonScoreTarget">Tries to select few coins over this threshold.</param>
 	/// <param name="semiPrivateThreshold">Minimum anonymity of coins that can be selected together.</param>
 	public CoinJoinCoinSelector(
-		bool consolidationMode,
 		int anonScoreTarget,
 		int semiPrivateThreshold,
 		CoinJoinCoinSelectorRandomnessGenerator? generator = null)
 	{
-		ConsolidationMode = consolidationMode;
 		AnonScoreTarget = anonScoreTarget;
 		SemiPrivateThreshold = semiPrivateThreshold;
 
 		_generator = generator ?? new(MaxInputsRegistrableByWallet, RandomnessProviders.Secure);
 	}
 
-	public bool ConsolidationMode { get; }
 	public int AnonScoreTarget { get; }
 	public int SemiPrivateThreshold { get; }
 	private RandomnessProvider Rnd => _generator.Rnd;
@@ -33,7 +29,6 @@ public class CoinJoinCoinSelector
 
 	public static CoinJoinCoinSelector FromWallet(Wallet wallet) =>
 		new(
-			wallet.ConsolidationMode,
 			wallet.AnonScoreTarget,
 			wallet.NonPrivateCoinIsolation ? Constants.SemiPrivateThreshold : 0);
 
@@ -92,11 +87,7 @@ public class CoinJoinCoinSelector
 
 		int inputCount = Math.Min(
 			privateCoins.Length + allowedNonPrivateCoins.Count,
-			ConsolidationMode ? MaxInputsRegistrableByWallet : _generator.GetInputTarget());
-		if (ConsolidationMode)
-		{
-			Logger.LogDebug($"Consolidation mode is on.");
-		}
+			_generator.GetInputTarget());
 		Logger.LogDebug($"Targeted {nameof(inputCount)}: {inputCount}.");
 
 		var biasShuffledPrivateCoins = AnonScoreTxSourceBiasedShuffle(privateCoins).ToArray();

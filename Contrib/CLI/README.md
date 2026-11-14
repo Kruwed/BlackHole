@@ -5,8 +5,11 @@ A bash script for effortless interaction with the Wasabi RPC Server.
 USAGE:
 
 ```bash
-$ ./wcli.sh [-wallet=<WALLET-NAME>] command [ARGS,...]
+$ ./wcli.sh command [ARGS,...]
 ```
+
+There is a single wallet, so the commands do not take a wallet name. Create it once with `createwallet` (it prints the SLIP-39 shares of the backup) or recover it with `recoverwallet`, then open it with `loadwallet`.
+
 The supported RPC commands are listed in the [documentation](https://docs.wasabiwallet.io/using-wasabi/RPC.html).
 
 ## Examples
@@ -34,11 +37,10 @@ $ ./wcli.sh getstatus
 ```
 
 ```bash
-$ ./wcli.sh -wallet=MyWallet getwalletinfo
+$ ./wcli.sh getwalletinfo
 
 {
-  "walletName": "MyWallet",
-  "walletFile": "/home/ricardo/.walletwasabi/client/Wallets/MyWallet.json",
+  "walletFile": "/home/ricardo/.walletwasabi/client/Wallets/Wallet.json",
   "state": "Started",
   "masterKeyFingerprint": "3442193e",
   "anonScoreTarget": 5,
@@ -57,7 +59,7 @@ $ ./wcli.sh -wallet=MyWallet getwalletinfo
 ```
 
 ```bash
-$ ./wcli.sh -wallet=MyWallet listkeys | head -5
+$ ./wcli.sh listkeys | head -5
 
 fullkeypath     internal  keystate  handedout  scriptpubkey                                                        pubkey                                                              address
 86'/1'/0'/1/0   true      2         false      1 cabac13996a24ccecf98761c9b0edf1764bd0cea42925c82cbdaf8658b61b07d  0361b19484ccee6f5d9842be7a461f11e021e3dba709195466d08ad8cdf872014e  tb1pe2avzwvk5fxvanucwcwfkrklzajt6r82g2f9eqktmtuxtzmpkp7s9f78va
@@ -69,7 +71,7 @@ fullkeypath     internal  keystate  handedout  scriptpubkey                     
 `handedout` tells whether `getnewaddress` (or the Receive screen) already gave the address out. An address is given out only once, whether or not it was paid.
 
 ```bash
-$ ./wcli.sh -wallet=MyWallet gethistory | head -10
+$ ./wcli.sh gethistory | head -10
 
 datetime                   height   amount     tx                                                                islikelycoinjoin
 2018-06-27T17:39:40+00:00  1326503  1000       b2cc6a4f437d915abfd7b851d382102037c3abe7932138fcfb92bc4b5eddd08c  false
@@ -84,7 +86,7 @@ datetime                   height   amount     tx                               
 ```
 
 ```bash
-$ ./wcli.sh -wallet=MyWallet getnewaddress
+$ ./wcli.sh getnewaddress
 
 {
   "address": "tb1ptug7cqc4pfqvayvpcqx3wrgw39avz8tvcuwudeuryjmr8fdxxthq5ayh9k",

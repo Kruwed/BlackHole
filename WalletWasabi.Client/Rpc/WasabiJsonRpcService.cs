@@ -32,7 +32,11 @@ public class WasabiJsonRpcService : IJsonRpcService
 		Global = global;
 	}
 
+	private const string NoWalletMessage = "There is no wallet. Create one with 'createwallet' or recover one with 'recoverwallet'.";
+
 	private Global Global { get; }
+
+	/// <summary>The wallet of the application. It is set before every method that works with the wallet.</summary>
 	private Wallet? ActiveWallet { get; set; }
 
 	[JsonRpcMethod("listunspentcoins")]
@@ -84,43 +88,58 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	/// <summary>
-	/// Creates a wallet and returns its SLIP-39 backup: <paramref name="shares"/> shares, any <paramref name="threshold"/> of which recover the wallet.
+	/// Creates the wallet and returns its SLIP-39 backup: <paramref name="shares"/> shares, any <paramref name="threshold"/> of which recover the wallet.
 	/// </summary>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
+	/// <remarks>There is a single wallet: the call fails if it exists already.</remarks>
 	[JsonRpcMethod("createwallet", initializable: false)]
-	public object CreateWallet(string walletName, string password, byte threshold = WalletGenerator.DefaultShamirThreshold, byte shares = WalletGenerator.DefaultShamirShares)
+	public object CreateWallet(string password, byte threshold = WalletGenerator.DefaultShamirThreshold, byte shares = WalletGenerator.DefaultShamirShares)
 	{
-		var walletGenerator = new WalletGenerator(Global.WalletManager.WalletDirectories.WalletsDir, Global.Network);
+		Global.WalletManager.AssertWalletCanBeAdded();
+
+		var walletGenerator = new WalletGenerator(Global.Network);
 		walletGenerator.TipHeight = Global.FilterHeaders.TipHeight;
 		var backup = WalletGenerator.GenerateShares(threshold, shares);
-		var keyManager = walletGenerator.GenerateWallet(walletName, password, backup.Take(threshold).ToArray());
+		var keyManager = walletGenerator.GenerateWallet(password, backup.Take(threshold).ToArray());
 		Global.WalletManager.AddWallet(keyManager);
 		return backup.Select(share => share.ToMnemonic(WordList.Wordlist)).ToArray();
 	}
 
 	/// <summary>
-	/// Recovers a wallet from the SLIP-39 shares of its backup.
+	/// Recovers the wallet from the SLIP-39 shares of its backup.
 	/// </summary>
 	/// <param name="shares">As many shares as the threshold of the backup requires.</param>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It does not have to be the one the wallet was created with.</param>
+	/// <remarks>There is a single wallet: the call fails if it exists already.</remarks>
 	[JsonRpcMethod("recoverwallet", initializable: false)]
-	public void RecoverWallet(string walletName, string[] shares, string password = "")
+	public void RecoverWallet(string[] shares, string password = "")
 	{
-		var walletGenerator = new WalletGenerator(Global.WalletManager.WalletDirectories.WalletsDir, Global.Network);
+		Global.WalletManager.AssertWalletCanBeAdded();
+
+		var walletGenerator = new WalletGenerator(Global.Network);
 		walletGenerator.TipHeight = 0;
 		if (!TryParseShares(shares, out var parsedShares))
 		{
 			throw new ArgumentException("Invalid value for shares");
 		}
 
-		var keyManager = walletGenerator.GenerateWallet(walletName, password, parsedShares);
+		var keyManager = walletGenerator.GenerateWallet(password, parsedShares);
 		Global.WalletManager.AddWallet(keyManager);
 	}
 
+	/// <summary>
+	/// Starts synchronizing the wallet, unless it is running already.
+	/// </summary>
 	[JsonRpcMethod("loadwallet", initializable: false)]
-	public void LoadWallet(string walletName)
+	public void LoadWallet()
 	{
-		SelectWallet(walletName, ensureLoaded: true);
+		var wallet = Global.WalletManager.Wallet ?? throw new InvalidOperationException(NoWalletMessage);
+
+		ActiveWallet = wallet;
+		if (!wallet.Loaded)
+		{
+			Global.WalletManager.StartWalletAsync(wallet).ConfigureAwait(false);
+		}
 	}
 
 	[JsonRpcMethod("getwalletinfo")]
@@ -131,7 +150,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var km = activeWallet.KeyManager;
 		var info = new JsonRpcResult
 		{
-			["walletName"] = activeWallet.WalletName,
 			["walletFile"] = km.FilePath,
 			["loaded"] = activeWallet.Loaded,
 			["masterKeyFingerprint"] = km.MasterFingerprint?.ToString() ?? "",
@@ -471,37 +489,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 
 		AssertWalletIsLoaded();
 		AssertWalletIsLoggedIn(activeWallet, password ?? "");
-		coinJoinManager.RequestCoinJoinStart(activeWallet, activeWallet, stopWhenAllMixed, overridePlebStop);
-	}
-
-	[JsonRpcMethod("startcoinjoinsweep")]
-	public void StartCoinjoinSweeping(string? password = null, string? outputWalletName = null)
-	{
-		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
-		var coinJoinManager = GetCoinJoinManager();
-
-		AssertWalletIsLoaded();
-		AssertWalletIsLoggedIn(activeWallet, password ?? "");
-
-		if (outputWalletName is null || outputWalletName == activeWallet.WalletName)
-		{
-			throw new InvalidOperationException("Output wallet name is invalid.");
-		}
-
-		var outputWallet = Global.WalletManager.GetWalletByName(outputWalletName);
-
-		StartCoinjoinSweepAsync(coinJoinManager, activeWallet, outputWallet).ConfigureAwait(false);
-	}
-
-	private async Task StartCoinjoinSweepAsync(CoinJoinManager coinJoinManager, Wallet activeWallet, Wallet outputWallet)
-	{
-		// If output wallet isn't initialized, then load it.
-		if (!outputWallet.Loaded)
-		{
-			await Global.WalletManager.StartWalletAsync(outputWallet).ConfigureAwait(false);
-		}
-
-		coinJoinManager.RequestCoinJoinStart(activeWallet, outputWallet, stopWhenAllMixed: false, overridePlebStop: true);
+		coinJoinManager.RequestCoinJoinStart(activeWallet, stopWhenAllMixed, overridePlebStop);
 	}
 
 	[JsonRpcMethod("stopcoinjoin")]
@@ -524,18 +512,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 		}
 
 		return new Dictionary<int, int>();
-	}
-
-	[JsonRpcMethod("listwallets", initializable: false)]
-	public async Task<JsonRpcResultList> ListWalletsAsync()
-	{
-		var wallets = await Global.WalletManager.GetWalletsAsync().ConfigureAwait(false);
-		return wallets
-			.Select(x => new JsonRpcResult
-			{
-				["walletName"] = x.WalletName
-			})
-			.ToImmutableArray();
 	}
 
 	[JsonRpcMethod(IJsonRpcService.StopRpcCommand, initializable: false)]
@@ -566,25 +542,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 		};
 	}
 
-	private void SelectWallet(string walletName, bool ensureLoaded = false)
-	{
-		walletName = Guard.NotNullOrEmptyOrWhitespace(nameof(walletName), walletName);
-		try
-		{
-			var wallet = Global.WalletManager.GetWalletByName(walletName);
-
-			ActiveWallet = wallet;
-			if (ensureLoaded &&!wallet.Loaded)
-			{
-				Global.WalletManager.StartWalletAsync(wallet).ConfigureAwait(false);
-			}
-		}
-		catch (InvalidOperationException) // wallet not found
-		{
-			throw new Exception($"Wallet '{walletName}' not found.");
-		}
-	}
-
 	private void AssertWalletIsLoaded()
 	{
 		if (ActiveWallet is not {Loaded: true})
@@ -597,23 +554,23 @@ public class WasabiJsonRpcService : IJsonRpcService
 	{
 		if (!activeWallet.IsLoggedIn && !activeWallet.TryLogin(password))
 		{
-			throw new Exception($"'{activeWallet.WalletName}' wallet requires the password to start coinjoining.");
+			throw new Exception("The wallet requires the password to start coinjoining.");
 		}
 	}
 
+	/// <summary>
+	/// Called before every method that works with the wallet.
+	/// </summary>
+	/// <param name="path">Path of the request. The wallet is not addressed by a name, so it must be the root.</param>
 	[JsonRpcInitialization]
 	public void Initialize(string path, bool needsWallet)
 	{
-		var parts = path.Split("/", StringSplitOptions.RemoveEmptyEntries);
-		var walletName = parts.Length == 1 ? parts[0] : string.Empty;
-		if (needsWallet && !string.IsNullOrEmpty(walletName))
+		if (!string.IsNullOrEmpty(path.Trim('/')))
 		{
-			SelectWallet(walletName);
+			throw new InvalidOperationException("There is a single wallet and it has no name. Send the request to the root path.");
 		}
-		else
-		{
-			throw new InvalidOperationException("Wallet name is invalid or not allowed.");
-		}
+
+		ActiveWallet = Global.WalletManager.Wallet ?? throw new InvalidOperationException(NoWalletMessage);
 	}
 
 	private static bool TryParseShares(string[] mnemonics, [NotNullWhen(true)] out Share[]? shares)

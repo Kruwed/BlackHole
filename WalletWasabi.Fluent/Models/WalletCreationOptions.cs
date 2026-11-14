@@ -1,10 +1,9 @@
 
 namespace WalletWasabi.Fluent.Models;
 
-public abstract record WalletCreationOptions(string? WalletName = null)
+public abstract record WalletCreationOptions
 {
-	public record AddNewWallet(string? WalletName = null, MultiShareBackup? Backup = null)
-		: WalletCreationOptions(WalletName)
+	public record AddNewWallet(MultiShareBackup? Backup = null) : WalletCreationOptions
 	{
 		/// <summary>
 		/// Starts a backup with the default settings. Its shares are generated once the user has chosen how many to make.
@@ -20,8 +19,7 @@ public abstract record WalletCreationOptions(string? WalletName = null)
 	}
 
 	public record RecoverWallet(
-		string? WalletName = null,
 		MultiShareBackup? Backup = null,
 		int? MinGapLimit = null,
-		uint? BirthHeight = null) : WalletCreationOptions(WalletName);
+		uint? BirthHeight = null) : WalletCreationOptions;
 }

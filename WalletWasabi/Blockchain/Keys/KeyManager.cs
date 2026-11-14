@@ -164,7 +164,6 @@ public class KeyManager
 	private HdPubKeyGenerator? _silentPaymentSpendKeyGenerator;
 	private List<(SilentPaymentAddress Address, ECPrivKey ScanSecret)> _silentPaymentScanData = new();
 
-	public string WalletName => string.IsNullOrWhiteSpace(FilePath) ? "" : Path.GetFileNameWithoutExtension(FilePath);
 
 	/// <summary>
 	/// Creates a wallet from a fresh seed and gives back its SLIP-39 backup with the default threshold and share count.
@@ -613,7 +612,7 @@ public class KeyManager
 			if (newHeight < prevHeight)
 			{
 				SetBestHeight(newHeight);
-				Logger.LogWarning($"Wallet ({WalletName}) height has been set back by {prevHeight - newHeight}. From {prevHeight} to {newHeight}.");
+				Logger.LogWarning($"Wallet height has been set back by {prevHeight - newHeight}. From {prevHeight} to {newHeight}.");
 			}
 		}
 	}

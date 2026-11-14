@@ -1,6 +1,4 @@
 using NBitcoin;
-using System.IO;
-using System.Linq;
 using WalletWasabi.Models;
 using WalletWasabi.Userfacing;
 using WalletWasabi.Wallets.Slip39;
@@ -16,13 +14,11 @@ public class WalletGenerator
 	public const int MinShamirThreshold = 1;
 	public const int MaxShamirThreshold = 16;
 
-	public WalletGenerator(string walletsDir, Network network)
+	public WalletGenerator(Network network)
 	{
-		WalletsDir = walletsDir;
 		Network = network;
 	}
 
-	public string WalletsDir { get; private set; }
 	public Network Network { get; private set; }
 	public uint TipHeight { get; set; }
 
@@ -31,44 +27,16 @@ public class WalletGenerator
 	/// </summary>
 	/// <param name="shares">As many shares as their threshold requires.</param>
 	/// <param name="password">Encrypts the wallet secret in the wallet file. It is not part of the backup.</param>
-	public KeyManager GenerateWallet(string walletName, string password, Share[] shares)
+	/// <remarks>The wallet is not saved anywhere yet. Its file is written when it is added to the <see cref="Wallets.WalletManager"/>.</remarks>
+	public KeyManager GenerateWallet(string password, Share[] shares)
 	{
-		string walletFilePath = GetWalletFilePath(walletName, WalletsDir);
-
 		// Here we are not letting anything that will be autocorrected later. The wallet must open with exactly the entered password.
 		PasswordHelper.Guard(password);
 
 		var km = KeyManager.CreateNew(shares, password, Network);
 
 		km.SetBestHeight(TipHeight);
-		km.SetFilePath(walletFilePath);
 		return km;
-	}
-
-	public static string GetWalletFilePath(string walletName, string walletsDir)
-	{
-		if (!ValidateWalletName(walletName))
-		{
-			throw new ArgumentException("Invalid wallet name.");
-		}
-
-		string walletFilePath = Path.Combine(walletsDir, $"{walletName}.json");
-		if (File.Exists(walletFilePath))
-		{
-			throw new ArgumentException("Wallet name is already taken.");
-		}
-
-		return walletFilePath;
-	}
-
-	public static bool ValidateWalletName(string walletName)
-	{
-		if (string.IsNullOrWhiteSpace(walletName))
-		{
-			return false;
-		}
-		var invalidChars = Path.GetInvalidFileNameChars();
-		return !walletName.Any(c => invalidChars.Contains(c)) && !walletName.EndsWith('.');
 	}
 
 	public static byte[] GenerateShamirEntropy()

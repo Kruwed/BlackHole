@@ -12,22 +12,18 @@ namespace WalletWasabi.Fluent.ViewModels.Navigation;
 [AppLifetime]
 public class NavigationState : ReactiveObject, INavigate
 {
-	private readonly IWalletNavigation _walletNavigation;
-
 	public NavigationState(
 		UiContext uiContext,
 		INavigationStack<RoutableViewModel> homeScreenNavigation,
 		INavigationStack<RoutableViewModel> dialogScreenNavigation,
 		INavigationStack<RoutableViewModel> fullScreenNavigation,
-		INavigationStack<RoutableViewModel> compactDialogScreenNavigation,
-		IWalletNavigation walletNavigation)
+		INavigationStack<RoutableViewModel> compactDialogScreenNavigation)
 	{
 		UiContext = uiContext;
 		HomeScreen = homeScreenNavigation;
 		DialogScreen = dialogScreenNavigation;
 		FullScreen = fullScreenNavigation;
 		CompactDialogScreen = compactDialogScreenNavigation;
-		_walletNavigation = walletNavigation;
 		this.WhenAnyValue(
 				x => x.DialogScreen.CurrentPage,
 				x => x.CompactDialogScreen.CurrentPage,
@@ -80,11 +76,6 @@ public class NavigationState : ReactiveObject, INavigate
 	public FluentNavigate To()
 	{
 		return new FluentNavigate(UiContext);
-	}
-
-	public IWalletViewModel? To(IWalletModel wallet)
-	{
-		return _walletNavigation.To(wallet);
 	}
 
 	public async Task<DialogResult<TResult>> NavigateDialogAsync<TResult>(DialogViewModelBase<TResult> dialog, NavigationTarget target = NavigationTarget.Default, NavigationMode navigationMode = NavigationMode.Normal)

@@ -89,7 +89,7 @@ public class TransactionTreeBuilder
 				}
 
 				// If there is only one item in the group, it's not a group.
-				// This can happen, for example, when CPFP occurs between user-owned wallets.
+				// This can happen, for example, when the transaction that a CPFP pays for is not one of the wallet.
 				if (groupItems.Count <= 1)
 				{
 					continue;

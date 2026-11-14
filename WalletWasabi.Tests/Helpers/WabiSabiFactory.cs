@@ -320,6 +320,18 @@ public static class WabiSabiFactory
 		return (keyChain, smartCoin1, smartCoin2);
 	}
 
+	/// <summary>
+	/// Creates a coin selector that registers as many coins as a wallet may, so that tests do not depend on a randomly chosen number of inputs.
+	/// </summary>
+	public static CoinJoinCoinSelector CreateGreedyCoinSelector(int anonScoreTarget, int semiPrivateThreshold) =>
+		new(
+			anonScoreTarget,
+			semiPrivateThreshold,
+			new CoinJoinCoinSelectorRandomnessGenerator(
+				CoinJoinCoinSelector.MaxInputsRegistrableByWallet,
+				RandomnessProviders.Secure,
+				fixedInputTarget: () => CoinJoinCoinSelector.MaxInputsRegistrableByWallet));
+
 	public static CoinJoinClient CreateTestCoinJoinClient(
 		Func<string, IWabiSabiApiRequestHandler> apiClientFactory,
 		KeyManager keyManager,
@@ -341,7 +353,7 @@ public static class WabiSabiFactory
 		bool redCoinIsolation)
 	{
 		var semiPrivateThreshold = redCoinIsolation ? Constants.SemiPrivateThreshold : 0;
-		var coinSelector = new CoinJoinCoinSelector(consolidationMode: true, anonScoreTarget: int.MaxValue, semiPrivateThreshold: semiPrivateThreshold);
+		var coinSelector = CreateGreedyCoinSelector(anonScoreTarget: int.MaxValue, semiPrivateThreshold: semiPrivateThreshold);
 		var coinjoinClient = new TestableCoinJoinClient(
 			apiClientFactory,
 			keyChain,

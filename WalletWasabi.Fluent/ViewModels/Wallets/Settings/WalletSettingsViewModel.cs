@@ -24,58 +24,24 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
     Searchable = false)]
 public partial class WalletSettingsViewModel : RoutableViewModel
 {
+    /// <summary>Index of the tab with the coinjoin settings.</summary>
+    public const int CoinjoinTab = 0;
+
     private readonly IWalletModel _wallet;
-    [AutoNotify] private string _walletName;
     [AutoNotify] private int _selectedTab;
 
     public WalletSettingsViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
     {
         _wallet = walletModel;
-        _walletName = walletModel.Name;
-        _selectedTab = 0;
-
-        this.ValidateProperty(
-            x => x.WalletName,
-            errors =>
-            {
-                if (_wallet.Name == WalletName)
-                {
-                    return;
-                }
-
-                if (UiContext.WalletRepository.ValidateWalletName(WalletName) is { } error)
-                {
-                    errors.Add(error.Severity, error.Message);
-                }
-            });
+        _selectedTab = CoinjoinTab;
 
         SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
-        var canSave = this.WhenAnyValue(x => x.WalletName, x => x.Validations,
-            (name, validations) => !string.IsNullOrWhiteSpace(name) && !validations.Any);
 
         NextCommand = ReactiveCommand.Create(() =>
         {
-            if (_wallet.Name != WalletName)
-            {
-                try
-                {
-                    _wallet.Rename(WalletName);
-                }
-                catch
-                {
-                    WalletName = _wallet.Name;
-                    UiContext.Navigate().To().ShowErrorDialog(
-                        $"The wallet cannot be renamed to {WalletName}",
-                        "Invalid name",
-                        "Cannot rename the wallet",
-                        NavigationTarget.CompactDialogScreen);
-                    return;
-                }
-            }
-
             _wallet.Settings.Save();
             Navigate().Back();
-        }, canSave);
+        });
 
         WalletCoinJoinSettings = new WalletCoinJoinSettingsViewModel(UiContext, walletModel);
 
@@ -93,13 +59,4 @@ public partial class WalletSettingsViewModel : RoutableViewModel
 
     public WalletCoinJoinSettingsViewModel WalletCoinJoinSettings { get; private set; }
     public ICommand ResyncWalletCommand { get; }
-
-    protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
-    {
-        base.OnNavigatedTo(isInHistory, disposables);
-
-        WalletName = _wallet.Name;
-
-        WalletCoinJoinSettings.ManuallyUpdateOutputWalletList();
-    }
 }

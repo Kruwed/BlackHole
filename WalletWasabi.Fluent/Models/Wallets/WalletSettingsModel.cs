@@ -23,7 +23,6 @@ public partial class WalletSettingsModel : ReactiveObject
 	[AutoNotify] private int _anonScoreTarget;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
-	[AutoNotify] private WalletId? _outputWalletId;
 
 	public WalletSettingsModel(IServices services, KeyManager keyManager, bool isNewWallet = false, bool isCoinJoinPaused = false)
 	{
@@ -39,12 +38,6 @@ public partial class WalletSettingsModel : ReactiveObject
 		_anonScoreTarget = _keyManager.AnonScoreTarget;
 		_nonPrivateCoinIsolation = _keyManager.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _keyManager.OnlyUsePrivateFundsForPayments;
-
-		if (!isNewWallet)
-		{
-			_outputWalletId = services.GetWalletByName(_keyManager.WalletName).WalletId;
-		}
-
 
 		this.WhenAnyValue(
 				x => x.AutoCoinjoin,
@@ -62,26 +55,27 @@ public partial class WalletSettingsModel : ReactiveObject
 	public bool IsCoinJoinPaused { get; set; }
 
 	/// <summary>
-	/// Saves to current configuration to file.
+	/// Saves the current configuration to the wallet file. A new wallet becomes the wallet of the application by that.
 	/// </summary>
-	/// <returns>The unique ID of the wallet.</returns>
-	public WalletId Save()
+	public void Save()
 	{
-		if (_isDirty)
+		if (!_isDirty)
 		{
-			_keyManager.ToFile();
-
-			if (IsNewWallet)
-			{
-				_services.AddWallet(_keyManager);
-				IsNewWallet = false;
-				OutputWalletId = _services.GetWalletByName(_keyManager.WalletName).WalletId;
-			}
-
-			_isDirty = false;
+			return;
 		}
 
-		return _services.GetWalletByName(_keyManager.WalletName).WalletId;
+		if (IsNewWallet)
+		{
+			// Adding the wallet writes its file.
+			_services.AddWallet(_keyManager);
+			IsNewWallet = false;
+		}
+		else
+		{
+			_keyManager.ToFile();
+		}
+
+		_isDirty = false;
 	}
 
 	private void SetValues()

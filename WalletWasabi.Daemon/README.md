@@ -34,7 +34,7 @@ There are a few special switches that are not present in the `Config.json` file 
 * **LogLevel** to specify the level of detail used during logging
 * **DataDir** to specify the path to the directory used during runtime.
 * **BlockOnly** to instruct wasabi to ignore p2p transactions
-* **Wallet** to instruct wasabi to open a wallet automatically after started.
+* **LoadWallet** (`--loadwallet`, without a value) to instruct wasabi to open the wallet automatically after started.
 
 ### Examples
 
@@ -50,10 +50,10 @@ Run Wasabi Daemon and connect to the testnet Bitcoin network.
 $ WASABI_NETWORK=testnet wasabi.daemon
 ```
 
-Run Wasabi and open two wallets: AliceWallet and BobWallet
+Run Wasabi and open the wallet
 
 ```bash
-$ wasabi.daemon --wallet=AliceWallet --wallet=BobWallet
+$ wasabi.daemon --loadwallet
 ```
 
 ### Version

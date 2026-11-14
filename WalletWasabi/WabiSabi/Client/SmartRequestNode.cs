@@ -5,7 +5,7 @@ namespace WalletWasabi.WabiSabi.Client;
 
 public class SmartRequestNode
 {
-	// Limit reissuance requests at the same time when coinjoining with multiple wallets to avoid overloading Tor.
+	// Limit reissuance requests at the same time to avoid overloading Tor.
 	private const int MaxParallelReissuanceRequests = 10;
 
 	private static readonly SemaphoreSlim SemaphoreSlim = new(MaxParallelReissuanceRequests);

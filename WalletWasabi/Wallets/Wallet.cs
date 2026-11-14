@@ -63,13 +63,7 @@ public class Wallet : BackgroundService
 		_eventBus.Subscribe<MiningFeeRatesChanged>(e => FeeRateEstimations = e.AllFeeEstimate)
 			.DisposeUsing(_disposables);
 
-		_eventBus.Subscribe<WalletRelevantTransactionProcessed>(e =>
-			{
-				if (e.WalletName == WalletName)
-				{
-					WalletRelevantTransactionProcessed(e.Result);
-				}
-			})
+		_eventBus.Subscribe<WalletRelevantTransactionProcessed>(e => WalletRelevantTransactionProcessed(e.Result))
 			.DisposeUsing(_disposables);
 
 		_eventBus.Subscribe<NewTransactionInMempool>(e => Mempool_TransactionReceived(e.Transaction))
@@ -89,7 +83,6 @@ public class Wallet : BackgroundService
 	public KeyManager KeyManager { get; }
 	public ServiceConfiguration ServiceConfiguration { get; }
 	public FeeRateEstimations? FeeRateEstimations { get; private set; }
-	public string WalletName => KeyManager.WalletName;
 
 	public CoinsRegistry Coins { get; }
 
@@ -114,7 +107,6 @@ public class Wallet : BackgroundService
 	public PaymentBatch BatchedPayments { get; }
 
 	public int AnonScoreTarget => KeyManager.AnonScoreTarget;
-	public bool ConsolidationMode { get; set; }
 
 	public Money PlebStopThreshold => KeyManager.PlebStopThreshold;
 
@@ -289,7 +281,7 @@ public class Wallet : BackgroundService
 	public void AddCoinjoinCosts(uint256 transactionId, CoinjoinCosts coinjoinCosts)
 	{
 		KeyManager.AddCoinjoinCosts(transactionId, coinjoinCosts);
-		_eventBus.Publish(new CoinjoinCostsAdded(WalletName, transactionId, coinjoinCosts));
+		_eventBus.Publish(new CoinjoinCostsAdded(transactionId, coinjoinCosts));
 	}
 
 	/// <inheritdoc/>

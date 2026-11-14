@@ -159,7 +159,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		var coinJoinSettingsCommand = ReactiveCommand.Create(
 			() =>
 			{
-				settings.SelectedTab = 1;
+				settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
 				UiContext.Navigate(NavigationTarget.DialogScreen).To(settings);
 			});
 

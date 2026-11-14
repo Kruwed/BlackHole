@@ -17,12 +17,6 @@
     <TabControl SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
                 Classes="Settings">
 
-      <TabItem Header="General">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-          <v:WalletGeneralSettingsView />
-        </ScrollViewer>
-      </TabItem>
-
       <TabItem Header="Coinjoin">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <v:WalletCoinJoinSettingsView DataContext="{Binding WalletCoinJoinSettings}" />

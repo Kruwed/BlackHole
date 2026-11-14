@@ -18,15 +18,11 @@ public partial class AddedWalletPageViewModel : RoutableViewModel
 	{
 		_walletSettings = walletSettings;
 
-		WalletName = options.WalletName!;
-
 		SetupCancel(enableCancel: false, enableCancelOnEscape: false, enableCancelOnPressed: false);
 		EnableBack = false;
 
 		NextCommand = ReactiveCommand.CreateFromTask(() => OnNextAsync(options));
 	}
-
-	public string WalletName { get; }
 
 	private async Task OnNextAsync(WalletCreationOptions options)
 	{
@@ -43,9 +39,8 @@ public partial class AddedWalletPageViewModel : RoutableViewModel
 
 		await Task.Delay(UiConstants.CloseSuccessDialogMillisecondsDelay);
 
+		// The home screen shows the wallet already: it appeared there when it was saved.
 		Navigate().Clear();
-
-		UiContext.Navigate().To(_wallet);
 	}
 
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)

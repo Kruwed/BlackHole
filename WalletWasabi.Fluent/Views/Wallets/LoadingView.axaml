@@ -51,7 +51,7 @@
     </Style>
   </UserControl.Styles>
 
-  <ContentArea Title="{Binding WalletName, FallbackValue=My Wallet with a very long name}"
+  <ContentArea Title="{Binding WalletTitle}"
                ScrollViewer.VerticalScrollBarVisibility="Disabled">
     <Panel>
       <Interaction.Behaviors>

@@ -1,6 +1,8 @@
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using System.Windows.Input;
+using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Login;
@@ -15,13 +17,11 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	private readonly CompositeDisposable _disposables = new();
 
 	[AutoNotify] private bool _isLoggedIn;
-	[AutoNotify] private bool _isSelected;
 	[AutoNotify] private bool _isLoading;
 	[AutoNotify] private string? _iconName;
 	[AutoNotify] private string? _iconNameFocused;
 	[AutoNotify] private WalletViewModel? _walletViewModel;
 	[AutoNotify] private RoutableViewModel? _currentPage;
-	[AutoNotify] private string? _title;
 
 	public WalletPageViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
 	{
@@ -29,7 +29,9 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 
 		// TODO: Finish partial refactor
 		// Wallet property must be removed
-		Wallet = UiContext.Services.GetWalletByName(walletModel.Name);
+		Wallet = UiContext.Services.WalletManager.Wallet ?? throw new InvalidOperationException("There is no wallet.");
+
+		OpenCommand = ReactiveCommand.Create(ShowCurrentPage);
 
 		// Show Login Page when wallet is not logged in
 		this.WhenAnyValue(x => x.IsLoggedIn)
@@ -55,29 +57,37 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 			.BindTo(this, x => x.IsLoggedIn)
 			.DisposeWith(_disposables);
 
-		// Navigate to current page when IsSelected and CurrentPage change
-		this.WhenAnyValue(x => x.IsSelected, x => x.CurrentPage)
-			.Where(t => t.Item1)
-			.Select(t => t.Item2)
-			.WhereNotNull()
-			.Do(x => UiContext.Navigate().To(x, NavigationTarget.HomeScreen, NavigationMode.Clear))
-			.Subscribe()
-			.DisposeWith(_disposables);
-
-		this.WhenAnyValue(x => x.WalletModel.Name)
-			.BindTo(this, x => x.Title)
-			.DisposeWith(_disposables);
-
-		this.WhenAnyValue(x => x.IsSelected)
-			.Do(value => WalletModel.IsSelected = value)
-			.Subscribe();
-
 		SetIcon();
 	}
 
 	public IWalletModel WalletModel { get; }
 
 	public Wallet Wallet { get; }
+
+	public string Title => UiConstants.WalletTitle;
+
+	/// <summary>Brings the home screen back to the wallet.</summary>
+	public ICommand OpenCommand { get; }
+
+	/// <summary>
+	/// Starts showing the wallet on the home screen: its login page, then its loading page, then the wallet itself.
+	/// </summary>
+	public void Activate()
+	{
+		this.WhenAnyValue(x => x.CurrentPage)
+			.WhereNotNull()
+			.Do(_ => ShowCurrentPage())
+			.Subscribe()
+			.DisposeWith(_disposables);
+	}
+
+	private void ShowCurrentPage()
+	{
+		if (CurrentPage is { } currentPage)
+		{
+			UiContext.Navigate().To(currentPage, NavigationTarget.HomeScreen, NavigationMode.Clear);
+		}
+	}
 
 	private void ShowLogin()
 	{
@@ -93,11 +103,6 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	private void ShowWallet()
 	{
 		WalletViewModel = new WalletViewModel(UiContext, WalletModel, Wallet);
-
-		// Pass IsSelected down to WalletViewModel.IsSelected
-		this.WhenAnyValue(x => x.IsSelected)
-			.BindTo(WalletViewModel, x => x.IsSelected)
-			.DisposeWith(_disposables);
 
 		CurrentPage = WalletViewModel;
 		IsLoading = false;

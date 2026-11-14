@@ -44,7 +44,6 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 
 		NewTransactionArrived =
 			services.EventBus.AsObservable<WalletRelevantTransactionProcessed>()
-				.Where(x => x.WalletName == wallet.WalletName)
 				.Select(x => (walletModel, x.Result))
 				.ObserveOn(RxApp.MainThreadScheduler);
 
@@ -52,7 +51,6 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 			.ObserveOn(RxApp.MainThreadScheduler);
 
 		var coinjoinCostsAdded = services.EventBus.AsObservable<CoinjoinCostsAdded>()
-			.Where(x => x.WalletName == wallet.WalletName)
 			.ToSignal()
 			.ObserveOn(RxApp.MainThreadScheduler);
 

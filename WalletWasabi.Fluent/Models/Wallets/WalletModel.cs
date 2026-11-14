@@ -20,8 +20,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	bool IsLoaded { get; set; }
 
-	bool IsSelected { get; set; }
-
 	IObservable<bool> IsCoinjoinRunning { get; }
 
 	IObservable<bool> IsCoinjoinStarted { get; }
@@ -31,8 +29,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	AddressesModel Addresses { get; }
 
 	WalletId Id { get; }
-
-	string Name { get; }
 
 	Network Network { get; }
 
@@ -61,8 +57,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	WalletInfoModel GetWalletInfo();
 
 	PrivacySuggestionsModel GetPrivacySuggestionsModel(SendFlowModel sendFlow);
-
-	void Rename(string newWalletName);
 }
 
 [AppLifetime]
@@ -74,7 +68,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 
 	[AutoNotify] private bool _isLoggedIn;
 	[AutoNotify] private bool _isLoaded;
-	[AutoNotify] private bool _isSelected;
 
 	public WalletModel(IServices services, Wallet wallet)
 	{
@@ -142,8 +135,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 
 	public WalletId Id => Wallet.WalletId;
 
-	public string Name => Wallet.WalletName;
-
 	public Network Network => Wallet.Network;
 
 	public WalletTransactionsModel Transactions { get; }
@@ -179,11 +170,5 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public PrivacySuggestionsModel GetPrivacySuggestionsModel(SendFlowModel sendFlow)
 	{
 		return new PrivacySuggestionsModel(_services, sendFlow);
-	}
-
-	public void Rename(string newWalletName)
-	{
-		_services.RenameWallet(Wallet, newWalletName);
-		this.RaisePropertyChanged(nameof(Name));
 	}
 }

@@ -58,10 +58,10 @@ public static class BlockchainAnalyzer
 	/// anonymity score, otherwise the coin is wrongly considered fully private and silently
 	/// excluded from coinjoins.
 	/// <para>
-	/// It can leak into a wallet output when the transaction is shared between multiple loaded
-	/// wallets (a single <c>AllTransactionStore</c> is shared app-wide), so its inputs may
-	/// temporarily contain another wallet's not-yet-analyzed keys, whose sentinel value then
-	/// propagates through the input-based anonset calculations above.
+	/// It can leak into a wallet output when the inputs of the transaction contain keys that were
+	/// not analyzed yet, as it used to happen when the same wallet was loaded twice over a shared
+	/// <c>AllTransactionStore</c>: their sentinel value then propagates through the input-based
+	/// anonset calculations above.
 	/// As a fail-safe we treat such an output as freshly received (anonymity set <c>1</c>): the
 	/// least private value, so the coin stays eligible for coinjoin rather than being skipped.
 	/// </para>

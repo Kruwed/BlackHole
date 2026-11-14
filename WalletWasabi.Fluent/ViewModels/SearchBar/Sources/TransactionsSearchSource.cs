@@ -55,18 +55,9 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 		return historyItemViewModelBase.Transaction.Id.ToString().Contains(queryStr, StringComparison.CurrentCultureIgnoreCase);
 	}
 
-	private Task NavigateTo(WalletViewModel wallet, HistoryItemViewModelBase item)
+	private static Task NavigateTo(WalletViewModel wallet, HistoryItemViewModelBase item)
 	{
-		var walletPageViewModel = _navBarViewModel.Wallets.FirstOrDefault(x => x.WalletViewModel == wallet);
-		if (walletPageViewModel == _navBarViewModel.SelectedWallet)
-		{
-			wallet.SelectTransaction(item.Transaction.Id);
-		}
-		else
-		{
-			_navBarViewModel.SelectedWallet = walletPageViewModel;
-			wallet.NavigateAndHighlight(item.Transaction.Id);
-		}
+		wallet.SelectTransaction(item.Transaction.Id);
 
 		return Task.CompletedTask;
 	}
@@ -82,16 +73,11 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 		};
 	}
 
-	private static IEnumerable<(WalletViewModel, HistoryItemViewModelBase)> Flatten(IEnumerable<(WalletViewModel Wallet, IEnumerable<HistoryItemViewModelBase> Transactions)> walletTransactions)
-	{
-		return walletTransactions.SelectMany(t => t.Transactions.Select(item => (t.Wallet, HistoryItem: item)));
-	}
-
 	private ISearchItem ToSearchItem(WalletViewModel wallet, HistoryItemViewModelBase item)
 	{
 		return new ActionableItem(
 			item.Transaction.Id.ToString(),
-			@$"Found in ""{wallet.WalletModel.Name}""",
+			"Found in the transaction history",
 			() => NavigateTo(wallet, item),
 			"Transactions",
 			new List<string>())
@@ -100,17 +86,19 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 		};
 	}
 
-	private IEnumerable<(WalletViewModel Wallet, IEnumerable<HistoryItemViewModelBase> Transactions)> GetTransactionsByWallet()
+	/// <summary>The transactions of the wallet, including the coinjoins that the history shows in groups. Empty until the wallet is loaded.</summary>
+	private IEnumerable<(WalletViewModel Wallet, HistoryItemViewModelBase Transaction)> GetTransactions()
 	{
-		// TODO: This is a workaround to get all the transactions from currently loaded wallets. REMOVE after UIDecoupling #26
+		// TODO: This is a workaround to get all the transactions of the loaded wallet. REMOVE after UIDecoupling #26
 
-		return _navBarViewModel.Wallets
-			.Where(x => x is {IsLoggedIn: true, Wallet.Loaded: true})
-			.Select(x => x.WalletViewModel)
-			.WhereNotNull()
-			.Select(
-				x => (Wallet: x,
-					x.History.Transactions.Concat(x.History.Transactions.OfType<CoinJoinsHistoryItemViewModel>().SelectMany(y => y.Children))));
+		if (_navBarViewModel.Wallet is not { IsLoggedIn: true, Wallet.Loaded: true, WalletViewModel: { } wallet })
+		{
+			return [];
+		}
+
+		return wallet.History.Transactions
+			.Concat(wallet.History.Transactions.OfType<CoinJoinsHistoryItemViewModel>().SelectMany(y => y.Children))
+			.Select(transaction => (wallet, transaction));
 	}
 
 	private IEnumerable<ISearchItem> Search(string query)
@@ -122,7 +110,7 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 
 	private IEnumerable<(WalletViewModel, HistoryItemViewModelBase)> Filter(string queryStr)
 	{
-		return Flatten(GetTransactionsByWallet())
+		return GetTransactions()
 		.Where(tuple => TryParseBitcoinAddress(tuple.Item1.WalletModel.Network, queryStr, out var address) ?
 			ContainsDestinationAddress(tuple.Item1, tuple.Item2, address) :
 			ContainsId(tuple.Item2, queryStr));

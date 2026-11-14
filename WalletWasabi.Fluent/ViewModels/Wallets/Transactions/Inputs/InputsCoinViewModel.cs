@@ -42,8 +42,8 @@ public class InputsCoinViewModel : InputsCoinListItem
 		TitleText = $"{TotalInputs} input{(TotalInputs == 1 ? "" : "s")}";
 
 		Tip = Children.Count == TotalInputs ?
-			"All inputs belong to one of your opened wallets" :
-			"Only inputs belonging to one of your opened wallets can be shown.";
+			"All inputs belong to your wallet" :
+			"Only the inputs that belong to your wallet can be shown.";
 	}
 	public SmartCoin? Coin { get; }
 }

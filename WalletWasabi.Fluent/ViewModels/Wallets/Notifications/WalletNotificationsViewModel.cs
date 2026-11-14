@@ -5,29 +5,28 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
-using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Notifications;
 
 [AppLifetime]
 public partial class WalletNotificationsViewModel : ViewModelBase
 {
-	private readonly IWalletSelector _walletSelector;
+	private readonly Func<IWalletViewModel?> _getWalletViewModel;
 	[AutoNotify] private bool _isBusy;
 
-	public WalletNotificationsViewModel(UiContext uiContext, IWalletSelector walletSelector) : base(uiContext)
+	/// <param name="getWalletViewModel">Gives the view model of the wallet, once the wallet is loaded.</param>
+	public WalletNotificationsViewModel(UiContext uiContext, Func<IWalletViewModel?> getWalletViewModel) : base(uiContext)
 	{
-		_walletSelector = walletSelector;
+		_getWalletViewModel = getWalletViewModel;
 	}
 
 	public void StartListening()
 	{
-		UiContext.WalletRepository.Wallets
-			.Connect()
-			.AutoRefresh(x => x.IsLoggedIn)
-			.Filter(x => x.IsLoggedIn)
-			.FilterOnObservable(x => x.Loaded.Select(s => s))
-			.MergeMany(x => x.Transactions.NewTransactionArrived)
+		UiContext.WalletRepository
+			.WhenAnyValue(x => x.Wallet)
+			.WhereNotNull()
+			.Take(1)
+			.SelectMany(wallet => wallet.Transactions.NewTransactionArrived.Where(_ => wallet is { IsLoggedIn: true, IsLoaded: true }))
 			.Where(x => !UiContext.ApplicationSettings.PrivacyMode)
 			.Where(x => x.EventArgs.IsNews)
 			.DoAsync(x => OnNotificationReceivedAsync(x.Wallet, x.EventArgs))
@@ -45,17 +44,16 @@ public partial class WalletNotificationsViewModel : ViewModelBase
 					return;
 				}
 
-				var wvm = _walletSelector.To(wallet);
-				wvm?.SelectTransaction(e.Transaction.GetHash());
+				_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash());
 			}
 
-			NotificationHelpers.Show(wallet, e, OnClick);
+			NotificationHelpers.Show(e, OnClick);
 		}
 
-		if (_walletSelector.SelectedWalletModel == wallet && (e.NewlyReceivedCoins.Count != 0 || e.NewlyConfirmedReceivedCoins.Count != 0))
+		if (e.NewlyReceivedCoins.Count != 0 || e.NewlyConfirmedReceivedCoins.Count != 0)
 		{
 			await Task.Delay(200);
-			_walletSelector.SelectedWallet?.SelectTransaction(e.Transaction.GetHash());
+			_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash());
 		}
 	}
 }

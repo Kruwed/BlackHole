@@ -42,7 +42,7 @@ public partial class MainViewModel : ViewModelBase
 		CompactDialogScreen = new DialogScreenViewModel(UiContext, NavigationTarget.CompactDialogScreen);
 		NavBar = new NavBarViewModel(UiContext);
 		MainScreen = new TargettedNavigationStack(UiContext, NavigationTarget.HomeScreen);
-		UiContext.RegisterNavigation(new NavigationState(UiContext, MainScreen, DialogScreen, FullScreen, CompactDialogScreen, NavBar));
+		UiContext.RegisterNavigation(new NavigationState(UiContext, MainScreen, DialogScreen, FullScreen, CompactDialogScreen));
 
 		NavBar.Activate();
 
@@ -50,7 +50,7 @@ public partial class MainViewModel : ViewModelBase
 
 		SettingsPage = new SettingsPageViewModel(UiContext);
 		PrivacyMode = new PrivacyModeViewModel(UiContext, UiContext.ApplicationSettings);
-		Notifications = new WalletNotificationsViewModel(UiContext, NavBar);
+		Notifications = new WalletNotificationsViewModel(UiContext, () => NavBar.Wallet?.WalletViewModel);
 
 		NavigationManager.RegisterType(NavBar);
 
@@ -172,11 +172,10 @@ public partial class MainViewModel : ViewModelBase
 
 	public void Initialize()
 	{
-		UiContext.WalletRepository.Wallets
-			.Connect()
-			.FilterOnObservable(x => x.IsCoinjoinRunning)
-			.ToCollection()
-			.Select(x => x.Count != 0)
+		UiContext.WalletRepository
+			.WhenAnyValue(x => x.Wallet)
+			.Select(wallet => wallet?.IsCoinjoinRunning ?? Observable.Return(false))
+			.Switch()
 			.BindTo(this, x => x.IsCoinJoinActive);
 
 		UiContext.Services.EventBus.AsObservable<RpcStatusChanged>()

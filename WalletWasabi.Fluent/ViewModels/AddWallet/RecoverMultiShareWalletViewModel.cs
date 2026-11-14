@@ -117,9 +117,6 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 
 	private async Task OnNextAsync(WalletCreationOptions.RecoverWallet options)
 	{
-		var (walletName, _, _, _) = options;
-		ArgumentException.ThrowIfNullOrEmpty(walletName);
-
 		if (Share is not { } share)
 		{
 			return;
@@ -163,9 +160,6 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 				if (filterMinHeight is { } minHeight && BirthHeight < minHeight)
 				{
 					UiContext.WalletRepository.SaveWallet(walletSettings);
-
-					UiContext.Services.SetLastSelectedWallet(walletName);
-					UiContext.Services.UiConfig.ToFile();
 
 					await ShowErrorAsync(
 						"Restart required",

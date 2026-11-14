@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
+using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Transactions;
@@ -31,7 +32,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _isLoading;
 	[AutoNotify] private bool _isPointerOver;
-	[AutoNotify] private bool _isSelected;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSendButtonVisible;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isDonateButtonVisible;
 
@@ -47,7 +47,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		set => IsMusicBoxFlyoutDisplayed = value;
 	}
 
-	private string _title = "";
+	private string _title = UiConstants.WalletTitle;
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _loaded;
 
 	public WalletViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
@@ -58,18 +58,15 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		Settings = new WalletSettingsViewModel(UiContext, WalletModel);
 		History = new HistoryViewModel(UiContext, WalletModel);
 
-		var searchItems = CreateSearchItems();
-		this.WhenAnyValue(x => x.IsSelected)
-			.Do(shouldDisplay => UiContext.EditableSearchSource.Toggle(searchItems, shouldDisplay))
-			.Subscribe();
+		UiContext.EditableSearchSource.Add(CreateSearchItems());
 
 		var sendSearchItem = CreateSendItem();
-		this.WhenAnyValue(x => x.IsSendButtonVisible, x => x.IsSelected, (x, y) => x && y)
+		this.WhenAnyValue(x => x.IsSendButtonVisible)
 			.Do(shouldAdd => UiContext.EditableSearchSource.Toggle(sendSearchItem, shouldAdd))
 			.Subscribe();
 
 		var donateSearchItem = CreateDonateItem();
-		this.WhenAnyValue(x => x.IsDonateButtonVisible, x => x.IsSelected, (x, y) => x && y)
+		this.WhenAnyValue(x => x.IsDonateButtonVisible)
 			.Do(shouldAdd => UiContext.EditableSearchSource.Toggle(donateSearchItem, shouldAdd))
 			.Subscribe();
 
@@ -92,12 +89,11 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		 IsMusicBoxVisible = this.WhenAnyValue(
 			 x => x.HasMusicBoxBeenDisplayed,
-			 x => x.IsSelected,
 			 x => x.IsWalletBalanceZero,
 			 x => x.AreAllCoinsPrivate,
 			 x => x.IsPointerOver,
 			 x => x.IsMusicBoxFlyoutDisplayed,
-			 (hasBeenDisplayed, isSelected, hasNoBalance, areAllCoinsPrivate, isPointerOver, isMusicBoxFlyoutDisplayed) =>
+			 (hasBeenDisplayed, hasNoBalance, areAllCoinsPrivate, isPointerOver, isMusicBoxFlyoutDisplayed) =>
 			 {
 				 if (!hasBeenDisplayed)
 				 {
@@ -105,7 +101,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 					 {
 						 // If there is no coordinator configured and it's the first time, display MusicBox even without pointer over
 						 Task.Run(() => DelaySwitchHasMusicBoxBeenDisplayedAsync(CancellationToken.None));
-						 return isSelected && !WalletModel.IsCoinJoinEnabled;
+						 return true;
 					 }
 
 					 HasMusicBoxBeenDisplayed = true;
@@ -113,10 +109,10 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 				 if (!WalletModel.IsCoinJoinEnabled)
 				 {
-					 return isSelected && !WalletModel.IsCoinJoinEnabled && (isPointerOver || isMusicBoxFlyoutDisplayed);
+					 return isPointerOver || isMusicBoxFlyoutDisplayed;
 				 }
 
-				 return isSelected && !hasNoBalance;
+				 return !hasNoBalance;
 			 });
 
 
@@ -139,14 +135,14 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		WalletSettingsCommand = ReactiveCommand.Create(
 			() =>
 			{
-				Settings.SelectedTab = 0;
+				Settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
 				Navigate(NavigationTarget.DialogScreen).To(Settings);
 			});
 
 		CoinJoinSettingsCommand = ReactiveCommand.Create(
 			() =>
 			{
-				Settings.SelectedTab = 1;
+				Settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
 				Navigate(NavigationTarget.DialogScreen).To(Settings);
 			});
 
@@ -160,10 +156,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		if (WalletModel.IsCoinJoinEnabled)
 		{
-			var coinjoinPaymentsSearchItem = CreateCoinJoinPaymentsItem();
-			this.WhenAnyValue(x => x.IsSelected)
-				.Do(shouldDisplay => UiContext.EditableSearchSource.Toggle(coinjoinPaymentsSearchItem, shouldDisplay))
-				.Subscribe();
+			UiContext.EditableSearchSource.Add(CreateCoinJoinPaymentsItem());
 		}
 
 		NavigateToCoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -179,8 +172,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		NavigateToExcludedCoinsCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().ExcludedCoins(WalletModel));
 
 		Tiles = GetTiles().ToList();
-
-		this.WhenAnyValue(x => x.WalletModel.Name).BindTo(this, x => x.Title);
 	}
 
 	// TODO: Remove this
@@ -236,13 +227,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			await Task.Delay(500);
 			History.SelectTransaction(txid);
 		});
-	}
-
-	public void NavigateAndHighlight(uint256 txid)
-	{
-		Navigate().To(this, NavigationMode.Clear);
-
-		SelectTransaction(txid);
 	}
 
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)

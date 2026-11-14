@@ -3,7 +3,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using WalletWasabi.Fluent.Infrastructure;
-using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 
@@ -13,68 +12,34 @@ namespace WalletWasabi.Fluent.ViewModels.NavBar;
 /// The ViewModel that represents the structure of the sidebar.
 /// </summary>
 [AppLifetime]
-public partial class NavBarViewModel : ViewModelBase, IWalletSelector
+public partial class NavBarViewModel : ViewModelBase
 {
-	[AutoNotify] private WalletPageViewModel? _selectedWallet;
+	/// <summary>The wallet, once it was created or recovered.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private WalletPageViewModel? _wallet;
 
 	public NavBarViewModel(UiContext uiContext) : base(uiContext)
 	{
 		BottomItems = new ObservableCollection<NavBarItemViewModel>();
-
-		UiContext.WalletRepository
-			.Wallets
-			.Connect()
-			.Transform(newWallet => new WalletPageViewModel(UiContext, newWallet))
-			.AutoRefresh(x => x.IsLoggedIn)
-			.SortAndBind(
-				out var wallets,
-				SortExpressionComparer< WalletPageViewModel>
-					.Descending(i => i.IsLoggedIn)
-					.ThenByAscending(x => x.WalletModel.Name)
-			)
-			.Subscribe();
-
-		Wallets = wallets;
 	}
 
 	public ObservableCollection<NavBarItemViewModel> BottomItems { get; }
 
-	public ReadOnlyObservableCollection<WalletPageViewModel> Wallets { get; }
-
-	// AutoInterfaces (such as IWalletModel) cannot be seen by AutoNotifyGenerator.
-	public IWalletModel? SelectedWalletModel
-	{
-		get;
-		set => this.RaiseAndSetIfChanged(ref field, value);
-	}
-
-	IWalletViewModel? IWalletSelector.SelectedWallet => SelectedWallet?.WalletViewModel;
-
+	/// <summary>
+	/// Shows the wallet on the home screen: right away if there is one, otherwise as soon as it is created or recovered.
+	/// </summary>
 	public void Activate()
 	{
-		this.WhenAnyValue(x => x.SelectedWallet)
-			.Buffer(2, 1)
-			.Select(buffer => (OldValue: buffer[0], NewValue: buffer[1]))
+		UiContext.WalletRepository
+			.WhenAnyValue(x => x.Wallet)
+			.WhereNotNull()
+			.Take(1)
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Do(x =>
+			.Subscribe(wallet =>
 			{
-				if (x.OldValue is { } a)
-				{
-					a.IsSelected = false;
-				}
-
-				if (x.NewValue is { } b)
-				{
-					b.IsSelected = true;
-					UiContext.WalletRepository.StoreLastSelectedWallet(b.WalletModel);
-				}
-			})
-			.Subscribe();
-
-		this.WhenAnyValue(x => x.SelectedWallet!.WalletModel)
-			.BindTo(this, x => x.SelectedWalletModel);
-
-		SelectedWallet = Wallets.FirstOrDefault(x => x.WalletModel.Name == UiContext.WalletRepository.DefaultWalletName) ?? Wallets.FirstOrDefault();
+				var walletPage = new WalletPageViewModel(UiContext, wallet);
+				Wallet = walletPage;
+				walletPage.Activate();
+			});
 	}
 
 	public async Task InitialiseAsync()
@@ -90,11 +55,5 @@ public partial class NavBarViewModel : ViewModelBase, IWalletSelector
 				BottomItems.Add(new NavBarItemViewModel(UiContext, navBarItem));
 			}
 		}
-	}
-
-	IWalletViewModel? IWalletNavigation.To(IWalletModel wallet)
-	{
-		SelectedWallet = Wallets.First(x => x.WalletModel.Name == wallet.Name);
-		return SelectedWallet.WalletViewModel;
 	}
 }

@@ -126,5 +126,6 @@ public static class LoggerTools
 	public static string FormatLog(string msg, RoundState round) => FormatLog(msg, $"Round {ShortString(round.Id)}:");
 	public static string FormatLog(string msg, AliceClient aliceClient) =>
 		FormatLog(msg, $"Round {ShortString(aliceClient.RoundId)} Alice {ShortString(aliceClient.AliceId)} EffValue {aliceClient.EffectiveValue}:");
-	public static string FormatLog(string msg, Wallet wallet) => FormatLog(msg, $"Wallet '{wallet.WalletName}':");
+	/// <remarks>There is a single wallet, so the log does not have to tell which one a message is about.</remarks>
+	public static string FormatLog(string msg, Wallet _) => FormatLog(msg, "Wallet:");
 }

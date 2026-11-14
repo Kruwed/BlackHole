@@ -40,7 +40,7 @@ public class TransactionProcessor(
 
 		foreach (var result in results.Where(x => x.IsNews))
 		{
-			eventBus.Publish(new WalletRelevantTransactionProcessed(KeyManager.WalletName, result));
+			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
 		}
 
 		return results;
@@ -71,7 +71,7 @@ public class TransactionProcessor(
 
 		if (result.IsNews)
 		{
-			eventBus.Publish(new WalletRelevantTransactionProcessed(KeyManager.WalletName, result));
+			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
 		}
 
 		return result;
