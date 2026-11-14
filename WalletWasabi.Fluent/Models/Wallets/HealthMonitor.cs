@@ -7,14 +7,11 @@ using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Services;
-using WalletWasabi.Tor.StatusChecker;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
 
 public partial class HealthMonitor : ReactiveObject
 {
-	private readonly ObservableAsPropertyHelper<ICollection<Issue>> _torIssues;
-
 	[AutoNotify] private decimal _priorityFee;
 	[AutoNotify] private uint _blockchainTip;
 	[AutoNotify] private uint _clientTip;
@@ -23,15 +20,11 @@ public partial class HealthMonitor : ReactiveObject
 	[AutoNotify] private int _peers;
 	[AutoNotify] private bool _isP2pConnected;
 	[AutoNotify] private HealthMonitorState _state;
-	[AutoNotify] private bool _updateAvailable;
-	[AutoNotify] private bool _isReadyToInstall;
-	[AutoNotify] private bool _checkForUpdates = true;
-	[AutoNotify] private Version? _clientVersion;
 
 	private const string NoBitcoinRpcConfigured = "Not configured";
 	private const string NoBitcoinRpcDetected = "Not detected";
 
-	public HealthMonitor(IServices services, TorStatusCheckerModel torStatusChecker)
+	public HealthMonitor(IServices services)
 	{
 		// Do not make it dynamic, because if you change this config settings only next time will it activate.
 		UseTor = services.GetUseTor();
@@ -73,18 +66,6 @@ public partial class HealthMonitor : ReactiveObject
 			.BindTo(this, x => x.TorStatus)
 			.DisposeWith(Disposables);
 
-		// Tor Issues
-		var issues =
-			torStatusChecker.Issues
-			.Select(r => r.Where(issue => !issue.Resolved).ToList())
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Publish();
-
-		_torIssues = issues.ToProperty(this, m => m.TorIssues);
-
-		issues.Connect()
-			.DisposeWith(Disposables);
-
 		var nodesCount = 0;
 		var peerAddedObservable = services.EventBus.AsObservable<P2pNodeAdded>();
 		peerAddedObservable.ObserveOn(RxApp.MainThreadScheduler)
@@ -118,36 +99,19 @@ public partial class HealthMonitor : ReactiveObject
 			.BindTo(this, x => x.IsP2pConnected)
 			.DisposeWith(Disposables);
 
-		// Update Available
-		services.EventBus.AsObservable<NewSoftwareVersionAvailable>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(e =>
-			{
-				var updateStatus = e.UpdateStatus;
-
-				UpdateAvailable = !updateStatus.ClientUpToDate;
-				IsReadyToInstall = updateStatus.IsReadyToInstall;
-				ClientVersion = updateStatus.ClientVersion;
-			})
-			.DisposeWith(Disposables);
-
 		// State
 		this.WhenAnyValue(
 				x => x.TorStatus,
 				x => x.Peers,
 				x => x.BlockchainTip,
 				x => x.ClientTip,
-				x => x.BitcoinRpcStatus,
-				x => x.UpdateAvailable,
-				x => x.CheckForUpdates)
+				x => x.BitcoinRpcStatus)
 			.Throttle(TimeSpan.FromMilliseconds(100))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Select(_ => GetState())
 			.BindTo(this, x => x.State)
 			.DisposeWith(Disposables);
 	}
-
-	public ICollection<Issue> TorIssues => _torIssues.Value;
 
 	public TorMode UseTor { get; }
 
@@ -160,11 +124,6 @@ public partial class HealthMonitor : ReactiveObject
 
 	private HealthMonitorState GetState()
 	{
-		if (CheckForUpdates && UpdateAvailable)
-		{
-			return HealthMonitorState.UpdateAvailable;
-		}
-
 		var torConnected = UseTor == TorMode.Disabled || TorStatus == TorStatus.Running;
 
 		if (torConnected && BlockchainTip > 0 && BlockchainTip == ClientTip)

@@ -1,7 +1,6 @@
 using System.Net;
 using WalletWasabi.BitcoinRpc;
 using WalletWasabi.FeeRateEstimation;
-using WalletWasabi.Tor.StatusChecker;
 using NBitcoin.Protocol;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.TransactionProcessing;
@@ -112,13 +111,7 @@ public class EventBus
 public record MiningFeeRatesChanged(FeeRateEstimations AllFeeEstimate);
 public record NetworkTipHeightChanged(uint Height);
 public record ClientTipHeightChanged(uint Height);
-public record NewSoftwareVersionAvailable(UpdateManager.UpdateStatus UpdateStatus);
-public record NewSoftwareVersionInstallerAvailable(string InstallerPath);
-
-public record InstallOnClosedPreferenceChanged(bool InstallOnClose);
 public record TorConnectionStateChanged(bool IsTorRunning);
-
-public record TorNetworkStatusChanged(Issue[] ReportedIssues);
 
 public record RpcStatusChanged(Result<ConnectedRpcStatus, string> Status);
 public record FilterProcessed(FilterModel Filter);

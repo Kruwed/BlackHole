@@ -100,7 +100,7 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 		// Use unique worker name to avoid conflicts between tests
 		var workerName = $"CpfpInfoProvider_{Guid.NewGuid():N}";
 		var cpfpInfoProvider = new CpfpInfoProvider(
-			Workers.Spawn(workerName, Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.CreateForRegTest())));
+			Workers.Spawn(workerName, Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.Create(fixture.WalletRpcClient, eventBus))));
 
 		return new RegTestEnvironment(
 			fixture,

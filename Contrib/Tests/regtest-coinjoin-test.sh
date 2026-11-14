@@ -164,7 +164,6 @@ for (( i = 0; i < CLIENT_COUNT; i++ )); do
     --coordinatorUri="http://127.0.0.1:$COORDINATOR_PORT" \
     --bitcoinrpcendpoint="http://127.0.0.1:$BITCOIN_RPC_PORT/" \
     --bitcoinrpccredentialstring="regtest:regtest" \
-    --feerateestimationprovider="None" \
     --datadir="$CLIENT_DATADIR" \
     --jsonrpcserverenabled=true \
     --jsonrpcserverprefixes="http://127.0.0.1:$((WASABI_WALLET_RPC_PORT + i))/" \

@@ -97,7 +97,7 @@ public class WalletSendTests
 		await env.RpcClient.GenerateAsync(1);
 
 		// Broadcast the transaction
-		var broadcaster = new TransactionBroadcaster([new RpcBroadcaster(env.RpcClient)], env.MempoolService);
+		var broadcaster = new TransactionBroadcaster(env.RpcClient, env.MempoolService);
 		await broadcaster.SendTransactionAsync(txResult.Transaction);
 
 		// Verify transaction is in mempool

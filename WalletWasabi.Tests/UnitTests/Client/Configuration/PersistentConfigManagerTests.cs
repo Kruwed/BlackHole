@@ -51,7 +51,6 @@ public class PersistentConfigManagerTests
 			  "UseTor": "Enabled",
 			  "TerminateTorOnExit": false,
 			  "TorBridges": [],
-			  "DownloadNewVersion": true,
 			  "BitcoinRpcCredentialString": "",
 			  "BitcoinRpcEndPoint": "",
 			  "JsonRpcServerEnabled": false,
@@ -63,8 +62,6 @@ public class PersistentConfigManagerTests
 			  ],
 			  "EnableGpu": true,
 			  "CoordinatorIdentifier": "CoinJoinCoordinatorIdentifier",
-			  "FeeRateEstimationProvider": "MempoolSpace",
-			  "ExternalTransactionBroadcaster": "MempoolSpace",
 			  "MaxCoinJoinMiningFeeRate": 50.0,
 			  "AbsoluteMinInputCount": 21,
 			  "MaxDaysInMempool": 30,
@@ -214,7 +211,8 @@ public class PersistentConfigManagerTests
 	[Fact]
 	public void MigrateFromV2_6_0_AllFieldsPreserved()
 	{
-		// Comprehensive test that all non-removed fields are preserved during migration
+		// Comprehensive test that all non-removed fields are preserved during migration.
+		// What chose external services (new versions, fee rate estimations, broadcasting) is dropped.
 		var v2_6_0Config = new PersistentConfig_2_6_0(
 			Network: Network.TestNet,
 			IndexerUri: "https://api.wasabiwallet.co/", // Should be dropped
@@ -222,7 +220,7 @@ public class PersistentConfigManagerTests
 			UseTor: "EnabledOnlyRunning",
 			TerminateTorOnExit: true,
 			TorBridges: new ValueList<string>(["bridge1", "bridge2"]),
-			DownloadNewVersion: false,
+			DownloadNewVersion: false, // Should be dropped
 			UseBitcoinRpc: true, // Should be dropped
 			BitcoinRpcCredentialString: "cookiefile=/path/to/cookie",
 			BitcoinRpcUri: "http://10.0.0.5:18332",
@@ -234,8 +232,8 @@ public class PersistentConfigManagerTests
 			EnableGpu: false,
 			CoordinatorIdentifier: "CustomCoordinator",
 			ExchangeRateProvider: "Binance",
-			FeeRateEstimationProvider: "Custom",
-			ExternalTransactionBroadcaster: "Custom",
+			FeeRateEstimationProvider: "Custom", // Should be dropped
+			ExternalTransactionBroadcaster: "Custom", // Should be dropped
 			MaxCoinJoinMiningFeeRate: 100.5m,
 			AbsoluteMinInputCount: 50,
 			MaxDaysInMempool: 60,
@@ -253,7 +251,6 @@ public class PersistentConfigManagerTests
 		Assert.Equal(2, migratedConfig.TorBridges.Count());
 		Assert.Contains("bridge1", migratedConfig.TorBridges);
 		Assert.Contains("bridge2", migratedConfig.TorBridges);
-		Assert.False(migratedConfig.DownloadNewVersion);
 		Assert.Equal("cookiefile=/path/to/cookie", migratedConfig.BitcoinRpcCredentialString);
 		Assert.Equal("http://10.0.0.5:18332", migratedConfig.BitcoinRpcUri);
 		Assert.True(migratedConfig.JsonRpcServerEnabled);
@@ -262,8 +259,6 @@ public class PersistentConfigManagerTests
 		Assert.Equal(2, migratedConfig.JsonRpcServerPrefixes.Count());
 		Assert.False(migratedConfig.EnableGpu);
 		Assert.Equal("CustomCoordinator", migratedConfig.CoordinatorIdentifier);
-		Assert.Equal("Custom", migratedConfig.FeeRateEstimationProvider);
-		Assert.Equal("Custom", migratedConfig.ExternalTransactionBroadcaster);
 		Assert.Equal(100.5m, migratedConfig.MaxCoinJoinMiningFeeRate);
 		Assert.Equal(50, migratedConfig.AbsoluteMinInputCount);
 		Assert.Equal(60, migratedConfig.MaxDaysInMempool);

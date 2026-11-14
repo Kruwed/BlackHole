@@ -1,12 +1,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:statusIcon="clr-namespace:WalletWasabi.Fluent.Views.StatusIcon">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Design.PreviewWith>
     <Border Width="200">
       <StatusItem Title="Title" StatusText="Item text">
         <StatusItem.Icon>
-          <statusIcon:TorIssues />
+          <PathIcon Data="{StaticResource tor_icon}" />
         </StatusItem.Icon>
       </StatusItem>
     </Border>

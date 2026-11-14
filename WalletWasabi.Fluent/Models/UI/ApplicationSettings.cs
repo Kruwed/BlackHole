@@ -41,8 +41,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 	[AutoNotify] private string _bitcoinRpcUri;
 	[AutoNotify] private string _bitcoinRpcCredentialString;
-	[AutoNotify] private string _feeRateEstimationProvider;
-	[AutoNotify] private string _externalTransactionBroadcaster;
 
 	// Coordinator
 	[AutoNotify] private string _coordinatorUri;
@@ -59,7 +57,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private bool _hideOnClose;
 	[AutoNotify] private TorMode _useTor;
 	[AutoNotify] private bool _terminateTorOnExit;
-	[AutoNotify] private bool _downloadNewVersion;
 
 	// Privacy Mode
 	[AutoNotify] private bool _privacyMode;
@@ -67,9 +64,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private bool _oobe;
 	[AutoNotify] private Version _lastVersionHighlightsDisplayed;
 	[AutoNotify] private WindowState _windowState;
-
-	// Non-persistent
-	[AutoNotify] private bool _doUpdateOnClose;
 
 	// Experimental
 	[AutoNotify] private string[] _experimentalFeatures;
@@ -85,8 +79,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Connections
 		_useTor = Config.ObjectToTorMode(persistentConfig.UseTor);
-		_feeRateEstimationProvider = persistentConfig.FeeRateEstimationProvider;
-		_externalTransactionBroadcaster = persistentConfig.ExternalTransactionBroadcaster;
 
 		// Bitcoin
 		_network = persistentConfig.Network;
@@ -107,7 +99,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_runOnSystemStartup = uiConfig.RunOnSystemStartup;
 		_hideOnClose = uiConfig.HideOnClose;
 		_terminateTorOnExit = persistentConfig.TerminateTorOnExit;
-		_downloadNewVersion = persistentConfig.DownloadNewVersion;
 		_enableGpu = persistentConfig.EnableGpu;
 
 		// Experimental
@@ -127,8 +118,6 @@ public partial class ApplicationSettings : ReactiveObject
 	{
 		// Connections
 		UseTor = Config.ObjectToTorMode(persistentConfig.UseTor);
-		FeeRateEstimationProvider = persistentConfig.FeeRateEstimationProvider;
-		ExternalTransactionBroadcaster = persistentConfig.ExternalTransactionBroadcaster;
 
 		// Bitcoin
 		Network = persistentConfig.Network;
@@ -149,7 +138,6 @@ public partial class ApplicationSettings : ReactiveObject
 		RunOnSystemStartup = uiConfig.RunOnSystemStartup;
 		HideOnClose = uiConfig.HideOnClose;
 		TerminateTorOnExit = persistentConfig.TerminateTorOnExit;
-		DownloadNewVersion = persistentConfig.DownloadNewVersion;
 		EnableGpu = persistentConfig.EnableGpu;
 
 		// Experimental
@@ -175,17 +163,14 @@ public partial class ApplicationSettings : ReactiveObject
 					x => x.BitcoinRpcUri,
 					x => x.UseTor,
 					x => x.TerminateTorOnExit,
-					x => x.DownloadNewVersion,
-					(_, _, _, _, _, _, _) => Unit.Default)
+					(_, _, _, _, _, _) => Unit.Default)
 				.Skip(1);
 		var configSaveTrigger2 =
 			this.WhenAnyValue(
 					x => x.MaxCoinJoinMiningFeeRate,
 					x => x.AbsoluteMinInputCount,
 					x => x.CoordinatorUri,
-					x => x.FeeRateEstimationProvider,
-					x => x.ExternalTransactionBroadcaster,
-					(_, _, _, _, _) => Unit.Default)
+					(_, _, _) => Unit.Default)
 				.Skip(1);
 
 		Observable
@@ -222,11 +207,6 @@ public partial class ApplicationSettings : ReactiveObject
 		// Apply RunOnSystemStartup
 		this.WhenAnyValue(x => x.RunOnSystemStartup)
 			.DoAsync(async _ => await StartupHelper.ModifyStartupSettingAsync(RunOnSystemStartup))
-			.Subscribe();
-
-		// Apply DoUpdateOnClose
-		this.WhenAnyValue(x => x.DoUpdateOnClose)
-			.Do(x => _services.EventBus.Publish(new InstallOnClosedPreferenceChanged(x)))
 			.Subscribe();
 	}
 
@@ -313,9 +293,7 @@ public partial class ApplicationSettings : ReactiveObject
 				Constants.DefaultMaxCoinJoinMiningFeeRate,
 			AbsoluteMinInputCount = int.TryParse(AbsoluteMinInputCount, out var absoluteMinInputCount) ?
 				absoluteMinInputCount :
-				Constants.DefaultAbsoluteMinInputCount,
-			FeeRateEstimationProvider = FeeRateEstimationProvider,
-			ExternalTransactionBroadcaster = ExternalTransactionBroadcaster
+				Constants.DefaultAbsoluteMinInputCount
 		};
 
 		// General
@@ -323,7 +301,6 @@ public partial class ApplicationSettings : ReactiveObject
 		{
 			UseTor = UseTor.ToString(),
 			TerminateTorOnExit = TerminateTorOnExit,
-			DownloadNewVersion = DownloadNewVersion,
 		};
 
 		return result;

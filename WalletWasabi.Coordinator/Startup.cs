@@ -122,21 +122,7 @@ public class Startup(IConfiguration configuration)
 			services.AddBackgroundService<CoordinatorAnnouncer>();
 		}
 
-		services.AddSingleton<IHttpClientFactory>(s =>
-			config.PublishAsOnionService
-				? new OnionHttpClientFactory(torSetting.SocksEndpoint.ToUri("socks5"))
-				: new HttpClientFactory()
-			);
-
-		services.AddSingleton<FeeRateProvider>(s =>
-		{
-			var httpClientFactory = s.GetRequiredService<IHttpClientFactory>();
-			return FeeRateProviders.Composed([
-				FeeRateProviders.RpcAsync(s.GetRequiredService<IRPCClient>()),
-				FeeRateProviders.MempoolSpaceAsync(httpClientFactory),
-				FeeRateProviders.BlockstreamAsync(httpClientFactory)
-			]);
-		});
+		services.AddSingleton<FeeRateProvider>(s => FeeRateProviders.RpcAsync(s.GetRequiredService<IRPCClient>()));
 
 		services.AddSingleton<IdempotencyRequestCache>();
 		services.AddStartupTask<StartupTask>();

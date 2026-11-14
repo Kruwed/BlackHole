@@ -37,7 +37,6 @@ public class Config
 			[nameof(TorControlPort)] = GetLongValue("TorControlPort", TorSettings.DefaultControlPort, cliArgs),
 			[nameof(TorBridges)] = GetStringArrayValue("TorBridges", PersistentConfig.TorBridges.ToArray(), cliArgs),
 			[nameof(TerminateTorOnExit)] = GetBoolValue("TerminateTorOnExit", PersistentConfig.TerminateTorOnExit, cliArgs),
-			[nameof(DownloadNewVersion)] = GetBoolValue("DownloadNewVersion", PersistentConfig.DownloadNewVersion, cliArgs),
 			[nameof(BitcoinRpcCredentialString)] = GetStringValue("BitcoinRpcCredentialString", PersistentConfig.BitcoinRpcCredentialString, cliArgs),
 			[nameof(BitcoinRpcUri)] = GetUriStringValue("BitcoinRpcEndPoint", PersistentConfig.BitcoinRpcUri, cliArgs),
 			[nameof(JsonRpcServerEnabled)] = GetBoolValue("JsonRpcServerEnabled", PersistentConfig.JsonRpcServerEnabled, cliArgs),
@@ -52,8 +51,6 @@ public class Config
 			[nameof(CoordinatorIdentifier)] = GetStringValue("CoordinatorIdentifier", PersistentConfig.CoordinatorIdentifier, cliArgs),
 			[nameof(MaxCoinjoinMiningFeeRate)] = GetDecimalValue("MaxCoinjoinMiningFeeRate", PersistentConfig.MaxCoinJoinMiningFeeRate, cliArgs),
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
-			[nameof(FeeRateEstimationProvider)] = GetStringValue("FeeRateEstimationProvider", PersistentConfig.FeeRateEstimationProvider, cliArgs),
-			[nameof(ExternalTransactionBroadcaster)] = GetStringValue("ExternalTransactionBroadcaster", PersistentConfig.ExternalTransactionBroadcaster, cliArgs),
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = GetLongValue("MaxDaysInMempool", PersistentConfig.MaxDaysInMempool, cliArgs),
 			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs)
 		};
@@ -88,9 +85,8 @@ public class Config
 			[nameof(TorControlPort)] = "Tor is started to listen with the specified control port",
 			[nameof(TorBridges)] = "Tor is started with the set of specified bridges",
 			[nameof(TerminateTorOnExit)] = "Stop the Tor process when Wasabi is closed",
-			[nameof(DownloadNewVersion)] = "Automatically download any new released version of Wasabi",
 			[nameof(BitcoinRpcCredentialString)] = "Credentials for authenticating against the bitcoin node rpc server",
-			[nameof(BitcoinRpcUri)] = "-",
+			[nameof(BitcoinRpcUri)] = "The RPC interface of the user's Bitcoin node. It is the only source of blockchain data, fees and the only way transactions are broadcast",
 			[nameof(JsonRpcServerEnabled)] = "Start the Json RPC Server and accept requests",
 			[nameof(JsonRpcUser)] = "The user name that is authorized to make requests to the Json RPC server",
 			[nameof(JsonRpcPassword)] = "The user password that is authorized to make requests to the Json RPC server",
@@ -103,8 +99,6 @@ public class Config
 			[nameof(CoordinatorIdentifier)] = "-",
 			[nameof(MaxCoinjoinMiningFeeRate)] = "Max mining fee rate in sat/vB the client is willing to pay to participate into a round",
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
-			[nameof(FeeRateEstimationProvider)] = "The mining fee rate estimation provider. Available providers are MempoolSpace (default), BlockstreamInfo, BlockXyz or None",
-			[nameof(ExternalTransactionBroadcaster)] = "Third party transaction broadcaster. Available broadcasters are MempoolSpace (default) and BlockstreamInfo",
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Wasabi before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 		};
@@ -120,7 +114,6 @@ public class Config
 	public int TorControlPort => GetEffectiveValue<int>(nameof(TorControlPort));
 	public string[] TorBridges => GetEffectiveValue<string[]>(nameof(TorBridges));
 	public bool TerminateTorOnExit => GetEffectiveValue<bool>(nameof(TerminateTorOnExit));
-	public bool DownloadNewVersion => GetEffectiveValue<bool>(nameof(DownloadNewVersion));
 	public string BitcoinRpcCredentialString => GetEffectiveValue<string>(nameof(BitcoinRpcCredentialString));
 	public string BitcoinRpcUri => GetEffectiveValue<string>(nameof(BitcoinRpcUri));
 	public bool JsonRpcServerEnabled => GetEffectiveValue<bool>(nameof(JsonRpcServerEnabled));
@@ -129,8 +122,6 @@ public class Config
 	public string[] JsonRpcServerPrefixes => GetEffectiveValue<string[]>(nameof(JsonRpcServerPrefixes));
 	public bool RpcOnionEnabled => GetEffectiveValue<bool>(nameof(RpcOnionEnabled));
 	public bool BlockOnlyMode => GetEffectiveValue<bool>(nameof(BlockOnlyMode));
-	public string FeeRateEstimationProvider => GetEffectiveValue<string>(nameof(FeeRateEstimationProvider));
-	public string ExternalTransactionBroadcaster => GetEffectiveValue<string>(nameof(ExternalTransactionBroadcaster));
 	public int DropUnconfirmedTransactionsAfterDays => GetEffectiveValue<int>(nameof(DropUnconfirmedTransactionsAfterDays));
 
 	public bool EnableGpu => GetEffectiveValue<bool>(nameof(EnableGpu));

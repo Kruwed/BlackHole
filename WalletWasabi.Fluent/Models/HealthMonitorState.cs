@@ -4,7 +4,6 @@ public enum HealthMonitorState
 {
 	Loading,
 	Ready,
-	UpdateAvailable,
 	BitcoinRpcIssueDetected,
 	BitcoinRpcSynchronizing,
 }

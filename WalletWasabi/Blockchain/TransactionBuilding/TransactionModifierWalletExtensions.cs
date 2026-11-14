@@ -281,9 +281,7 @@ public static class TransactionModifierWalletExtensions
 		var destination = keyManager.GetNextChangeKey().GetAssumedScriptPubKey().GetDestinationAddress(network);
 		Guard.NotNull(nameof(destination), destination);
 
-		// Request the unconfirmed transaction chain so we can extract the fee paid by tx + all the ancestors still unconfirmed.
-		// The HTTP request has its own 120-second timeout, so we don't impose an additional timeout here.
-		// The caller can cancel via the cancellationToken parameter if needed.
+		// Ask the node about the unconfirmed transaction chain so we can extract the fee paid by tx + all the ancestors still unconfirmed.
 		var cpfpInfoResult = await wallet.CpfpInfoProvider.GetCpfpInfoAsync(transactionToCpfp, cancellationToken).ConfigureAwait(false);
 
 		var cpfpInfo = cpfpInfoResult.Match(
@@ -291,16 +289,15 @@ public static class TransactionModifierWalletExtensions
 			e => throw new InvalidOperationException(e));
 
 		// If a descendant that pays a higher fee rate than the one we are going to pay already exists, then there is no need to CPFP.
-		if (new FeeRate(cpfpInfo.EffectiveFeePerVSize) > bestFeeRate)
+		if (cpfpInfo.EffectiveFeeRate > bestFeeRate)
 		{
 			throw new InvalidOperationException(
-				$"{transactionToCpfp.GetHash()} has an effective fee rate of {cpfpInfo.EffectiveFeePerVSize} sat/vb, more than current priority fee of {bestFeeRate.SatoshiPerByte} s/vb. No need to CPFP.");
+				$"{transactionToCpfp.GetHash()} has an effective fee rate of {cpfpInfo.EffectiveFeeRate.SatoshiPerByte} sat/vb, more than current priority fee of {bestFeeRate.SatoshiPerByte} s/vb. No need to CPFP.");
 		}
 
-		// mempool.space gives a more precise value for VSize in an effective fee rate context as it's adjusted with sigops.
-		var txSizeVBytes = cpfpInfo.AdjustedVSize;
-		var ancestorsSizeVBytes = cpfpInfo.Ancestors.Sum(x => x.Weight) / 4.0m;
-		var feePaidByAncestorsAndTx = cpfpInfo.Ancestors.Sum(x => x.Fee) + cpfpInfo.Fee;
+		decimal txSizeVBytes = cpfpInfo.VSize;
+		decimal ancestorsSizeVBytes = cpfpInfo.AncestorsVSize;
+		decimal feePaidByAncestorsAndTx = (cpfpInfo.AncestorsFee + cpfpInfo.Fee).Satoshi;
 
 		// Let's build a CPFP with best fee rate temporarily.
 		var tempTx = wallet.BuildChangelessTransaction(

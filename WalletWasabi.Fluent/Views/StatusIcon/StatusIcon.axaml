@@ -5,7 +5,6 @@
              xmlns:converters="using:WalletWasabi.Fluent.Converters"
              xmlns:models="clr-namespace:WalletWasabi.Fluent.Models"
              xmlns:statusIcon="clr-namespace:WalletWasabi.Fluent.ViewModels.StatusIcon"
-             xmlns:st="clr-namespace:WalletWasabi.Fluent.Views.StatusIcon"
              mc:Ignorable="d" d:DesignWidth="671" d:DesignHeight="32"
              x:DataType="statusIcon:StatusIconViewModel"
              x:CompileBindings="True"
@@ -99,16 +98,7 @@
 
             <StatusItem Title="Tor" StatusText="{Binding HealthMonitor.TorStatus, Converter={x:Static converters:StatusConverters.TorStatusToString}}">
               <StatusItem.Icon>
-                <Panel>
-                  <PathIcon Data="{StaticResource tor_icon}" IsVisible="{Binding !HealthMonitor.TorIssues.Count, FallbackValue=True}" />
-                  <st:TorIssues IsVisible="{Binding HealthMonitor.TorIssues.Count, FallbackValue=False}" />
-                </Panel>
-              </StatusItem.Icon>
-            </StatusItem>
-
-            <StatusItem Title="Update Checker" StatusText="Wasabi won't look for updates while Tor is disabled." IsVisible="{Binding IsTorDisabled}">
-              <StatusItem.Icon>
-                <PathIcon Data="{StaticResource warning_circle}" />
+                <PathIcon Data="{StaticResource tor_icon}" />
               </StatusItem.Icon>
             </StatusItem>
 
@@ -126,46 +116,6 @@
                 <PathIcon Data="{StaticResource btc_logo}" />
               </StatusItem.Icon>
             </StatusItem>
-          </StackPanel>
-
-          <!-- Update -->
-          <StackPanel Spacing="10">
-            <StackPanel.IsVisible>
-              <MultiBinding Converter="{x:Static BoolConverters.And}">
-                <Binding Path="HealthMonitor.CheckForUpdates" />
-                <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                  <Binding Path="HealthMonitor.UpdateAvailable" />
-                </MultiBinding>
-              </MultiBinding>
-            </StackPanel.IsVisible>
-
-            <Separator Margin="-12 0 -12 6" />
-
-            <StatusItem Title="Update available"
-                          StatusText="{Binding VersionText}">
-              <StatusItem.Icon>
-                <PathIcon Data="{StaticResource arrow_clockwise_regular}" />
-              </StatusItem.Icon>
-            </StatusItem>
-            <Button IsVisible="{Binding HealthMonitor.IsReadyToInstall}" Classes="activeHyperLink" Command="{Binding UpdateCommand}">
-              <StackPanel Spacing="5" Orientation="Horizontal">
-                <PathIcon Data="{StaticResource arrow_download_regular}" Height="13" />
-                <AccessText Text="Close and Update" />
-              </StackPanel>
-            </Button>
-            <Button IsVisible="{Binding !HealthMonitor.IsReadyToInstall}" Classes="activeHyperLink" Command="{Binding ManualUpdateCommand}">
-              <StackPanel Spacing="5" Orientation="Horizontal">
-                <PathIcon Data="{StaticResource arrow_download_regular}" Height="13" />
-                <AccessText Text="Update" />
-              </StackPanel>
-            </Button>
-
-            <Button Classes="activeHyperLink" Command="{Binding AskMeLaterCommand}">
-              <StackPanel Spacing="5" Orientation="Horizontal">
-                <PathIcon Data="{StaticResource clock_regular}" Height="13" />
-                <AccessText Text="Ask me later" />
-              </StackPanel>
-            </Button>
           </StackPanel>
         </StackPanel>
       </Flyout>
@@ -197,13 +147,6 @@
       Data="{StaticResource warning_circle}"
       Foreground="Goldenrod"
       VerticalAlignment="Center" HorizontalAlignment="Right"
-      Classes.blink="{Binding $self.IsVisible}" />
-
-    <!--Update available-->
-    <PathIcon
-      IsVisible="{Binding HealthMonitor.State, Converter={x:Static converters:HealthMonitorStateVisibilityConverter.Instance}, ConverterParameter={x:Static models:HealthMonitorState.UpdateAvailable}}"
-      Data="{StaticResource download_circle}"
-      Foreground="Goldenrod"
       Classes.blink="{Binding $self.IsVisible}" />
 
   </Panel>

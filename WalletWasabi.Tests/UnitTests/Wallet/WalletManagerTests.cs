@@ -12,6 +12,7 @@ using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.Storages;
 using WalletWasabi.Tests.Helpers;
+using WalletWasabi.Tests.UnitTests.Mocks;
 using WalletWasabi.Wallets;
 using Xunit;
 
@@ -180,7 +181,7 @@ public class WalletManagerTests
 			WalletDirectories = new WalletDirectories(network, workDir);
 			_filterManager = new FilterManager(Path.Combine(workDir, "Filters"), network, filterHeaderChain, eventBus);
 			_transactionStore = new AllTransactionStore(SqliteStorageHelper.InMemoryDatabase, network);
-			_cpfpInfoUpdater = Workers.Spawn($"CpfpInfoProvider_{Guid.NewGuid():N}", Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.CreateForRegTest()));
+			_cpfpInfoUpdater = Workers.Spawn($"CpfpInfoProvider_{Guid.NewGuid():N}", Workers.EventDriven(Unit.Instance, CpfpInfoUpdater.Create(new MockRpcClient(), eventBus)));
 
 			_walletFactory = WalletWasabi.Wallets.Wallet.CreateFactory(
 				network,

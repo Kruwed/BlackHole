@@ -44,7 +44,7 @@ public class Services : IServices
 		Guard.NotNull(nameof(global.FilterManager), global.FilterManager);
 		Guard.NotNull(nameof(global.FilterHeaders), global.FilterHeaders);
 		Guard.NotNull(nameof(global.TransactionStore), global.TransactionStore);
-		Guard.NotNull(nameof(global.ExternalSourcesHttpClientFactory), global.ExternalSourcesHttpClientFactory);
+		Guard.NotNull(nameof(global.BitcoinRpcHttpClientFactory), global.BitcoinRpcHttpClientFactory);
 		Guard.NotNull(nameof(global.Config), global.Config);
 		Guard.NotNull(nameof(global.WalletManager), global.WalletManager);
 		Guard.NotNull(nameof(global.TransactionBroadcaster), global.TransactionBroadcaster);
@@ -57,7 +57,7 @@ public class Services : IServices
 		_filterManager = global.FilterManager;
 		_filterHeaders = global.FilterHeaders;
 		_transactionStore = global.TransactionStore;
-		_httpClientFactory = global.ExternalSourcesHttpClientFactory;
+		_httpClientFactory = global.BitcoinRpcHttpClientFactory;
 		_transactionBroadcaster = global.TransactionBroadcaster;
 		_hostedServices = global.HostedServices;
 		_terminateService = terminateService;

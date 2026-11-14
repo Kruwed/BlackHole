@@ -125,42 +125,6 @@ public static class PlatformInformation
 		throw new NotSupportedException("Unknown OS platform.");
 	}
 
-
-	public static bool IsDebianBasedOS()
-	{
-		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-		{
-			return false;
-		}
-
-		if (!File.Exists("/etc/os-release"))
-		{
-			return false;
-		}
-
-		var osReleaseContent = File.ReadAllText("/etc/os-release");
-
-		// Check for Debian as base
-		if (osReleaseContent.Contains("ID_LIKE=debian") ||
-			osReleaseContent.Contains("ID=debian"))
-		{
-			return true;
-		}
-
-		// Check for known Debian derivatives
-		var debianDerivatives = new[] {"ubuntu", "linuxmint", "elementary", "pop", "zorin"};
-		foreach (var derivative in debianDerivatives)
-		{
-			if (osReleaseContent.Contains($"ID={derivative}") ||
-				osReleaseContent.Contains($"ID_LIKE=") && osReleaseContent.Contains(derivative))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	private static bool TryGetLinuxOSRelease([NotNullWhen(true)] out string? content)
 	{
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && File.Exists("/etc/os-release"))

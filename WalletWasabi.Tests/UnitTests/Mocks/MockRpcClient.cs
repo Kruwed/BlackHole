@@ -19,6 +19,7 @@ public class MockRpcClient : IRPCClient
 	public Func<uint256, Task<BlockFilter>>? OnGetBlockFilterAsync { get; set; }
 	public Func<Transaction, uint256>? OnSendRawTransactionAsync { get; set; }
 	public Func<Task<MemPoolInfo>>? OnGetMempoolInfoAsync { get; set; }
+	public Func<uint256, Task<MempoolEntry?>>? OnGetMempoolEntryAsync { get; set; }
 	public Func<Task<uint256[]>>? OnGetRawMempoolAsync { get; set; }
 	public Func<uint256, bool, Task<Transaction>>? OnGetRawTransactionAsync { get; set; }
 	public Func<int, EstimateSmartFeeMode, Task<EstimateSmartFeeResponse>>? OnEstimateSmartFeeAsync { get; set; }
@@ -72,7 +73,10 @@ public class MockRpcClient : IRPCClient
 
 	public Task<MempoolEntry> GetMempoolEntryAsync(uint256 txid, bool throwIfNotFound = true, CancellationToken cancellationToken = default)
 	{
-		throw new NotImplementedException();
+		// A node answers with nothing for a transaction that is not in its mempool.
+		return OnGetMempoolEntryAsync is { } onGetMempoolEntryAsync
+			? onGetMempoolEntryAsync(txid)!
+			: NotImplementedTask<MempoolEntry>(nameof(GetMempoolEntryAsync));
 	}
 
 	public Task<MemPoolInfo> GetMempoolInfoAsync(CancellationToken cancellationToken = default)

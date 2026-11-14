@@ -91,11 +91,6 @@ public class Program
 				throw app.TerminateService.GracefulCrashException;
 			}
 
-			if (exitCode == ExitCode.Ok && app.Global is {Status: {InstallOnClose: true, InstallerFilePath: {Length: > 0} installerFilePath}})
-			{
-				Installer.StartInstallingNewVersion(installerFilePath);
-			}
-
 			if (AppLifetimeHelper.RestartRequested)
 			{
 				// The single-instance lock in SingleInstanceChecker is released now, so we can start a new instance of the application now.

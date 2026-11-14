@@ -9,16 +9,12 @@ public class StatusContainer : IDisposable
 	public bool IsTorRunning { get; private set; }
 	public FeeRateEstimations? FeeRates { get; private set; }
 	public uint BestNetworkHeight { get; private set; }
-	public bool InstallOnClose { get; private set; }
-	public string InstallerFilePath { get; private set; } = string.Empty;
 
 	private readonly IDisposable _torConnectionSubscription;
 	private readonly IDisposable _feeRateSubscription;
 	private readonly IDisposable _bestHeightSubscription;
-	private readonly IDisposable _installOnCloseSubscription;
-	private readonly IDisposable _installerAvailableSubscription;
 
-	public StatusContainer(EventBus eventBus, bool installOnClose = false)
+	public StatusContainer(EventBus eventBus)
 	{
 		_torConnectionSubscription =
 			eventBus.Subscribe<TorConnectionStateChanged>(e => IsTorRunning = e.IsTorRunning);
@@ -28,22 +24,12 @@ public class StatusContainer : IDisposable
 
 		_bestHeightSubscription =
 			eventBus.Subscribe<NetworkTipHeightChanged>(e => BestNetworkHeight = e.Height);
-
-		_installerAvailableSubscription =
-			eventBus.Subscribe<NewSoftwareVersionInstallerAvailable>(e => InstallerFilePath = e.InstallerPath);
-
-		InstallOnClose = installOnClose;
-		_installOnCloseSubscription =
-			eventBus.Subscribe<InstallOnClosedPreferenceChanged>(e => InstallOnClose = e.InstallOnClose);
 	}
-
 
 	public void Dispose()
 	{
 		_torConnectionSubscription.Dispose();
 		_feeRateSubscription.Dispose();
 		_bestHeightSubscription.Dispose();
-		_installerAvailableSubscription.Dispose();
-		_installOnCloseSubscription.Dispose();
 	}
 }

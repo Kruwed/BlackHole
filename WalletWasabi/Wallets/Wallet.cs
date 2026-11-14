@@ -157,7 +157,7 @@ public class Wallet : BackgroundService
 				FeeRate? effectiveFeeRate = null;
 				if (cpfpInfos.FirstOrDefault(x => x.Transaction == coin.Transaction) is { } cachedCpfpInfo)
 				{
-					effectiveFeeRate = new FeeRate(cachedCpfpInfo.CpfpInfo.EffectiveFeePerVSize);
+					effectiveFeeRate = cachedCpfpInfo.CpfpInfo.EffectiveFeeRate;
 				}
 
 				mapByTxid.Add(coin.TransactionId, new TransactionSummary(coin.Transaction, coin.Amount, effectiveFeeRate));
@@ -176,7 +176,7 @@ public class Wallet : BackgroundService
 					FeeRate? effectiveFeeRate = null;
 					if (cpfpInfos.FirstOrDefault(x => x.Transaction == coin.Transaction) is { } cachedCpfpInfo)
 					{
-						effectiveFeeRate = new FeeRate(cachedCpfpInfo.CpfpInfo.EffectiveFeePerVSize);
+						effectiveFeeRate = cachedCpfpInfo.CpfpInfo.EffectiveFeeRate;
 					}
 
 					mapByTxid.Add(spenderTxId, new TransactionSummary(spenderTransaction, Money.Zero - coin.Amount, effectiveFeeRate));

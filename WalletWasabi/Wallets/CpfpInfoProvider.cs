@@ -1,16 +1,12 @@
 using NBitcoin;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Blockchain.Transactions;
-using WalletWasabi.Crypto.Randomness;
 using WalletWasabi.Helpers;
-using WalletWasabi.Logging;
 using WalletWasabi.Models;
-using WalletWasabi.Serialization;
 using WalletWasabi.Services;
 
 namespace WalletWasabi.Wallets;
@@ -37,166 +33,102 @@ public class CpfpInfoProvider(MailboxProcessor<CpfpInfoMessage> cpfpUpdater)
 		cpfpUpdater.PostAndReplyAsync<Result<CpfpInfo,string>>(chan => new CpfpInfoMessage.GetInfoForTransaction(tx, chan), cancellationToken);
 }
 
+/// <summary>
+/// Keeps what the mempool of the node tells about the unconfirmed transactions of the wallet: their fees and those of their unconfirmed ancestors.
+/// </summary>
 public static class CpfpInfoUpdater
 {
-	private delegate Task<Result<CpfpInfo,string>> CpfpInfoGetter(SmartTransaction stx);
+	/// <summary>The cached information is not refreshed more often than this.</summary>
+	private static readonly TimeSpan MinimumRefreshPeriod = TimeSpan.FromSeconds(30);
 
-	public static MessageHandler<CpfpInfoMessage, Unit> CreateForRegTest()
+	public static MessageHandler<CpfpInfoMessage, Unit> Create(IRPCClient rpcClient, EventBus eventBus)
 	{
-		return (msg, _, _) =>
+		var cache = new Dictionary<uint256, CachedCpfpInfo>();
+		var lastRefresh = DateTimeOffset.MinValue;
+
+		return async (msg, _, cancellationToken) =>
 		{
-			// CPFP is not properly supported in regtest yet.
 			switch (msg)
 			{
-				case CpfpInfoMessage.GetCachedCpfpInfo m:
-					m.ReplyChannel.Reply([]);
+				case CpfpInfoMessage.UpdateMessage:
+					if (DateTimeOffset.UtcNow - lastRefresh >= MinimumRefreshPeriod)
+					{
+						lastRefresh = DateTimeOffset.UtcNow;
+						await RefreshAsync(rpcClient, cache, eventBus, cancellationToken).ConfigureAwait(false);
+					}
 					break;
+
+				case CpfpInfoMessage.GetCachedCpfpInfo m:
+					m.ReplyChannel.Reply(cache.Values.ToArray());
+					break;
+
 				case CpfpInfoMessage.GetInfoForTransaction m:
-					m.ReplyChannel.Reply(Result<CpfpInfo, string>.Fail("Not implemented for regtest."));
+					m.ReplyChannel.Reply(await FetchAsync(m.SmartTransaction, rpcClient, cache, eventBus, cancellationToken).ConfigureAwait(false));
+					break;
+
+				case CpfpInfoMessage.PreFetchInfoForTransaction m:
+					if (m.SmartTransaction.CanBeSpeedUpUsingCpfp())
+					{
+						await FetchAsync(m.SmartTransaction, rpcClient, cache, eventBus, cancellationToken).ConfigureAwait(false);
+					}
 					break;
 			}
 
-			return Task.FromResult(Unit.Instance);
+			return Unit.Instance;
 		};
 	}
 
-	public static MessageHandler<CpfpInfoMessage, Unit> Create(
-		IHttpClientFactory httpClientFactory, Network network, EventBus eventBus)
+	/// <summary>
+	/// Forgets the transactions that got confirmed and asks the node again about the others.
+	/// </summary>
+	private static async Task RefreshAsync(IRPCClient rpcClient, Dictionary<uint256, CachedCpfpInfo> cache, EventBus eventBus, CancellationToken cancellationToken)
 	{
-		var uri = network == Network.Main
-			? new Uri("https://mempool.space/api/")
-			: new Uri("https://mempool.space/testnet4/api/");
-		var tasks = new List<Task>();
-		var cache = new Dictionary<uint256, CachedCpfpInfo>();
-		return (msg, _, cancellationToken) => ProcessMessagesAsync(msg, httpClientFactory, uri, tasks, cache, eventBus, cancellationToken);
-	}
-
-	private static async Task<Unit> ProcessMessagesAsync(CpfpInfoMessage msg, IHttpClientFactory httpClientFactory, Uri uri, List<Task> tasks, Dictionary<uint256, CachedCpfpInfo> cache, EventBus eventBus, CancellationToken cancellationToken)
-	{
-		switch (msg)
+		foreach (var cached in cache.Values.ToArray())
 		{
-			case CpfpInfoMessage.UpdateMessage _ :
-				await ProcessFinishedFetchingTasksAsync(tasks, cancellationToken).ConfigureAwait(false);
-				CleanCache(cache);
-				var rescheduledFetchingTasks = RescheduleAll(cache, GetCpfpInfo, cancellationToken);
-				tasks.AddRange(rescheduledFetchingTasks);
-				break;
-			case CpfpInfoMessage.GetCachedCpfpInfo m:
-				m.ReplyChannel.Reply(cache.Values.ToArray());
-				break;
-			case CpfpInfoMessage.GetInfoForTransaction m:
-				var cpfpInfo = await GetCpfpInfo(m.SmartTransaction).ConfigureAwait(false);
-				m.ReplyChannel.Reply(cpfpInfo);
-				break;
-			case CpfpInfoMessage.PreFetchInfoForTransaction m:
-				var scheduledFetchingTask = ScheduleTaskAsync(m.SmartTransaction, GetCpfpInfo, cancellationToken);
-				tasks.Add(scheduledFetchingTask);
-				break;
-		}
-
-		return Unit.Instance;
-
-		async Task<Result<CpfpInfo, string>> GetCpfpInfo(SmartTransaction tx)
-		{
-			var result = await GetCpfpInfoAsync(tx, httpClientFactory, uri, cache, cancellationToken).ConfigureAwait(false);
-			return result.Map(
-				info =>
-				{
-					eventBus.Publish(new CpfpInfoArrived());
-					return info;
-				});
-		}
-	}
-
-	private static async Task ProcessFinishedFetchingTasksAsync(List<Task> tasks, CancellationToken cancellationToken)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		var completedTasks = tasks.Where(t => t.IsCompleted).ToArray();
-		await Task.WhenAll(completedTasks).ConfigureAwait(false);
-		tasks.RemoveAll(t => completedTasks.Contains(t));
-	}
-
-	private static void CleanCache(Dictionary<uint256, CachedCpfpInfo> cache)
-	{
-		var confirmed = cache.Where(e => e.Value.Transaction.Confirmed).ToArray();
-
-		foreach (var cacheEntry in confirmed)
-		{
-			cache.Remove(cacheEntry.Key);
-		}
-	}
-
-	private static IEnumerable<Task> RescheduleAll(Dictionary<uint256, CachedCpfpInfo> cache, CpfpInfoGetter cpfpGetter, CancellationToken cancellationToken)
-	{
-		var unconfirmed = cache.Where(e => !e.Value.Transaction.Confirmed).ToArray();
-
-		foreach (var cacheEntry in unconfirmed)
-		{
-			yield return ScheduleTaskAsync(cacheEntry.Value.Transaction, cpfpGetter, cancellationToken);
-		}
-	}
-
-	private	static async Task ScheduleTaskAsync(SmartTransaction transaction, CpfpInfoGetter cpfpGetter, CancellationToken cancellationToken)
-	{
-		if (!transaction.CanBeSpeedUpUsingCpfp())
-		{
-			return;
-		}
-
-		const int MaximumDelayInMilliseconds = 10_000;
-		var random = RandomnessProviders.Secure;
-		var delayInMilliseconds = random.GetInt(MaximumDelayInMilliseconds);
-		var delay = TimeSpan.FromMilliseconds(delayInMilliseconds);
-
-		try
-		{
-			await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-			await cpfpGetter(transaction).ConfigureAwait(false);
-		}
-		catch (OperationCanceledException)
-		{
-			if (cancellationToken.IsCancellationRequested)
+			if (cached.Transaction.Confirmed)
 			{
-				Logger.LogTrace($"FetchCpfpInfoAsync was canceled for {transaction.GetHash()} because Wasabi is shutting down");
+				cache.Remove(cached.Transaction.GetHash());
+			}
+			else
+			{
+				await FetchAsync(cached.Transaction, rpcClient, cache, eventBus, cancellationToken).ConfigureAwait(false);
 			}
 		}
 	}
 
-	private static async Task<Result<CpfpInfo, string>> GetCpfpInfoAsync(SmartTransaction tx, IHttpClientFactory httpClientFactory, Uri uri, Dictionary<uint256, CachedCpfpInfo> cache, CancellationToken cancellationToken)
+	private static async Task<Result<CpfpInfo, string>> FetchAsync(SmartTransaction tx, IRPCClient rpcClient, Dictionary<uint256, CachedCpfpInfo> cache, EventBus eventBus, CancellationToken cancellationToken)
 	{
 		var txid = tx.GetHash();
-		if (cache.TryGetValue(txid, out var cachedCpfpInfo))
-		{
-			return cachedCpfpInfo.CpfpInfo;
-		}
 
 		try
 		{
-			var cpfpInfo = await GetCpfpInfoAsync(txid, httpClientFactory, uri, cancellationToken).ConfigureAwait(false);
-			cache.Add(txid, new CachedCpfpInfo(cpfpInfo, tx));
+			var entry = await rpcClient.GetMempoolEntryAsync(txid, throwIfNotFound: false, cancellationToken).ConfigureAwait(false);
+
+			if (entry is null)
+			{
+				cache.Remove(txid);
+				return Result<CpfpInfo, string>.Fail("The transaction is not in the mempool of the node.");
+			}
+
+			var cpfpInfo = CpfpInfo.FromMempoolEntry(entry);
+			var isNews = !cache.TryGetValue(txid, out var known) || known.CpfpInfo != cpfpInfo;
+			cache[txid] = new CachedCpfpInfo(cpfpInfo, tx);
+
+			if (isNews)
+			{
+				eventBus.Publish(new CpfpInfoArrived());
+			}
+
 			return cpfpInfo;
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
 		}
 		catch (Exception e)
 		{
+			// This includes requests that the node did not answer in time.
 			return Result<CpfpInfo, string>.Fail(e.Message);
 		}
-	}
-
-	private static async Task<CpfpInfo> GetCpfpInfoAsync(uint256 txid, IHttpClientFactory httpClientFactory, Uri uri, CancellationToken cancellationToken)
-	{
-		using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-		var httpClient = httpClientFactory.CreateClient($"mempool.space-{txid}");
-		httpClient.BaseAddress = uri;
-		using var request = new HttpRequestMessage(HttpMethod.Get, $"v1/cpfp/{txid}");
-		var response = await httpClient.SendAsync(request, linkedCts.Token).ConfigureAwait(false);
-
-		response.EnsureSuccessStatusCode();
-
-		var stringResponse = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-		return JsonDecoder.FromString(stringResponse, Decode.CpfpInfo)
-			?? throw new DataException("Deserialization error");
 	}
 }

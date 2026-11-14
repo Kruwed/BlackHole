@@ -12,7 +12,6 @@ public static class Constants
 
 	public const string DonationAddress = "sp1qq2exrz9xjumnvujw7zmav4r3vhfj9rvmd0aytjx0xesvzlmn48ctgqnqdgaan0ahmcfw3cpq5nxvnczzfhhvl3hmsps683cap4y696qecs7wejl3";
 
-	public const string WasabiTeamNostrPubKey = "npub129hpcwy3h7uhpzwzts6utkt2p5st7lf4qpzp3d2j0p6z56lvkpgspngzeq";
 
 	/// <summary>
 	/// By changing this, we can force to start over the transactions file, so old incorrect transactions would be cleared.
@@ -76,9 +75,6 @@ public static class Constants
 	public static readonly string DefaultTestNetBitcoinRpcUri = $"http://localhost:{DefaultTestNetBitcoinRpcPort}";
 	public static readonly string DefaultSignetBitcoinRpcUri = $"http://localhost:{DefaultSignetBitcoinRpcPort}";
 	public static readonly string DefaultRegTestBitcoinRpcUri = $"http://localhost:{DefaultRegTestBitcoinCorePort}";
-
-	public const string DefaultFeeRateEstimationProvider = "MempoolSpace";
-	public const string DefaultExternalTransactionBroadcaster= "MempoolSpace";
 
 	public static readonly Money MaximumNumberOfBitcoinsMoney = Money.Coins(MaximumNumberOfBitcoins);
 
