@@ -52,7 +52,7 @@ public class PersistentConfigManagerTests
 			  "TerminateTorOnExit": false,
 			  "TorBridges": [],
 			  "BitcoinRpcCredentialString": "",
-			  "BitcoinRpcEndPoint": "",
+			  "BitcoinRpcEndPoint": "http://localhost:8332",
 			  "JsonRpcServerEnabled": false,
 			  "JsonRpcUser": "{{jsonRpcUser}}",
 			  "JsonRpcPassword": "{{jsonRpcPassword}}",
