@@ -11,7 +11,7 @@
              x:Class="WalletWasabi.Fluent.Views.Settings.SettingsPageView">
 
   <ContentArea Title="{Binding Title}"
-                 Caption="Manage appearance, privacy and other settings"
+                 Caption="Manage Bitcoin, coordinator and connection settings"
                  EnableNext="True"
                  EnableCancel="{Binding !IsReadOnly}"
                  NextContent="Done"
@@ -39,12 +39,6 @@
 
       <TabControl SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
                   Classes="Settings">
-        <TabItem Header="General">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:GeneralSettingsTabView DataContext="{Binding GeneralSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
-          </ScrollViewer>
-        </TabItem>
-
         <TabItem Header="Bitcoin">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <v:BitcoinTabSettingsView DataContext="{Binding BitcoinTabSettings}" IsEnabled="{Binding !IsReadOnly}" />

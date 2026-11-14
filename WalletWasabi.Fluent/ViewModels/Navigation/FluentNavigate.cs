@@ -250,11 +250,6 @@ public partial class FluentNavigate
 		return new FluentDialog<ResyncWalletDialogResult?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void GeneralSettingsTab(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new GeneralSettingsTabViewModel(UiContext, settings), navigationMode);
-	}
-
 	public void ConnectionsSettingsTab(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ConnectionsSettingsTabViewModel(UiContext, settings), navigationMode);

@@ -12,10 +12,10 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 [AppLifetime]
 [NavigationMetaData(
 	Title = "Settings",
-	Caption = "Manage appearance, privacy and other settings",
+	Caption = "Manage Bitcoin, coordinator and connection settings",
 	Order = 1,
 	Category = "General",
-	Keywords = new[] { "Settings", "General", "User", "Interface", "Advanced" },
+	Keywords = new[] { "Settings", "Bitcoin", "Coordinator", "Connections" },
 	IconName = "nav_settings_24_regular",
 	IconNameFocused = "nav_settings_24_filled",
 	Searchable = false,
@@ -39,7 +39,6 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 			return Task.CompletedTask;
 		});
 
-		GeneralSettingsTab = new GeneralSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
 		BitcoinTabSettings = new BitcoinTabSettingsViewModel(UiContext, UiContext.ApplicationSettings);
 		CoordinatorTabSettings = new CoordinatorTabSettingsViewModel(UiContext, UiContext.ApplicationSettings);
 		ConnectionsSettingsTab = new ConnectionsSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
@@ -62,7 +61,6 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 
 	public ICommand RestartCommand { get; }
 
-	public GeneralSettingsTabViewModel GeneralSettingsTab { get; }
 	public BitcoinTabSettingsViewModel BitcoinTabSettings { get; }
 	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
 	public ConnectionsSettingsTabViewModel ConnectionsSettingsTab { get; }
@@ -74,7 +72,7 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 
 	public async Task ActivateCoordinatorTabAsync()
 	{
-		SelectedTab = 2;
+		SelectedTab = 1;
 		await NavigateDialogAsync(this);
 	}
 }
