@@ -8,7 +8,6 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using WalletWasabi.Bases;
 using WalletWasabi.Client.Configuration;
-using WalletWasabi.Discoverability;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Helpers;
 using WalletWasabi.Logging;
@@ -289,24 +288,6 @@ public partial class ApplicationSettings : ReactiveObject
 		};
 
 		return result;
-	}
-
-	public bool TryProcessCoordinatorConnectionString(CoordinatorConnectionString coordinatorConnectionString)
-	{
-		// Sanity checks
-		if (coordinatorConnectionString.AbsoluteMinInputCount < Constants.AbsoluteMinInputCount)
-		{
-			Logger.LogWarning($"New intended absolute min input count was {coordinatorConnectionString.AbsoluteMinInputCount}, but absolute min is {Constants.AbsoluteMinInputCount}");
-			return false;
-		}
-
-		CoordinatorUri = coordinatorConnectionString.CoordinatorUri.ToString();
-
-		AbsoluteMinInputCount = coordinatorConnectionString.AbsoluteMinInputCount.ToString();
-
-		// TODO: Save Name and ReadMoreUri to display it after.
-
-		return true;
 	}
 
 	private void ApplyUiConfigChanges()
