@@ -128,10 +128,6 @@
   <!-- Network badge -->
   <Color x:Key="NetworkBadgeColor">Gold</Color>
 
-  <!-- MusicBox -->
-  <Color x:Key="CoinjoinWaveDefaultColor">#FF29903B</Color>
-  <Color x:Key="CoinjoinWaveCriticalColor">#FF7800</Color>
-
   <!-- WalletIcon -->
   <Color x:Key="WalletIconBackgroundStartColor">#FF646464</Color>
   <Color x:Key="WalletIconBackgroundEndColor">#FF333333</Color>

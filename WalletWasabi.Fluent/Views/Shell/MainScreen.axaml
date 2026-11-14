@@ -19,31 +19,6 @@
           <DynamicResource ResourceKey="MainAreaDropShadowEffect" />
         </Border.Effect>
         <Panel>
-          <!-- Coinjoin waves -->
-          <Panel VerticalAlignment="Bottom" Height="100">
-            <SpectrumControl Opacity="0.6" IsActive="{Binding IsCoinJoinActive}"
-                             Classes.fireEffect="{Binding CurrentWallet^.CoinJoinStateViewModel.IsInCriticalPhase, FallbackValue=False}">
-              <SpectrumControl.IsDockEffectVisible>
-                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                  <Binding Path="CurrentWallet^.IsMusicBoxVisible^" FallbackValue="False" />
-                  <Binding Path="CurrentWallet^.CoinJoinStateViewModel.AreAllCoinsPrivate" FallbackValue="False" Converter="{x:Static BoolConverters.Not}" />
-                </MultiBinding>
-              </SpectrumControl.IsDockEffectVisible>
-              <SpectrumControl.Styles>
-                <Style Selector="SpectrumControl.fireEffect">
-                  <Setter Property="Foreground" Value="{DynamicResource CoinjoinWaveCriticalColor}" />
-                </Style>
-                <Style Selector="SpectrumControl">
-                  <Setter Property="Foreground" Value="{DynamicResource CoinjoinWaveDefaultColor}" />
-                </Style>
-              </SpectrumControl.Styles>
-              <SpectrumControl.Transitions>
-                <Transitions>
-                  <BrushTransition Property="Foreground" Duration="0:0:2" Easing="{StaticResource FluentEasing}" />
-                </Transitions>
-              </SpectrumControl.Transitions>
-            </SpectrumControl>
-          </Panel>
           <DockPanel>
             <DockPanel.Styles>
               <Style Selector="ContentControl ContentArea /template/ Panel#PART_ButtonArea">

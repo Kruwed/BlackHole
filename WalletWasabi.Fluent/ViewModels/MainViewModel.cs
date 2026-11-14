@@ -27,7 +27,6 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
 	[AutoNotify] private bool _isOobeBackgroundVisible;
-	[AutoNotify] private bool _isCoinJoinActive;
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -170,12 +169,6 @@ public partial class MainViewModel : ViewModelBase
 
 	public void Initialize()
 	{
-		UiContext.WalletRepository
-			.WhenAnyValue(x => x.Wallet)
-			.Select(wallet => wallet?.IsCoinjoinRunning ?? Observable.Return(false))
-			.Switch()
-			.BindTo(this, x => x.IsCoinJoinActive);
-
 		Notifications.StartListening();
 
 		if (UiContext.ApplicationSettings.Network != Network.Main)
