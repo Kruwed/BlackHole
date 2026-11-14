@@ -152,7 +152,8 @@ public class WasabiApplication
 
 		Network? network;
 		var networkFileExists = File.Exists(networkFilePath);
-		if (Config.GetCliArgsValue("network", AppConfig.Arguments, out var networkName))
+		// The command line and the environment choose the network like they set any other option.
+		if (Config.TryGetOverrideValue("network", AppConfig.Arguments, out var networkName))
 		{
 			network = Network.GetNetwork(networkName) ?? Network.Main;
 			if (!networkFileExists)

@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using NBitcoin.RPC;
+using WalletWasabi.Helpers;
 
 namespace WalletWasabi;
 
@@ -36,5 +39,13 @@ public static class ModuleInitializer
 		var otherAliases = otherAliasesField!.GetValue(null) as ConcurrentDictionary<string, Network>;
 		otherAliases!["test"] = testnet4;
 		otherAliases["testnet"] = testnet4;
+
+		// NBitcoin knows where Bitcoin Core keeps the cookie file of every network but this one. Without it
+		// a node on testnet4 cannot be used with the default credentials.
+		var bitcoinDataDir = EnvironmentHelpers.GetDefaultBitcoinDataDir();
+		if (bitcoinDataDir.Length > 0)
+		{
+			RPCClient.RegisterDefaultCookiePath(testnet4, Path.Combine(bitcoinDataDir, "testnet4", ".cookie"));
+		}
 	}
 }

@@ -85,21 +85,21 @@ public class Config
 			[nameof(TorControlPort)] = "Tor is started to listen with the specified control port",
 			[nameof(TorBridges)] = "Tor is started with the set of specified bridges",
 			[nameof(TerminateTorOnExit)] = "Stop the Tor process when Black Hole is closed",
-			[nameof(BitcoinRpcCredentialString)] = "Credentials for authenticating against the bitcoin node rpc server",
-			[nameof(BitcoinRpcUri)] = "The RPC interface of the user's Bitcoin node. It is the only source of blockchain data, fees and the only way transactions are broadcast",
+			[nameof(BitcoinRpcCredentialString)] = "Credentials for authenticating against the bitcoin node rpc server: user:password or cookiefile=path. Without them the cookie file in the default data folder of Bitcoin Core is used",
+			["BitcoinRpcEndPoint"] = "The RPC interface of the user's Bitcoin node. It is the only source of blockchain data, fees and the only way transactions are broadcast",
 			[nameof(JsonRpcServerEnabled)] = "Start the Json RPC Server and accept requests",
 			[nameof(JsonRpcUser)] = "The user name that is authorized to make requests to the Json RPC server",
 			[nameof(JsonRpcPassword)] = "The user password that is authorized to make requests to the Json RPC server",
 			[nameof(JsonRpcServerPrefixes)] = "The Json RPC server prefixes",
 			[nameof(RpcOnionEnabled)] = "Publish the Json RPC Server as a Tor Onion service",
-			[nameof(BlockOnlyMode)] = "The wallet looks only at the blocks of the node and not at its unconfirmed transactions",
+			["BlockOnly"] = "The wallet looks only at the blocks of the node and not at its unconfirmed transactions",
 			[nameof(LogLevel)] = "The level of detail in the logs: trace, debug, info, warning, error, or critical",
 			[nameof(LogModes)] = "The logging modes: console, and file (for multiple values use comma as a separator)",
 			[nameof(EnableGpu)] = "Use a GPU to render the user interface",
 			[nameof(CoordinatorIdentifier)] = "-",
 			[nameof(MaxCoinjoinMiningFeeRate)] = "Max mining fee rate in sat/vB the client is willing to pay to participate into a round",
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
-			[nameof(DropUnconfirmedTransactionsAfterDays)] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
+			["MaxDaysInMempool"] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 		};
 	private Dictionary<string, IValue> Data { get; }
@@ -334,6 +334,10 @@ public class Config
 
 		return computedValue;
 	}
+
+	/// <summary>Gets the value that a command line argument or, failing that, an environment variable gives to an option.</summary>
+	public static bool TryGetOverrideValue(string key, string[] cliArgs, [NotNullWhen(true)] out string? overrideValue) =>
+		GetOverrideValue(key, cliArgs, out overrideValue, out _);
 
 	private static bool GetOverrideValue(string key, string[] cliArgs, [NotNullWhen(true)] out string? overrideValue, [NotNullWhen(true)] out ValueSource? valueSource)
 	{
