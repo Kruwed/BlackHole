@@ -10,11 +10,6 @@
   <StackPanel Classes="settingsLayout">
 
     <DockPanel>
-      <TextBlock Text="Dark mode" />
-      <ToggleSwitch IsChecked="{Binding Settings.DarkModeEnabled}" />
-    </DockPanel>
-
-    <DockPanel>
       <TextBlock Text="Run Black Hole when computer starts" />
       <ToggleSwitch IsChecked="{Binding Settings.RunOnSystemStartup}" />
     </DockPanel>

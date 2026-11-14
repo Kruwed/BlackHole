@@ -1,5 +1,4 @@
 using System.Reactive;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -48,10 +47,6 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 		NextCommand = ReactiveCommand.Create(() => Close());
 
-		this.WhenAnyValue(x => x.UiContext.ApplicationSettings.DarkModeEnabled)
-			.Skip(1)
-			.Subscribe(ChangeTheme);
-
 		// Show restart message when needed
 		UiContext.ApplicationSettings.IsRestartNeeded
 									 .BindTo(this, x => x.IsModified);
@@ -81,10 +76,5 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	{
 		SelectedTab = 2;
 		await NavigateDialogAsync(this);
-	}
-
-	private void ChangeTheme(bool isDark)
-	{
-		RxApp.MainThreadScheduler.Schedule(() => ThemeHelper.ApplyTheme(isDark ? Theme.Dark : Theme.Light));
 	}
 }

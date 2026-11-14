@@ -1,7 +1,10 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- The application is always dark: App.axaml asks for the dark variant. The dark colours are the ones of
+       'Default' as well. That is where a lookup that names no variant ends up, like the static resources in
+       control themes and in the resources of views. -->
   <ResourceDictionary.ThemeDictionaries>
-    <ResourceInclude Source="avares://WalletWasabi.Fluent/Styles/Themes/Light.axaml" x:Key='Default' />
+    <ResourceInclude Source="avares://WalletWasabi.Fluent/Styles/Themes/Dark.axaml" x:Key='Default' />
     <ResourceInclude Source="avares://WalletWasabi.Fluent/Styles/Themes/Dark.axaml" x:Key='Dark' />
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

@@ -180,8 +180,7 @@ public class Program
 			.UsePlatformBackend();
 
 		return result
-			.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software }, WmClass = "Black Hole Crash Report" })
-			.AfterSetup(_ => ThemeHelper.ApplyTheme(Theme.Dark));
+			.With(new X11PlatformOptions { RenderingMode = new[] { X11RenderingMode.Software }, WmClass = "Black Hole Crash Report" });
 	}
 }
 
@@ -222,8 +221,6 @@ public static class WasabiAppExtensions
 					.SetupAppBuilder(services.Config.EnableGpu)
 					.AfterSetup(_ =>
 					{
-						ThemeHelper.ApplyTheme(uiConfig.DarkModeEnabled ? Theme.Dark : Theme.Light);
-
 						Dispatcher.UIThread.UnhandledException += (_, e) =>
 						{
 							if (Program.IsShuttingDown &&

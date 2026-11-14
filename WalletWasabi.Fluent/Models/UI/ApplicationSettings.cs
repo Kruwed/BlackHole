@@ -52,8 +52,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private string _absoluteMinInputCount;
 
 	// General
-	[AutoNotify] private bool _darkModeEnabled;
-
 	[AutoNotify] private bool _autoCopy;
 	[AutoNotify] private bool _autoPaste;
 	[AutoNotify] private bool _customChangeAddress;
@@ -96,7 +94,6 @@ public partial class ApplicationSettings : ReactiveObject
 		_absoluteMinInputCount = persistentConfig.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture);
 
 		// General
-		_darkModeEnabled = uiConfig.DarkModeEnabled;
 		_autoCopy = uiConfig.Autocopy;
 		_autoPaste = uiConfig.AutoPaste;
 		_customChangeAddress = uiConfig.IsCustomChangeAddress;
@@ -135,7 +132,6 @@ public partial class ApplicationSettings : ReactiveObject
 		AbsoluteMinInputCount = persistentConfig.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture);
 
 		// General
-		DarkModeEnabled = uiConfig.DarkModeEnabled;
 		AutoCopy = uiConfig.Autocopy;
 		AutoPaste = uiConfig.AutoPaste;
 		CustomChangeAddress = uiConfig.IsCustomChangeAddress;
@@ -187,7 +183,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Save UiConfig on change
 		this.WhenAnyValue(
-				x => x.DarkModeEnabled,
 				x => x.AutoCopy,
 				x => x.AutoPaste,
 				x => x.CustomChangeAddress,
@@ -196,7 +191,7 @@ public partial class ApplicationSettings : ReactiveObject
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
 				x => x.WindowState,
-				(_, _, _, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _, _, _) => Unit.Default)
 			.Skip(1)
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => ApplyUiConfigChanges())
@@ -348,7 +343,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 	private void ApplyUiConfigChanges()
 	{
-		_uiConfig.DarkModeEnabled = DarkModeEnabled;
 		_uiConfig.Autocopy = AutoCopy;
 		_uiConfig.AutoPaste = AutoPaste;
 		_uiConfig.IsCustomChangeAddress = CustomChangeAddress;

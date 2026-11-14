@@ -31,7 +31,7 @@
 
     <DataTemplate x:Key="Logo">
       <Viewbox Height="18" Width="18" IsHitTestVisible="False">
-        <ThemeImage Source="{DynamicResource app_logo_dynamic}" />
+        <Image Source="{DynamicResource app_logo_dynamic}" />
       </Viewbox>
     </DataTemplate>
 

@@ -11,7 +11,6 @@ public class UiConfig : ConfigBase
 	private bool _privacyMode;
 	private bool _isCustomChangeAddress;
 	private bool _autocopy;
-	private bool _darkModeEnabled;
 	private string _windowState;
 	private bool _runOnSystemStartup;
 	private bool _oobe;
@@ -27,7 +26,6 @@ public class UiConfig : ConfigBase
 		bool privacyMode,
 		bool isCustomChangeAddress,
 		bool autocopy,
-		bool darkModeEnabled,
 		string windowState,
 		bool runOnSystemStartup,
 		bool oobe,
@@ -41,7 +39,6 @@ public class UiConfig : ConfigBase
 		_privacyMode = privacyMode;
 		_isCustomChangeAddress = isCustomChangeAddress;
 		_autocopy = autocopy;
-		_darkModeEnabled = darkModeEnabled;
 		_windowState = windowState;
 		_runOnSystemStartup = runOnSystemStartup;
 		_oobe = oobe;
@@ -56,7 +53,6 @@ public class UiConfig : ConfigBase
 				x => x.Autocopy,
 				x => x.AutoPaste,
 				x => x.IsCustomChangeAddress,
-				x => x.DarkModeEnabled,
 				x => x.WindowState,
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
@@ -64,7 +60,7 @@ public class UiConfig : ConfigBase
 				x => x.PrivacyMode,
 				x => x.HideOnClose,
 				x => x.FeeTarget,
-				(_, _, _, _, _, _, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _, _, _, _, _, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -83,7 +79,6 @@ public class UiConfig : ConfigBase
 			privacyMode: false,
 			isCustomChangeAddress: false,
 			autocopy: true,
-			darkModeEnabled: true,
 			windowState: "Normal",
 			runOnSystemStartup: false,
 			oobe: true,
@@ -142,12 +137,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _privacyMode;
 		set => RaiseAndSetIfChanged(ref _privacyMode, value);
-	}
-
-	public bool DarkModeEnabled
-	{
-		get => _darkModeEnabled;
-		set => RaiseAndSetIfChanged(ref _darkModeEnabled, value);
 	}
 
 	public bool RunOnSystemStartup
