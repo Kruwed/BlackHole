@@ -60,7 +60,6 @@ public class PersistentConfigManagerTests
 			    "http://127.0.0.1:37128/",
 			    "http://localhost:37128/"
 			  ],
-			  "EnableGpu": true,
 			  "CoordinatorIdentifier": "CoinJoinCoordinatorIdentifier",
 			  "MaxCoinJoinMiningFeeRate": 50.0,
 			  "AbsoluteMinInputCount": 21,
@@ -72,6 +71,59 @@ public class PersistentConfigManagerTests
 
 		static void AssertJsonStringsEqual(string expected, string actual)
 			=> Assert.Equal(expected.ReplaceLineEndings("\n"), actual.ReplaceLineEndings("\n"));
+	}
+
+	/// <summary>
+	/// A file of an earlier version still says whether the GPU is to be used. It is read all the same, what it says
+	/// about the other settings is kept, and the setting that is gone is left out when the file is saved again.
+	/// </summary>
+	[Fact]
+	public async Task ReadsAFileThatStillHasTheGpuSettingAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		File.WriteAllText(
+			configPath,
+			"""
+			{
+			  "CoordinatorUri": "https://coordinator.example/",
+			  "UseTor": "EnabledOnlyRunning",
+			  "TerminateTorOnExit": true,
+			  "TorBridges": [],
+			  "BitcoinRpcCredentialString": "user:password",
+			  "BitcoinRpcEndPoint": "http://node.example:8332/",
+			  "JsonRpcServerEnabled": false,
+			  "JsonRpcUser": "rpcuser",
+			  "JsonRpcPassword": "rpcpassword",
+			  "JsonRpcServerPrefixes": [
+			    "http://127.0.0.1:37128/"
+			  ],
+			  "EnableGpu": false,
+			  "CoordinatorIdentifier": "CoinJoinCoordinatorIdentifier",
+			  "MaxCoinJoinMiningFeeRate": 12.5,
+			  "AbsoluteMinInputCount": 33,
+			  "MaxDaysInMempool": 45,
+			  "ExperimentalFeatures": [],
+			  "ConfigVersion": 4
+			}
+			""");
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+
+		Assert.Equal("https://coordinator.example/", config.CoordinatorUri);
+		Assert.Equal("EnabledOnlyRunning", config.UseTor);
+		Assert.True(config.TerminateTorOnExit);
+		Assert.Equal("user:password", config.BitcoinRpcCredentialString);
+		Assert.Equal("http://node.example:8332/", config.BitcoinRpcUri);
+		Assert.Equal("rpcuser", config.JsonRpcUser);
+		Assert.Equal(12.5m, config.MaxCoinJoinMiningFeeRate);
+		Assert.Equal(33, config.AbsoluteMinInputCount);
+		Assert.Equal(45, config.MaxDaysInMempool);
+
+		string savedJson = PersistentConfigManager.ToFile(configPath, config);
+		Assert.DoesNotContain("EnableGpu", savedJson);
+		Assert.Contains("\"AbsoluteMinInputCount\": 33", savedJson);
 	}
 
 	// Test for migration 2.6.0 -> 2.8.0
@@ -257,7 +309,6 @@ public class PersistentConfigManagerTests
 		Assert.Equal("rpcuser", migratedConfig.JsonRpcUser);
 		Assert.Equal("rpcpass", migratedConfig.JsonRpcPassword);
 		Assert.Equal(2, migratedConfig.JsonRpcServerPrefixes.Count());
-		Assert.False(migratedConfig.EnableGpu);
 		Assert.Equal("CustomCoordinator", migratedConfig.CoordinatorIdentifier);
 		Assert.Equal(100.5m, migratedConfig.MaxCoinJoinMiningFeeRate);
 		Assert.Equal(50, migratedConfig.AbsoluteMinInputCount);

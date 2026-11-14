@@ -25,7 +25,6 @@ public static class PersistentConfigManager
 		JsonRpcUser : GenerateRandomString(12),
 		JsonRpcPassword : GenerateRandomString(12),
 		JsonRpcServerPrefixes : new (["http://127.0.0.1:37128/", "http://localhost:37128/"]),
-		EnableGpu : true,
 		CoordinatorIdentifier : "CoinJoinCoordinatorIdentifier",
 		MaxCoinJoinMiningFeeRate : Constants.DefaultMaxCoinJoinMiningFeeRate,
 		AbsoluteMinInputCount : Constants.DefaultAbsoluteMinInputCount,

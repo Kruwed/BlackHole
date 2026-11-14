@@ -11,7 +11,11 @@ public static class AppBuilderExtension
 	public static AppBuilder UsePlatformBackend(this AppBuilder appBuilder) =>
 		appBuilder.UseX11().UseSkia();
 
-	public static AppBuilder SetupAppBuilder(this AppBuilder appBuilder, bool enableGpu)
+	/// <summary>
+	/// Sets the application up for the desktop. The user interface is drawn by the graphics card (GPU), and by the
+	/// processor where that is not possible.
+	/// </summary>
+	public static AppBuilder SetupAppBuilder(this AppBuilder appBuilder)
 	{
 		return appBuilder
 			.UsePlatformBackend()
@@ -21,9 +25,7 @@ public static class AppBuilderExtension
 			.With(new SkiaOptions { MaxGpuResourceSizeBytes = 2560 * 1600 * 4 * 12 })
 			.With(new X11PlatformOptions
 			{
-				RenderingMode = enableGpu
-					? new[] { X11RenderingMode.Glx, X11RenderingMode.Software }
-					: new[] { X11RenderingMode.Software },
+				RenderingMode = new[] { X11RenderingMode.Glx, X11RenderingMode.Software },
 				WmClass = WalletWasabi.Helpers.Constants.AppName
 			});
 	}

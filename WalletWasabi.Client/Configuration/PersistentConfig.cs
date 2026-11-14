@@ -23,7 +23,6 @@ public record PersistentConfig(
 	string JsonRpcUser,
 	string JsonRpcPassword,
 	ValueList<string> JsonRpcServerPrefixes,
-	bool EnableGpu,
 	string CoordinatorIdentifier,
 	decimal MaxCoinJoinMiningFeeRate,
 	int AbsoluteMinInputCount,

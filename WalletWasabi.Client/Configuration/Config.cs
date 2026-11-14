@@ -47,7 +47,6 @@ public class Config
 			[nameof(BlockOnlyMode)] = GetBoolValue("BlockOnly", value: false, cliArgs),
 			[nameof(LogLevel)] = GetStringValue("LogLevel", value: "", cliArgs),
 			[nameof(LogModes)] = GetLogModeArrayValue("LogModes", arrayValues: DefaultLogModes, cliArgs),
-			[nameof(EnableGpu)] = GetBoolValue("EnableGpu", PersistentConfig.EnableGpu, cliArgs),
 			[nameof(CoordinatorIdentifier)] = GetStringValue("CoordinatorIdentifier", PersistentConfig.CoordinatorIdentifier, cliArgs),
 			[nameof(MaxCoinjoinMiningFeeRate)] = GetDecimalValue("MaxCoinjoinMiningFeeRate", PersistentConfig.MaxCoinJoinMiningFeeRate, cliArgs),
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
@@ -95,7 +94,6 @@ public class Config
 			["BlockOnly"] = "The wallet looks only at the blocks of the node and not at its unconfirmed transactions",
 			[nameof(LogLevel)] = "The level of detail in the logs: trace, debug, info, warning, error, or critical",
 			[nameof(LogModes)] = "The logging modes: console, and file (for multiple values use comma as a separator)",
-			[nameof(EnableGpu)] = "Use a GPU to render the user interface",
 			[nameof(CoordinatorIdentifier)] = "-",
 			[nameof(MaxCoinjoinMiningFeeRate)] = "Max mining fee rate in sat/vB the client is willing to pay to participate into a round",
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
@@ -123,8 +121,6 @@ public class Config
 	public bool RpcOnionEnabled => GetEffectiveValue<bool>(nameof(RpcOnionEnabled));
 	public bool BlockOnlyMode => GetEffectiveValue<bool>(nameof(BlockOnlyMode));
 	public int DropUnconfirmedTransactionsAfterDays => GetEffectiveValue<int>(nameof(DropUnconfirmedTransactionsAfterDays));
-
-	public bool EnableGpu => GetEffectiveValue<bool>(nameof(EnableGpu));
 	public string CoordinatorIdentifier => GetEffectiveValue<string>(nameof(CoordinatorIdentifier));
 	public decimal MaxCoinjoinMiningFeeRate => GetEffectiveValue<decimal>(nameof(MaxCoinjoinMiningFeeRate));
 	public int AbsoluteMinInputCount => int.Max(

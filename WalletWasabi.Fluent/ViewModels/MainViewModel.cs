@@ -197,7 +197,6 @@ public partial class MainViewModel : ViewModelBase
 
 		var source = new CompositeSearchSource(
 			new ActionsSearchSource(UiContext, querySubject),
-			new SettingsSearchSource(UiContext, querySubject),
 			new TransactionsSearchSource(NavBar, querySubject),
 			UiContext.EditableSearchSource);
 

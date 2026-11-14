@@ -35,9 +35,6 @@ public partial class ApplicationSettings : ReactiveObject
 	private readonly Config _config;
 	private readonly UiConfig _uiConfig;
 
-	// Advanced
-	[AutoNotify] private bool _enableGpu;
-
 	// Bitcoin
 	[AutoNotify] private Network _network;
 
@@ -90,7 +87,6 @@ public partial class ApplicationSettings : ReactiveObject
 		// General
 		_customChangeAddress = uiConfig.IsCustomChangeAddress;
 		_terminateTorOnExit = persistentConfig.TerminateTorOnExit;
-		_enableGpu = persistentConfig.EnableGpu;
 
 		// Experimental
 		_experimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
@@ -124,7 +120,6 @@ public partial class ApplicationSettings : ReactiveObject
 		// General
 		CustomChangeAddress = uiConfig.IsCustomChangeAddress;
 		TerminateTorOnExit = persistentConfig.TerminateTorOnExit;
-		EnableGpu = persistentConfig.EnableGpu;
 
 		// Experimental
 		ExperimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
@@ -143,13 +138,12 @@ public partial class ApplicationSettings : ReactiveObject
 		// Save on change
 		var configSaveTrigger1 =
 			this.WhenAnyValue(
-					x => x.EnableGpu,
 					x => x.Network,
 					x => x.BitcoinRpcCredentialString,
 					x => x.BitcoinRpcUri,
 					x => x.UseTor,
 					x => x.TerminateTorOnExit,
-					(_, _, _, _, _, _) => Unit.Default)
+					(_, _, _, _, _) => Unit.Default)
 				.Skip(1);
 		var configSaveTrigger2 =
 			this.WhenAnyValue(
@@ -263,9 +257,6 @@ public partial class ApplicationSettings : ReactiveObject
 	private PersistentConfig ApplyChanges(PersistentConfig config)
 	{
 		PersistentConfig result = config;
-
-		// Advanced
-		result = result with { EnableGpu = EnableGpu };
 
 		// Bitcoin
 		if (string.IsNullOrWhiteSpace(BitcoinRpcUri))

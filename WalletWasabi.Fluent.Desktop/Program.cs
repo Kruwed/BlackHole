@@ -203,7 +203,7 @@ public static class WasabiAppExtensions
 
 				Logger.LogInfo("Black Hole GUI started.");
 				UiConfig uiConfig = LoadOrCreateUiConfig(Config.DataDir);
-				var services = Services.Create(app.Global, uiConfig, app.TerminateService);
+				Services.Create(app.Global, uiConfig, app.TerminateService);
 
 				using CancellationTokenSource stopLoadingCts = new();
 
@@ -211,7 +211,7 @@ public static class WasabiAppExtensions
 					backendInitializeAsync: async () =>
 						await app.Global.InitializeAsync(initializeSleepInhibitor: true, app.TerminateService, stopLoadingCts.Token).ConfigureAwait(false)))
 					.UseReactiveUI()
-					.SetupAppBuilder(services.Config.EnableGpu)
+					.SetupAppBuilder()
 					.AfterSetup(_ =>
 					{
 						Dispatcher.UIThread.UnhandledException += (_, e) =>
