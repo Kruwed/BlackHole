@@ -1,6 +1,5 @@
 using NBitcoin;
 using NBitcoin.WalletPolicies;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Tests.Helpers;
 using Xunit;
@@ -33,7 +32,7 @@ public class OutputDescriptorTests
 
 		// What "tr(xpub/<0;1>/*)" stands for: receive addresses on chain 0 and change addresses on chain 1,
 		// each one the BIP86 Taproot address of the derived key.
-		var receiveKey = keyManager.GetNextReceiveKey(new LabelsArray("someone"));
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var changeKey = keyManager.GetNextChangeKey();
 
 		Assert.Equal(

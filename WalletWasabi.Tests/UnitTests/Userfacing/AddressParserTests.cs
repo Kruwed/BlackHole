@@ -68,42 +68,34 @@ public class AddressParserTests
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX?label=Luke-Jr", Network.Main).Value);
 		Assert.Equal("18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX?amount=20.3&label=Luke-Jr", Network.Main).Value);
 		Assert.Equal("18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(20.3m, result.Amount);
 
 		// As per BIP321, keys are case insensitive, "Amount" and "Label" are thus valid.
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX?Amount=20.3&Label=Luke-Jr", Network.Main).Value);
 		Assert.Equal("18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(20.3m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.Main).Value);
 		Assert.Equal("18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(50m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.Main).Value);
 		Assert.Equal("3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(50m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.Main).Value);
 		Assert.Equal("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(50m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.TestNet).Value);
 		Assert.Equal("2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(50m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.TestNet).Value);
 		Assert.Equal("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", result.Address.ToWif(Network.Main));
-		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(50m, result.Amount);
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX?somethingyoudontunderstand=50&somethingelseyoudontget=999", Network.Main).Value);
@@ -111,14 +103,12 @@ public class AddressParserTests
 
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP?amount=0.02&label=bolt11_example&lightning=lntb20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfpp3x9et2e20v6pu37c5d9vax37wxq72un989qrsgqdj545axuxtnfemtpwkc45hx9d2ft7x04mt8q7y6t0k2dge9e7h8kpy9p34ytyslj3yu569aalz2xdk8xkd7ltxqld94u8h2esmsmacgpghe9k8", Network.TestNet).Value);
 		Assert.Equal("mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP", result.Address.ToWif(Network.Main));
-		Assert.Equal("bolt11_example", result.Label);
 		Assert.Equal(0.02m, result.Amount);
 
 		// BIP321 Uri with silent payment address
 		result = Assert.IsType<Address.Bip21Uri>(AddressParser.Parse("bitcoin:sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv?amount=0.02&label=bolt11_example", Network.Main).Value);
 		var sp = Assert.IsType<Address.SilentPayment>(result.Address);
 		Assert.Equal("sp1qqgste7k9hx0qftg6qmwlkqtwuy6cycyavzmzj85c6qdfhjdpdjtdgqjuexzk6murw56suy3e0rd2cgqvycxttddwsvgxe2usfpxumr70xc9pkqwv", sp.ToWif(Network.Main));
-		Assert.Equal("bolt11_example", result.Label);
 		Assert.Equal(0.02m, result.Amount);
 	}
 }

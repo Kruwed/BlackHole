@@ -41,11 +41,13 @@ public class AddressesModel
 		Unused = unusedAddresses;
 	}
 
-	private IEnumerable<HdPubKey> GetUnusedKeys() => _wallet.KeyManager.GetKeys(x => x is { IsInternal: false, KeyState: KeyState.Clean, Labels.Count: > 0 });
+	/// <summary>The addresses that were given out and that nobody has paid to yet.</summary>
+	private IEnumerable<HdPubKey> GetUnusedKeys() => _wallet.KeyManager.GetKeys(x => x is { IsInternal: false, KeyState: KeyState.Clean, IsHandedOut: true });
 
-	public IAddress NextReceiveAddress(IEnumerable<string> destinationLabels)
+	/// <summary>Gives out an address that was not given out before.</summary>
+	public IAddress NextReceiveAddress()
 	{
-		var pubKey = _wallet.GetNextReceiveAddress(destinationLabels);
+		var pubKey = _wallet.GetNextReceiveAddress();
 		var nextReceiveAddress = new Address(_wallet.KeyManager, pubKey, Hide);
 		_newAddressGenerated.OnNext(pubKey);
 

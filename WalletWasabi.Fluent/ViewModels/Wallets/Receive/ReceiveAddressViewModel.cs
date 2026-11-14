@@ -3,7 +3,6 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -21,7 +20,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		Model = model;
 		Address = model.Text;
 		ShortenedAddress = model.ShortenedText;
-		Labels = model.Labels;
 		IsAutoCopyEnabled = isAutoCopyEnabled;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
@@ -48,8 +46,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 	public string Address { get; }
 	public string ShortenedAddress { get; }
 	public bool AddressHasBeenShortened => Address != ShortenedAddress;
-
-	public LabelsArray Labels { get; }
 
 	public IObservable<bool[,]> QrCode { get; }
 

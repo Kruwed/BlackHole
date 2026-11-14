@@ -10,38 +10,38 @@ namespace WalletWasabi.Blockchain.TransactionBuilding;
 
 public class PaymentIntent
 {
-	public PaymentIntent(Script scriptPubKey, Money amount, bool subtractFee = false, LabelsArray? label = null)
-		: this(new DestinationRequest(scriptPubKey, MoneyRequest.Create(amount, subtractFee), label))
+	public PaymentIntent(Script scriptPubKey, Money amount, bool subtractFee = false)
+		: this(new DestinationRequest(scriptPubKey, MoneyRequest.Create(amount, subtractFee)))
 	{
 	}
 
-	public PaymentIntent(Script scriptPubKey, MoneyRequest amount, LabelsArray? label = null)
-		: this(new DestinationRequest(scriptPubKey, amount, label))
+	public PaymentIntent(Script scriptPubKey, MoneyRequest amount)
+		: this(new DestinationRequest(scriptPubKey, amount))
 	{
 	}
 
-	public PaymentIntent(Destination destination, Money amount, bool subtractFee = false, LabelsArray? label = null)
-		: this(new DestinationRequest(destination, MoneyRequest.Create(amount, subtractFee), label))
+	public PaymentIntent(Destination destination, Money amount, bool subtractFee = false)
+		: this(new DestinationRequest(destination, MoneyRequest.Create(amount, subtractFee)))
 	{
 	}
 
-	public PaymentIntent(Key destination, Money amount, bool subtractFee = false, LabelsArray? label = null)
-		: this(new DestinationRequest(destination, MoneyRequest.Create(amount, subtractFee), label))
+	public PaymentIntent(Key destination, Money amount, bool subtractFee = false)
+		: this(new DestinationRequest(destination, MoneyRequest.Create(amount, subtractFee)))
 	{
 	}
 
-	public PaymentIntent(IDestination destination, MoneyRequest amount, LabelsArray? label = null)
-		: this(new DestinationRequest(destination.ScriptPubKey, amount, label))
+	public PaymentIntent(IDestination destination, MoneyRequest amount)
+		: this(new DestinationRequest(destination.ScriptPubKey, amount))
 	{
 	}
 
-	public PaymentIntent(SilentPaymentAddress address, Money amount, bool subtractFee = false, LabelsArray? label = null)
-		: this(new DestinationRequest(address, MoneyRequest.Create(amount, subtractFee), label))
+	public PaymentIntent(SilentPaymentAddress address, Money amount, bool subtractFee = false)
+		: this(new DestinationRequest(address, MoneyRequest.Create(amount, subtractFee)))
 	{
 	}
 
-	public PaymentIntent(SilentPaymentAddress address, MoneyRequest amount, LabelsArray? label = null)
-		: this(new DestinationRequest(address, amount, label))
+	public PaymentIntent(SilentPaymentAddress address, MoneyRequest amount)
+		: this(new DestinationRequest(address, amount))
 	{
 	}
 

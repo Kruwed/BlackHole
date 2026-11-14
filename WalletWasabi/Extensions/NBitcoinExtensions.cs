@@ -108,7 +108,6 @@ public static class NBitcoinExtensions
 			unsignedSmartTransaction.Height,
 			unsignedSmartTransaction.BlockHash,
 			unsignedSmartTransaction.BlockIndex,
-			unsignedSmartTransaction.Labels,
 			unsignedSmartTransaction.IsReplacement,
 			unsignedSmartTransaction.IsSpeedup,
 			unsignedSmartTransaction.IsCancellation,

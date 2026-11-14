@@ -151,8 +151,7 @@ public class TransactionFactory
 
 		var realToSend = payments.Requests
 			.Select(t =>
-				(label: t.Labels,
-					destination: t.Destination,
+				(destination: t.Destination,
 					amount: psbt.Outputs.FirstOrDefault(o => o.ScriptPubKey == t.Destination.GetScriptPubKey())?.Value))
 			.Where(x => x.amount is not null);
 
@@ -231,12 +230,11 @@ public class TransactionFactory
 			}
 		}
 
-		var smartTransaction = new SmartTransaction(tx, labels: LabelsArray.Merge(payments.Requests.Select(x => x.Labels)));
+		var smartTransaction = new SmartTransaction(tx);
 		foreach (var coin in spentCoins)
 		{
 			smartTransaction.TryAddWalletInput(coin);
 		}
-		var label = LabelsArray.Merge(payments.Requests.Select(x => x.Labels).Concat(smartTransaction.WalletInputs.Select(x => x.HdPubKey.Labels)));
 
 		for (var i = 0U; i < tx.Outputs.Count; i++)
 		{
@@ -244,32 +242,12 @@ public class TransactionFactory
 			if (KeyManager.TryGetKeyForScriptPubKey(output.ScriptPubKey, out HdPubKey? foundKey))
 			{
 				var smartCoin = new SmartCoin(smartTransaction, i, foundKey);
-				label = LabelsArray.Merge(label, smartCoin.HdPubKey.Labels); // foundKey's label is already added to the coinLabel.
 				smartTransaction.TryAddWalletOutput(smartCoin);
 			}
 		}
 
-		// New labels will be added to the HdPubKey only when tx will be successfully broadcasted.
-		Dictionary<HdPubKey, LabelsArray> hdPubKeysWithNewLabels = new();
-
-		foreach (var coin in smartTransaction.WalletOutputs)
-		{
-			var foundPaymentRequest = payments.Requests.FirstOrDefault(x => x.Destination.GetScriptPubKey() == coin.ScriptPubKey);
-
-			// If change then we concatenate all the labels.
-			// The foundKeyLabel has already been added previously, so no need to concatenate.
-			if (foundPaymentRequest is null) // Then it's auto-change.
-			{
-				hdPubKeysWithNewLabels.Add(coin.HdPubKey, label);
-			}
-			else
-			{
-				hdPubKeysWithNewLabels.Add(coin.HdPubKey, LabelsArray.Merge(coin.HdPubKey.Labels, foundPaymentRequest.Labels));
-			}
-		}
-
 		Logger.LogDebug($"Built tx: {totalOutgoingAmountNoFee.ToString(fplus: false, trimExcessZero: true)} BTC. Fee: {fee.Satoshi} sats. Vsize: {vSize} vBytes. Fee/Total ratio: {feePercentage:0.#}%. Tx hash: {tx.GetHash()}.");
-		return new BuildTransactionResult(smartTransaction, fee, feePercentage, hdPubKeysWithNewLabels);
+		return new BuildTransactionResult(smartTransaction, fee, feePercentage);
 	}
 }
 

@@ -72,13 +72,12 @@ public class SmartCoinSelector : ICoinSelector
 
 		// This operation is doing super advanced grouping on the coin clusters and adding properties to each of them.
 		var sayajinCoinClusters = coinClusters
-			.Select(coins => (Coins: coins, Privacy: 1.0m / (1 + coins.Sum(x => x.HdPubKey.ClusterLabels.Count))))
-			.Select(group => (
-				Coins: group.Coins,
-				Unconfirmed: group.Coins.Any(x => !x.Confirmed),    // If group has an unconfirmed, then the whole group is unconfirmed.
-				AnonymitySet: group.Coins.Min(x => x.AnonymitySet), // The group is as anonymous as its weakest member.
-				ClusterPrivacy: group.Privacy, // The number people/entities that know the cluster.
-				Amount: group.Coins.Sum(x => x.Amount)
+			.Select(coins => (
+				Coins: coins,
+				Unconfirmed: coins.Any(x => !x.Confirmed),    // If group has an unconfirmed, then the whole group is unconfirmed.
+				AnonymitySet: coins.Min(x => x.AnonymitySet), // The group is as anonymous as its weakest member.
+				ClusterCount: coins.Select(x => x.HdPubKey.Cluster).Distinct().Count(), // Spending clusters together links them.
+				Amount: coins.Sum(x => x.Amount)
 			));
 
 		// Find the best coin cluster that we are going to use.
@@ -86,8 +85,8 @@ public class SmartCoinSelector : ICoinSelector
 			.Where(group => group.Amount >= targetMoney)
 			.OrderBy(group => group.Unconfirmed)
 			.ThenByDescending(group => group.AnonymitySet)     // Always try to spend/merge the largest anonset coins first.
-			.ThenByDescending(group => group.ClusterPrivacy)   // Select lesser-known coins.
-			.ThenBy(group => group.Amount)           // Once we order them by cluster-privacy, we want to be as close to the target as we can.
+			.ThenBy(group => group.ClusterCount)     // Link as few clusters to each other as possible.
+			.ThenBy(group => group.Amount)           // Once we order them by cluster count, we want to be as close to the target as we can.
 			.First()
 			.Coins;
 

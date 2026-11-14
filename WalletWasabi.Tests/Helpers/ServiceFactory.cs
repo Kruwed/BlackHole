@@ -11,7 +11,7 @@ namespace WalletWasabi.Tests.Helpers;
 public static class ServiceFactory
 {
 	public static TransactionFactory CreateTransactionFactory(
-		(string Label, int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
+		(int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
 	{
 		string password = "foo";
 		KeyManager keyManager = CreateKeyManager(password);
@@ -22,13 +22,13 @@ public static class ServiceFactory
 
 	public static SmartCoin[] CreateCoins(
 		KeyManager keyManager,
-		(string Label, int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
+		(int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
 	{
 		var generated = keyManager.GetKeys().Length;
 		var toGenerate = coins.Length - generated;
 		for (int i = 0; i < toGenerate; i++)
 		{
-			keyManager.GenerateNewKey("", KeyState.Clean, false);
+			keyManager.GenerateNewKey(KeyState.Clean, false);
 		}
 
 		var keys = keyManager.GetKeys().Take(coins.Length).ToArray();
@@ -36,21 +36,10 @@ public static class ServiceFactory
 
 		foreach (var c in coins)
 		{
-			var k = keys[c.KeyIndex];
-			k.SetLabel(c.Label);
-
 			var sCoin = BitcoinFactory.CreateSmartCoin(keys[c.KeyIndex], c.Amount, c.Confirmed, c.AnonymitySet);
 			sCoin.SetAnonymitySet(c.AnonymitySet);
 
 			sCoins.Add(sCoin);
-		}
-
-		foreach (var coin in sCoins)
-		{
-			foreach (var sameLabelCoin in sCoins.Where(c => !c.HdPubKey.Labels.IsEmpty && c.HdPubKey.Labels == coin.HdPubKey.Labels))
-			{
-				sameLabelCoin.HdPubKey.Cluster = coin.HdPubKey.Cluster;
-			}
 		}
 
 		var uniqueCoins = sCoins.Distinct().Count();

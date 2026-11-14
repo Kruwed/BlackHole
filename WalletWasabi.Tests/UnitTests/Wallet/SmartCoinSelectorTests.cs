@@ -73,7 +73,7 @@ public class SmartCoinSelectorTests
 		List<Coin> coinsToSpend = selector.Select(suggestion: EmptySuggestion, target).Cast<Coin>().ToList();
 
 		Assert.Equal(2, coinsToSpend.Count);
-		Assert.Equal(target, Money.Satoshis(coinsToSpend.Sum(x => x.Amount)));       // Cluster-privacy is indifferent, so aim for exact amount.
+		Assert.Equal(target, Money.Satoshis(coinsToSpend.Sum(x => x.Amount)));       // Two clusters get linked either way, so aim for exact amount.
 	}
 
 	[Fact]
@@ -134,17 +134,19 @@ public class SmartCoinSelectorTests
 	}
 
 	[Fact]
-	public void PreferMorePrivateClusterScript()
+	public void PreferTheClusterClosestToTheAmount()
 	{
 		Money target = Money.Coins(0.3m);
-		var coinsKnownByJuan = GenerateSmartCoins(Enumerable.Repeat(("Juan", 0.2m), 5));
-		var coinsKnownByBeto = GenerateSmartCoins(Enumerable.Repeat(("Beto", 0.2m), 2));
+		var coinsOfJuan = GenerateSmartCoins(Enumerable.Repeat(("Juan", 0.2m), 5));
+		var coinsOfBeto = GenerateSmartCoins(Enumerable.Repeat(("Beto", 0.2m), 2));
 
-		var selector = new SmartCoinSelector(coinsKnownByJuan.Concat(coinsKnownByBeto).ToList());
+		var selector = new SmartCoinSelector(coinsOfJuan.Concat(coinsOfBeto).ToList());
 		var coinsToSpend = selector.Select(suggestion: EmptySuggestion, target).Cast<Coin>().ToList();
 
+		// Either cluster can pay alone. The smaller one is used, which leaves less of a cluster behind.
 		Assert.Equal(2, coinsToSpend.Count);
 		Assert.Equal(0.4m, coinsToSpend.Sum(x => x.Amount.ToUnit(MoneyUnit.BTC)));
+		Assert.Equal(coinsOfBeto.Select(x => x.Outpoint).ToHashSet(), coinsToSpend.Select(x => x.Outpoint).ToHashSet());
 	}
 
 	private List<SmartCoin> GenerateDuplicateSmartCoins((string Cluster, decimal amount) coin, int count)
@@ -160,7 +162,7 @@ public class SmartCoinSelectorTests
 		// Create cluster-grouped keys
 		foreach (var targetCoin in coins)
 		{
-			var key = KeyManager.GenerateNewKey(new LabelsArray(targetCoin.Cluster), KeyState.Clean, false);
+			var key = KeyManager.GenerateNewKey(KeyState.Clean, false);
 
 			if (!generatedKeyGroup.TryGetValue(targetCoin.Cluster, out List<(HdPubKey key, decimal amount)>? value))
 			{

@@ -88,23 +88,6 @@ public partial class HistoryViewModel : ActivatableViewModel
 			numberOfPrivacyChars: 8);
 	}
 
-	private static IColumn<HistoryItemViewModelBase> LabelsColumn()
-	{
-		return new TemplateColumn<HistoryItemViewModelBase>(
-			"Labels",
-			new FuncDataTemplate<HistoryItemViewModelBase>((node, ns) => new LabelsColumnView(), true),
-			null,
-			options: new TemplateColumnOptions<HistoryItemViewModelBase>
-			{
-				CanUserResizeColumn = false,
-				CanUserSortColumn = true,
-				CompareAscending = HistoryItemViewModelBase.SortAscending(x => x.Transaction.Labels, LabelsArrayComparer.OrdinalIgnoreCase),
-				CompareDescending = HistoryItemViewModelBase.SortDescending(x => x.Transaction.Labels, LabelsArrayComparer.OrdinalIgnoreCase),
-				MinWidth = new GridLength(100, GridUnitType.Pixel)
-			},
-			width: new GridLength(1, GridUnitType.Star));
-	}
-
 	private static IColumn<HistoryItemViewModelBase> AmountColumn()
 	{
 		return new TemplateColumn<HistoryItemViewModelBase>(
@@ -131,7 +114,9 @@ public partial class HistoryViewModel : ActivatableViewModel
 				CanUserResizeColumn = false,
 				CanUserSortColumn = false,
 			},
-			width: new GridLength(0, GridUnitType.Auto));
+
+			// The last column takes the remaining width; its buttons are aligned to the right edge.
+			width: new GridLength(1, GridUnitType.Star));
 	}
 
 	public void SelectTransaction(uint256 txid)
@@ -180,7 +165,6 @@ public partial class HistoryViewModel : ActivatableViewModel
 		// [Column]			[View]						[Header]		[Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
 		// Indicators		IndicatorsColumnView		-				Auto		80				-			true
 		// Date				DateColumnView				Date / Time		Auto		150				-			true
-		// Labels			LabelsColumnView			Labels			*			75				-			true
 		// Received			ReceivedColumnView			Received (BTC)	Auto		145				210			true
 		// Sent				SentColumnView				Sent (BTC)		Auto		145				210			true
 		// Balance			BalanceColumnView			Balance (BTC)	Auto		145				210			true
@@ -194,7 +178,6 @@ public partial class HistoryViewModel : ActivatableViewModel
 				IndicatorsColumn(),
 				DateColumn(),
 				AmountColumn(),
-				LabelsColumn(),
 				ActionsColumn(),
 			}
 		}.DisposeWith(disposables);
@@ -207,7 +190,6 @@ public partial class HistoryViewModel : ActivatableViewModel
 			new SortableItem("Status") { SortByAscendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[0], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[0], ListSortDirection.Descending)) },
 			new SortableItem("Date") { SortByAscendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[1], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[1], ListSortDirection.Descending)) },
 			new SortableItem("Amount") { SortByAscendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[2], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[2], ListSortDirection.Descending)) },
-			new SortableItem("Label") { SortByAscendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[3], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => Source!.SortBy(Source.Columns[3], ListSortDirection.Descending)) },
 		];
 	}
 

@@ -31,7 +31,7 @@ public class WalletReceiveTests
 		var keyManager = env.CreateKeyManager();
 		var wallet = env.CreateWallet(keyManager);
 
-		var receiveKey = keyManager.GetNextReceiveKey("Test receive");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Act - Send funds and confirm
@@ -68,9 +68,9 @@ public class WalletReceiveTests
 		var wallet = env.CreateWallet(keyManager);
 
 		// Get multiple receive addresses
-		var key1 = keyManager.GetNextReceiveKey("Payment 1");
-		var key2 = keyManager.GetNextReceiveKey("Payment 2");
-		var key3 = keyManager.GetNextReceiveKey("Payment 3");
+		var key1 = keyManager.GetNextReceiveKey();
+		var key2 = keyManager.GetNextReceiveKey();
+		var key3 = keyManager.GetNextReceiveKey();
 
 		var address1 = key1.GetAddress(env.Network);
 		var address2 = key2.GetAddress(env.Network);
@@ -110,7 +110,7 @@ public class WalletReceiveTests
 		var keyManager = env.CreateKeyManager();
 		var wallet = env.CreateWallet(keyManager);
 
-		var receiveKey = keyManager.GetNextReceiveKey("Reused address");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Act - Send to same address twice
@@ -146,7 +146,7 @@ public class WalletReceiveTests
 		var keyManager = env.CreateKeyManager();
 		var wallet = env.CreateWallet(keyManager);
 
-		var receiveKey = keyManager.GetNextReceiveKey("Initial funding");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet

@@ -6,8 +6,6 @@ using System.Windows.Input;
 using NBitcoin;
 using ReactiveUI;
 using WalletWasabi.Fluent.Helpers;
-using WalletWasabi.Fluent.Models.Wallets;
-using WalletWasabi.Fluent.ViewModels.Wallets.Labels;
 using WalletWasabi.Userfacing;
 using Address = WalletWasabi.Userfacing.Address;
 
@@ -25,7 +23,6 @@ public partial class RecipientRowViewModel : ViewModelBase, IDisposable
 
 	public RecipientRowViewModel(
 		UiContext uiContext,
-		IWalletModel walletModel,
 		Network network,
 		Action<RecipientRowViewModel> onRemove,
 		Action<RecipientRowViewModel> onInsertMax,
@@ -35,8 +32,6 @@ public partial class RecipientRowViewModel : ViewModelBase, IDisposable
 	{
 		Network = network;
 		IsQrButtonVisible = isQrButtonVisible;
-		SuggestionLabels = new SuggestionLabelsViewModel(uiContext, walletModel, Intent.Send, 3);
-		SuggestionLabels.Activate(_disposables);
 
 		RemoveCommand = ReactiveCommand.Create(() => onRemove(this));
 		InsertMaxCommand = ReactiveCommand.Create(() => onInsertMax(this));
@@ -88,16 +83,13 @@ public partial class RecipientRowViewModel : ViewModelBase, IDisposable
 
 	public bool IsQrButtonVisible { get; }
 
-	public SuggestionLabelsViewModel SuggestionLabels { get; }
-
 	public Address? ParsedAddress { get; private set; }
 
 	public bool IsValid =>
 		ParsedAddress is not null
 		&& AmountBtc is > 0
 		&& AmountError is null
-		&& AddressError is null
-		&& (SuggestionLabels.Labels.Count > 0 || SuggestionLabels.IsCurrentTextValid);
+		&& AddressError is null;
 
 	private async Task OnPasteAsync()
 	{

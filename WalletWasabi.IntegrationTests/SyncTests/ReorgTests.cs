@@ -69,7 +69,7 @@ public class ReorgTests
 		var keyManager = env.CreateKeyManager();
 		var wallet = env.CreateWallet(keyManager);
 
-		var receiveKey = keyManager.GetNextReceiveKey("Pre-reorg funding");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet and confirm
@@ -168,7 +168,7 @@ public class ReorgTests
 
 		for (int i = 0; i < NumberOfCoins; i++)
 		{
-			var receiveKey = keyManager.GetNextReceiveKey($"Funding {i + 1}");
+			var receiveKey = keyManager.GetNextReceiveKey();
 			var address = receiveKey.GetAddress(env.Network);
 
 			// Send coins and mine a block to confirm each one

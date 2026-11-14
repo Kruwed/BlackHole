@@ -1,6 +1,5 @@
 using NBitcoin;
 using ReactiveUI;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 
 namespace WalletWasabi.Fluent.Models.Wallets;
 
@@ -9,8 +8,6 @@ public abstract partial class TransactionModel : ReactiveObject
 	public required int OrderIndex { get; init; }
 
 	public required uint256 Id { get; init; }
-
-	public required LabelsArray Labels { get; init; }
 
 	public required DateTimeOffset Date { get; init; }
 

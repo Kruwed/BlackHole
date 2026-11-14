@@ -30,9 +30,9 @@
         </AdaptiveBehavior>
       </Interaction.Behaviors>
 
-      <StackPanel IsVisible="{Binding !IsNonPrivate}" MinHeight="42">
+      <StackPanel MinHeight="42">
         <Separator Margin="0 3 0 9" />
-        <StackPanel Opacity="0.8" IsVisible="{Binding !IsNonPrivate}" Classes="privacyLevel" x:Name="PrivacyLevel" HorizontalAlignment="Center">
+        <StackPanel Opacity="0.8" Classes="privacyLevel" x:Name="PrivacyLevel" HorizontalAlignment="Center">
           <Border VerticalAlignment="Center" BorderThickness="1" CornerRadius="2"
                   BorderBrush="{DynamicResource ButtonForeground}">
             <TextBlock
@@ -40,11 +40,6 @@
           </Border>
           <TextBlock Text="{Binding AnonScoreText, StringFormat='Anonymity Score: {0}'}" Classes="h8" VerticalAlignment="Center" HorizontalAlignment="Center" />
         </StackPanel>
-      </StackPanel>
-
-      <StackPanel IsVisible="{Binding IsNonPrivate}" MinHeight="42">
-        <Separator IsVisible="{Binding !Labels.IsEmpty}" Margin="0 3 0 9" />
-        <LabelsItemsPresenter ItemsSource="{Binding Labels}" DockPanel.Dock="Top" HorizontalAlignment="Center" />
       </StackPanel>
     </StackPanel>
   </StackPanel>

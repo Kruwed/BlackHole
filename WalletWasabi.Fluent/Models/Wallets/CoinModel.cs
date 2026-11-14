@@ -31,7 +31,6 @@ public partial class CoinModel : ReactiveObject
 		Amount = coin.Amount;
 		BtcAddress = coin.ScriptPubKey.GetDestinationAddress(network)?.ToString();
 
-		Labels = coin.GetLabels(anonScoreTarget);
 		Key = coin.Outpoint.GetHashCode();
 		BannedUntilUtc = coin.BannedUntilUtc;
 
@@ -56,8 +55,6 @@ public partial class CoinModel : ReactiveObject
 	public int Key { get; }
 
 	public PrivacyLevel PrivacyLevel { get; }
-
-	public LabelsArray Labels { get; }
 
 	public DateTimeOffset? BannedUntilUtc { get; }
 

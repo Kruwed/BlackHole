@@ -10,8 +10,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 public static class ReceiveAddressesDataGridSource
 {
 	// [Column]		[View]				  [Header]  	  [Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
-	// Address		AddressColumnView	  Address		  Auto		    -				-			true
-	// Labels		LabelsColumnView	  Labels		  1*			-				-			false
+	// Address		AddressColumnView	  Address		  1*		    -				-			true
 	// Actions		ActionsColumnView	  -			      Auto		    -				-			false
 	public static FlatTreeDataGridSource<AddressViewModel> Create(IEnumerable<AddressViewModel> addresses)
 	{
@@ -20,7 +19,6 @@ public static class ReceiveAddressesDataGridSource
 			Columns =
 			{
 				AddressColumn(),
-				LabelsColumn(),
 				ActionsColumn(),
 			}
 		};
@@ -52,22 +50,6 @@ public static class ReceiveAddressesDataGridSource
 				CanUserSortColumn = true,
 				CompareAscending = Sort<AddressViewModel>.Ascending(x => x.AddressText),
 				CompareDescending = Sort<AddressViewModel>.Descending(x => x.AddressText)
-			},
-			width: new GridLength(0, GridUnitType.Auto));
-	}
-
-	private static IColumn<AddressViewModel> LabelsColumn()
-	{
-		return new TemplateColumn<AddressViewModel>(
-			"Labels",
-			new FuncDataTemplate<AddressViewModel>((_, _) => new LabelsColumnView(), true),
-			null,
-			options: new TemplateColumnOptions<AddressViewModel>
-			{
-				CanUserResizeColumn = false,
-				CanUserSortColumn = true,
-				CompareAscending = Sort<AddressViewModel>.Ascending(x => x.Labels),
-				CompareDescending = Sort<AddressViewModel>.Descending(x => x.Labels)
 			},
 			width: new GridLength(1, GridUnitType.Star));
 	}

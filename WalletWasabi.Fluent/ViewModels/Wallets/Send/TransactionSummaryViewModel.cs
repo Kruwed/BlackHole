@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NBitcoin;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
@@ -19,9 +18,6 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 	[AutoNotify] private bool _transactionHasChange;
 	[AutoNotify] private string _feeText = "";
 	[AutoNotify] private bool _isCustomFeeUsed;
-	[AutoNotify] private bool _isOtherPocketSelectionPossible;
-	[AutoNotify] private LabelsArray _labels = LabelsArray.Empty;
-	[AutoNotify] private LabelsArray _recipient = LabelsArray.Empty;
 	[AutoNotify] private Amount? _fee;
 	[AutoNotify] private Amount? _amount;
 	[AutoNotify] private FeeRate? _feeRate;
@@ -67,8 +63,7 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 				return new RecipientSummaryViewModel(
 					UiContext,
 					r.Destination.ToString(_wallet.Network),
-					new Amount(displayAmount),
-					r.Label);
+					new Amount(displayAmount));
 			}).ToList();
 
 			// Total destination amount: subtract fee only if one of the recipients absorbs it.
@@ -110,9 +105,7 @@ public partial class TransactionSummaryViewModel : ViewModelBase
 			Parent.CurrentTransactionSummary.OutputList?.TreeDataGridSource.Items.First().IsExpanded,
 			!IsPreview ? null : Parent.CurrentTransactionSummary.OutputList?.TreeDataGridSource.Items.First().Children.Count);
 
-		Recipient = info.Recipient;
 		IsCustomFeeUsed = info.IsCustomFeeUsed;
-		IsOtherPocketSelectionPossible = info.IsOtherPocketSelectionPossible;
 		AmountDiff = DiffOrNull(Amount, Parent.CurrentTransactionSummary.Amount);
 		FeeDiff = DiffOrNull(Fee, Parent.CurrentTransactionSummary.Fee);
 	}

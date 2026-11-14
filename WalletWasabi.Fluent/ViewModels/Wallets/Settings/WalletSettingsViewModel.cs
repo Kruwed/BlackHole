@@ -27,8 +27,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
     private readonly IWalletModel _wallet;
     [AutoNotify] private string _walletName;
     [AutoNotify] private int _selectedTab;
-    [AutoNotify] private SendWorkflow _defaultSendWorkflow;
-    [AutoNotify] private bool _isAutomaticDefaultSendWorkflow;
 
     public WalletSettingsViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
     {
@@ -79,10 +77,6 @@ public partial class WalletSettingsViewModel : RoutableViewModel
             Navigate().Back();
         }, canSave);
 
-        DefaultSendWorkflow = walletModel.Settings.DefaultSendWorkflow;
-        this.WhenAnyValue(x => x.DefaultSendWorkflow)
-            .Subscribe(value => IsAutomaticDefaultSendWorkflow = value == SendWorkflow.Automatic);
-
         WalletCoinJoinSettings = new WalletCoinJoinSettingsViewModel(UiContext, walletModel);
 
         ResyncWalletCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -95,17 +89,7 @@ public partial class WalletSettingsViewModel : RoutableViewModel
                 AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true);
             }
         });
-
-        this.WhenAnyValue(x => x.DefaultSendWorkflow)
-            .Skip(1)
-            .Subscribe(value =>
-            {
-                walletModel.Settings.DefaultSendWorkflow = value;
-                walletModel.Settings.Save();
-            });
     }
-
-    public IEnumerable<SendWorkflow> SendWorkflows { get; } = Enum.GetValues<SendWorkflow>();
 
     public WalletCoinJoinSettingsViewModel WalletCoinJoinSettings { get; private set; }
     public ICommand ResyncWalletCommand { get; }

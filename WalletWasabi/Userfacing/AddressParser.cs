@@ -8,7 +8,7 @@ using AddressParsingResult = Result<Address, string>;
 
 public abstract record Address
 {
-	public record Bip21Uri(Address Address, decimal? Amount, string? Label) : Address;
+	public record Bip21Uri(Address Address, decimal? Amount) : Address;
 	public record Bitcoin(BitcoinAddress Address) : Address;
 	public record SilentPayment(SilentPaymentAddress Address) : Address;
 
@@ -35,7 +35,6 @@ public abstract record Address
 		var parametersArray = new[]
 		{
 			bip21.Amount is not null ? $"amount={bip21.Amount}" : "",
-			bip21.Label is not null ? $"label={bip21.Label}" : "",
 		}.Where(x => x != "");
 		var parameterString = string.Join("&", parametersArray);
 
@@ -75,8 +74,7 @@ public static class AddressParser
 		return AddressParsingResult.Ok(
 			new Address.Bip21Uri(
 				result.Address,
-				result.Amount is null ? null : decimal.Parse(result.Amount.ToString()),
-				result.Label));
+				result.Amount is null ? null : decimal.Parse(result.Amount.ToString())));
 	}
 
 	public static AddressParsingResult ParseBitcoinAddress(string text, Network expectedNetwork)

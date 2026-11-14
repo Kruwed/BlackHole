@@ -1,6 +1,5 @@
 using NBitcoin;
 using ReactiveUI;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Extensions;
 
@@ -25,7 +24,6 @@ public class Address : ReactiveObject, IAddress
 	public Network Network { get; }
 	public HDFingerprint? HdFingerprint { get; }
 	public BitcoinAddress BitcoinAddress { get; }
-	public LabelsArray Labels => HdPubKey.Labels;
 	public PubKey PubKey => HdPubKey.PubKey;
 	public KeyPath FullKeyPath => HdPubKey.FullKeyPath;
 	public string Text => BitcoinAddress.ToString();
@@ -34,12 +32,6 @@ public class Address : ReactiveObject, IAddress
 	public void Hide()
 	{
 		_onHide(this);
-	}
-
-	public void SetLabels(LabelsArray labels)
-	{
-		HdPubKey.SetLabel(labels, KeyManager);
-		this.RaisePropertyChanged(nameof(Labels));
 	}
 
 	public static string ShortenAddress(string input)

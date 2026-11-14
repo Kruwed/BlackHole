@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.Transactions;
@@ -41,7 +40,7 @@ public class WalletSendTests
 		var wallet = env.CreateWallet(keyManager);
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
-		var receiveKey = keyManager.GetNextReceiveKey("Funding");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Fund the wallet with confirmed coins
@@ -80,8 +79,7 @@ public class WalletSendTests
 
 		var paymentIntent = new PaymentIntent(
 			destinationAddress.ScriptPubKey,
-			sendAmount,
-			label: new LabelsArray("Test payment"));
+			sendAmount);
 
 		var txResult = wallet.BuildTransaction(
 			RegTestEnvironment.DefaultPassword,
@@ -123,7 +121,7 @@ public class WalletSendTests
 		var wallet = env.CreateWallet(keyManager);
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
-		var receiveAddress = keyManager.GetNextReceiveKey("Funding").GetAddress(env.Network);
+		var receiveAddress = keyManager.GetNextReceiveKey().GetAddress(env.Network);
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
 		await env.SyncFiltersRpcAsync(TestContext.Current.CancellationToken);
 
@@ -168,7 +166,7 @@ public class WalletSendTests
 		var wallet = env.CreateWallet(keyManager);
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
-		var receiveKey = keyManager.GetNextReceiveKey("Funding");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		await env.FundAddressAsync(receiveAddress, Money.Coins(1m), confirmations: 1);
@@ -199,8 +197,7 @@ public class WalletSendTests
 		var paymentIntent = new PaymentIntent(
 			destinationAddress.ScriptPubKey,
 			sendAmount,
-			subtractFee: true,
-			label: new LabelsArray("Subtract fee test"));
+			subtractFee: true);
 
 		var txResult = wallet.BuildTransaction(
 			RegTestEnvironment.DefaultPassword,
@@ -230,7 +227,7 @@ public class WalletSendTests
 		var wallet = env.CreateWallet(keyManager);
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
-		var receiveKey = keyManager.GetNextReceiveKey("Funding");
+		var receiveKey = keyManager.GetNextReceiveKey();
 		var receiveAddress = receiveKey.GetAddress(env.Network);
 
 		// Send unconfirmed funds (no block generation)
@@ -263,8 +260,7 @@ public class WalletSendTests
 
 		var paymentIntent = new PaymentIntent(
 			destinationAddress.ScriptPubKey,
-			Money.Coins(0.5m),
-			label: new LabelsArray("Spend confirmed"));
+			Money.Coins(0.5m));
 
 		// This should succeed because we have a confirmed coin
 		var txResult = wallet.BuildTransaction(
@@ -289,9 +285,9 @@ public class WalletSendTests
 		wallet.Password = RegTestEnvironment.DefaultPassword;
 
 		// Fund with multiple small UTXOs
-		var key1 = keyManager.GetNextReceiveKey("UTXO 1");
-		var key2 = keyManager.GetNextReceiveKey("UTXO 2");
-		var key3 = keyManager.GetNextReceiveKey("UTXO 3");
+		var key1 = keyManager.GetNextReceiveKey();
+		var key2 = keyManager.GetNextReceiveKey();
+		var key3 = keyManager.GetNextReceiveKey();
 
 		await env.FundAddressAsync(key1.GetAddress(env.Network), Money.Coins(0.3m), confirmations: 0);
 		await env.FundAddressAsync(key2.GetAddress(env.Network), Money.Coins(0.5m), confirmations: 0);
@@ -322,8 +318,7 @@ public class WalletSendTests
 
 		var paymentIntent = new PaymentIntent(
 			destinationAddress.ScriptPubKey,
-			Money.Coins(0.4m),
-			label: new LabelsArray("Minimal inputs test"));
+			Money.Coins(0.4m));
 
 		var txResult = wallet.BuildTransaction(
 			RegTestEnvironment.DefaultPassword,

@@ -8,7 +8,7 @@
              x:Class="WalletWasabi.Fluent.Views.Wallets.Send.ManualControlDialogView">
 
   <ContentArea Title="{Binding Title}"
-               Caption="Select the coins that are allowed for the transaction to use"
+               Caption="Select the coins that the transaction may spend"
                EnableNext="True" NextContent="Continue"
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}"

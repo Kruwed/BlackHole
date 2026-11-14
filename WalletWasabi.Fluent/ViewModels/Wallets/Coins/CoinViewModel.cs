@@ -1,7 +1,6 @@
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using ReactiveUI;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
 
@@ -9,9 +8,11 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
 public class CoinViewModel : CoinListItem
 {
-    public CoinViewModel(UiContext uiContext, LabelsArray labels, CoinModel coin, bool canSelectWhenCoinjoining, bool ignorePrivacyMode) : base(uiContext)
-    {
-		Labels = labels;
+	/// <param name="title">Title of the row. Empty for a coin that is shown inside its group.</param>
+	public CoinViewModel(UiContext uiContext, string title, CoinModel coin, bool canSelectWhenCoinjoining, bool ignorePrivacyMode) : base(uiContext)
+	{
+		Title = title;
+		PrivacyLevel = coin.PrivacyLevel;
 		Coin = coin;
 		BtcAddress = coin.BtcAddress;
 		Amount = new Amount(coin.Amount);

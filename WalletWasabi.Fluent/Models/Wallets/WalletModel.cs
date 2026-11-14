@@ -8,7 +8,6 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Transactions;
-using WalletWasabi.Fluent.ViewModels.Wallets.Labels;
 using WalletWasabi.Services;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using WalletWasabi.Wallets;
@@ -56,8 +55,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	WalletCoinjoinModel? Coinjoin { get; }
 
 	IObservable<bool> Loaded { get; }
-
-	IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent);
 
 	IWalletStatsModel GetWalletStats();
 
@@ -168,11 +165,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 
 	public IObservable<bool> Loaded { get; }
-
-	public IEnumerable<(string Label, int Score)> GetMostUsedLabels(Intent intent)
-	{
-		return Wallet.GetLabelsWithRanking(intent, _services);
-	}
 
 	public IWalletStatsModel GetWalletStats()
 	{

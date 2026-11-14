@@ -127,7 +127,6 @@ public class TransactionTreeBuilder
 			Amount = transactionSummary.Amount,
 			HasBeenSpedUp = transactionSummary.IsSpeedup,
 			OrderIndex = index,
-			Labels = transactionSummary.Labels,
 			Date = date,
 			DateString = date.ToUserFacingFriendlyString(),
 			DateToolTipString = date.ToUserFacingString(),
@@ -167,7 +166,6 @@ public class TransactionTreeBuilder
 			WalletOutputs = transactionSummary.WalletOutputs,
 			ForeignOutputsFunction = transactionSummary.ForeignOutputs,
 			ConfirmedTooltip = parent.ConfirmedTooltip,
-			Labels = parent.Labels,
 			CanCancelTransaction = transactionSummary.Transaction.IsCancellable(_wallet.KeyManager),
 			CanSpeedUpTransaction = transactionSummary.Transaction.IsSpeedupable(_wallet.KeyManager),
 			Status =
@@ -220,7 +218,6 @@ public class TransactionTreeBuilder
 		{
 			Id = first.Id,
 			OrderIndex = first.OrderIndex,
-			Labels = first.Labels,
 			Date = lastDate,
 			DateString = lastDate.ToUserFacingFriendlyString(),
 			DateToolTipString = isSameDay
@@ -253,7 +250,6 @@ public class TransactionTreeBuilder
 			Date = date,
 			DateString = date.ToUserFacingFriendlyString(),
 			DateToolTipString = date.ToUserFacingString(),
-			Labels = transactionSummary.Labels,
 			Status = status,
 			Confirmations = confirmations,
 			HexFunction = transactionSummary.Hex,

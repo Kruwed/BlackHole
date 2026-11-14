@@ -40,8 +40,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasMusicBoxBeenDisplayed;
 	[AutoNotify] private bool _isMusicBoxFlyoutDisplayed;
 
-	[AutoNotify] private ICommand _defaultSendCommand;
-
 	// This proxy fixes a stack overflow bug in Avalonia
 	public bool IsMusicBoxFlyoutOpenedProxy
 	{
@@ -122,13 +120,9 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			 });
 
 
-		SendCommand = ReactiveCommand.Create(() => Navigate().To().Send(walletModel, new SendFlowModel(wallet, walletModel)));
-		DonateCommand = ReactiveCommand.Create(() => Navigate().To().Send(walletModel, new SendFlowModel(wallet, walletModel, donate: true)));
-		SendManualControlCommand = ReactiveCommand.Create(() => Navigate().To().ManualControlDialog(walletModel, wallet));
-		_defaultSendCommand = SendCommand;
-
-		this.WhenAnyValue(x => x.Settings.DefaultSendWorkflow)
-			.Subscribe(value => DefaultSendCommand = value == SendWorkflow.Automatic ? SendCommand : SendManualControlCommand);
+		// Sending always starts with the user picking the coins to spend.
+		SendCommand = ReactiveCommand.Create(() => Navigate().To().ManualControlDialog(walletModel, wallet));
+		DonateCommand = ReactiveCommand.Create(() => Navigate().To().ManualControlDialog(walletModel, wallet, donate: true));
 
 		ReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel));
 
@@ -209,8 +203,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	public ICommand SendCommand { get; private set; }
 	public ICommand DonateCommand { get; private set; }
 
-	public ICommand SendManualControlCommand { get; }
-
 	public ICommand ReceiveCommand { get; }
 
 	public ICommand WalletInfoCommand { get; private set; }
@@ -283,7 +275,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	private ISearchItem CreateSendItem()
 	{
-		return new ActionableItem("Send", "Display wallet send dialog", () => { DefaultSendCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Send", "Action", }) { Icon = "wallet_action_send", IsDefault = true, Priority = 1 };
+		return new ActionableItem("Send", "Display wallet send dialog", () => { SendCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Send", "Action", }) { Icon = "wallet_action_send", IsDefault = true, Priority = 1 };
 	}
 
 	private ISearchItem CreateDonateItem()

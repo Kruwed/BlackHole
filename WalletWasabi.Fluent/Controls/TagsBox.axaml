@@ -9,9 +9,9 @@
         <TagsBox>
           <TagsBox.Items>
             <generic:List x:TypeArguments="system:String">
-              <system:String>Label1</system:String>
-              <system:String>Label2</system:String>
-              <system:String>Label3</system:String>
+              <system:String>Tag1</system:String>
+              <system:String>Tag2</system:String>
+              <system:String>Tag3</system:String>
             </generic:List>
           </TagsBox.Items>
         </TagsBox>

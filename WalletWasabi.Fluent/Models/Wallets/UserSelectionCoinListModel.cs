@@ -14,11 +14,8 @@ public partial class UserSelectionCoinListModel(Wallet wallet, IWalletModel wall
 		return selectedCoins.Select(CreateCoinModel).ToArray();
 	}
 
-	protected override Pocket[] GetPockets()
+	protected override CoinGroup[] GetGroups()
 	{
-		return
-			new CoinsView(selectedCoins).GetPockets(WalletModel.Settings.AnonScoreTarget)
-										.Select(x => new Pocket(x))
-										.ToArray();
+		return selectedCoins.GetCoinGroups(WalletModel.Settings.AnonScoreTarget).ToArray();
 	}
 }

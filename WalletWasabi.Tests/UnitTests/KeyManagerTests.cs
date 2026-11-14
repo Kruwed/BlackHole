@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text.Json.Nodes;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.CoinJoinProfiles;
@@ -96,7 +95,7 @@ public class KeyManagerTests
 		Assert.Equal(manager.SilentPaymentScanExtPubKey, widerManager.SilentPaymentScanExtPubKey);
 		Assert.Equal(manager.SilentPaymentSpendExtPubKey, widerManager.SilentPaymentSpendExtPubKey);
 
-		var newKey = widerManager.GenerateNewKey("some-label", KeyState.Clean, true);
+		var newKey = widerManager.GenerateNewKey(KeyState.Clean, true);
 		Assert.Equal(newKey.Index, widerManager.MinGapLimit);
 		Assert.Equal("86'/0'/0'/1/55", newKey.FullKeyPath.ToString());
 	}
@@ -142,7 +141,6 @@ public class KeyManagerTests
 	public void CanGetReceiveKeyAfterReloadingAWalletBeyondItsGapLimit()
 	{
 		var filePath = "wallet-beyond-gap-limit.json";
-		var labels = new LabelsArray("who-knows");
 		int minGapLimit;
 
 		// Create keys beyond the gap limit, and save the wallet to disk.
@@ -153,16 +151,56 @@ public class KeyManagerTests
 			for (var i = 0; i <= minGapLimit; i++)
 			{
 				// Each call leads to storing the new key in the file.
-				manager.GetNextReceiveKey(labels);
+				manager.GetNextReceiveKey();
 			}
 		}
 
 		// Deserialize the wallet. Then generate a new key beyond the gap limit, it should not crash.
 		{
 			var sameManager = KeyManager.FromFile(filePath);
-			var key = sameManager.GetNextReceiveKey(labels);
+			var key = sameManager.GetNextReceiveKey();
 			Assert.Equal(minGapLimit + 1, key.Index);
 		}
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
+	public void ReceiveKeysAreHandedOutOnlyOnce()
+	{
+		var filePath = "wallet-handed-out-keys.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		Assert.DoesNotContain(manager.GetKeys(), key => key.IsHandedOut);
+
+		// Every request gives the next address that nobody was given yet, even when none of them was paid.
+		var first = manager.GetNextReceiveKey();
+		var second = manager.GetNextReceiveKey();
+		var third = manager.GetNextReceiveKey();
+
+		Assert.Equal([0, 1, 2], new[] { first, second, third }.Select(key => key.Index));
+		Assert.All(new[] { first, second, third }, key =>
+		{
+			Assert.False(key.IsInternal);
+			Assert.True(key.IsHandedOut);
+			Assert.Equal(KeyState.Clean, key.KeyState);
+		});
+
+		// Change keys are never handed out.
+		Assert.False(manager.GetNextChangeKey().IsHandedOut);
+
+		// Peeking at the next key does not take it.
+		var peeked = manager.GetNextReceiveKey(KeyPurpose.Loud, handOut: false);
+		Assert.Equal(3, peeked.Index);
+		Assert.False(peeked.IsHandedOut);
+		Assert.Equal(peeked, manager.GetNextReceiveKey(KeyPurpose.Loud, handOut: false));
+
+		// The wallet file remembers which addresses were given out.
+		var sameManager = KeyManager.FromFile(filePath);
+		var handedOut = sameManager.GetKeys(key => key.IsHandedOut);
+		Assert.Equal(new[] { first, second, third }.Select(key => key.PubKey), handedOut.Select(key => key.PubKey));
+		Assert.Equal(3, sameManager.GetNextReceiveKey().Index);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}
@@ -194,9 +232,8 @@ public class KeyManagerTests
 		for (int i = 0; i < 1000; i++)
 		{
 			var isInternal = Random.Shared.Next(2) == 0;
-			var label = RandomString.AlphaNumeric(21);
 			var keyState = (KeyState)Random.Shared.Next(3);
-			manager.GenerateNewKey(label, keyState, isInternal);
+			manager.GenerateNewKey(keyState, isInternal);
 		}
 
 		manager.ToFile();
@@ -325,18 +362,17 @@ public class KeyManagerTests
 		var network = Network.Main;
 		var manager = KeyManager.CreateNew(out _, password, network);
 
-		var k1 = manager.GenerateNewKey(LabelsArray.Empty, KeyState.Clean, true);
-		Assert.Equal(LabelsArray.Empty, k1.Labels);
+		var k1 = manager.GenerateNewKey(KeyState.Clean, true);
+		Assert.True(k1.IsInternal);
+		Assert.False(k1.IsHandedOut);
 
 		for (int i = 0; i < 1000; i++)
 		{
 			var isInternal = Random.Shared.Next(2) == 0;
-			var label = RandomString.AlphaNumeric(21);
 			var keyState = (KeyState)Random.Shared.Next(3);
-			var generatedKey = manager.GenerateNewKey(label, keyState, isInternal);
+			var generatedKey = manager.GenerateNewKey(keyState, isInternal);
 
 			Assert.Equal(isInternal, generatedKey.IsInternal);
-			Assert.Equal(label, generatedKey.Labels);
 			Assert.Equal(keyState, generatedKey.KeyState);
 			Assert.StartsWith(KeyManager.GetAccountKeyPath(network).ToString(), generatedKey.FullKeyPath.ToString());
 		}
@@ -349,10 +385,9 @@ public class KeyManagerTests
 		var network = Network.Main;
 		var manager = KeyManager.CreateNew(out _, password, network);
 
-		var labels = new LabelsArray("who-knows");
-		var taprootKey = manager.GetNextReceiveKey(labels);
-		var silentPaymentScanKey = manager.GetNextReceiveKey(labels, KeyPurpose.Scan);
-		var silentPaymentSpendKey = manager.GetNextReceiveKey(labels, KeyPurpose.Spend);
+		var taprootKey = manager.GetNextReceiveKey();
+		var silentPaymentScanKey = manager.GetNextReceiveKey(KeyPurpose.Scan, handOut: false);
+		var silentPaymentSpendKey = manager.GetNextReceiveKey(KeyPurpose.Spend, handOut: false);
 		Assert.Equal("86'/0'/0'/0/0", taprootKey.FullKeyPath.ToString());
 		Assert.Equal("352'/0'/0'/1'/0", silentPaymentScanKey.FullKeyPath.ToString());
 		Assert.Equal("352'/0'/0'/0'/0", silentPaymentSpendKey.FullKeyPath.ToString());
@@ -375,7 +410,7 @@ public class KeyManagerTests
 
 		var keysForReceive = Enumerable
 			.Range(0, 10)
-			.Select(i => keyManager.GetNextReceiveKey(new LabelsArray($"payer {i}")))
+			.Select(_ => keyManager.GetNextReceiveKey())
 			.ToList();
 
 		Assert.All(keysForChange, key => Assert.StartsWith("86'/0'/0'/1/", key.FullKeyPath.ToString()));
@@ -412,7 +447,7 @@ public class KeyManagerTests
 		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
 
 		// Handing out an address generates the keys of the account and writes them into the file.
-		manager.GetNextReceiveKey(new LabelsArray("someone"));
+		manager.GetNextReceiveKey();
 
 		// A wallet file whose keys all belong to the Taproot account loads.
 		Assert.Equal(manager.TaprootExtPubKey, KeyManager.FromFile(filePath).TaprootExtPubKey);

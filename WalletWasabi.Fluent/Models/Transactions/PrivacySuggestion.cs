@@ -1,6 +1,5 @@
 using NBitcoin;
 using System.Collections.Generic;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
@@ -11,8 +10,6 @@ namespace WalletWasabi.Fluent.Models.Transactions;
 // Avalonia XAML currently does not support {x:Type} references to nested types (https://github.com/AvaloniaUI/Avalonia/issues/2725)
 // Revisit this after Avalonia V11 upgrade
 public abstract record PrivacySuggestion(BuildTransactionResult? Transaction) : PrivacyItem();
-
-public record LabelManagementSuggestion(BuildTransactionResult? Transaction = null, LabelsArray? NewLabels = null) : PrivacySuggestion(Transaction);
 
 public record FullPrivacySuggestion(BuildTransactionResult Transaction, decimal Difference, string DifferenceText, string DifferenceAmountText, IEnumerable<SmartCoin> Coins, bool IsChangeless) : PrivacySuggestion(Transaction);
 

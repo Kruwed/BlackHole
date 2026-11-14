@@ -29,13 +29,6 @@
           <PathIcon Data="{StaticResource binary_file}" />
         </MenuItem.Icon>
       </MenuItem>
-      <MenuItem Header="Copy Label"
-                Command="{Binding ClipboardCopyCommand}"
-                CommandParameter="{Binding Transaction.Labels, StringFormat={}{0}}">
-        <MenuItem.Icon>
-          <PathIcon Data="{StaticResource entities_regular}" />
-        </MenuItem.Icon>
-      </MenuItem>
       <MenuItem Header="Copy Amount"
                 Command="{Binding  ClipboardCopyCommand}"
                 CommandParameter="{Binding Transaction.Amount, StringFormat={}{0}}"

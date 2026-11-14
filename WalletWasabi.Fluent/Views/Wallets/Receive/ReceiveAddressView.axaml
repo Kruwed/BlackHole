@@ -35,10 +35,6 @@
                             AnimateIcon="{Binding IsAutoCopyEnabled}" />
           </StackPanel>
         </DockPanel>
-
-        <PrivacyContentControl PrivacyReplacementMode="Text" HorizontalAlignment="Center">
-          <LabelsItemsPresenter ItemsSource="{Binding Labels}" />
-        </PrivacyContentControl>
       </StackPanel>
 
       <AdorningContentControl HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">

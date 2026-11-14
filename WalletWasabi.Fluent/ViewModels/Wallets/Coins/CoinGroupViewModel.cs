@@ -4,28 +4,33 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using DynamicData.Aggregation;
 using WalletWasabi.Blockchain.TransactionOutputs;
+using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
-public class PocketViewModel : CoinListItem
+/// <summary>
+/// The row of the coins of one privacy level, with the coins as its children.
+/// </summary>
+public class CoinGroupViewModel : CoinListItem
 {
-	public PocketViewModel(UiContext uiContext, Pocket pocket, ICoinListModel availableCoins, bool canSelectCoinjoiningCoins, bool ignorePrivacyMode) : base(uiContext)
+	public CoinGroupViewModel(UiContext uiContext, CoinGroup group, ICoinListModel availableCoins, bool canSelectCoinjoiningCoins, bool ignorePrivacyMode) : base(uiContext)
 	{
-		var pocketCoins = pocket.Coins.ToList();
+		var groupCoins = group.Coins.ToList();
 
-		var unconfirmedCount = pocketCoins.Count(x => !x.Confirmed);
+		var unconfirmedCount = groupCoins.Count(x => !x.Confirmed);
 		IsConfirmed = unconfirmedCount == 0;
 		IgnorePrivacyMode = ignorePrivacyMode;
 		ConfirmationStatus = IsConfirmed ? "All coins are confirmed" : $"{unconfirmedCount} coins are waiting for confirmation";
-		IsBanned = pocketCoins.Any(x => x.IsBanned);
+		IsBanned = groupCoins.Any(x => x.IsBanned);
 		BannedUntilUtcToolTip = IsBanned ? "Some coins can't participate in coinjoin" : null;
-		Amount = new Amount(pocket.Amount);
-		IsCoinjoining = pocketCoins.Any(x => x.CoinJoinInProgress);
-		AnonymityScore = GetAnonScore(pocketCoins);
-		Labels = pocket.Labels;
+		Amount = new Amount(group.Amount);
+		IsCoinjoining = groupCoins.Any(x => x.CoinJoinInProgress);
+		AnonymityScore = GetAnonScore(groupCoins);
+		Title = group.Title;
+		PrivacyLevel = group.PrivacyLevel;
 		Children =
-			pocketCoins
+			groupCoins
 				.Select(availableCoins.GetCoinModel)
 				.OrderByDescending(x => x.AnonScore)
 				.Select(coin => new CoinViewModel(uiContext, "", coin, canSelectCoinjoiningCoins, ignorePrivacyMode) { IsChild = true })
@@ -94,9 +99,9 @@ public class PocketViewModel : CoinListItem
 		.Count()
 		.Select(i => i > 0);
 
-	private static int? GetAnonScore(IEnumerable<SmartCoin> pocketCoins)
+	private static int? GetAnonScore(IEnumerable<SmartCoin> groupCoins)
 	{
-		var allScores = pocketCoins.Select(x => (int?)x.AnonymitySet);
+		var allScores = groupCoins.Select(x => (int?)x.AnonymitySet);
 		return CommonOrDefault(allScores.ToList());
 	}
 
@@ -121,5 +126,5 @@ public class PocketViewModel : CoinListItem
 		return commonItem;
 	}
 
-	public override string Key => Labels.ToString();
+	public override string Key => PrivacyLevel.ToString();
 }

@@ -24,7 +24,6 @@ public partial class WalletSettingsModel : ReactiveObject
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 	[AutoNotify] private WalletId? _outputWalletId;
-	[AutoNotify] private SendWorkflow _defaultSendWorkflow;
 
 	public WalletSettingsModel(IServices services, KeyManager keyManager, bool isNewWallet = false, bool isCoinJoinPaused = false)
 	{
@@ -46,7 +45,6 @@ public partial class WalletSettingsModel : ReactiveObject
 			_outputWalletId = services.GetWalletByName(_keyManager.WalletName).WalletId;
 		}
 
-		_defaultSendWorkflow = _keyManager.DefaultSendWorkflow;
 
 		this.WhenAnyValue(
 				x => x.AutoCoinjoin,
@@ -55,10 +53,6 @@ public partial class WalletSettingsModel : ReactiveObject
 				x => x.NonPrivateCoinIsolation,
 				x => x.OnlyUsePrivateFundsForPayments)
 			.Skip(1)
-			.Do(_ => SetValues())
-			.Subscribe();
-
-		this.WhenAnyValue(x => x.DefaultSendWorkflow)
 			.Do(_ => SetValues())
 			.Subscribe();
 	}
@@ -97,7 +91,6 @@ public partial class WalletSettingsModel : ReactiveObject
 		_keyManager.AnonScoreTarget = AnonScoreTarget;
 		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;
 		_keyManager.OnlyUsePrivateFundsForPayments = OnlyUsePrivateFundsForPayments;
-		_keyManager.DefaultSendWorkflow = DefaultSendWorkflow;
 		_isDirty = true;
 	}
 

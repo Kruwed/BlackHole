@@ -62,15 +62,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new TransactionDetailsViewModel(UiContext, wallet, model), navigationMode);
 	}
 
-	public FluentDialog<LabelsArray?> AddressLabelEdit(IWalletModel wallet, IAddress address, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new AddressLabelEditViewModel(UiContext, wallet, address);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<LabelsArray?>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
 	public void Loading(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new LoadingViewModel(UiContext, wallet), navigationMode);
@@ -146,15 +137,6 @@ public partial class FluentNavigate
 	public void BugReportLink(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new BugReportLinkViewModel(UiContext), navigationMode);
-	}
-
-	public FluentDialog<IEnumerable<SmartCoin>> PrivacyControl(Wallet wallet, SendFlowModel sendFlow, TransactionInfo transactionInfo, IEnumerable<SmartCoin>? usedCoins, bool isSilent, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new PrivacyControlViewModel(UiContext, wallet, sendFlow, transactionInfo, usedCoins, isSilent);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<IEnumerable<SmartCoin>>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
 	public void PrivacyRing(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -297,9 +279,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConfirmMultiShareViewModel(UiContext, options, wordsDictionary), navigationMode);
 	}
 
-	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, bool donate = false, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet);
+		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet, donate);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 
@@ -317,9 +299,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new MultiShareViewModel(UiContext, options), navigationMode);
 	}
 
-	public FluentDialog<bool> ConfirmHideAddress(LabelsArray labels, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<bool> ConfirmHideAddress(string address, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new ConfirmHideAddressViewModel(UiContext, labels);
+		var dialog = new ConfirmHideAddressViewModel(UiContext, address);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 

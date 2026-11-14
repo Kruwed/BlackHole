@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using WalletWasabi.Fluent.Controls.Sorting;
 using WalletWasabi.Fluent.Models.Wallets;
@@ -46,8 +45,7 @@ public partial class ReceiveAddressesViewModel : RoutableViewModel
 
 		Sortables =
 		[
-			new SortableItem("Address") { SortByAscendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[1], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[1], ListSortDirection.Descending)) },
-			new SortableItem("Label") { SortByAscendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[2], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[2], ListSortDirection.Descending)) }
+			new SortableItem("Address") { SortByAscendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[0], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[0], ListSortDirection.Descending)) }
 		];
 
 		base.OnNavigatedTo(isInHistory, disposables);
@@ -55,20 +53,11 @@ public partial class ReceiveAddressesViewModel : RoutableViewModel
 
 	public AddressViewModel CreateAddressViewModel(IAddress address)
 	{
-		return new AddressViewModel(UiContext, OnEditAddressAsync, OnShowAddressAsync, address);
+		return new AddressViewModel(UiContext, OnShowAddressAsync, address);
 	}
 
 	private void OnShowAddressAsync(IAddress a)
 	{
 		UiContext.Navigate().To().ReceiveAddress(_wallet, a, UiContext.Services.GetAutocopy());
-	}
-
-	private async Task OnEditAddressAsync(IAddress address)
-	{
-		var result = await Navigate().To().AddressLabelEdit(_wallet, address).GetResultAsync();
-		if (result is { } labels)
-		{
-			address.SetLabels(labels);
-		}
 	}
 }

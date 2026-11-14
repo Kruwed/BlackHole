@@ -28,7 +28,6 @@ public static class TransactionHelpers
 		{
 			return wallet.BuildChangelessTransaction(
 				transactionInfo.Destination,
-				transactionInfo.Recipient,
 				transactionInfo.FeeRate,
 				transactionInfo.ChangelessCoins,
 				tryToSign: tryToSign);
@@ -37,7 +36,6 @@ public static class TransactionHelpers
 		return wallet.BuildTransaction(
 			transactionInfo.Destination,
 			transactionInfo.Amount,
-			transactionInfo.Recipient,
 			transactionInfo.FeeRate,
 			transactionInfo.Coins,
 			transactionInfo.SubtractFee,
@@ -79,8 +77,7 @@ public static class TransactionHelpers
 				intent = new PaymentIntent(
 					destination: transactionInfo.Destination,
 					amount: transactionInfo.Amount,
-					subtractFee: transactionInfo.SubtractFee,
-					label: transactionInfo.Recipient);
+					subtractFee: transactionInfo.SubtractFee);
 			}
 
 			var network = keyManager.GetNetwork();
@@ -154,7 +151,7 @@ public static class TransactionHelpers
 			.Select((r, index) =>
 			{
 				bool subtractFee = index == 0 ? transactionInfo.SubtractFee : r.IsSubtractFee;
-				return new DestinationRequest(r.Destination, MoneyRequest.Create(r.Amount, subtractFee), r.Label);
+				return new DestinationRequest(r.Destination, MoneyRequest.Create(r.Amount, subtractFee));
 			})
 			.ToArray();
 

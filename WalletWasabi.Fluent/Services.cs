@@ -90,7 +90,6 @@ public class Services : IServices
 	public uint? GetMinimumBlockHeight() => _filterManager.GetMinimumBlockHeight();
 
 	// Transactions info
-	public IEnumerable<LabelsArray> GetTransactionLabels() => _transactionStore.GetLabels();
 	public bool TryGetTransaction(uint256 hash, [NotNullWhen(true)] out SmartTransaction? tx) => _transactionStore.TryGetTransaction(hash, out tx);
 
 	// WalletManager info

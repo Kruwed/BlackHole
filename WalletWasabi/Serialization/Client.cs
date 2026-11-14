@@ -29,9 +29,6 @@ public static partial class Encode
 	public static JsonNode ECPubKey(ECPubKey pk) =>
 		ByteArray(pk.ToBytes());
 
-	public static JsonNode LabelsArray(LabelsArray a) =>
-		String(a.ToString());
-
 	public static JsonNode HdPubKey(HdPubKey hd) =>
 		hd.TweakData is null
 			? HdPubKeyEncoder(hd)
@@ -41,14 +38,13 @@ public static partial class Encode
 		Object([
 			("PubKey", PubKey(hd.PubKey)),
 			("FullKeyPath", KeyPath(hd.FullKeyPath) ),
-			("Label", LabelsArray(hd.Labels) ),
+			("HandedOut", Bool(hd.IsHandedOut) ),
 			("KeyState", Int((int)hd.KeyState) ),
 		]);
 
 	public static JsonNode SpPubKeyEncoder(HdPubKey hd) =>
 		Object([
 			("PubKey", PubKey(hd.PubKey)),
-			("Label", LabelsArray(hd.Labels) ),
 			("TweakData", ECPubKey(hd.TweakData!))
 		]);
 
@@ -79,14 +75,6 @@ public static partial class Encode
 			("Height", WalletHeight(s.Height)),
 			("BirthHeight", UInt(nonNullBirthHeight.Height)),
 		]);
-
-	public static JsonNode SendWorkflow(SendWorkflow w) =>
-		w switch
-		{
-			Models.SendWorkflow.Automatic => "Automatic",
-			Models.SendWorkflow.Manual => "Manual",
-			_ => throw new ArgumentOutOfRangeException(nameof(w))
-		};
 
 	public static JsonNode SerializableException(SerializableException e) =>
 		Object([
@@ -135,22 +123,18 @@ public static partial class Decode
 	public static Decoder<ECPubKey> ECPubKey =>
 		ByteArray.Map(a => NBitcoin.Secp256k1.ECPubKey.Create(a));
 
-	private static Decoder<LabelsArray> LabelsArray =>
-		String.Map(s => new LabelsArray(s));
-
 	private static Decoder<HdPubKey> HdPubKeyDecoder =>
 		Object(get => new HdPubKey(
 			get.Required("PubKey", PubKey),
 			get.Required("FullKeyPath", KeyPath),
-			get.Required("Label", LabelsArray),
-			get.Required("KeyState", Int.Map(x => (KeyState)x))
+			get.Required("KeyState", Int.Map(x => (KeyState)x)),
+			get.Optional("HandedOut", Bool, false)
 		));
 
 	private static Decoder<HdPubKey> SpPubKeyDecoder =>
 		Object(get => new HdPubKey(
 			get.Required("PubKey", PubKey),
 			get.Required("FullKeyPath", KeyPath),
-			get.Required("Label", LabelsArray),
 			get.Required("KeyState", Int.Map(x => (KeyState)x))
 		));
 
@@ -166,14 +150,6 @@ public static partial class Decode
 
 	public static Decoder<BitcoinEncryptedSecretNoEC> BitcoinEncryptedSecretNoEC =>
 		String.Map(s => new BitcoinEncryptedSecretNoEC(s, NBitcoin.Network.Main));
-
-	public static Decoder<SendWorkflow> SendWorkflow =>
-		String.Map(s => s switch
-		{
-			"Automatic" => Models.SendWorkflow.Automatic,
-			"Manual" => Models.SendWorkflow.Manual,
-			_ => throw new Exception($"Unknown SendWorkflow value '{s}'")
-		}).Catch();
 
 	public static Decoder<SerializableException> SerializableException =>
 		Object(get => new SerializableException(

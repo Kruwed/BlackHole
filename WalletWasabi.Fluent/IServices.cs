@@ -33,7 +33,6 @@ public interface IServices
 
 	uint? GetMinimumBlockHeight();
 
-	IEnumerable<LabelsArray> GetTransactionLabels();
 	bool TryGetTransaction(uint256 hash, [NotNullWhen(true)] out SmartTransaction? tx);
 
 	Network GetNetwork();

@@ -38,7 +38,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	[AutoNotify] private BuildTransactionResult? _transaction;
 	[AutoNotify] private TransactionSummaryViewModel? _displayedTransactionSummary;
 	[AutoNotify] private bool _canUndo;
-	[AutoNotify] private bool _isCoinControlVisible;
 	[AutoNotify] private bool _isFeeAdjustable = true;
 	[AutoNotify] private string _feeAdjustToolTip = "Change the transaction fee rate";
 
@@ -220,17 +219,23 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 		if (!_info.Coins.Any())
 		{
-			var privacyControlDialogResult =
-				await NavigateDialogAsync(new PrivacyControlViewModel(UiContext, _wallet, _sendFlow, _info, Transaction?.SpentCoins, isSilent: true));
-			if (privacyControlDialogResult.Kind == DialogResultKind.Normal &&
-				privacyControlDialogResult.Result is { } coins)
+			// The transaction may spend the coins that the user picked, and only those. Coins that a coinjoin is
+			// about to spend are left out: a transaction spending them would not stay valid.
+			var cjManager = UiContext.Services.GetHostedService<CoinJoinManager>();
+			var coinsInCriticalPhase = cjManager?.CoinsInCriticalPhase[_wallet.WalletId] ?? [];
+			var coins = _sendFlow.AvailableCoins.Where(coin => !coinsInCriticalPhase.Contains(coin)).ToArray();
+
+			if (coins.Length == 0)
 			{
-				_info.Coins = coins;
-			}
-			else if (privacyControlDialogResult.Kind != DialogResultKind.Normal)
-			{
+				await ShowErrorAsync(
+					"Transaction Building",
+					"All the selected coins are being spent by a coinjoin right now. Select other coins or try again once the coinjoin has finished.",
+					"Wasabi was unable to create your transaction.");
+
 				return false;
 			}
+
+			_info.Coins = coins;
 		}
 
 		return true;
@@ -265,27 +270,14 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		}
 		catch (InsufficientBalanceException)
 		{
-			var canSelectMoreCoins = _sendFlow.AvailableCoins.Any(coin => !_info.Coins.Contains(coin));
-
-			if (canSelectMoreCoins)
-			{
-				var selectPocketsDialog =
-					await NavigateDialogAsync(new PrivacyControlViewModel(UiContext, _wallet, _sendFlow, _info, usedCoins: Transaction?.SpentCoins, isSilent: true));
-
-				if (selectPocketsDialog.Result is { } newCoins)
-				{
-					_info.Coins = newCoins;
-					return await BuildTransactionAsync();
-				}
-			}
-			else if (await TransactionFeeHelper.TrySetMaxFeeRateAsync(UiContext, _wallet, _info))
+			if (await TransactionFeeHelper.TrySetMaxFeeRateAsync(UiContext, _wallet, _info))
 			{
 				return await BuildTransactionAsync();
 			}
 
 			await ShowErrorAsync(
 				"Transaction Building",
-				"There are not enough funds to cover the transaction fee.",
+				"The selected coins are not enough to cover the payment and the transaction fee. Go back and select more coins or lower the amount.",
 				"Wasabi was unable to create your transaction.");
 
 			return null;
@@ -349,7 +341,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 					if (suggestion is { })
 					{
-						await ApplyPrivacySuggestionAsync(suggestion);
+						ApplyPrivacySuggestion(suggestion);
 					}
 				})
 			.DisposeWith(disposables);
@@ -367,7 +359,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			.DoAsync(
 				async transaction =>
 				{
-					await CheckChangePocketAvailableAsync(transaction);
 					await PrivacySuggestions.BuildPrivacySuggestionsAsync(_info, transaction, _cancellationTokenSource.Token);
 				})
 			.Subscribe()
@@ -404,7 +395,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 				var finalTransaction = transaction.Transaction;
 				await SendTransactionAsync(finalTransaction);
-				_wallet.UpdateUsedHdPubKeysLabels(transaction.HdPubKeysWithNewLabels);
 				_cancellationTokenSource.Cancel();
 				Navigate().To().SendSuccess(finalTransaction);
 			}
@@ -450,42 +440,10 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		}
 	}
 
-	private async Task CheckChangePocketAvailableAsync(BuildTransactionResult transaction)
-	{
-		if (!_info.IsSelectedCoinModificationEnabled)
-		{
-			_info.IsOtherPocketSelectionPossible = false;
-			return;
-		}
-
-		var cjManager = UiContext.Services.GetHostedService<CoinJoinManager>();
-
-		var usedCoins = transaction.SpentCoins;
-		var pockets = _sendFlow.GetPockets();
-		var labelSelection = new LabelSelectionViewModel(UiContext, _wallet.KeyManager, _wallet.Password, _info, isSilent: true);
-		await labelSelection.ResetAsync(pockets, coinsToExclude: cjManager?.CoinsInCriticalPhase[_wallet.WalletId].ToList() ?? []);
-
-		_info.IsOtherPocketSelectionPossible = labelSelection.IsOtherSelectionPossible(usedCoins, _info.Recipient);
-	}
-
-	private async Task ApplyPrivacySuggestionAsync(PrivacySuggestion suggestion)
+	private void ApplyPrivacySuggestion(PrivacySuggestion suggestion)
 	{
 		switch (suggestion)
 		{
-			case LabelManagementSuggestion:
-				{
-					var selectPocketsDialog =
-						await NavigateDialogAsync(new PrivacyControlViewModel(UiContext, _wallet, _sendFlow, _info, Transaction?.SpentCoins, false));
-
-					if (selectPocketsDialog.Kind == DialogResultKind.Normal && selectPocketsDialog.Result is { })
-					{
-						_info.Coins = selectPocketsDialog.Result;
-						await BuildAndUpdateAsync();
-					}
-
-					break;
-				}
-
 			case FullPrivacySuggestion fullPrivacySuggestion:
 				{
 					if (fullPrivacySuggestion.IsChangeless)

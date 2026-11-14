@@ -23,6 +23,7 @@ public class CoinsRegistryTests
 
 	private KeyManager KeyManager { get; }
 	private CoinsRegistry Coins { get; } = new();
+	private Dictionary<string, HdPubKey> KeysByName { get; } = new();
 
 	/// <summary>
 	/// Tests <see cref="CoinsRegistry.DescendantOf(SmartCoin)"/> method.
@@ -52,14 +53,14 @@ public class CoinsRegistryTests
 		// Create and process transaction tx0, tx1, and tx2.
 		{
 			// Tx0.
-			tx0 = CreateCreditingTransaction(NewInternalKey(label: "A").P2Taproot, Money.Coins(1.0m), height: 54321);
+			tx0 = CreateCreditingTransaction(NewInternalKey("A").P2Taproot, Money.Coins(1.0m), height: 54321);
 			tx0Coins = ProcessTransaction(tx0);
 			tx0Coin = Assert.Single(tx0Coins);
 
 			// Tx1.
 			tx1 = CreateSpendingTransaction(
 				tx0Coin.Coin,
-				new TxOut(Money.Coins(0.85m), NewInternalKey(label: "B").P2Taproot),
+				new TxOut(Money.Coins(0.85m), NewInternalKey("B").P2Taproot),
 				new TxOut(Money.Coins(0.1m), NewInternalKey("C").P2Taproot));
 			tx1.Transaction.Inputs[0].Sequence = Sequence.OptInRBF;
 			tx1Coins = ProcessTransaction(tx1);
@@ -68,7 +69,7 @@ public class CoinsRegistryTests
 			tx1Coin2 = tx1Coins[1];
 
 			// Tx2.
-			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey.Labels == "B");
+			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey == KeysByName["B"]);
 			tx2 = CreateSpendingTransaction(coin.Coin, txOuts: new TxOut(Money.Coins(0.7m), NewInternalKey("D").P2Taproot));
 			tx2Coins = ProcessTransaction(tx2);
 			tx2Coin = Assert.Single(tx2Coins);
@@ -125,7 +126,7 @@ public class CoinsRegistryTests
 
 		// Create and process transaction tx0.
 		{
-			tx0 = CreateCreditingTransaction(NewInternalKey(label: "A").P2Taproot, Money.Coins(1.0m), height: 54321);
+			tx0 = CreateCreditingTransaction(NewInternalKey("A").P2Taproot, Money.Coins(1.0m), height: 54321);
 			tx0Coin = tx0.Transaction.Outputs.AsCoins().First();
 
 			IReadOnlyList<SmartCoin> tx0Coins = ProcessTransaction(tx0);
@@ -145,15 +146,15 @@ public class CoinsRegistryTests
 		{
 			tx1 = CreateSpendingTransaction(
 				tx0Coin,
-				new TxOut(Money.Coins(0.85m), NewInternalKey(label: "B").P2Taproot),
+				new TxOut(Money.Coins(0.85m), NewInternalKey("B").P2Taproot),
 				new TxOut(Money.Coins(0.1m), NewInternalKey("C").P2Taproot));
 			tx1.Transaction.Inputs[0].Sequence = Sequence.OptInRBF;
 
 			IReadOnlyList<SmartCoin> tx1Coins = ProcessTransaction(tx1);
 			AssertEqualCoinSets(Coins, tx1Coins);
 
-			SmartCoin unconfirmedCoin1 = Assert.Single(Coins, coin => coin.HdPubKey.Labels == "B");
-			SmartCoin unconfirmedCoin2 = Assert.Single(Coins, coin => coin.HdPubKey.Labels == "C");
+			SmartCoin unconfirmedCoin1 = Assert.Single(Coins, coin => coin.HdPubKey == KeysByName["B"]);
+			SmartCoin unconfirmedCoin2 = Assert.Single(Coins, coin => coin.HdPubKey == KeysByName["C"]);
 			Assert.True(unconfirmedCoin1.Transaction.IsRBF());
 			Assert.True(unconfirmedCoin2.Transaction.IsRBF());
 
@@ -178,7 +179,7 @@ public class CoinsRegistryTests
 
 		// Create and process transaction tx2 that partially spends tx1.
 		{
-			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey.Labels == "B");
+			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey == KeysByName["B"]);
 
 			tx2 = CreateSpendingTransaction(coin.Coin, txOuts: new TxOut(Money.Coins(0.7m), NewInternalKey("D").P2Taproot));
 
@@ -245,11 +246,11 @@ public class CoinsRegistryTests
 				IReadOnlyList<SmartCoin> tx3Coins = ProcessTransaction(tx3);
 
 				SmartCoin finalCoin = Assert.Single(Coins);
-				Assert.Equal("E", finalCoin.HdPubKey.Labels);
+				Assert.Equal(KeysByName["E"], finalCoin.HdPubKey);
 
-				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey.Labels == "B");
-				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey.Labels == "C");
-				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey.Labels == "D");
+				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey == KeysByName["B"]);
+				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey == KeysByName["C"]);
+				Assert.DoesNotContain(Coins.AsAllCoinsView(), coin => coin.HdPubKey == KeysByName["D"]);
 
 				// Replaced transactions tx1 and tx2 have to be removed because tx3 replaced tx1.
 				Assert.False(Coins.IsKnown(tx1.GetHash()));
@@ -290,7 +291,7 @@ public class CoinsRegistryTests
 
 		// Create and process transaction tx0.
 		{
-			tx0 = CreateCreditingTransaction(NewInternalKey(label: "A").P2Taproot, tx0CreditingAmount, height: 54321);
+			tx0 = CreateCreditingTransaction(NewInternalKey("A").P2Taproot, tx0CreditingAmount, height: 54321);
 			tx0Coin = tx0.Transaction.Outputs.AsCoins().First();
 
 			Assert.Equal(Money.Zero, Coins.GetTotalBalance());
@@ -310,7 +311,7 @@ public class CoinsRegistryTests
 		{
 			tx1 = CreateSpendingTransaction(
 				tx0Coin,
-				new TxOut(Money.Coins(0.85m), NewInternalKey(label: "B").P2Taproot),
+				new TxOut(Money.Coins(0.85m), NewInternalKey("B").P2Taproot),
 				new TxOut(Money.Coins(0.1m), NewInternalKey("C").P2Taproot));
 			tx1.Transaction.Inputs[0].Sequence = Sequence.OptInRBF;
 
@@ -324,7 +325,7 @@ public class CoinsRegistryTests
 
 		// Create and process transaction tx2 that partially spends tx1.
 		{
-			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey.Labels == "B");
+			SmartCoin coin = Assert.Single(Coins, coin => coin.HdPubKey == KeysByName["B"]);
 
 			tx2 = CreateSpendingTransaction(coin.Coin, txOuts: new TxOut(Money.Coins(0.7m), NewInternalKey("D").P2Taproot));
 
@@ -356,7 +357,7 @@ public class CoinsRegistryTests
 				IReadOnlyList<SmartCoin> tx3Coins = ProcessTransaction(tx3);
 
 				SmartCoin finalCoin = Assert.Single(Coins);
-				Assert.Equal("E", finalCoin.HdPubKey.Labels);
+				Assert.Equal(KeysByName["E"], finalCoin.HdPubKey);
 
 				AssertTransactionAmount(tx0, expectedAmount: tx0CreditingAmount);
 				AssertTransactionAmount(tx3, expectedAmount: expectedTx3Amount); // +0.9 [tx3-0] - 1.0 [tx0] = -0.1.
@@ -374,7 +375,7 @@ public class CoinsRegistryTests
 		Money tx0CreditingAmount = Money.Coins(1.0m);
 
 		// Create and process transaction tx0.
-		SmartTransaction tx0 = CreateCreditingTransaction(NewInternalKey(label: "A").P2Taproot, tx0CreditingAmount, height: 54321);
+		SmartTransaction tx0 = CreateCreditingTransaction(NewInternalKey("A").P2Taproot, tx0CreditingAmount, height: 54321);
 		Assert.Equal(Money.Zero, Coins.GetTotalBalance());
 		Assert.False(Coins.TryGetTxAmount(tx0.GetHash(), out _));
 
@@ -397,7 +398,7 @@ public class CoinsRegistryTests
 	[Fact]
 	public void TryGetByOutPointAfterAddingSameCoinAgain()
 	{
-		HdPubKey pubKey = NewInternalKey(label: "A");
+		HdPubKey pubKey = NewInternalKey("A");
 		SmartTransaction unconfirmedTx = CreateCreditingTransaction(pubKey.P2Taproot, Money.Coins(1.0m), height: 0);
 		SmartCoin coin = new(unconfirmedTx, outputIndex: 0, pubKey: pubKey);
 		Assert.True(Coins.TryAdd(coin));
@@ -474,8 +475,13 @@ public class CoinsRegistryTests
 	private static OutPoint GetRandomOutPoint()
 		=> new(RandomUtils.GetUInt256(), 0);
 
-	private HdPubKey NewInternalKey(string label)
-		=> KeyManager.GenerateNewKey(label, KeyState.Clean, isInternal: true);
+	/// <param name="name">Name of the key in the diagram of the test. The key can be looked up in <see cref="KeysByName"/>.</param>
+	private HdPubKey NewInternalKey(string name)
+	{
+		var key = KeyManager.GenerateNewKey(KeyState.Clean, isInternal: true);
+		KeysByName.Add(name, key);
+		return key;
+	}
 
 	/// <summary>Compare coins registry and actual coins as two sets (disregarding ordering).</summary>
 	private void AssertEqualCoinSets(CoinsRegistry coins, IEnumerable<SmartCoin> actualCoins)

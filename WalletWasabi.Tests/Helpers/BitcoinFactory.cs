@@ -3,7 +3,6 @@ using NBitcoin.RPC;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
@@ -119,7 +118,7 @@ public static class BitcoinFactory
 		=> CreateHdPubKey(km, isInternal: false);
 
 	public static HdPubKey CreateHdPubKey(KeyManager km, bool isInternal)
-		=> km.GenerateNewKey(LabelsArray.Empty, KeyState.Clean, isInternal);
+		=> km.GenerateNewKey(KeyState.Clean, isInternal);
 
 	public static SmartCoin CreateSmartCoin(HdPubKey pubKey, decimal amountBtc, bool confirmed = true, int anonymitySet = 1)
 		=> CreateSmartCoin(pubKey, Money.Coins(amountBtc), confirmed, anonymitySet);

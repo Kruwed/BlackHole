@@ -350,8 +350,7 @@ public static class BlockchainAnalyzer
 		foreach (var newCoin in tx.WalletOutputs)
 		{
 			// Forget clusters when no unique outputs created in coinjoins,
-			// otherwise in half mixed wallets all the labels quickly gravitate into a single cluster
-			// making pocket selection unusable.
+			// otherwise in half mixed wallets all the coins quickly gravitate into a single cluster.
 			if (newCoin.AnonymitySet < Constants.SemiPrivateThreshold)
 			{
 				// Set clusters.

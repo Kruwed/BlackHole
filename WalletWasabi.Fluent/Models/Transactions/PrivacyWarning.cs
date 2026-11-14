@@ -1,4 +1,3 @@
-using WalletWasabi.Blockchain.Analysis.Clustering;
 
 namespace WalletWasabi.Fluent.Models.Transactions;
 
@@ -15,14 +14,13 @@ public enum WarningSeverity
 // Revisit this after Avalonia V11 upgrade
 public abstract record PrivacyWarning(WarningSeverity Severity) : PrivacyItem();
 
-public record InterlinksLabelsWarning(LabelsArray Labels) : PrivacyWarning(WarningSeverity.Critical);
-
-public record TransactionKnownAsYoursByWarning(LabelsArray Labels) : PrivacyWarning(WarningSeverity.Critical);
+/// <summary>The transaction spends non-private coins together that nothing linked to each other so far.</summary>
+public record InterlinksCoinsWarning() : PrivacyWarning(WarningSeverity.Critical);
 
 public record NonPrivateFundsWarning() : PrivacyWarning(WarningSeverity.Critical);
 
 public record SemiPrivateFundsWarning() : PrivacyWarning(WarningSeverity.Warning);
-public record InterlinksRecipientsWarning(LabelsArray Labels) : PrivacyWarning(WarningSeverity.Warning);
+public record InterlinksRecipientsWarning() : PrivacyWarning(WarningSeverity.Warning);
 public record LargePercentSpentWarning(int PercentSpent) : PrivacyWarning(WarningSeverity.Warning);
 
 public record CreatesChangeWarning() : PrivacyWarning(WarningSeverity.Info);

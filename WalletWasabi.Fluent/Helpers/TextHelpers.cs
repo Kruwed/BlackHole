@@ -11,7 +11,7 @@ public static partial class TextHelpers
 	public static string AddSIfPlural(int n) => n > 1 ? "s" : "";
 
 	[GeneratedRegex(@"\s+")]
-	private static partial Regex ParseLabelRegex();
+	private static partial Regex WhitespaceRegex();
 
 	public static string ToBtcWithUnit(this Money money)
 	{
@@ -40,7 +40,7 @@ public static partial class TextHelpers
 		return moneyString;
 	}
 
-	public static string ParseLabel(this string text) => ParseLabelRegex().Replace(text, " ").Trim();
+	public static string CollapseWhitespace(this string text) => WhitespaceRegex().Replace(text, " ").Trim();
 
 	public static string TotalTrim(this string text)
 	{

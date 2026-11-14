@@ -25,13 +25,6 @@
         <PathIcon Data="{StaticResource dismiss_light}" Height="14" />
       </Button>
 
-      <!-- Edit -->
-      <Button Classes="plain"
-              ToolTip.Tip="Edit"
-              Command="{Binding EditLabelCommand}">
-        <PathIcon Data="{StaticResource edit_regular}" />
-      </Button>
-
       <!-- Open -->
       <Button Classes="plain"
               Command="{Binding NavigateCommand}"

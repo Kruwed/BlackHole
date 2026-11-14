@@ -7,7 +7,6 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.BlockFilters;
 using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Io;
@@ -145,8 +144,6 @@ public class KeyManager
 
 	public bool OnlyUsePrivateFundsForPayments { get; set; } = PrivacyProfiles.DefaultProfile.OnlyUsePrivateFundsForPayments;
 
-	public SendWorkflow DefaultSendWorkflow { get; set; } = SendWorkflow.Automatic;
-
 	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
 
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
@@ -264,7 +261,7 @@ public class KeyManager
 		IoHelpers.EnsureContainingDirectoryExists(FilePath);
 	}
 
-	internal HdPubKey GenerateNewKey(LabelsArray labels, KeyState keyState, bool isInternal)
+	internal HdPubKey GenerateNewKey(KeyState keyState, bool isInternal)
 	{
 		var hdPubKeyRegistry = isInternal ? _taprootInternalKeyGenerator : TaprootExternalKeyGenerator;
 
@@ -272,16 +269,20 @@ public class KeyManager
 		{
 			var view = _hdPubKeyCache.GetView(hdPubKeyRegistry.KeyPath);
 			var (keyPath, extPubKey) = hdPubKeyRegistry.GenerateNewKey(view);
-			var hdPubKey = new HdPubKey(extPubKey.PubKey, keyPath, labels, keyState);
+			var hdPubKey = new HdPubKey(extPubKey.PubKey, keyPath, keyState);
 			_hdPubKeyCache.AddKey(hdPubKey);
 			return hdPubKey;
 		}
 	}
 
-	public HdPubKey GetNextReceiveKey(LabelsArray labels) =>
-		GetNextReceiveKey(labels, KeyPurpose.Loud);
+	/// <summary>
+	/// Gives out a receive address that was not given out before, and remembers that it was.
+	/// </summary>
+	public HdPubKey GetNextReceiveKey() =>
+		GetNextReceiveKey(KeyPurpose.Loud, handOut: true);
 
-	public HdPubKey GetNextReceiveKey(LabelsArray labels, KeyPurpose purpose)
+	/// <param name="handOut">Whether to remember that the key was given out, so that it is not offered again.</param>
+	public HdPubKey GetNextReceiveKey(KeyPurpose purpose, bool handOut)
 	{
 		lock (_criticalStateLock)
 		{
@@ -301,7 +302,11 @@ public class KeyManager
 			var (newKey, newlyGeneratedKeySet, newHdPubKeyGenerator) = GetNextReceiveKey(generator);
 			generatorSetter(newHdPubKeyGenerator);
 			_hdPubKeyCache.AddRangeKeys(newlyGeneratedKeySet);
-			newKey.SetLabel(labels);
+			if (handOut)
+			{
+				newKey.SetHandedOut();
+			}
+
 			ToFileNoLock();
 			return newKey;
 		}
@@ -309,7 +314,7 @@ public class KeyManager
 
 	private (HdPubKey, HdPubKey[], HdPubKeyGenerator) GetNextReceiveKey(HdPubKeyGenerator hdPubKeyGenerator)
 	{
-		// Find the next clean external key with an empty label.
+		// Find the next clean external key that was not given out yet.
 		HdPubKeyPathView externalView;
 
 		lock (_criticalStateLock)
@@ -317,7 +322,7 @@ public class KeyManager
 			externalView = _hdPubKeyCache.GetView(hdPubKeyGenerator.KeyPath);
 		}
 
-		if (externalView.CleanKeys.FirstOrDefault(x => x.Labels.IsEmpty) is { } cachedKey)
+		if (externalView.CleanKeys.FirstOrDefault(x => !x.IsHandedOut) is { } cachedKey)
 		{
 			return (cachedKey, [], hdPubKeyGenerator);
 		}
@@ -471,7 +476,7 @@ public class KeyManager
 		_silentPaymentScanKeyGenerator = new HdPubKeyGenerator(SilentPaymentScanExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan), MinGapLimit);
 		_silentPaymentSpendKeyGenerator = new HdPubKeyGenerator(SilentPaymentSpendExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend), MinGapLimit);
 
-		var defaultSilentPaymentAddress = new SilentPaymentAddress(0, GetNextReceiveKey(LabelsArray.Empty, KeyPurpose.Scan).PubKey, GetNextReceiveKey(LabelsArray.Empty, KeyPurpose.Spend).PubKey);
+		var defaultSilentPaymentAddress = new SilentPaymentAddress(0, GetNextReceiveKey(KeyPurpose.Scan, handOut: false).PubKey, GetNextReceiveKey(KeyPurpose.Spend, handOut: false).PubKey);
 		Logger.LogDebug($"Default Silent Payment Address: {defaultSilentPaymentAddress.ToWip(_blockchainState.Network)} ");
 		var scanKeys = GetKeys(x => x.FullKeyPath.GetAccountKeyPath() == GetAccountKeyPath(Network.Main, KeyPurpose.Scan));
 		var spendKeys = GetKeys(x => x.FullKeyPath.GetAccountKeyPath() == GetAccountKeyPath(Network.Main, KeyPurpose.Spend));
@@ -525,7 +530,6 @@ public class KeyManager
 		var availableCandidates = _hdPubKeyCache
 			.GetView(hdPubKeyGenerator.KeyPath)
 			.CleanKeys
-			.Where(x => x.Labels.IsEmpty)
 			.Take(missingLockedKeys)
 			.ToList();
 
@@ -617,7 +621,7 @@ public class KeyManager
 	#endregion _blockchainState
 
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
-		new(x.ExtPubKey.PubKey, x.KeyPath, LabelsArray.Empty, KeyState.Clean);
+		new(x.ExtPubKey.PubKey, x.KeyPath, KeyState.Clean);
 
 	internal void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
 	{
@@ -658,7 +662,6 @@ public class KeyManager
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
-			("DefaultSendWorkflow", Encode.SendWorkflow(keyManager.DefaultSendWorkflow)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
 			("HdPubKeys", Encode.Array(keyManager._hdPubKeyCache.HdPubKeys.Select(Encode.HdPubKey)))
@@ -691,7 +694,6 @@ public class KeyManager
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),
-				DefaultSendWorkflow = get.Optional("DefaultSendWorkflow", Decode.SendWorkflow, SendWorkflow.Automatic),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? []
 			};

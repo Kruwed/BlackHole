@@ -17,10 +17,6 @@
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                  Title="Preview Transaction">
 
-    <Interaction.Behaviors>
-      <HoldKeyBehavior Key="LeftAlt" IsKeyPressed="{Binding IsCoinControlVisible}" />
-    </Interaction.Behaviors>
-
     <ContentArea.TopContent>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Center" TextElement.FontSize="{DynamicResource ControlContentThemeFontSize}">
         <Button Command="{Binding UndoCommand}" Classes="plain" Padding="10 0 10 10"

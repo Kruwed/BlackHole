@@ -9,7 +9,6 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Extensions;
 using WalletWasabi.Fluent.Controls;
@@ -19,7 +18,6 @@ using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Fluent.ViewModels.Wallets.Labels;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
@@ -55,8 +53,6 @@ public partial class SendViewModel : RoutableViewModel
 	[AutoNotify] private decimal? _amountBtc;
 	[AutoNotify] private bool _isFixedAmount;
 	[AutoNotify] private bool _displaySilentPaymentInfo;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private SuggestionLabelsViewModel _suggestionLabels;
-	[AutoNotify] private string _defaultLabel;
 	[AutoNotify] private bool _isFixedAddress;
 	[AutoNotify] private string? _bitcoinContent;
 	[AutoNotify] private bool _isPayToMany;
@@ -77,21 +73,15 @@ public partial class SendViewModel : RoutableViewModel
 		_showQrCodeCameraDialog = showQrCodeCameraDialog;
 		_coinJoinManager = UiContext.Services.GetHostedService<CoinJoinManager>();
 
-		Balance =
-			_parameters.IsManual
-			? Observable.Return(new Amount(_parameters.AvailableAmount))
-			: _walletModel.Balances;
-
-		_suggestionLabels = new SuggestionLabelsViewModel(uiContext, _walletModel, Intent.Send, 3);
-
-		_defaultLabel = _parameters.Donate ? "Wasabi team" : "";
+		// What can be sent is what the coins that the user picked hold.
+		Balance = Observable.Return(new Amount(_parameters.AvailableAmount));
 
 		_additionalRecipients = new ObservableCollection<RecipientRowViewModel>();
 		AdditionalRecipients = new IndexedCollection<RecipientRowViewModel>(_additionalRecipients);
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
-		EnableBack = parameters.IsManual;
+		EnableBack = true;
 
 		this.ValidateProperty(x => x.To, ValidateToField);
 		this.ValidateProperty(x => x.AmountBtc, ValidateAmount);
@@ -138,8 +128,6 @@ public partial class SendViewModel : RoutableViewModel
 		var primaryChanged = this.WhenAnyValue(
 				x => x.AmountBtc,
 				x => x.To,
-				x => x.SuggestionLabels.Labels.Count,
-				x => x.SuggestionLabels.IsCurrentTextValid,
 				x => x.IsPrimarySubtractFee)
 			.Select(_ => Unit.Default);
 
@@ -149,8 +137,6 @@ public partial class SendViewModel : RoutableViewModel
 			{
 				var allFilled = !string.IsNullOrEmpty(To) && AmountBtc > 0;
 				var hasError = Validations.AnyErrors;
-				var labelsCount = SuggestionLabels.Labels.Count;
-				var isCurrentTextValid = SuggestionLabels.IsCurrentTextValid;
 
 				if (allFilled && _additionalRecipients.Count > 0)
 				{
@@ -158,7 +144,7 @@ public partial class SendViewModel : RoutableViewModel
 					allFilled = _additionalRecipients.All(r => r.IsValid);
 				}
 
-				return allFilled && !hasError && (labelsCount > 0 || isCurrentTextValid);
+				return allFilled && !hasError;
 			});
 
 		NextCommand = ReactiveCommand.CreateFromTask(OnNextAsync, nextCommandCanExecute);
@@ -266,7 +252,6 @@ public partial class SendViewModel : RoutableViewModel
 	{
 		var row = new RecipientRowViewModel(
 			UiContext,
-			_walletModel,
 			_walletModel.Network,
 			onRemove: r =>
 			{
@@ -288,7 +273,7 @@ public partial class SendViewModel : RoutableViewModel
 			isQrButtonVisible: IsQrButtonVisible,
 			isRecalculating: () => _isRecalculating);
 
-		row.WhenAnyValue(r => r.AmountBtc, r => r.To, r => r.SuggestionLabels.Labels.Count, r => r.SuggestionLabels.IsCurrentTextValid, r => r.IsSubtractFee)
+		row.WhenAnyValue(r => r.AmountBtc, r => r.To, r => r.IsSubtractFee)
 			.Subscribe(_ => _recipientsChanged.OnNext(Unit.Default));
 
 		_additionalRecipients.Add(row);
@@ -308,8 +293,6 @@ public partial class SendViewModel : RoutableViewModel
 
 	private async Task OnNextAsync()
 	{
-		var label = new LabelsArray(SuggestionLabels.Labels.ToArray());
-
 		if (AmountBtc is not { } amountBtc)
 		{
 			return;
@@ -328,7 +311,6 @@ public partial class SendViewModel : RoutableViewModel
 			.Select(r => new RecipientInfo(
 				AddressToDestination(r.ParsedAddress!),
 				new Money(r.AmountBtc!.Value, MoneyUnit.BTC),
-				new LabelsArray(r.SuggestionLabels.Labels.ToArray()),
 				IsSubtractFee: r.IsSubtractFee))
 			.ToList();
 
@@ -341,7 +323,6 @@ public partial class SendViewModel : RoutableViewModel
 		var transactionInfo = new TransactionInfo(destination, _walletModel.Settings.AnonScoreTarget)
 		{
 			Amount = amount,
-			Recipient = label,
 			IsFixedAmount = IsFixedAmount,
 			SubtractFee = primarySubtractFee,
 			AdditionalRecipients = additionalRecipients
@@ -503,16 +484,6 @@ public partial class SendViewModel : RoutableViewModel
 					IsFixedAmount = true;
 				}
 
-				if (!string.IsNullOrEmpty(bip21.Label))
-				{
-					SuggestionLabels = new SuggestionLabelsViewModel(
-						UiContext,
-						_walletModel,
-						Intent.Send,
-						3,
-						[bip21.Label]);
-				}
-
 				DisplaySilentPaymentInfo = false;
 				break;
 
@@ -551,8 +522,6 @@ public partial class SendViewModel : RoutableViewModel
 				coinJoinManager.WalletEnteredSendWorkflow(_walletModel.Id);
 			}
 		}
-
-		_suggestionLabels.Activate(disposables);
 
 		RxApp.MainThreadScheduler.Schedule(async () => await OnAutoPasteAsync());
 

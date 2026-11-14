@@ -38,10 +38,7 @@
               VerticalAlignment="Center"
               DockPanel.Dock="Right">
         <Button.IsVisible>
-          <MultiBinding Converter="{x:Static BoolConverters.And}">
-            <Binding Path="Parent.IsCoinControlVisible" />
-            <Binding Path="!IsPreview" />
-          </MultiBinding>
+          <Binding Path="!IsPreview" />
         </Button.IsVisible>
       </Button>
       <PreviewItem Icon="{StaticResource btc_logo}"
@@ -71,18 +68,6 @@
                    IsVisible="{Binding !IsPayToMany}">
       <TextBlock Classes="monoSpaced" Text="{Binding AddressText, FallbackValue=btc029382398fkj34f98df239823}" />
     </PreviewItem>
-    <Separator IsVisible="{Binding !IsPayToMany}" />
-
-    <!-- Single Recipient: Recipient -->
-    <PreviewItem Icon="{StaticResource person_regular}"
-                   Classes.Dimmed="{Binding IsPreview}"
-                   Label="Recipient"
-                   CopyableContent="{Binding Recipient}"
-                   IsVisible="{Binding !IsPayToMany}">
-      <LabelsItemsPresenter ItemsSource="{Binding Recipient}"
-                              HorizontalAlignment="Left"
-                              VerticalAlignment="Center" />
-    </PreviewItem>
 
     <!-- Multi-Recipient: Recipients List -->
     <StackPanel IsVisible="{Binding IsPayToMany}" Spacing="8">
@@ -99,10 +84,6 @@
                 <AmountControl DockPanel.Dock="Right" Amount="{Binding Amount}" Margin="10,0,0,0" />
                 <TextBlock Classes="monoSpaced" Text="{Binding AddressText}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding AddressText}" />
               </DockPanel>
-              <LabelsItemsPresenter ItemsSource="{Binding Recipient}"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    Margin="0,2,0,0" />
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

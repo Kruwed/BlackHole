@@ -35,34 +35,33 @@ public abstract record Destination
 	};
 }
 
-public class DestinationRequest(Destination destination, MoneyRequest amount, LabelsArray? labels = null)
+public class DestinationRequest(Destination destination, MoneyRequest amount)
 {
-	public DestinationRequest(Script scriptPubKey, Money amount, bool subtractFee = false, LabelsArray? labels = null)
-		: this(scriptPubKey, MoneyRequest.Create(amount, subtractFee), labels)
+	public DestinationRequest(Script scriptPubKey, Money amount, bool subtractFee = false)
+		: this(scriptPubKey, MoneyRequest.Create(amount, subtractFee))
 	{
 	}
 
-	public DestinationRequest(Script scriptPubKey, MoneyRequest amount, LabelsArray? labels = null)
-		: this(new Destination.Loudly(scriptPubKey), amount, labels)
+	public DestinationRequest(Script scriptPubKey, MoneyRequest amount)
+		: this(new Destination.Loudly(scriptPubKey), amount)
 	{
 	}
 
-	public DestinationRequest(IDestination destination, Money amount, bool subtractFee = false, LabelsArray? labels = null)
-		: this(new Destination.Loudly(destination.ScriptPubKey), MoneyRequest.Create(amount, subtractFee), labels)
+	public DestinationRequest(IDestination destination, Money amount, bool subtractFee = false)
+		: this(new Destination.Loudly(destination.ScriptPubKey), MoneyRequest.Create(amount, subtractFee))
 	{
 	}
 
-	public DestinationRequest(IDestination destination, MoneyRequest amount, LabelsArray? labels = null)
-		: this(new Destination.Loudly(destination.ScriptPubKey), amount, labels)
+	public DestinationRequest(IDestination destination, MoneyRequest amount)
+		: this(new Destination.Loudly(destination.ScriptPubKey), amount)
 	{
 	}
 
-	public DestinationRequest(SilentPaymentAddress silentPaymentAddress, MoneyRequest amount, LabelsArray? labels = null)
-		: this(new Destination.Silent(silentPaymentAddress), amount, labels)
+	public DestinationRequest(SilentPaymentAddress silentPaymentAddress, MoneyRequest amount)
+		: this(new Destination.Silent(silentPaymentAddress), amount)
 	{
 	}
 
 	public Destination Destination { get; } = destination;
 	public MoneyRequest Amount { get; } = amount;
-	public LabelsArray Labels { get; } = labels ?? LabelsArray.Empty;
 }

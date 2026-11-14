@@ -25,7 +25,6 @@ public class TransactionSummary
 	public Func<IReadOnlyCollection<IndexedTxOut>> ForeignOutputs => () => Transaction.ForeignOutputs;
 	public IReadOnlyCollection<SmartCoin> WalletOutputs => Transaction.WalletOutputs;
 	public DateTimeOffset FirstSeen => Transaction.FirstSeen;
-	public LabelsArray Labels => Transaction.Labels;
 	public Height Height => Transaction.Height;
 	public uint256? BlockHash => Transaction.BlockHash;
 	public int BlockIndex => Transaction.BlockIndex;

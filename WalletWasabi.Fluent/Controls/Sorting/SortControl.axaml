@@ -10,7 +10,6 @@
           <sorting:SortableItemDesign Name="Status" />
           <sorting:SortableItemDesign Name="Date" />
           <sorting:SortableItemDesign Name="Amount" />
-          <sorting:SortableItemDesign Name="Label" />
         </generic:List>
       </sorting:SortControl.Sortables>
     </sorting:SortControl>

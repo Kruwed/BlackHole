@@ -3,7 +3,7 @@
                     xmlns:converters="clr-namespace:WalletWasabi.Fluent.Converters">
   <Design.PreviewWith>
     <Border Padding="10">
-      <TagControl Content="Label One Two Three" />
+      <TagControl Content="Tag One Two Three" />
     </Border>
   </Design.PreviewWith>
 
@@ -61,7 +61,7 @@
       <Setter Property="ContentTemplate">
         <DataTemplate DataType="x:String">
           <TextBlock Text="{Binding .}"
-                     MaxWidth="{DynamicResource LabelMaxWidth}"
+                     MaxWidth="{DynamicResource TagMaxWidth}"
                      TextTrimming="CharacterEllipsis" />
         </DataTemplate>
       </Setter>

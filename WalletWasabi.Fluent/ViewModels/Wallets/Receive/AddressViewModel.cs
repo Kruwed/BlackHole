@@ -4,11 +4,9 @@ using System.Reactive.Disposables.Fluent;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using ReactiveUI;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Dialogs;
-using AddressFunc = System.Func<WalletWasabi.Fluent.Models.Wallets.IAddress, System.Threading.Tasks.Task>;
 using AddressAction = System.Action<WalletWasabi.Fluent.Models.Wallets.IAddress>;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
@@ -18,20 +16,14 @@ public partial class AddressViewModel : ViewModelBase, IDisposable
 	private readonly CompositeDisposable _disposables = new();
 
 	[AutoNotify] private string _addressText;
-	[AutoNotify] private LabelsArray _labels;
 
-	public AddressViewModel(UiContext uiContext, AddressFunc onEdit, AddressAction onShow, IAddress address) : base(uiContext)
+	public AddressViewModel(UiContext uiContext, AddressAction onShow, IAddress address) : base(uiContext)
 	{
 		Address = address;
 		_addressText = address.ShortenedText;
 
-		this.WhenAnyValue(x => x.Address.Labels)
-			.BindTo(this, viewModel => viewModel.Labels)
-			.DisposeWith(_disposables);
-
 		CopyAddressCommand = ReactiveCommand.CreateFromTask(() => UiContext.Clipboard.SetTextAsync(Address.Text));
 		HideAddressCommand = ReactiveCommand.CreateFromTask(PromptHideAddressAsync);
-		EditLabelCommand = ReactiveCommand.CreateFromTask(() => onEdit(address));
 		NavigateCommand = ReactiveCommand.Create(() => onShow(address));
 	}
 
@@ -41,13 +33,11 @@ public partial class AddressViewModel : ViewModelBase, IDisposable
 
 	public ICommand HideAddressCommand { get; }
 
-	public ICommand EditLabelCommand { get; }
-
 	public ReactiveCommand<Unit, Unit> NavigateCommand { get; }
 
 	private async Task PromptHideAddressAsync()
 	{
-		var result = await UiContext.Navigate().NavigateDialogAsync(new ConfirmHideAddressViewModel(UiContext, Address.Labels));
+		var result = await UiContext.Navigate().NavigateDialogAsync(new ConfirmHideAddressViewModel(UiContext, Address.ShortenedText));
 
 		if (result.Result == false)
 		{

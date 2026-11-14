@@ -7,7 +7,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
@@ -57,7 +56,7 @@ public partial class PrivacySuggestionsModel
 
 		using (await _asyncLock.LockAsync(cancellationToken))
 		{
-			result.Add(VerifyLabels(parameters));
+			result.Add(VerifyInterlinkedCoins(parameters));
 			result.Add(VerifyRecipients(parameters));
 			result.Add(VerifyPrivacyLevel(parameters));
 			result.Add(VerifyLargePercentSpent(parameters));
@@ -71,52 +70,27 @@ public partial class PrivacySuggestionsModel
 		}
 	}
 
-	private IEnumerable<PrivacyItem> VerifyLabels(Parameters parameters)
+	private IEnumerable<PrivacyItem> VerifyInterlinkedCoins(Parameters parameters)
 	{
-		var warning = GetLabelWarning(parameters.Transaction, parameters.TransactionInfo.Recipient);
+		// Coins that are spent together are linked to each other from then on. For private coins that says little,
+		// for non-private ones it ties together what was known about each of them.
+		var clusters = parameters.Transaction.SpentCoins
+			.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate)
+			.Select(x => x.HdPubKey.Cluster)
+			.Distinct()
+			.Count();
 
-		if (warning is not null)
+		if (clusters > 1)
 		{
-			yield return warning;
-
-			if (parameters.IncludeSuggestions && parameters.TransactionInfo.IsOtherPocketSelectionPossible)
-			{
-				yield return new LabelManagementSuggestion();
-			}
+			yield return new InterlinksCoinsWarning();
 		}
-	}
-
-	private PrivacyItem? GetLabelWarning(BuildTransactionResult transactionResult, LabelsArray recipient)
-	{
-		var pockets = _sendFlow.GetPockets();
-		var spentCoins = transactionResult.SpentCoins;
-		var nonPrivateSpentCoins = spentCoins.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate).ToList();
-		var usedPockets = pockets.Where(x => x.Coins.Any(coin => nonPrivateSpentCoins.Contains(coin))).ToList();
-
-		if (usedPockets.Count > 1)
-		{
-			var pocketLabels = usedPockets.SelectMany(x => x.Labels).Distinct().ToArray();
-			return new InterlinksLabelsWarning(new LabelsArray(pocketLabels));
-		}
-
-		var labels = transactionResult.SpentCoins.SelectMany(x => x.GetLabels(_wallet.AnonScoreTarget)).Except(recipient);
-		var labelsArray = new LabelsArray(labels);
-
-		if (!labelsArray.IsEmpty)
-		{
-			return new TransactionKnownAsYoursByWarning(labelsArray);
-		}
-
-		return null;
 	}
 
 	private IEnumerable<PrivacyItem> VerifyRecipients(Parameters parameters)
 	{
-		var recipients = parameters.TransactionInfo.AllRecipients.Select(x => x.Label).Distinct(LabelsComparer.Instance).ToArray();
-
-		if (recipients.Length > 1)
+		if (parameters.TransactionInfo.AllRecipients.Count() > 1)
 		{
-			yield return new InterlinksRecipientsWarning(LabelsArray.Merge(recipients));
+			yield return new InterlinksRecipientsWarning();
 		}
 	}
 
@@ -124,12 +98,8 @@ public partial class PrivacySuggestionsModel
 	{
 		var canModifyTransactionAmount = !parameters.TransactionInfo.IsFixedAmount && !parameters.TransactionInfo.IsPayToMany;
 
-		var transactionLabels = parameters.Transaction.SpentCoins.SelectMany(x => x.GetLabels(_wallet.AnonScoreTarget));
-		var onlyKnownByRecipient =
-			parameters.TransactionInfo.Recipient.Equals(new LabelsArray(transactionLabels), StringComparer.OrdinalIgnoreCase);
-
-		var foundNonPrivate = !onlyKnownByRecipient &&
-							  parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate);
+		var foundNonPrivate =
+			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate);
 
 		var foundSemiPrivate =
 			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.SemiPrivate);
@@ -160,10 +130,8 @@ public partial class PrivacySuggestionsModel
 
 		allPrivateCoin = wasCoinjoiningCoinUsed ? allPrivateCoin : allPrivateCoin.Except(coinsToExclude).ToArray();
 
-		var onlyKnownByTheRecipientCoins = availableCoins.Where(x => parameters.TransactionInfo.Recipient.Equals(x.GetLabels(_wallet.AnonScoreTarget), StringComparer.OrdinalIgnoreCase)).ToArray();
 		var allSemiPrivateCoin =
 			availableCoins.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.SemiPrivate)
-						  .Union(onlyKnownByTheRecipientCoins)
 						  .ToArray();
 
 		allSemiPrivateCoin = wasCoinjoiningCoinUsed ? allSemiPrivateCoin : allSemiPrivateCoin.Except(coinsToExclude).ToArray();
@@ -277,7 +245,6 @@ public partial class PrivacySuggestionsModel
 			txn = _wallet.BuildTransaction(
 				transactionInfo.Destination,
 				transactionInfo.Amount,
-				transactionInfo.Recipient,
 				transactionInfo.FeeRate,
 				coins,
 				false,
@@ -289,7 +256,6 @@ public partial class PrivacySuggestionsModel
 			{
 				txn = _wallet.BuildChangelessTransaction(
 					transactionInfo.Destination,
-					transactionInfo.Recipient,
 					transactionInfo.FeeRate,
 					coins,
 					tryToSign: false);

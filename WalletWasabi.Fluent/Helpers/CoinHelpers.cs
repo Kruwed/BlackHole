@@ -1,4 +1,3 @@
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Helpers;
 using WalletWasabi.Fluent.Models;
@@ -8,21 +7,6 @@ namespace WalletWasabi.Fluent.Helpers;
 
 public static class CoinHelpers
 {
-	public static LabelsArray GetLabels(this SmartCoin coin, int privateThreshold)
-	{
-		if (coin.IsPrivate(privateThreshold) || coin.IsSemiPrivate(privateThreshold))
-		{
-			return LabelsArray.Empty;
-		}
-
-		if (coin.HdPubKey.ClusterLabels.IsEmpty)
-		{
-			return CoinPocketHelper.UnlabelledFundsText;
-		}
-
-		return coin.HdPubKey.ClusterLabels;
-	}
-
 	public static uint GetConfirmations(this SmartCoin coin, uint bestHeight) => coin.Transaction.GetConfirmations(bestHeight);
 
 	public static PrivacyLevel GetPrivacyLevel(this SmartCoin coin, int privateThreshold)

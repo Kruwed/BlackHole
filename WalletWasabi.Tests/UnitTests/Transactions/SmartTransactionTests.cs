@@ -208,16 +208,6 @@ public class SmartTransactionTests
 			int.MaxValue
 		};
 
-		var labels = new List<string>
-		{
-			"",
-			" ",
-			"foo",
-			"foo, bar",
-			"               :foo:bar:buz: ",
-			"~!@#$%^&*()"
-		};
-
 		var firstSeens = new List<DateTimeOffset>
 		{
 			DateTimeOffset.UtcNow,
@@ -253,11 +243,6 @@ public class SmartTransactionTests
 		foreach (var blockIndex in blockIndexes)
 		{
 			yield return new object[] { new SmartTransaction(defaultTx, defaultHeight, blockIndex: blockIndex), defaultNetwork };
-		}
-
-		foreach (var label in labels)
-		{
-			yield return new object[] { new SmartTransaction(defaultTx, defaultHeight, labels: label), defaultNetwork };
 		}
 
 		foreach (var firstSeen in firstSeens)

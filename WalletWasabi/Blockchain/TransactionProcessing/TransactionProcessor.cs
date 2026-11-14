@@ -198,11 +198,6 @@ public class TransactionProcessor(
 			var output = tx.Transaction.Outputs[i];
 			if (KeyManager.TryGetKeyForScriptPubKey(output.ScriptPubKey, out HdPubKey? foundKey))
 			{
-				if (!foundKey.IsInternal)
-				{
-					tx.Labels = LabelsArray.Merge(tx.Labels, foundKey.Labels);
-				}
-
 				KeyManager.SetKeyState(KeyState.Used, foundKey);
 
 				SmartCoin newCoin = new(tx, i, foundKey);

@@ -1,6 +1,5 @@
 using Microsoft.Data.Sqlite;
 using System.Diagnostics.CodeAnalysis;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Models;
 
@@ -8,8 +7,8 @@ namespace WalletWasabi.Storages;
 
 public class TransactionSqliteStorage : IDisposable
 {
-	private const string AllColumns = "txid, block_height, block_hash, block_index, labels, first_seen, is_replacement, is_speedup, is_cancellation, tx";
-	private const string AllParameters = "$txid, $block_height, $block_hash, $block_index, $labels, $first_seen, $is_replacement, $is_speedup, $is_cancellation, $tx";
+	private const string AllColumns = "txid, block_height, block_hash, block_index, first_seen, is_replacement, is_speedup, is_cancellation, tx";
+	private const string AllParameters = "$txid, $block_height, $block_hash, $block_index, $first_seen, $is_replacement, $is_speedup, $is_cancellation, $tx";
 	private bool _disposedValue;
 
 	private TransactionSqliteStorage(SqliteConnection connection, Network network)
@@ -51,7 +50,6 @@ public class TransactionSqliteStorage : IDisposable
 						block_height INTEGER NOT NULL, /* mempool tx ~ Int32.MaxValue-1; unknown height ~ Int32.MaxValue; otherwise a valid block height */
 						block_hash BLOB, /* NULL ~ not in a block yet. If NOT NULL then bytes are in little endian. */
 						block_index INTEGER NOT NULL,
-						labels TEXT NOT NULL, /* empty string ~ no labels */
 						first_seen INTEGER NOT NULL, /* UNIX timestamp in seconds */
 						is_replacement BOOLEAN NOT NULL,
 						is_speedup BOOLEAN NOT NULL,
@@ -62,6 +60,8 @@ public class TransactionSqliteStorage : IDisposable
 					""";
 				command.ExecuteNonQuery();
 			}
+
+			DropLabelsColumn(connection);
 
 			// Enable write-ahead logging.
 			using (SqliteCommand walCommand = connection.CreateCommand())
@@ -91,6 +91,25 @@ public class TransactionSqliteStorage : IDisposable
 	}
 
 	/// <summary>
+	/// Databases written before labels were removed have a mandatory <c>labels</c> column that new rows do not fill.
+	/// The column is removed together with the labels that are stored in it.
+	/// </summary>
+	private static void DropLabelsColumn(SqliteConnection connection)
+	{
+		using SqliteCommand hasLabelsCommand = connection.CreateCommand();
+		hasLabelsCommand.CommandText = """SELECT COUNT(*) FROM pragma_table_info('transaction') WHERE name = 'labels'""";
+
+		if (Convert.ToInt64(hasLabelsCommand.ExecuteScalar()) == 0)
+		{
+			return;
+		}
+
+		using SqliteCommand dropCommand = connection.CreateCommand();
+		dropCommand.CommandText = """ALTER TABLE "transaction" DROP COLUMN labels""";
+		dropCommand.ExecuteNonQuery();
+	}
+
+	/// <summary>
 	/// Insert/upsert transactions in bulk to the table.
 	/// </summary>
 	/// <param name="transactions">Transactions to store in the SQLite database.</param>
@@ -116,7 +135,6 @@ public class TransactionSqliteStorage : IDisposable
 					block_height=excluded.block_height,
 					block_hash=excluded.block_hash,
 					block_index=excluded.block_index,
-					labels=excluded.labels,
 					first_seen=excluded.first_seen,
 					is_replacement=excluded.is_replacement,
 					is_speedup=excluded.is_speedup,
@@ -145,9 +163,6 @@ public class TransactionSqliteStorage : IDisposable
 		SqliteParameter blockIndexParameter = CreateParameter(command, "$block_index");
 		command.Parameters.Add(blockIndexParameter);
 
-		SqliteParameter labelsParameter = CreateParameter(command, "$labels");
-		command.Parameters.Add(labelsParameter);
-
 		SqliteParameter firstSeenParameter = CreateParameter(command, "$first_seen");
 		command.Parameters.Add(firstSeenParameter);
 
@@ -174,7 +189,6 @@ public class TransactionSqliteStorage : IDisposable
 			blockHashParameter.Value = (blockHash is not null) ? blockHash : DBNull.Value;
 
 			blockIndexParameter.Value = tx.BlockIndex;
-			labelsParameter.Value = tx.Labels.ToString();
 			firstSeenParameter.Value = tx.FirstSeen.ToUnixTimeSeconds();
 			isReplacementParameter.Value = tx.IsReplacement ? 1 : 0;
 			isSpeedupParameter.Value = tx.IsSpeedup ? 1 : 0;
@@ -225,7 +239,6 @@ public class TransactionSqliteStorage : IDisposable
 				block_height = $block_height,
 				block_hash = $block_hash,
 				block_index = $block_index,
-				labels = $labels,
 				first_seen = $first_seen,
 				is_replacement = $is_replacement,
 				is_speedup = $is_speedup,
@@ -246,9 +259,6 @@ public class TransactionSqliteStorage : IDisposable
 
 		SqliteParameter blockIndexParameter = CreateParameter(command, "$block_index");
 		command.Parameters.Add(blockIndexParameter);
-
-		SqliteParameter labelsParameter = CreateParameter(command, "$labels");
-		command.Parameters.Add(labelsParameter);
 
 		SqliteParameter firstSeenParameter = CreateParameter(command, "$first_seen");
 		command.Parameters.Add(firstSeenParameter);
@@ -273,7 +283,6 @@ public class TransactionSqliteStorage : IDisposable
 			blockHashParameter.Value = (blockHash is not null) ? blockHash : DBNull.Value;
 
 			blockIndexParameter.Value = tx.BlockIndex;
-			labelsParameter.Value = tx.Labels.ToString();
 			firstSeenParameter.Value = tx.FirstSeen.ToUnixTimeSeconds();
 			isReplacementParameter.Value = tx.IsReplacement ? 1 : 0;
 			isSpeedupParameter.Value = tx.IsSpeedup ? 1 : 0;
@@ -401,20 +410,18 @@ public class TransactionSqliteStorage : IDisposable
 		int blockHeight = reader.GetInt32(ordinal: 1);
 		uint256? blockHash = reader.IsDBNull(ordinal: 2) ? null : new(reader.GetFieldValue<byte[]>(ordinal: 2), lendian: false);
 		int blockIndex = reader.GetInt32(ordinal: 3);
-		string labelsString = reader.GetString(ordinal: 4);
-		long firstSeenLong = reader.GetInt64(ordinal: 5);
-		bool isReplacement = reader.GetInt32(ordinal: 6) == 1;
-		bool isSpeedup = reader.GetInt32(ordinal: 7) == 1;
-		bool isCancellation = reader.GetInt32(ordinal: 8) == 1;
-		byte[] tx = reader.GetFieldValue<byte[]>(ordinal: 9);
+		long firstSeenLong = reader.GetInt64(ordinal: 4);
+		bool isReplacement = reader.GetInt32(ordinal: 5) == 1;
+		bool isSpeedup = reader.GetInt32(ordinal: 6) == 1;
+		bool isCancellation = reader.GetInt32(ordinal: 7) == 1;
+		byte[] tx = reader.GetFieldValue<byte[]>(ordinal: 8);
 
 		Transaction transaction = Transaction.Load(tx, _network);
 
 		Height height = BackwardCompatibleIntegerToHeight(blockHeight);
-		LabelsArray labelsArray = new(labelsString);
 		DateTimeOffset firstSeen = DateTimeOffset.FromUnixTimeSeconds(firstSeenLong);
 
-		SmartTransaction stx = new(transaction, height, blockHash, blockIndex, labelsArray, isReplacement, isSpeedup, isCancellation, firstSeen);
+		SmartTransaction stx = new(transaction, height, blockHash, blockIndex, isReplacement, isSpeedup, isCancellation, firstSeen);
 
 		if (stx.GetHash() != txid)
 		{

@@ -70,7 +70,7 @@ public static class TransactionFeeHelper
 				}
 				else
 				{
-					found = FeeHelpers.TryGetMaxFeeRate(wallet, info.Destination, info.Amount, info.Recipient, info.FeeRate, info.Coins, info.SubtractFee, out rate);
+					found = FeeHelpers.TryGetMaxFeeRate(wallet, info.Destination, info.Amount, info.FeeRate, info.Coins, info.SubtractFee, out rate);
 				}
 
 				return found ? rate! : new FeeRate(0m);

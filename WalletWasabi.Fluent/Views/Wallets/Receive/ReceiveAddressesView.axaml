@@ -9,7 +9,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Receive.ReceiveAddressesView">
   <ContentArea Title="{Binding Title}"
-               Caption="You can choose to hide, modify, or display the addresses listed below."
+               Caption="Addresses that were generated and have not been paid to yet. You can hide or display them."
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}"
                ScrollViewer.VerticalScrollBarVisibility="Disabled">

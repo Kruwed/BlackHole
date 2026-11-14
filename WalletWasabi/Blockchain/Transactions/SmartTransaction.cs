@@ -17,7 +17,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		Height? height = null,
 		uint256? blockHash = null,
 		int blockIndex = 0, // FIXME: unconfirmed/unknown txs are not in the genesis block
-		LabelsArray? labels = null,
 		bool isReplacement = false,
 		bool isSpeedup = false,
 		bool isCancellation = false,
@@ -27,8 +26,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 
 		// Because we don't modify those transactions, we can cache the hash
 		Transaction.PrecomputeHash(false, true);
-
-		Labels = labels ?? LabelsArray.Empty;
 
 		Height = height ?? Unknown;
 		BlockHash = blockHash;
@@ -153,8 +150,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	public uint256? BlockHash { get; private set; }
 
 	public int BlockIndex { get; private set; }
-
-	public LabelsArray Labels { get; set; }
 
 	public DateTimeOffset FirstSeen { get; private set; }
 
@@ -298,7 +293,7 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		return false;
 	}
 
-	/// <summary>Update the transaction with the data acquired from another transaction. (For example merge their labels.)</summary>
+	/// <summary>Update the transaction with the data acquired from another transaction. (For example its confirmation height.)</summary>
 	public bool TryUpdate(SmartTransaction tx)
 	{
 		var updated = false;
@@ -335,13 +330,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		if (tx.FirstSeen < FirstSeen)
 		{
 			FirstSeen = tx.FirstSeen;
-			updated = true;
-		}
-
-		// Merge labels.
-		if (Labels != tx.Labels)
-		{
-			Labels = LabelsArray.Merge(Labels, tx.Labels);
 			updated = true;
 		}
 

@@ -5,7 +5,6 @@ using System.Reactive.Disposables.Fluent;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -24,8 +23,6 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 	[AutoNotify] private uint _blockHeight;
 	[AutoNotify] private uint _confirmations;
 	[AutoNotify] private string? _dateString;
-	[AutoNotify] private bool _isLabelsVisible;
-	[AutoNotify] private LabelsArray? _labels;
 	[AutoNotify] private Amount? _amount;
 	[AutoNotify] private FeeRate? _feeRate;
 	[AutoNotify] private bool _isFeeRateVisible;
@@ -70,7 +67,6 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 	private async Task UpdateValuesAsync(RegularTransactionModel model, CancellationToken cancellationToken)
 	{
 		DateString = model.DateToolTipString;
-		Labels = model.Labels;
 		BlockHeight = model.BlockHeight;
 		Confirmations = model.Confirmations;
 		FeeRate = model.FeeRate;
@@ -88,8 +84,6 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 			Amount = new Amount(model.Amount);
 			AmountText = "Amount received";
 		}
-
-		IsLabelsVisible = Labels.HasValue && Labels.Value.Any();
 	}
 
 	private void OnNext()

@@ -47,7 +47,6 @@ public static class TransactionModifierWalletExtensions
 		{
 			cancelTransaction = wallet.BuildChangelessTransaction(
 				destination,
-				transactionToCancel.Labels,
 				new FeeRate(originalFeeRate.SatoshiPerByte + i),
 				transactionToCancel.WalletInputs,
 				allowDoubleSpend: true,
@@ -155,16 +154,14 @@ public static class TransactionModifierWalletExtensions
 			{
 				destReq = new DestinationRequest(
 					scriptPubKey: coin.ScriptPubKey,
-					MoneyRequest.CreateAllRemaining(subtractFee: true),
-					labels: coin.HdPubKey.Labels);
+					MoneyRequest.CreateAllRemaining(subtractFee: true));
 			}
 			else
 			{
 				destReq = new DestinationRequest(
 					scriptPubKey: coin.ScriptPubKey,
 					amount: coin.Amount,
-					subtractFee: false,
-					labels: coin.HdPubKey.Labels);
+					subtractFee: false);
 			}
 
 			payments.Add(destReq);
@@ -180,8 +177,7 @@ public static class TransactionModifierWalletExtensions
 				scriptPubKey: largestForeignOutput.TxOut.ScriptPubKey,
 				ownOutput is null
 					? MoneyRequest.CreateAllRemaining(subtractFee: true)
-					: MoneyRequest.Create(largestForeignOutput.TxOut.Value),
-				labels: transactionToSpeedUp.Labels);
+					: MoneyRequest.Create(largestForeignOutput.TxOut.Value));
 			payments.Add(largestForeignOutputDestReq);
 
 			foreach (var output in foreignOutputs.Skip(1))
@@ -189,8 +185,7 @@ public static class TransactionModifierWalletExtensions
 				var destReq = new DestinationRequest(
 					scriptPubKey: output.TxOut.ScriptPubKey,
 					amount: output.TxOut.Value,
-					subtractFee: false,
-					labels: transactionToSpeedUp.Labels);
+					subtractFee: false);
 
 				payments.Add(destReq);
 			}
@@ -206,8 +201,6 @@ public static class TransactionModifierWalletExtensions
 			allowedInputs: allowedInputs,
 			allowDoubleSpend: true,
 			tryToSign: true);
-
-		rbf.Transaction.Labels = LabelsArray.Merge(rbf.Transaction.Labels, transactionToSpeedUp.Labels);
 
 		if (transactionToSpeedUp.IsCancellation)
 		{
@@ -255,7 +248,7 @@ public static class TransactionModifierWalletExtensions
 			// Let's only do this once, because the more we try to merge the more problematic it'll get from privacy point of view.
 			var remainingCoins = wallet.Coins
 				.Except(allowedInputs)
-				.Where(x => x.HdPubKey.Labels == ownOutput.HdPubKey.Labels || x.IsPrivate(wallet.AnonScoreTarget))
+				.Where(x => x.HdPubKey.Cluster == ownOutput.HdPubKey.Cluster || x.IsPrivate(wallet.AnonScoreTarget)) // Coins that are already linked to the output, or to nothing.
 				.OrderByDescending(x => x.Confirmed)
 				.ThenByDescending(x => x.Amount);
 
@@ -312,7 +305,6 @@ public static class TransactionModifierWalletExtensions
 		// Let's build a CPFP with best fee rate temporarily.
 		var tempTx = wallet.BuildChangelessTransaction(
 			destination,
-			LabelsArray.Empty,
 			bestFeeRate,
 			allowedInputs,
 			tryToSign: true);
@@ -324,7 +316,6 @@ public static class TransactionModifierWalletExtensions
 
 		var cpfp = wallet.BuildChangelessTransaction(
 			destination,
-			LabelsArray.Empty,
 			cpfpFeeRate,
 			allowedInputs,
 			tryToSign: true);

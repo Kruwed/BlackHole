@@ -19,13 +19,7 @@ public record SendFlowModel
 		Donate = donate;
 	}
 
-	/// <summary>Regular Send Flow. Uses all wallet coins</summary>
-	public SendFlowModel(Wallet wallet, IWalletModel walletModel, bool donate = false):
-		this(wallet, wallet.Coins, walletModel.Coins, donate)
-	{
-	}
-
-	/// <summary>Manual Control Send Flow. Uses only the specified coins.</summary>
+	/// <summary>A send flow uses only the coins that the user picked for it.</summary>
 	public SendFlowModel(Wallet wallet, IWalletModel walletModel, IEnumerable<SmartCoin> coins, IServices services, bool donate = false):
 		this(wallet, new CoinsView(coins), new UserSelectionCoinListModel(wallet, walletModel, coins.ToArray(), services), donate)
 	{
@@ -44,11 +38,4 @@ public record SendFlowModel
 	public decimal AvailableAmountBtc => AvailableAmount.ToDecimal(MoneyUnit.BTC);
 
 	public Money AvailableAmount => AvailableCoins.TotalAmount();
-
-	public bool IsManual => AvailableCoins.TotalAmount() != Wallet.Coins.TotalAmount();
-
-	public Pocket[] GetPockets() =>
-		AvailableCoins.GetPockets(Wallet.AnonScoreTarget)
-					  .Select(x => new Pocket(x))
-		              .ToArray();
 }

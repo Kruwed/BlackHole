@@ -4,8 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              xmlns:vm="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Settings"
-             xmlns:conv="clr-namespace:WalletWasabi.Fluent.Converters"
-             xmlns:models="clr-namespace:WalletWasabi.Models;assembly=WalletWasabi"
              x:DataType="vm:WalletSettingsViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Settings.WalletGeneralSettingsView">
@@ -19,18 +17,6 @@
              Watermark="Wallet name">
     </TextBox>
   </DockPanel>
-
-    <DockPanel>
-      <TextBlock Text="Default Send Workflow" />
-      <ComboBox ItemsSource="{Binding SendWorkflows}"
-                SelectedItem="{Binding DefaultSendWorkflow}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="models:SendWorkflow">
-            <TextBlock Text="{Binding Converter={x:Static conv:EnumConverters.ToFriendlyName}}" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-    </DockPanel>
 
   </StackPanel>
 

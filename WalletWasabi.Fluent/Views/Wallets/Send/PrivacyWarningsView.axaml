@@ -128,26 +128,13 @@
   <StackPanel>
     <ItemsControl ItemsSource="{Binding Warnings}">
       <ItemsControl.DataTemplates>
-        <!-- Interlinks Labels Warning -->
-        <DataTemplate DataType="{x:Type model:InterlinksLabelsWarning}">
+        <!-- Interlinks Coins Warning -->
+        <DataTemplate DataType="{x:Type model:InterlinksCoinsWarning}">
           <Border Classes="warning critical">
             <DockPanel>
               <PathIcon />
-              <TextBlock Text="Transaction interlinks labels:" Margin="0 0 5 0"
-                         ToolTip.Tip="Those entities know this is your transaction. Coinjoin more or use the label management tool to carefully select who would know that this transaction is yours." />
-              <LabelsItemsPresenter ItemsSource="{Binding Labels}" />
-            </DockPanel>
-          </Border>
-        </DataTemplate>
-
-        <!-- Transaction Known as Yours By Warning -->
-        <DataTemplate DataType="{x:Type model:TransactionKnownAsYoursByWarning}">
-          <Border Classes="warning critical">
-            <DockPanel>
-              <PathIcon />
-              <TextBlock Text="Transaction known as yours by:" Margin="0 0 5 0"
-                         ToolTip.Tip="Those entities know this is your transaction. Coinjoin more or use the label management tool to carefully select who would know that this transaction is yours." />
-              <LabelsItemsPresenter ItemsSource="{Binding Labels}" />
+              <TextBlock Text="Transaction links non-private coins to each other."
+                         ToolTip.Tip="Coins that are spent together are known to belong to the same wallet from then on. Whoever knows one of these coins as yours learns about the others. Coinjoin more, or pick coins that do not need to stay apart." />
             </DockPanel>
           </Border>
         </DataTemplate>
@@ -157,9 +144,8 @@
           <Border Classes="warning">
             <DockPanel>
               <PathIcon />
-              <TextBlock Text="Transaction interlinks recipients:" Margin="0 0 5 0"
+              <TextBlock Text="Transaction interlinks its recipients."
                          ToolTip.Tip="Every recipient of this transaction can see the payments to the others and learn that the same wallet made them. Send separate transactions to recipients who should not know about each other, or use Coinjoin Payments." />
-              <LabelsItemsPresenter ItemsSource="{Binding Labels}" />
             </DockPanel>
           </Border>
         </DataTemplate>
@@ -203,7 +189,7 @@
             <DockPanel>
               <PathIcon />
               <TextBlock Text="Transaction creates change."
-                         ToolTip.Tip="Change can be used to link this transaction with the next transaction that will use it. Use the change avoidance suggestion to send a little more or less if this is OK for the receiver, or coinjoin the change later." />
+                         ToolTip.Tip="Change can be used to link this transaction with the next transaction that will use it. Coinjoin the change later." />
             </DockPanel>
           </Border>
         </DataTemplate>
@@ -239,21 +225,6 @@
         <ListBoxPreviewBehavior PreviewItem="{Binding PreviewSuggestion, Mode=TwoWay}" />
       </Interaction.Behaviors>
       <ListBox.DataTemplates>
-
-        <!-- Label Management Suggestion -->
-        <DataTemplate DataType="{x:Type model:LabelManagementSuggestion}">
-          <SuggestionItem>
-            <DockPanel>
-              <PathIcon Data="{StaticResource entities_edit_regular}" />
-              <StackPanel Classes="suggestion">
-                <TextBlock Text="Label Management" Classes="title" />
-                <StackPanel Classes="description">
-                  <TextBlock Text="Choose labels to link with this transaction." />
-                </StackPanel>
-              </StackPanel>
-            </DockPanel>
-          </SuggestionItem>
-        </DataTemplate>
 
         <!-- Full Privacy Suggestion-->
         <DataTemplate DataType="{x:Type model:FullPrivacySuggestion}">

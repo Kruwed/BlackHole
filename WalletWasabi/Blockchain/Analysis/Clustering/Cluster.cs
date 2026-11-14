@@ -3,7 +3,6 @@ namespace WalletWasabi.Blockchain.Analysis.Clustering;
 public class Cluster(ImmutableHashSet<HdPubKey> keys) : IEquatable<Cluster>
 {
 	private readonly Lock _lock = new();
-	public LabelsArray Labels => LabelsArray.Merge(GetKeys().Select(x => x.Labels));
 
 	private ImmutableHashSet<HdPubKey> _keys = keys;
 
@@ -31,7 +30,7 @@ public class Cluster(ImmutableHashSet<HdPubKey> keys) : IEquatable<Cluster>
 		}
 	}
 
-	public override string ToString() => Labels;
+	public override string ToString() => $"Cluster of {GetKeys().Count} key(s)";
 
 	public override bool Equals(object? obj) => Equals(obj as Cluster);
 	public bool Equals(Cluster? other)

@@ -33,9 +33,9 @@ public partial class WalletCoinsModel(Wallet wallet, IWalletModel walletModel, I
 		return TransactionHelpers.TryBuildTransactionWithoutPrevTx(Wallet.KeyManager, transactionInfo, Wallet.Coins, coins.GetSmartCoins(), Wallet.Password, out _);
 	}
 
-	protected override Pocket[] GetPockets()
+	protected override CoinGroup[] GetGroups()
 	{
-		return Wallet.GetPockets().ToArray();
+		return Wallet.Coins.GetCoinGroups(Wallet.AnonScoreTarget).ToArray();
 	}
 
 	protected override CoinModel[] CreateCoinModels()

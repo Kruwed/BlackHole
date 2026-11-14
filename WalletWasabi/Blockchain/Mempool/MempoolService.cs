@@ -50,17 +50,6 @@ public class MempoolService(EventBus eventBus)
 		}
 	}
 
-	private LabelsArray TryGetLabel(uint256 txid)
-	{
-		var label = LabelsArray.Empty;
-		if (TryGetFromBroadcastStore(txid, out var entry))
-		{
-			label = entry.Transaction.Labels;
-		}
-
-		return label;
-	}
-
 	public bool IsProcessed(uint256 txid)
 	{
 		return _cache.TryGet(txid, out _);
@@ -71,7 +60,7 @@ public class MempoolService(EventBus eventBus)
 		var txId = tx.GetHash();
 		if (_cache.TryAdd(txId, true, TimeSpan.FromHours(1)))
 		{
-			var txAdded = new SmartTransaction(tx, Height.Mempool, labels: TryGetLabel(txId));
+			var txAdded = new SmartTransaction(tx, Height.Mempool);
 			eventBus.Publish(new NewTransactionInMempool(txAdded));
 		}
 	}

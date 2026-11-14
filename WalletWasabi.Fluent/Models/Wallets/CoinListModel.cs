@@ -2,7 +2,6 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Logging;
@@ -14,7 +13,8 @@ public interface ICoinListModel
 {
 	IObservableCache<CoinModel, int> List { get; }
 
-	IObservableCache<Pocket, LabelsArray> Pockets { get; }
+	/// <summary>The coins grouped by their privacy level.</summary>
+	IObservableCache<CoinGroup, PrivacyLevel> Groups { get; }
 
 	CoinModel GetCoinModel(SmartCoin smartCoin);
 
@@ -44,7 +44,7 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 				.Publish();
 
 		List = signals.Fetch(CreateCoinModels, x => x.Key).DisposeWith(_disposables);
-		Pockets = signals.Fetch(GetPockets, x => x.Labels).DisposeWith(_disposables);
+		Groups = signals.Fetch(GetGroups, x => x.PrivacyLevel).DisposeWith(_disposables);
 
 		signals
 			.Do(_ => Logger.LogDebug($"Refresh signal emitted in {walletModel.Name}"))
@@ -60,7 +60,7 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 
 	public IObservableCache<CoinModel, int> List { get; }
 
-	public IObservableCache<Pocket, LabelsArray> Pockets { get; }
+	public IObservableCache<CoinGroup, PrivacyLevel> Groups { get; }
 
 	public CoinModel GetCoinModel(SmartCoin smartCoin)
 	{
@@ -72,7 +72,7 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 		return new CoinModel(smartCoin, WalletModel.Network, WalletModel.Settings.AnonScoreTarget, _services);
 	}
 
-	protected abstract Pocket[] GetPockets();
+	protected abstract CoinGroup[] GetGroups();
 
 	protected abstract CoinModel[] CreateCoinModels();
 

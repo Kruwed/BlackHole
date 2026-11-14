@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace WalletWasabi.Fluent.Views.CoinControl.Core.Cells;
 
-public class LabelsCellView : UserControl
+public class PrivacyLevelCellView : UserControl
 {
-	public LabelsCellView()
+	public PrivacyLevelCellView()
 	{
 		InitializeComponent();
 	}

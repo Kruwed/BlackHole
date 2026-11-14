@@ -51,7 +51,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["anonymityScore"] = x.AnonymitySet,
 				["confirmed"] = x.Confirmed,
 				["confirmations"] = x.Transaction.GetConfirmations(serverTipHeight),
-				["label"] = x.HdPubKey.Labels.ToString(),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
 				["address"] = x.HdPubKey.GetAddress(Global.Network).ToString(),
 				["excludedFromCoinjoin"] = x.IsExcludedFromCoinJoin
@@ -163,44 +162,24 @@ public class WasabiJsonRpcService : IJsonRpcService
 		return info;
 	}
 
+	/// <summary>
+	/// Gives out a receive address that was not given out before.
+	/// </summary>
 	[JsonRpcMethod("getnewaddress")]
-	public JsonRpcResult GenerateReceiveAddress(string label)
+	public JsonRpcResult GenerateReceiveAddress()
 	{
 		AssertWalletIsLoaded();
-		label = Guard.NotNullOrEmptyOrWhitespace(nameof(label), label, true);
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
-		var hdKey = activeWallet.KeyManager.GetNextReceiveKey(new LabelsArray(label));
+		var hdKey = activeWallet.KeyManager.GetNextReceiveKey();
 
 		return new JsonRpcResult
 		{
 			["address"] = hdKey.GetAddress(Global.Network).ToString(),
 			["keyPath"] = hdKey.FullKeyPath.ToString(),
-			["label"] = hdKey.Labels.ToString(),
 			["publicKey"] = hdKey.PubKey.ToHex(),
 			["scriptPubKey"] = hdKey.GetAssumedScriptPubKey().ToHex()
 		};
-	}
-
-	[JsonRpcMethod("setlabel")]
-	public void SetLabel(BitcoinAddress address, string label)
-	{
-		// An unused address without a label goes back into the getnewaddress pool, so a label is required like there.
-		var labels = new LabelsArray(label);
-		if (labels.IsEmpty)
-		{
-			throw new ArgumentException($"{nameof(label)} must not be empty.");
-		}
-
-		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
-		AssertWalletIsLoaded();
-		var km = activeWallet.KeyManager;
-		if (!km.TryGetKeyForScriptPubKey(address.ScriptPubKey, out var hdPubKey))
-		{
-			throw new ArgumentException($"Address {address} does not belong to the wallet.");
-		}
-
-		hdPubKey.SetLabel(labels, km);
 	}
 
 	[JsonRpcMethod("getstatus", initializable: false)]
@@ -246,7 +225,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var payment = new PaymentIntent(
 			payments.Select(
 				p =>
-				new DestinationRequest(p.Sendto, MoneyRequest.Create(p.Amount, p.SubtractFee), new LabelsArray(p.Label))));
+				new DestinationRequest(p.Sendto, MoneyRequest.Create(p.Amount, p.SubtractFee))));
 		var result = ActiveWallet!.BuildTransaction(
 			password,
 			payment,
@@ -275,7 +254,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 		var payment = new PaymentIntent(
 			payments.Select(
 				p =>
-				new DestinationRequest(p.Sendto, MoneyRequest.Create(p.Amount, p.SubtractFee), new LabelsArray(p.Label))));
+				new DestinationRequest(p.Sendto, MoneyRequest.Create(p.Amount, p.SubtractFee))));
 		var result = ActiveWallet!.BuildTransactionWithoutOverpaymentProtection(
 			password,
 			payment,
@@ -449,7 +428,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["datetime"] = x.FirstSeen,
 				["height"] =  x.Height.ToString(),
 				["amount"] = x.Amount.Satoshi,
-				["label"] = x.Labels.ToString(),
 				["tx"] = x.GetHash(),
 				["islikelycoinjoin"] = x.IsOwnCoinjoin()
 			}).ToImmutableArray();
@@ -478,7 +456,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["fullKeyPath"] = x.FullKeyPath.ToString(),
 				["internal"] = x.IsInternal,
 				["keyState"] = x.KeyState,
-				["label"] = x.Labels.ToString(),
+				["handedOut"] = x.IsHandedOut,
 				["scriptPubKey"] = x.GetAssumedScriptPubKey().ToString(),
 				["pubkey"] = x.PubKey.ToString(),
 				["address"] = x.GetAddress(Global.Network).ToString()

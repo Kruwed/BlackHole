@@ -208,8 +208,6 @@ public class AllTransactionStore : ITransactionStore, IDisposable
 		return false;
 	}
 
-	/// <returns>Labels ordered by blockchain.</returns>
-	public IEnumerable<LabelsArray> GetLabels() => GetTransactions().Select(x => x.Labels);
 
 	public void Dispose()
 	{

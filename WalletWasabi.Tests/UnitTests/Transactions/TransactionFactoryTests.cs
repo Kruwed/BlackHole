@@ -27,8 +27,8 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Martin", 0, 0.01m, confirmed: true, anonymitySet: 1),
-				("Jean",   1, 0.02m, confirmed: true, anonymitySet: 1)
+				(0, 0.01m, confirmed: true, anonymitySet: 1),
+				(1, 0.02m, confirmed: true, anonymitySet: 1)
 			});
 
 		// We try to spend 100btc but we only have 0.03
@@ -49,7 +49,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo", 0, 0.0001m, confirmed: true, anonymitySet: 1)
+				(0, 0.0001m, confirmed: true, anonymitySet: 1)
 			});
 
 		using Key key = new();
@@ -67,7 +67,7 @@ public class TransactionFactoryTests
 		Assert.Throws<TransactionFeeOverpaymentException>(() => transactionFactory.BuildTransaction(txParameters));
 
 		// self spend case
-		var ownKey = transactionFactory.KeyManager.GetNextReceiveKey("Alice");
+		var ownKey = transactionFactory.KeyManager.GetNextReceiveKey();
 		var selfSpendPayment = new PaymentIntent(ownKey.GetAddress(transactionFactory.Network), MoneyRequest.CreateAllRemaining(subtractFee: true));
 		txParameters = CreateBuilder().SetPayment(selfSpendPayment).SetFeeRate(50m).Build();
 		Assert.Throws<TransactionFeeOverpaymentException>(() => transactionFactory.BuildTransaction(txParameters));
@@ -79,14 +79,14 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("", 0, 0.08m, confirmed: true, anonymitySet: 50),
-				("", 1, 0.16m, confirmed: true, anonymitySet: 200)
+				(0, 0.08m, confirmed: true, anonymitySet: 50),
+				(1, 0.16m, confirmed: true, anonymitySet: 200)
 			});
 
 		// There is a 0.08 coin with AS=50. However it selects the most private one with AS= 200
 		using Key key = new();
 		var destination = key;
-		var payment = new PaymentIntent(destination, Money.Coins(0.07m), label: "Sophie");
+		var payment = new PaymentIntent(destination, Money.Coins(0.07m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
@@ -100,8 +100,6 @@ public class TransactionFactoryTests
 		var changeCoin = Assert.Single(result.InnerWalletOutputs);
 		Assert.True(changeCoin.HdPubKey.IsInternal);
 
-		var changeCoinAndLabelPair = result.HdPubKeysWithNewLabels.First(x => x.Key == changeCoin.HdPubKey);
-		Assert.Equal("Sophie", changeCoinAndLabelPair.Value);
 	}
 
 	[Fact]
@@ -110,13 +108,13 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria",  0, 0.08m, confirmed: true, anonymitySet: 50),
-				("Joseph", 1, 0.16m, confirmed: true, anonymitySet: 200)
+				(0, 0.08m, confirmed: true, anonymitySet: 50),
+				(1, 0.16m, confirmed: true, anonymitySet: 200)
 			});
 
 		// There is a 0.8 coin with AS=50. However it selects the most private one with AS= 200
 		using Key key = new();
-		var payment = new PaymentIntent(key, Money.Coins(0.07m), label: "Sophie");
+		var payment = new PaymentIntent(key, Money.Coins(0.07m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
@@ -130,8 +128,6 @@ public class TransactionFactoryTests
 		var changeCoin = Assert.Single(result.InnerWalletOutputs);
 		Assert.True(changeCoin.HdPubKey.IsInternal);
 
-		var changeCoinAndLabelPair = result.HdPubKeysWithNewLabels.First(x => x.Key == changeCoin.HdPubKey);
-		Assert.Equal("Joseph, Sophie", changeCoinAndLabelPair.Value);
 	}
 
 	[Fact]
@@ -140,11 +136,11 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo",  0, 0.01m, confirmed: true, anonymitySet: 1),
-				("Jean",   1, 0.02m, confirmed: true, anonymitySet: 1),
-				("Daniel", 2, 0.04m, confirmed: true, anonymitySet: 100),
-				("Maria",  3, 0.08m, confirmed: true, anonymitySet: 50),
-				("Joseph", 4, 0.16m, confirmed: true, anonymitySet: 200)
+				(0, 0.01m, confirmed: true, anonymitySet: 1),
+				(1, 0.02m, confirmed: true, anonymitySet: 1),
+				(2, 0.04m, confirmed: true, anonymitySet: 100),
+				(3, 0.08m, confirmed: true, anonymitySet: 50),
+				(4, 0.16m, confirmed: true, anonymitySet: 200)
 			});
 
 		// It has to select the most private coins regardless of the amounts
@@ -172,15 +168,15 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo",  0, 0.01m, confirmed: false, anonymitySet: 10),
-				("Daniel", 1, 0.02m, confirmed: false, anonymitySet: 1),
-				("Daniel", 1, 0.04m, confirmed: true, anonymitySet: 1),
-				("Maria",  2, 0.08m, confirmed: true, anonymitySet: 20)
+				(0, 0.01m, confirmed: false, anonymitySet: 10),
+				(1, 0.02m, confirmed: false, anonymitySet: 1),
+				(1, 0.04m, confirmed: true, anonymitySet: 1),
+				(2, 0.08m, confirmed: true, anonymitySet: 20)
 			});
 
 		// Selecting 0.08 + 0.04 should be enough but it has to select 0.02 too because it is the same address
 		using Key key = new();
-		var payment = new PaymentIntent(key, Money.Coins(0.1m), label: "Sophie");
+		var payment = new PaymentIntent(key, Money.Coins(0.1m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
@@ -189,8 +185,6 @@ public class TransactionFactoryTests
 		Assert.Equal(Money.Coins(0.14m), result.SpentCoins.Select(x => x.Amount).Sum());
 
 		var changeCoin = Assert.Single(result.InnerWalletOutputs);
-		var changeCoinAndLabelPair = result.HdPubKeysWithNewLabels.First(x => x.Key == changeCoin.HdPubKey);
-		Assert.Equal("Daniel, Maria, Sophie", changeCoinAndLabelPair.Value);
 
 		var tx = result.Transaction.Transaction;
 
@@ -205,23 +199,12 @@ public class TransactionFactoryTests
 		var password = "foo";
 		var keyManager = ServiceFactory.CreateKeyManager(password);
 
-		HdPubKey NewKey(string label) => keyManager.GenerateNewKey(label, KeyState.Used, true);
-		var sCoins = new[]
-		{
-			BitcoinFactory.CreateSmartCoin(NewKey("Pablo"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Daniel"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Adolf"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Maria"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Ding"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Joseph"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Eve"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Julio"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Donald, Jean, Lee, Jack"), 0.9m),
-			BitcoinFactory.CreateSmartCoin(NewKey("Satoshi"), 0.9m)
-		};
-		var coinsByLabel = sCoins.ToDictionary(x => x.HdPubKey.Labels);
+		HdPubKey NewKey() => keyManager.GenerateNewKey(KeyState.Used, true);
+		var sCoins = Enumerable.Range(0, 10)
+			.Select(_ => BitcoinFactory.CreateSmartCoin(NewKey(), 0.9m))
+			.ToArray();
 
-		// cluster 1 is known by 7 people: Pablo, Daniel, Adolf, Maria, Ding, Joseph and Eve
+		// cluster 1 holds seven coins
 		var coinsCluster1 = new[] { sCoins[0], sCoins[1], sCoins[2], sCoins[3], sCoins[4], sCoins[5], sCoins[6] };
 		var cluster1 = new Cluster(coinsCluster1.Select(x => x.HdPubKey).ToImmutableHashSet());
 		foreach (var coin in coinsCluster1)
@@ -229,7 +212,7 @@ public class TransactionFactoryTests
 			coin.HdPubKey.Cluster = cluster1;
 		}
 
-		// cluster 2 is known by 6 people: Julio, Lee, Jean, Donald, Jack and Satoshi
+		// cluster 2 holds three coins
 		var coinsCluster2 = new[] { sCoins[7], sCoins[8], sCoins[9] };
 		var cluster2 = new Cluster(coinsCluster2.Select(x => x.HdPubKey).ToImmutableHashSet());
 		foreach (var coin in coinsCluster2)
@@ -240,47 +223,47 @@ public class TransactionFactoryTests
 		var coinsView = new CoinsView(sCoins.ToArray());
 		var transactionFactory = new TransactionFactory(Network.Main, keyManager, coinsView, password);
 
-		// Two 0.9btc coins are enough
+		// Two 0.9btc coins are enough: they come from the cluster that is the closest to the amount
 		using Key key1 = new();
-		var payment = new PaymentIntent(key1, Money.Coins(1.75m), label: "Sophie");
+		var payment = new PaymentIntent(key1, Money.Coins(1.75m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
 		Assert.Equal(2, result.SpentCoins.Count());
 		Assert.All(result.SpentCoins, c => Assert.Equal(c.HdPubKey.Cluster, cluster2));
-		Assert.Contains(coinsByLabel["Julio"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Donald, Jean, Lee, Jack"], result.SpentCoins);
+		Assert.Contains(sCoins[7], result.SpentCoins);
+		Assert.Contains(sCoins[8], result.SpentCoins);
 
 		// Three 0.9btc coins are enough
 		using Key key2 = new();
-		payment = new PaymentIntent(key2, Money.Coins(1.85m), label: "Sophie");
+		payment = new PaymentIntent(key2, Money.Coins(1.85m));
 		txParameters = CreateBuilder().SetPayment(payment).Build();
 		result = transactionFactory.BuildTransaction(txParameters);
 
 		Assert.Equal(3, result.SpentCoins.Count());
 		Assert.All(result.SpentCoins, c => Assert.Equal(c.HdPubKey.Cluster, cluster2));
-		Assert.Contains(coinsByLabel["Julio"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Donald, Jean, Lee, Jack"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Satoshi"], result.SpentCoins);
+		Assert.Contains(sCoins[7], result.SpentCoins);
+		Assert.Contains(sCoins[8], result.SpentCoins);
+		Assert.Contains(sCoins[9], result.SpentCoins);
 
-		// Four 0.9btc coins are enough but this time the more private cluster is NOT enough
+		// Four 0.9btc coins are enough but this time the smaller cluster is NOT enough
 		// That's why it has to use the coins in the cluster number 1
 		using Key key3 = new();
-		payment = new PaymentIntent(key3, Money.Coins(3.5m), label: "Sophie");
+		payment = new PaymentIntent(key3, Money.Coins(3.5m));
 		txParameters = CreateBuilder().SetPayment(payment).Build();
 		result = transactionFactory.BuildTransaction(txParameters);
 
 		Assert.Equal(4, result.SpentCoins.Count());
 		Assert.All(result.SpentCoins, c => Assert.Equal(c.HdPubKey.Cluster, cluster1));
-		Assert.Contains(coinsByLabel["Pablo"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Daniel"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Adolf"], result.SpentCoins);
-		Assert.Contains(coinsByLabel["Maria"], result.SpentCoins);
+		Assert.Contains(sCoins[0], result.SpentCoins);
+		Assert.Contains(sCoins[1], result.SpentCoins);
+		Assert.Contains(sCoins[2], result.SpentCoins);
+		Assert.Contains(sCoins[3], result.SpentCoins);
 
 		// Nine 0.9btc coins are enough but there is no cluster big enough
 		// That's why it has to use the coins from both the clusters
 		using Key key = new();
-		payment = new PaymentIntent(key, Money.Coins(7.4m), label: "Sophie");
+		payment = new PaymentIntent(key, Money.Coins(7.4m));
 		txParameters = CreateBuilder().SetPayment(payment).Build();
 		result = transactionFactory.BuildTransaction(txParameters);
 
@@ -293,7 +276,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria", 0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key = new();
@@ -324,7 +307,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria", 0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key1 = new();
@@ -359,7 +342,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria", 0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key1 = new();
@@ -385,7 +368,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria", 0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key = new();
@@ -419,10 +402,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Maria",  0, 0.5m, confirmed: false, anonymitySet: 1),
-				("Joseph", 1, 0.4m, confirmed: true, anonymitySet: 10),
-				("Eve",    2, 0.3m, confirmed: false, anonymitySet: 40),
-				("Julio",  3, 0.2m, confirmed: true, anonymitySet: 100)
+				(0, 0.5m, confirmed: false, anonymitySet: 1),
+				(1, 0.4m, confirmed: true, anonymitySet: 10),
+				(2, 0.3m, confirmed: false, anonymitySet: 40),
+				(3, 0.2m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key = new();
@@ -446,10 +429,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo",  0, 0.01m, confirmed: false, anonymitySet: 50),
-				("Daniel", 1, 0.02m, confirmed: false, anonymitySet: 1),
-				("Jack",  2, 0.04m, confirmed: true, anonymitySet: 1),
-				("Maria",  3, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false, anonymitySet: 50),
+				(1, 0.02m, confirmed: false, anonymitySet: 1),
+				(2, 0.04m, confirmed: true, anonymitySet: 1),
+				(3, 0.08m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key = new();
@@ -457,8 +440,8 @@ public class TransactionFactoryTests
 		var coins = transactionFactory.Coins;
 		var allowedCoins = new[]
 		{
-			coins.Single(x => x.HdPubKey.Labels == "Maria"),
-			coins.Single(x => x.HdPubKey.Labels == "Jack")
+			coins.Single(x => x.Amount == Money.Coins(0.08m)),
+			coins.Single(x => x.Amount == Money.Coins(0.04m))
 		}.ToArray();
 
 		var txParameters = CreateBuilder()
@@ -479,10 +462,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo",  0, 0.01m, confirmed: false, anonymitySet: 50),
-				("Daniel", 1, 0.02m, confirmed: false, anonymitySet: 1),
-				("Jack",  2, 0.04m, confirmed: true, anonymitySet: 1),
-				("Maria",  3, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false, anonymitySet: 50),
+				(1, 0.02m, confirmed: false, anonymitySet: 1),
+				(2, 0.04m, confirmed: true, anonymitySet: 1),
+				(3, 0.08m, confirmed: true, anonymitySet: 100)
 			});
 
 		using Key key = new();
@@ -491,9 +474,9 @@ public class TransactionFactoryTests
 		var coins = transactionFactory.Coins;
 		var allowedCoins = new[]
 		{
-			coins.Single(x => x.HdPubKey.Labels == "Pablo"),
-			coins.Single(x => x.HdPubKey.Labels == "Maria"),
-			coins.Single(x => x.HdPubKey.Labels == "Jack")
+			coins.Single(x => x.Amount == Money.Coins(0.01m)),
+			coins.Single(x => x.Amount == Money.Coins(0.08m)),
+			coins.Single(x => x.Amount == Money.Coins(0.04m))
 		}.ToArray();
 
 		var txParameters = CreateBuilder()
@@ -520,13 +503,13 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo", 0, 0.01m, confirmed: true, anonymitySet: 1),
-				("Jean",  1, 0.08m, confirmed: true, anonymitySet: 1)
+				(0, 0.01m, confirmed: true, anonymitySet: 1),
+				(1, 0.08m, confirmed: true, anonymitySet: 1)
 			});
 
 		var allowedCoins = new[]
 		{
-			transactionFactory.Coins.Single(x => x.HdPubKey.Labels == "Pablo")
+			transactionFactory.Coins.Single(x => x.Amount == Money.Coins(0.01m))
 		}.ToArray();
 
 		var amount = Money.Coins(0.5m); // it is not enough
@@ -550,10 +533,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				("Pablo",  0, 0.01m, confirmed: false, anonymitySet: 50),
-				("Jack", 1, 0.02m, confirmed: false, anonymitySet: 1),
-				("Jack", 1, 0.04m, confirmed: true, anonymitySet: 1),
-				("Maria",  2, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false, anonymitySet: 50),
+				(1, 0.02m, confirmed: false, anonymitySet: 1),
+				(1, 0.04m, confirmed: true, anonymitySet: 1),
+				(2, 0.08m, confirmed: true, anonymitySet: 100)
 			});
 
 		// Selecting 0.08 + 0.02 should be enough but it has to select 0.02 too because it is the same address
@@ -578,9 +561,9 @@ public class TransactionFactoryTests
 
 		Assert.Equal(Money.Coins(0.14m), result.SpentCoins.Select(x => x.Amount).Sum());
 		Assert.Equal(3, result.SpentCoins.Count());
-		var jackCoin = coins.Where(x => x.HdPubKey.Labels == "Jack").ToArray();
-		Assert.Contains(jackCoin[0], result.SpentCoins);
-		Assert.Contains(jackCoin[1], result.SpentCoins);
+		var sameAddressCoins = coins.GroupBy(x => x.ScriptPubKey).Single(x => x.Count() == 2).ToArray();
+		Assert.Contains(sameAddressCoins[0], result.SpentCoins);
+		Assert.Contains(sameAddressCoins[1], result.SpentCoins);
 	}
 
 	/// <summary>
@@ -614,88 +597,88 @@ public class TransactionFactoryTests
 
 		var coins = new[]
 		{
-			("", 0, 0.00118098m, true, 1),
-			("", 1, 0.02000000m, true, 1),
-			("", 2, 0.00008192m, true, 1),
-			("", 3, 0.00005000m, true, 2),
-			("", 4, 0.02000000m, true, 1),
-			("", 5, 0.02000000m, true, 1),
-			("", 6, 0.00531441m, true, 1),
-			("", 7, 0.02000000m, true, 1),
-			("", 8, 0.02000000m, true, 1),
-			("", 9, 0.02000000m, true, 1),
-			("", 10, 0.00531441m, true, 1),
-			("", 11, 0.02000000m, true, 1),
-			("", 12, 0.00006561m, true, 1),
-			("", 13, 0.00354294m, true, 1),
-			("", 14, 0.00020000m, true, 1),
-			("", 15, 0.00354294m, true, 1),
-			("", 16, 0.02097152m, true, 2),
-			("", 17, 0.00006561m, true, 1),
-			("", 18, 0.02097152m, true, 3),
-			("", 19, 0.00006561m, true, 1),
-			("", 20, 0.00006561m, true, 1),
-			("", 21, 0.04782969m, true, 5),
-			("", 22, 0.00005000m, true, 6),
-			("", 23, 0.00006561m, true, 1),
-			("", 24, 0.02097152m, true, 4),
-			("", 25, 0.02097152m, true, 5),
-			("", 26, 0.04782847m, true, 1),
-			("", 27, 0.00158637m, true, 1),
-			("", 28, 0.00100000m, true, 4),
-			("", 29, 0.00008192m, true, 1),
-			("", 30, 0.00006561m, true, 1),
-			("", 31, 0.02097152m, true, 1),
-			("", 32, 0.00006561m, true, 5),
-			("", 33, 0.00005000m, true, 2),
-			("", 34, 0.00354294m, true, 1),
-			("", 35, 0.00006561m, true, 4),
-			("", 36, 0.00065536m, true, 3),
-			("", 37, 0.00005000m, true, 2),
-			("", 38, 0.02000000m, true, 1),
-			("", 39, 0.00006561m, true, 1),
-			("", 40, 0.00006561m, true, 1),
-			("", 41, 0.00005000m, true, 1),
-			("", 42, 0.02097152m, true, 5),
-			("", 43, 0.02097152m, true, 3),
-			("", 44, 0.00065536m, true, 1),
-			("", 45, 0.02097152m, true, 1),
-			("", 46, 0.00006561m, true, 1),
-			("", 47, 0.00531441m, true, 1),
-			("", 48, 0.00006561m, true, 1),
-			("", 49, 0.02097152m, true, 5),
-			("", 50, 0.00013122m, true, 1),
-			("", 51, 0.00006561m, true, 1),
-			("", 52, 0.02000000m, true, 1),
-			("", 53, 0.02000000m, true, 1),
-			("", 54, 0.00050000m, true, 1),
-			("", 55, 0.00005648m, true, 1),
-			("", 56, 0.00020000m, true, 4),
-			("", 57, 0.00006561m, true, 1),
-			("", 58, 0.02097152m, true, 1),
-			("", 59, 0.02000000m, true, 1),
-			("", 60, 0.00006561m, true, 1),
-			("", 61, 0.02097152m, true, 5),
-			("", 62, 0.02000000m, true, 5),
-			("", 63, 0.00008192m, true, 1),
-			("", 64, 0.02097152m, true, 4),
-			("", 65, 0.00006561m, true, 1),
-			("", 66, 0.00005000m, true, 2),
-			("", 67, 0.04782969m, true, 5),
-			("", 68, 0.02000000m, true, 1),
-			("", 69, 0.00006019m, true, 2),
-			("", 70, 0.00006561m, true, 5),
-			("", 71, 0.02000000m, true, 5),
-			("", 72, 0.02097152m, true, 5),
-			("", 73, 0.02000000m, true, 1),
-			("", 74, 0.00006561m, true, 1),
-			("", 75, 0.00354294m, true, 1),
-			("", 76, 0.15804864m, true, 1),
-			("", 77, 0.02097152m, true, 2),
-			("", 78, 0.00006561m, true, 5),
-			("", 79, 0.00200000m, true, 2),
-			("", 80, 0.00005892m, true, 1),
-			("", 81, 0.00006292m, true, 1)
+			(0, 0.00118098m, true, 1),
+			(1, 0.02000000m, true, 1),
+			(2, 0.00008192m, true, 1),
+			(3, 0.00005000m, true, 2),
+			(4, 0.02000000m, true, 1),
+			(5, 0.02000000m, true, 1),
+			(6, 0.00531441m, true, 1),
+			(7, 0.02000000m, true, 1),
+			(8, 0.02000000m, true, 1),
+			(9, 0.02000000m, true, 1),
+			(10, 0.00531441m, true, 1),
+			(11, 0.02000000m, true, 1),
+			(12, 0.00006561m, true, 1),
+			(13, 0.00354294m, true, 1),
+			(14, 0.00020000m, true, 1),
+			(15, 0.00354294m, true, 1),
+			(16, 0.02097152m, true, 2),
+			(17, 0.00006561m, true, 1),
+			(18, 0.02097152m, true, 3),
+			(19, 0.00006561m, true, 1),
+			(20, 0.00006561m, true, 1),
+			(21, 0.04782969m, true, 5),
+			(22, 0.00005000m, true, 6),
+			(23, 0.00006561m, true, 1),
+			(24, 0.02097152m, true, 4),
+			(25, 0.02097152m, true, 5),
+			(26, 0.04782847m, true, 1),
+			(27, 0.00158637m, true, 1),
+			(28, 0.00100000m, true, 4),
+			(29, 0.00008192m, true, 1),
+			(30, 0.00006561m, true, 1),
+			(31, 0.02097152m, true, 1),
+			(32, 0.00006561m, true, 5),
+			(33, 0.00005000m, true, 2),
+			(34, 0.00354294m, true, 1),
+			(35, 0.00006561m, true, 4),
+			(36, 0.00065536m, true, 3),
+			(37, 0.00005000m, true, 2),
+			(38, 0.02000000m, true, 1),
+			(39, 0.00006561m, true, 1),
+			(40, 0.00006561m, true, 1),
+			(41, 0.00005000m, true, 1),
+			(42, 0.02097152m, true, 5),
+			(43, 0.02097152m, true, 3),
+			(44, 0.00065536m, true, 1),
+			(45, 0.02097152m, true, 1),
+			(46, 0.00006561m, true, 1),
+			(47, 0.00531441m, true, 1),
+			(48, 0.00006561m, true, 1),
+			(49, 0.02097152m, true, 5),
+			(50, 0.00013122m, true, 1),
+			(51, 0.00006561m, true, 1),
+			(52, 0.02000000m, true, 1),
+			(53, 0.02000000m, true, 1),
+			(54, 0.00050000m, true, 1),
+			(55, 0.00005648m, true, 1),
+			(56, 0.00020000m, true, 4),
+			(57, 0.00006561m, true, 1),
+			(58, 0.02097152m, true, 1),
+			(59, 0.02000000m, true, 1),
+			(60, 0.00006561m, true, 1),
+			(61, 0.02097152m, true, 5),
+			(62, 0.02000000m, true, 5),
+			(63, 0.00008192m, true, 1),
+			(64, 0.02097152m, true, 4),
+			(65, 0.00006561m, true, 1),
+			(66, 0.00005000m, true, 2),
+			(67, 0.04782969m, true, 5),
+			(68, 0.02000000m, true, 1),
+			(69, 0.00006019m, true, 2),
+			(70, 0.00006561m, true, 5),
+			(71, 0.02000000m, true, 5),
+			(72, 0.02097152m, true, 5),
+			(73, 0.02000000m, true, 1),
+			(74, 0.00006561m, true, 1),
+			(75, 0.00354294m, true, 1),
+			(76, 0.15804864m, true, 1),
+			(77, 0.02097152m, true, 2),
+			(78, 0.00006561m, true, 5),
+			(79, 0.00200000m, true, 2),
+			(80, 0.00005892m, true, 1),
+			(81, 0.00006292m, true, 1)
 		};
 
 		TransactionFactory transactionFactory = ServiceFactory.CreateTransactionFactory(coins);
@@ -790,7 +773,7 @@ public class TransactionFactoryTests
 			TransactionFactory transactionFactory = ServiceFactory.CreateTransactionFactory(
 				new[]
 				{
-					(Label: "Pablo", KeyIndex: 0, Amount: 0.00011409m, Confirmed: true, AnonymitySet: 1)
+					(KeyIndex: 0, Amount: 0.00011409m, Confirmed: true, AnonymitySet: 1)
 				});
 
 			using Key key = new();
@@ -829,7 +812,7 @@ public class TransactionFactoryTests
 		var keyManager = ServiceFactory.CreateKeyManager("password", seed: ServiceFactory.FixedSeed);
 
 		// Generates a pubkey to receive funds (1 BTC)
-		var pubkey = keyManager.GetNextReceiveKey(LabelsArray.Empty);
+		var pubkey = keyManager.GetNextReceiveKey();
 		var creditingTx = CreateCreditingTransaction(pubkey.GetAssumedScriptPubKey(), Money.Coins(1));
 
 		// Configure a TransactionFactory to use the only UTXO available
@@ -876,7 +859,7 @@ public class TransactionFactoryTests
 		var keyManager = ServiceFactory.CreateKeyManager("password", seed: ServiceFactory.FixedSeed);
 
 		// Generates a pubkey to receive funds (1 BTC)
-		var pubkey = keyManager.GetNextReceiveKey(LabelsArray.Empty);
+		var pubkey = keyManager.GetNextReceiveKey();
 		var creditingTx = CreateCreditingTransaction(pubkey.GetAssumedScriptPubKey(), Money.Coins(1));
 
 		// Configure a TransactionFactory to use the only UTXO available

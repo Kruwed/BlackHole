@@ -197,9 +197,9 @@ public class Wallet : BackgroundService
 			: mapByTxid.Values.OrderByBlockchain().ToList();
 	}
 
-	public HdPubKey GetNextReceiveAddress(IEnumerable<string> destinationLabels)
+	public HdPubKey GetNextReceiveAddress()
 	{
-		return KeyManager.GetNextReceiveKey(new LabelsArray(destinationLabels));
+		return KeyManager.GetNextReceiveKey();
 	}
 
 	public int GetPrivacyPercentage()
@@ -437,20 +437,5 @@ public class Wallet : BackgroundService
 	{
 		var excludedOutpoints = Coins.Where(c => c.IsExcludedFromCoinJoin).Select(c => c.Outpoint);
 		KeyManager.SetExcludedCoinsFromCoinJoin(excludedOutpoints);
-	}
-
-	public void UpdateUsedHdPubKeysLabels(Dictionary<HdPubKey, LabelsArray> hdPubKeysWithLabels)
-	{
-		if (hdPubKeysWithLabels.Count == 0)
-		{
-			return;
-		}
-
-		foreach (var item in hdPubKeysWithLabels)
-		{
-			item.Key.SetLabel(item.Value);
-		}
-
-		KeyManager.ToFile();
 	}
 }

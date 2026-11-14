@@ -8,9 +8,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using Avalonia.Controls;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Controls.Sorting;
 using WalletWasabi.Fluent.Helpers;
+using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
@@ -77,22 +77,22 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 
 		Selection = selection;
 
-		availableCoins.Pockets
+		availableCoins.Groups
 			.Connect(suppressEmptyChangeSets: false)
 			.ToCollection()
 			.Do(
-				pockets =>
+				groups =>
 				{
 					IList<CoinModel> oldSelection = Selection.ToArray();
-					var oldExpandedItemsLabel = _itemsCollection.Where(x => x.IsExpanded).Select(x => x.Labels).ToArray();
-					Rebuild(viewModels, pockets, availableCoins);
+					var oldExpandedItemKeys = _itemsCollection.Where(x => x.IsExpanded).Select(x => x.Key).ToArray();
+					Rebuild(viewModels, groups, availableCoins);
 					UpdateSelection(coinItemsCollection, oldSelection);
-					RestoreExpandedRows(oldExpandedItemsLabel);
+					RestoreExpandedRows(oldExpandedItemKeys);
 
-					// For user convenience, expand the only available pocket.
-					if (_itemsCollection is [PocketViewModel pocket])
+					// For user convenience, expand the only available group.
+					if (_itemsCollection is [CoinGroupViewModel group])
 					{
-						pocket.IsExpanded = true;
+						group.IsExpanded = true;
 					}
 				})
 			.Subscribe()
@@ -116,7 +116,7 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 			new SortableItem("Status") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[0], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[0], ListSortDirection.Descending)) },
 			new SortableItem("Date") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[1], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[1], ListSortDirection.Descending)) },
 			new SortableItem("Amount") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[2], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[2], ListSortDirection.Descending)) },
-			new SortableItem("Label") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Descending)) },
+			new SortableItem("Privacy") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Descending)) },
 		];
 
 		SetInitialSelection(initialCoinSelection);
@@ -160,29 +160,29 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 		}
 	}
 
-	private void Rebuild(ISourceList<CoinListItem> source, IEnumerable<Pocket> pockets, ICoinListModel availableCoins)
+	private void Rebuild(ISourceList<CoinListItem> source, IEnumerable<CoinGroup> groups, ICoinListModel availableCoins)
 	{
 		var newItems =
-			pockets.Select(pocket =>
+			groups.Select(group =>
 			{
-				// When it's single coin pocket, return its unique coin
-				if (pocket.Coins.Count() == 1)
+				// A group of a single coin is shown as that coin.
+				if (group.Coins.Count() == 1)
 				{
-					var coin = pocket.Coins.First();
+					var coin = group.Coins.First();
 					var coinModel = availableCoins.GetCoinModel(coin);
 
-					return (CoinListItem)new CoinViewModel(UiContext, pocket.Labels, coinModel, _ignorePrivacyMode, _allowCoinjoiningCoinSelection);
+					return (CoinListItem)new CoinViewModel(UiContext, group.Title, coinModel, _allowCoinjoiningCoinSelection, _ignorePrivacyMode);
 				}
 
-				return new PocketViewModel(UiContext, pocket, availableCoins, _allowCoinjoiningCoinSelection, _ignorePrivacyMode);
+				return new CoinGroupViewModel(UiContext, group, availableCoins, _allowCoinjoiningCoinSelection, _ignorePrivacyMode);
 			});
 
 		source.EditDiff(newItems, new LambdaComparer<CoinListItem>((a, b) => Equals(a?.Key, b?.Key)));
 	}
 
-	private void RestoreExpandedRows(IEnumerable<LabelsArray> oldItemsLabels)
+	private void RestoreExpandedRows(IEnumerable<string> oldItemKeys)
 	{
-		var itemsToExpand = _itemsCollection.Where(item => oldItemsLabels.Any(label => item.Labels.Equals(label)));
+		var itemsToExpand = _itemsCollection.Where(item => oldItemKeys.Contains(item.Key));
 
 		foreach (var item in itemsToExpand)
 		{

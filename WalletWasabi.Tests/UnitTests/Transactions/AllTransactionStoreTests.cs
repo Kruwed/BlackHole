@@ -2,7 +2,6 @@ using NBitcoin;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Extensions;
 using WalletWasabi.Models;
@@ -33,7 +32,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -44,7 +42,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -55,7 +52,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -67,7 +63,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 307,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -78,7 +73,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 346,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -89,7 +83,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580673),
 			blockHash: uint256.Parse("0000000017b09a77b815f3df513ff698d1f3b0e8c5e16ac0d6558e2d831f3bf9"),
 			blockIndex: 130,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -143,7 +136,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -154,7 +146,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -165,7 +156,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -176,7 +166,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 307,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -187,7 +176,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 346,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -198,7 +186,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580673),
 			blockHash: uint256.Parse("0000000017b09a77b815f3df513ff698d1f3b0e8c5e16ac0d6558e2d831f3bf9"),
 			blockIndex: 130,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -281,7 +268,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -292,7 +278,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -303,7 +288,6 @@ public class AllTransactionStoreTests
 			Height.Mempool,
 			blockHash: null,
 			blockIndex: 0,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -314,7 +298,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 307,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -325,7 +308,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580176),
 			blockHash: uint256.Parse("0000000034522ee38f074e1f4330b9c2f20c6a2b9a96de6f474a5f5f8fa76e2b"),
 			blockIndex: 346,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -336,7 +318,6 @@ public class AllTransactionStoreTests
 			new ChainHeight(1580673),
 			blockHash: uint256.Parse("0000000017b09a77b815f3df513ff698d1f3b0e8c5e16ac0d6558e2d831f3bf9"),
 			blockIndex: 130,
-			new LabelsArray(""),
 			isReplacement: false,
 			isSpeedup: false,
 			isCancellation: false,
@@ -431,8 +412,8 @@ public class AllTransactionStoreTests
 		Height.ChainHeight reorgedBlockHeight = new Height.ChainHeight(34532);
 		uint256 reorgedBlockHash = new(5);
 
-		var tx1Confirmed = new SmartTransaction(uTx1.Transaction, reorgedBlockHeight, blockHash: reorgedBlockHash, labels: "buz, qux");
-		var tx2Confirmed = new SmartTransaction(uTx2.Transaction, reorgedBlockHeight, blockHash: reorgedBlockHash, labels: "buz, qux");
+		var tx1Confirmed = new SmartTransaction(uTx1.Transaction, reorgedBlockHeight, blockHash: reorgedBlockHash);
+		var tx2Confirmed = new SmartTransaction(uTx2.Transaction, reorgedBlockHeight, blockHash: reorgedBlockHash);
 		Assert.True(txStore.TryUpdate(tx1Confirmed));
 		Assert.True(txStore.TryUpdate(tx2Confirmed));
 

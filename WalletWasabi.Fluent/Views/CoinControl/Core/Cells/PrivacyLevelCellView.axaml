@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:coins="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Coins"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="WalletWasabi.Fluent.Views.CoinControl.Core.Cells.PrivacyLevelCellView"
+             x:DataType="coins:CoinListItem"
+             x:CompileBindings="True">
+
+  <UserControl.Styles>
+    <Style Selector="Border.privacyLevel">
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Padding" Value="12 4" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource TextControlForeground}" />
+    </Style>
+    <Style Selector="Border.privacyLevel.SemiPrivate">
+      <Setter Property="Background" Value="{DynamicResource PrivacyLevelMediumBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource PrivacyLevelMediumBrush}" />
+    </Style>
+    <Style Selector="Border.privacyLevel.Private">
+      <Setter Property="Background" Value="{DynamicResource PrivacyLevelStrongBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource PrivacyLevelStrongBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- Coins that are listed inside their group have no title: the group row carries it. -->
+  <Border Classes="privacyLevel"
+          Classes.SemiPrivate="{Binding IsSemiPrivate}"
+          Classes.Private="{Binding IsPrivate}"
+          IsVisible="{Binding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Center"
+          Margin="20 0">
+    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextForegroundColor}" />
+  </Border>
+</UserControl>

@@ -55,17 +55,15 @@ public static class TransactionBuilderWalletExtensions
 	public static BuildTransactionResult BuildChangelessTransaction(
 		this Wallet wallet,
 		Destination destination,
-		LabelsArray label,
 		FeeRate feeRate,
 		IEnumerable<SmartCoin> allowedInputs,
 		bool allowDoubleSpend = false,
 		bool tryToSign = true)
-		=> wallet.BuildChangelessTransaction(destination, label, feeRate, allowedInputs.Select(coin => coin.Outpoint), allowDoubleSpend, tryToSign);
+		=> wallet.BuildChangelessTransaction(destination, feeRate, allowedInputs.Select(coin => coin.Outpoint), allowDoubleSpend, tryToSign);
 
 	public static BuildTransactionResult BuildChangelessTransaction(
 		this Wallet wallet,
 		Destination destination,
-		LabelsArray label,
 		FeeRate feeRate,
 		IEnumerable<OutPoint> allowedInputs,
 		bool allowDoubleSpend = false,
@@ -75,12 +73,10 @@ public static class TransactionBuilderWalletExtensions
 			{
 				Destination.Loudly loudly => new PaymentIntent(
 					scriptPubKey: loudly.ScriptPubKey,
-					amount: MoneyRequest.CreateAllRemaining(subtractFee: true),
-					label: label),
+					amount: MoneyRequest.CreateAllRemaining(subtractFee: true)),
 				Destination.Silent silent => new PaymentIntent(
 					address: silent.Address,
-					amount: MoneyRequest.CreateAllRemaining(subtractFee: true),
-					label: label),
+					amount: MoneyRequest.CreateAllRemaining(subtractFee: true)),
 				_ => throw new InvalidOperationException("Unknown destination type")
 			};
 
@@ -100,7 +96,6 @@ public static class TransactionBuilderWalletExtensions
 		this Wallet wallet,
 		Destination destination,
 		Money amount,
-		LabelsArray label,
 		FeeRate feeRate,
 		IEnumerable<SmartCoin> coins,
 		bool subtractFee,
@@ -109,8 +104,7 @@ public static class TransactionBuilderWalletExtensions
 		var intent = new PaymentIntent(
 			destination: destination,
 			amount: amount,
-			subtractFee: subtractFee,
-			label: label);
+			subtractFee: subtractFee);
 
 		var txRes = wallet.BuildTransaction(
 			password: wallet.Password,

@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
 using NBitcoin;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Models.Wallets;
 
@@ -26,7 +25,6 @@ public class PrivacyRingItemViewModel : IPrivacyRingPreviewItem
 		Unconfirmed = !coin.IsConfirmed;
 		Confirmations = coin.Confirmations;
 		AnonScoreText = $"{coin.AnonScore}";
-		Labels = coin.Labels;
 
 		PrivacyLevelText = GetPrivacyLevelDescription();
 
@@ -63,7 +61,6 @@ public class PrivacyRingItemViewModel : IPrivacyRingPreviewItem
 	public bool IsSemiPrivate { get; }
 	public bool IsNonPrivate { get; }
 	public string AnonScoreText { get; }
-	public LabelsArray Labels { get; }
 	public Amount Amount { get; }
 	public string PrivacyLevelText { get; }
 	public bool Unconfirmed { get; }

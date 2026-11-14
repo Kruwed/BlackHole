@@ -4,8 +4,8 @@ using System.Reactive.Linq;
 using System.Windows.Input;
 using NBitcoin;
 using ReactiveUI;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Helpers;
+using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.TreeDataGrid;
 
@@ -76,11 +76,14 @@ public abstract partial class CoinListItem : ViewModelBase, ITreeDataGridExpande
 	public ICommand? ClipboardCopyCommand { get; protected set; }
 	public string? BtcAddress { get; protected set; }
 
-	public bool IsPrivate => Labels == CoinPocketHelper.PrivateFundsText;
+	/// <summary>The privacy level of the coin, or of the coins of the group.</summary>
+	public PrivacyLevel PrivacyLevel { get; protected set; }
 
-	public bool IsSemiPrivate => Labels == CoinPocketHelper.SemiPrivateFundsText;
+	public bool IsPrivate => PrivacyLevel == PrivacyLevel.Private;
 
-	public bool IsNonPrivate => !IsSemiPrivate && !IsPrivate;
+	public bool IsSemiPrivate => PrivacyLevel == PrivacyLevel.SemiPrivate;
+
+	public bool IsNonPrivate => PrivacyLevel == PrivacyLevel.NonPrivate;
 
 	public IReadOnlyCollection<CoinViewModel> Children { get; protected set; } = new List<CoinViewModel>();
 
@@ -96,7 +99,8 @@ public abstract partial class CoinListItem : ViewModelBase, ITreeDataGridExpande
 
 	public int? AnonymityScore { get; protected set; }
 
-	public LabelsArray Labels { get; protected set; } = LabelsArray.Empty;
+	/// <summary>What the row is called in the list. Coins inside a group have no title, their group has.</summary>
+	public string Title { get; protected set; } = "";
 
 	public DateTimeOffset? BannedUntilUtc { get; protected set; }
 

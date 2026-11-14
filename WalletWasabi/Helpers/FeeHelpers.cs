@@ -12,7 +12,6 @@ public static class FeeHelpers
 		Wallet wallet,
 		Destination destination,
 		Money amount,
-		LabelsArray labels,
 		FeeRate startingFeeRate,
 		IEnumerable<SmartCoin> coins,
 		bool subtractFee,
@@ -21,7 +20,7 @@ public static class FeeHelpers
 	{
 		maxFeeRate = SeekMaxFeeRate(
 			startingFeeRate,
-			feeRate => wallet.BuildTransaction(destination, amount, labels, feeRate, coins, subtractFee, tryToSign));
+			feeRate => wallet.BuildTransaction(destination, amount, feeRate, coins, subtractFee, tryToSign));
 
 		return maxFeeRate is not null;
 	}

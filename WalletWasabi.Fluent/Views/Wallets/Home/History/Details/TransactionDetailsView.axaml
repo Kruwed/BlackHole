@@ -131,17 +131,6 @@
         <TextBlock Text="{Binding BlockHeight}" />
       </PreviewItem>
 
-      <!-- Labels -->
-      <Separator IsVisible="{Binding IsLabelsVisible}" />
-      <PreviewItem IsVisible="{Binding IsLabelsVisible}"
-                     Icon="{StaticResource entities_regular}"
-                     Label="Labels"
-                     CopyableContent="{Binding Labels}">
-        <PrivacyContentControl VerticalContentAlignment="Center">
-          <LabelsItemsPresenter ItemsSource="{Binding Labels}" />
-        </PrivacyContentControl>
-      </PreviewItem>
-
       <!-- Hex -->
       <Separator />
       <PreviewItem Icon="{StaticResource binary_file}"

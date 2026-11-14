@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NBitcoin;
-using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Models.Transactions;
@@ -31,8 +30,6 @@ public partial class TransactionInfo
 
 	public Destination Destination { get; init; }
 
-	public LabelsArray Recipient { get; set; } = LabelsArray.Empty;
-
 	public FeeRate? MaximumPossibleFeeRate { get; set; }
 
 	public IEnumerable<SmartCoin> ChangelessCoins { get; set; } = [];
@@ -42,10 +39,6 @@ public partial class TransactionInfo
 	public bool IsCustomFeeUsed { get; set; }
 
 	public bool SubtractFee { get; init; }
-
-	public bool IsOtherPocketSelectionPossible { get; set; }
-
-	public bool IsSelectedCoinModificationEnabled { get; set; } = true;
 
 	public bool IsFixedAmount { get; init; }
 
@@ -57,7 +50,7 @@ public partial class TransactionInfo
 	{
 		get
 		{
-			yield return new RecipientInfo(Destination, Amount, Recipient, IsSubtractFee: SubtractFee);
+			yield return new RecipientInfo(Destination, Amount, IsSubtractFee: SubtractFee);
 			foreach (var r in AdditionalRecipients)
 			{
 				yield return r;
@@ -75,7 +68,7 @@ public partial class TransactionInfo
 	private void OnCoinsChanged()
 	{
 		MaximumPossibleFeeRate = null;
-		ChangelessCoins = []; // Clear ChangelessCoins on pocket change, so we calculate the suggestions with the new pocket.
+		ChangelessCoins = []; // Clear ChangelessCoins when the coins change, so we calculate the suggestions with the new coins.
 	}
 
 	public TransactionInfo Clone()
@@ -86,13 +79,10 @@ public partial class TransactionInfo
 			Coins = Coins,
 			Amount = Amount,
 			Destination = Destination,
-			Recipient = Recipient,
 			MaximumPossibleFeeRate = MaximumPossibleFeeRate,
 			ChangelessCoins = ChangelessCoins,
 			IsCustomFeeUsed = IsCustomFeeUsed,
 			SubtractFee = SubtractFee,
-			IsOtherPocketSelectionPossible = IsOtherPocketSelectionPossible,
-			IsSelectedCoinModificationEnabled = IsSelectedCoinModificationEnabled,
 			IsFixedAmount = IsFixedAmount,
 			AdditionalRecipients = AdditionalRecipients
 		};

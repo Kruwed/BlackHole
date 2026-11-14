@@ -5,7 +5,6 @@ using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.TreeDataGrid;
-using WalletWasabi.Fluent.ViewModels.CoinControl;
 using WalletWasabi.Fluent.Views.CoinControl.Core.Cells;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
@@ -18,7 +17,7 @@ public static class CoinListDataGridSource
 		// Indicators		IndicatorsColumnView	-			Auto		-				-			true
 		// AnonymityScore	AnonymityColumnView		<custom>	50			-				-			true
 		// Amount			AmountColumnView		Amount		Auto		-				-			true
-		// Labels			LabelsColumnView		Labels		*			-				-			true
+		// Privacy			PrivacyLevelCellView	-			*			-				-			true
 		// Selection		SelectionColumnView		-			Auto		-				-			false
 		var result = new HierarchicalTreeDataGridSource<CoinListItem>(source)
 		{
@@ -27,7 +26,7 @@ public static class CoinListDataGridSource
 				IndicatorsColumn(),
 				AnonymityScoreColumn(),
 				AmountColumn(),
-				LabelsColumn(),
+				PrivacyLevelColumn(),
 			}
 		};
 
@@ -121,17 +120,18 @@ public static class CoinListDataGridSource
 			});
 	}
 
-	private static IColumn<CoinListItem> LabelsColumn()
+	private static IColumn<CoinListItem> PrivacyLevelColumn()
 	{
+		// Most private first when ascending.
 		return new TemplateColumn<CoinListItem>(
 			null,
-			new FuncDataTemplate<CoinListItem>((_, _) => new LabelsCellView(), true),
+			new FuncDataTemplate<CoinListItem>((_, _) => new PrivacyLevelCellView(), true),
 			null,
 			GridLength.Star,
 			new TemplateColumnOptions<CoinListItem>
 			{
-				CompareAscending = CoinControlLabelComparer.Ascending,
-				CompareDescending = CoinControlLabelComparer.Descending
+				CompareAscending = Sort<CoinListItem>.Ascending(x => x.PrivacyLevel),
+				CompareDescending = Sort<CoinListItem>.Descending(x => x.PrivacyLevel)
 			});
 	}
 }

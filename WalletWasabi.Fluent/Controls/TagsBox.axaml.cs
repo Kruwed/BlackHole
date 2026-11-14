@@ -86,12 +86,6 @@ public class TagsBox : TemplatedControl
 	public static readonly StyledProperty<bool> EnableDeleteProperty =
 		AvaloniaProperty.Register<TagsBox, bool>(nameof(EnableDelete), true);
 
-	public static readonly DirectProperty<TagsBox, string?> DefaultLabelProperty =
-		AvaloniaProperty.RegisterDirect<TagsBox, string?>(
-			nameof(DefaultLabel),
-			o => o.DefaultLabel,
-			(o, v) => o.DefaultLabel = v);
-
 	[Content]
 	public IEnumerable<string>? Items
 	{
@@ -191,12 +185,6 @@ public class TagsBox : TemplatedControl
 
 	private string CurrentText => _autoCompleteBox?.Text ?? "";
 
-	public string? DefaultLabel
-	{
-		get;
-		set => SetAndRaise(DefaultLabelProperty, ref field, value);
-	}
-
 	protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
 	{
 		base.OnApplyTemplate(e);
@@ -222,11 +210,6 @@ public class TagsBox : TemplatedControl
 		if (_presenter is null)
 		{
 			return;
-		}
-
-		if (!string.IsNullOrEmpty(DefaultLabel))
-		{
-			AddTag(DefaultLabel);
 		}
 
 		_containerControl = _presenter.ItemsPanelRoot;
@@ -317,7 +300,7 @@ public class TagsBox : TemplatedControl
 
 	private void CheckIsCurrentTextValid()
 	{
-		var correctedInput = CurrentText.ParseLabel();
+		var correctedInput = CurrentText.CollapseWhitespace();
 
 		if (RestrictInputToSuggestions && Suggestions is { } suggestions)
 		{
@@ -368,7 +351,7 @@ public class TagsBox : TemplatedControl
 
 		foreach (string tag in tags)
 		{
-			var correctedTag = tag.ParseLabel();
+			var correctedTag = tag.CollapseWhitespace();
 
 			if (!string.IsNullOrEmpty(correctedTag))
 			{
@@ -435,7 +418,7 @@ public class TagsBox : TemplatedControl
 
 		if (!_isInputEnabled ||
 		    (typedFullText is { Length: 1 } && typedFullText.StartsWith(TagSeparator)) ||
-		    string.IsNullOrEmpty(typedFullText.ParseLabel()))
+		    string.IsNullOrEmpty(typedFullText.CollapseWhitespace()))
 		{
 			e.Handled = true;
 			return;

@@ -11,12 +11,12 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 	private readonly Lazy<Script> _p2Taproot;
 	private Cluster _cluster;
 
-	public HdPubKey(PubKey pubKey, KeyPath fullKeyPath, LabelsArray labels, KeyState keyState)
+	public HdPubKey(PubKey pubKey, KeyPath fullKeyPath, KeyState keyState, bool isHandedOut = false)
 	{
 		PubKey = pubKey;
 		FullKeyPath = fullKeyPath;
 		_cluster = new Cluster([this]);
-		Labels = labels;
+		IsHandedOut = isHandedOut;
 		KeyState = keyState;
 
 		_p2Taproot = new Lazy<Script>(() => PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86), isThreadSafe: true);
@@ -56,8 +56,11 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 
 	public KeyPath FullKeyPath { get; }
 
-	public LabelsArray Labels { get; private set; }
-	public LabelsArray ClusterLabels => _cluster.Labels;
+	/// <summary>
+	/// Whether the address of the key was already given to the user to receive a payment to.
+	/// An address is given out only once, so that two payers never get the same one.
+	/// </summary>
+	public bool IsHandedOut { get; private set; }
 
 	public KeyState KeyState { get; private set; }
 
@@ -78,16 +81,9 @@ public class HdPubKey : NotifyPropertyChangedBase, IEquatable<HdPubKey>
 		AnonymitySet = anonset;
 	}
 
-	public void SetLabel(LabelsArray labels, KeyManager? kmToFile = null)
+	public void SetHandedOut()
 	{
-		if (Labels == labels)
-		{
-			return;
-		}
-
-		Labels = labels;
-
-		kmToFile?.ToFile();
+		IsHandedOut = true;
 	}
 
 	public void SetKeyState(KeyState state, KeyManager? kmToFile = null)

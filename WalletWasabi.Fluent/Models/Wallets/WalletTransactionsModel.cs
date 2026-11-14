@@ -133,7 +133,6 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 	public async Task SendAsync(BuildTransactionResult transaction)
 	{
 		await _services.SendTransactionAsync(transaction.Transaction);
-		_wallet.UpdateUsedHdPubKeysLabels(transaction.HdPubKeysWithNewLabels);
 	}
 
 	private async Task<IEnumerable<TransactionModel>> BuildSummaryAsync(CancellationToken cancellationToken)
