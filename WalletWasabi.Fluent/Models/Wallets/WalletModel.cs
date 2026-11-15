@@ -52,6 +52,14 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	IObservable<bool> Loaded { get; }
 
+	/// <summary>Whether <see cref="Resync"/> was called: the wallet waits for the restart of the application and does not follow the node until then.</summary>
+	bool IsResyncRequested { get; }
+
+	/// <summary>
+	/// Makes the wallet look for its transactions again, from the given block on and with the given gap limit, when the application starts the next time.
+	/// </summary>
+	void Resync(uint startingHeight, int minGapLimit);
+
 	IWalletStatsModel GetWalletStats();
 
 	WalletInfoModel GetWalletInfo();
@@ -156,6 +164,13 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 
 	public IObservable<bool> Loaded { get; }
+
+	public bool IsResyncRequested => Wallet.Synchronizer.IsResyncRequested;
+
+	public void Resync(uint startingHeight, int minGapLimit)
+	{
+		Wallet.Synchronizer.RequestResync(startingHeight, minGapLimit);
+	}
 
 	public IWalletStatsModel GetWalletStats()
 	{

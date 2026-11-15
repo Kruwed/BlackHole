@@ -37,6 +37,9 @@ public abstract record WalletSyncStatus
 	/// <summary>The wallet processed every block that the node has.</summary>
 	public record Synchronized(uint Height) : WalletSyncStatus;
 
+	/// <summary>The wallet was told to look for its transactions again. It does so when the application starts the next time.</summary>
+	public record ResyncPending : WalletSyncStatus;
+
 	/// <summary>Tells the status in a sentence.</summary>
 	public string ToUserFriendlyString() =>
 		this switch
@@ -51,6 +54,7 @@ public abstract record WalletSyncStatus
 				$"The Bitcoin node is pruned and does not have block {missingHeight:N0} any more, which the wallet did not process yet. Blocks that old are only available from a node that keeps the whole chain.",
 			Scanning(var height, var tipHeight) => $"Processing blocks: {height:N0} of {tipHeight:N0}.",
 			Synchronized => "Synchronized with the Bitcoin node.",
+			ResyncPending => "The wallet looks for its transactions again after a restart.",
 			_ => ToString()
 		};
 }
@@ -108,6 +112,10 @@ public class WalletSynchronizer : BackgroundService
 	private readonly TaskCompletionSource _initialSynchronizationFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	private readonly Lock _statusLock = new();
 
+	/// <summary>Held while the place that the wallet reached in the chain is changed, so that a resync cannot be requested in the middle of it.</summary>
+	private readonly Lock _progressLock = new();
+	private bool _isResyncRequested;
+
 	private WalletSyncStatus _status = new WalletSyncStatus.NotStarted();
 	private bool _isChainVerified;
 	private DateTimeOffset _lastPersisted = DateTimeOffset.UtcNow;
@@ -160,6 +168,39 @@ public class WalletSynchronizer : BackgroundService
 				return _status;
 			}
 		}
+	}
+
+	/// <summary>Whether <see cref="RequestResync"/> was called. The wallet does not follow the node any more then.</summary>
+	public bool IsResyncRequested
+	{
+		get
+		{
+			lock (_progressLock)
+			{
+				return _isResyncRequested;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Makes the wallet look for its transactions again, from the given block on and with the given gap limit, when the
+	/// application starts the next time.
+	/// </summary>
+	/// <remarks>
+	/// The wallet stops following the node at once. The keys of a wider gap limit only exist once the wallet file is loaded
+	/// again: a block that was processed until then would be searched with the keys of today and remembered as done,
+	/// and the resync would start after it.
+	/// </remarks>
+	public void RequestResync(ChainHeight startingHeight, int minGapLimit)
+	{
+		lock (_progressLock)
+		{
+			_isResyncRequested = true;
+			_keyManager.SetResyncParameters(startingHeight, minGapLimit);
+		}
+
+		Logger.LogInfo($"Wallet: a resync from block {startingHeight} with a gap limit of {minGapLimit} was requested. It starts with the next start of the application.");
+		SetStatus(new WalletSyncStatus.ResyncPending());
 	}
 
 	/// <inheritdoc />
@@ -220,6 +261,13 @@ public class WalletSynchronizer : BackgroundService
 	/// <returns>How long to wait before doing this again.</returns>
 	internal async Task<TimeSpan> SynchronizeAsync(CancellationToken cancellationToken)
 	{
+		if (IsResyncRequested)
+		{
+			// A round that was on its way when the resync was requested may have announced something else since.
+			SetStatus(new WalletSyncStatus.ResyncPending());
+			return IdlePeriod;
+		}
+
 		var info = await _rpcClient.GetBlockchainInfoAsync(cancellationToken).ConfigureAwait(false);
 		await AssertChainOfWalletAsync(cancellationToken).ConfigureAwait(false);
 
@@ -229,12 +277,19 @@ public class WalletSynchronizer : BackgroundService
 		if (_keyManager.GetBestHeight() is null)
 		{
 			// A new wallet: nothing concerns it up to the tip of the chain. The headers tell where that is, even while the node is still downloading the blocks.
-			_keyManager.StartAt(nodeHeaders);
-			Logger.LogInfo($"Wallet: the history of the new wallet starts after block {nodeHeaders}.");
+			if (TryChangeProgress(() => _keyManager.StartAt(nodeHeaders)))
+			{
+				Logger.LogInfo($"Wallet: the history of the new wallet starts after block {nodeHeaders}.");
+			}
 		}
 
 		await RememberBlockAtWalletHeightAsync(nodeHeight, cancellationToken).ConfigureAwait(false);
 		await RewindToCommonBlockAsync(nodeHeight, cancellationToken).ConfigureAwait(false);
+
+		if (IsResyncRequested)
+		{
+			return TimeSpan.Zero;
+		}
 
 		var walletHeight = _keyManager.GetBestHeight()!.Height;
 
@@ -314,7 +369,7 @@ public class WalletSynchronizer : BackgroundService
 		}
 
 		var blockHash = await _rpcClient.GetBlockHashAsync((int)bestHeight.Height, cancellationToken).ConfigureAwait(false);
-		_keyManager.SetBestBlock(bestHeight, blockHash);
+		TryChangeProgress(() => _keyManager.SetBestBlock(bestHeight, blockHash));
 	}
 
 	/// <summary>
@@ -368,8 +423,10 @@ public class WalletSynchronizer : BackgroundService
 		}
 
 		// When no remembered block is left in the chain of the node, this is where the chains may have parted at the latest.
-		_keyManager.SetMaxBestHeight(new ChainHeight((uint)Math.Max(commonHeight, 0)));
-		AnnounceWalletHeight((uint)Math.Max(commonHeight, 0));
+		if (TryChangeProgress(() => _keyManager.SetMaxBestHeight(new ChainHeight((uint)Math.Max(commonHeight, 0)))))
+		{
+			AnnounceWalletHeight((uint)Math.Max(commonHeight, 0));
+		}
 	}
 
 	/// <summary>
@@ -447,7 +504,12 @@ public class WalletSynchronizer : BackgroundService
 				var now = DateTimeOffset.UtcNow;
 				var persist = results.Count > 0 || isLastBlock || now - _lastPersisted >= PersistPeriod;
 
-				_keyManager.SetBestBlock(new ChainHeight(download.Height), download.BlockHash, toFile: persist);
+				if (!TryChangeProgress(() => _keyManager.SetBestBlock(new ChainHeight(download.Height), download.BlockHash, toFile: persist)))
+				{
+					// A resync was requested while the block was on its way. The block is looked at again then.
+					return;
+				}
+
 				previousBlockHash = download.BlockHash;
 				isHeightUnsaved = !persist;
 
@@ -622,6 +684,25 @@ public class WalletSynchronizer : BackgroundService
 		catch (Exception ex)
 		{
 			Logger.LogWarning($"Wallet: failed to process the unconfirmed transaction {txid}: {ex}");
+		}
+	}
+
+	/// <summary>
+	/// Changes the place that the wallet reached in the chain, unless a resync was requested. The request tells where the wallet
+	/// starts the next time, and nothing that this synchronizer still has on its way may move that.
+	/// </summary>
+	/// <returns><c>false</c> if a resync was requested. Nothing is changed then.</returns>
+	private bool TryChangeProgress(Action change)
+	{
+		lock (_progressLock)
+		{
+			if (_isResyncRequested)
+			{
+				return false;
+			}
+
+			change();
+			return true;
 		}
 	}
 

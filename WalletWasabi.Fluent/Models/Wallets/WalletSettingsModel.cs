@@ -52,6 +52,9 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	public int MinGapLimit => _keyManager.MinGapLimit;
 
+	/// <summary>No block below this height concerns the wallet. Zero if the wallet does not know.</summary>
+	public uint BirthHeight => _keyManager.GetBirthHeight()?.Height ?? 0;
+
 	public bool IsCoinJoinPaused { get; set; }
 
 	/// <summary>
@@ -86,10 +89,5 @@ public partial class WalletSettingsModel : ReactiveObject
 		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;
 		_keyManager.OnlyUsePrivateFundsForPayments = OnlyUsePrivateFundsForPayments;
 		_isDirty = true;
-	}
-
-	public void RescanWallet(uint startingHeight, int minGapLimit)
-	{
-		_keyManager.SetResyncParameters(startingHeight, minGapLimit);
 	}
 }

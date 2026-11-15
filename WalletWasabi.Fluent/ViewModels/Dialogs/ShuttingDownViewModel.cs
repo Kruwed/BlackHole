@@ -2,7 +2,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Reactive.Concurrency;
+using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Fluent.ViewModels.Settings;
 
 namespace WalletWasabi.Fluent.ViewModels.Dialogs;
 
@@ -22,6 +24,12 @@ public partial class ShuttingDownViewModel : RoutableViewModel
 			{
 				await UiContext.CoinjoinModel.RestartAbortedCoinjoinsAsync();
 				Navigate().Clear();
+
+				// A wallet that waits for its resync sees nothing new until the application is started again.
+				if (UiContext.WalletRepository.Wallet is { IsResyncRequested: true })
+				{
+					NotificationHelpers.Show(new RestartViewModel(UiContext, "The wallet does not follow your node any more. It is resynchronized when Black Hole restarts."));
+				}
 			});
 	}
 

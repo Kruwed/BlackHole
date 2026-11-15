@@ -355,6 +355,110 @@ public class WalletSynchronizerTests
 	}
 
 	[Fact]
+	public async Task LeavesARequestedResyncToTheNextStartAsync()
+	{
+		var shares = WalletGenerator.GenerateShares().Take(WalletGenerator.DefaultShamirThreshold).ToArray();
+		var keyManager = KeyManager.Recover(shares, "", Network);
+		var widerGapLimit = keyManager.MinGapLimit + 100;
+
+		// Block 12 pays to an address of the wallet that the wallet only watches with a wider gap limit.
+		var distantKey = KeyManager.Recover(shares, "", Network, minGapLimit: widerGapLimit)
+			.GetKeys(key => !key.IsInternal && key.Index == keyManager.MinGapLimit + 50)
+			.Single();
+		var payment = CreatePayment(distantKey, Money.Coins(1));
+
+		var node = new FakeBitcoinNode(Network);
+		node.MineBlocks(11);
+		node.MineBlock(payment);
+		node.MineBlocks(18);
+
+		using (var wallet = await TestWallet.CreateAsync(node, keyManager))
+		{
+			await SynchronizeFullyAsync(wallet);
+			Assert.Equal(new Height.ChainHeight(30), keyManager.GetBestHeight());
+			Assert.Empty(wallet.Coins);
+			Assert.False(wallet.Synchronizer.IsResyncRequested);
+
+			// The user asks for a resync from the block of the payment on, with a gap limit that reaches the address.
+			var requestedBlockCount = node.RequestedBlocks.Count;
+			wallet.Synchronizer.RequestResync(12, widerGapLimit);
+			Assert.True(wallet.Synchronizer.IsResyncRequested);
+			Assert.Equal(new WalletSyncStatus.ResyncPending(), wallet.Synchronizer.Status);
+			Assert.Equal(new WalletSyncStatus.ResyncPending(), wallet.AnnouncedStatuses[^1]);
+
+			// The keys of the wider gap limit only exist after the wallet file is loaded again. A wallet that went on now
+			// would not find the payment in block 12, and it would take the block for done.
+			node.MineBlock();
+
+			for (int i = 0; i < 3; i++)
+			{
+				Assert.Equal(wallet.Synchronizer.IdlePeriod, await wallet.Synchronizer.SynchronizeAsync(CancellationToken.None));
+			}
+
+			Assert.Equal(requestedBlockCount, node.RequestedBlocks.Count);
+			Assert.Equal(new WalletSyncStatus.ResyncPending(), wallet.Synchronizer.Status);
+			Assert.Equal(new Height.ChainHeight(11), keyManager.GetBestHeight());
+			Assert.Empty(keyManager.GetProcessedBlocks().BlockHashes);
+			Assert.Empty(wallet.Coins);
+		}
+
+		// The application starts again.
+		var reloadedKeyManager = KeyManager.FromFile(keyManager.FilePath!);
+		Assert.Equal(new Height.ChainHeight(11), reloadedKeyManager.GetBestHeight());
+		Assert.Equal(widerGapLimit, reloadedKeyManager.MinGapLimit);
+
+		using var restartedWallet = await TestWallet.CreateAsync(node, reloadedKeyManager);
+		Assert.False(restartedWallet.Synchronizer.IsResyncRequested);
+
+		await SynchronizeFullyAsync(restartedWallet);
+
+		Assert.Equal(new WalletSyncStatus.Synchronized(31), restartedWallet.Synchronizer.Status);
+		var coin = Assert.Single(restartedWallet.Coins);
+		Assert.Equal(payment.GetHash(), coin.TransactionId);
+		Assert.Equal(new Height.ChainHeight(12), coin.Height);
+		Assert.Equal(distantKey.PubKey, coin.HdPubKey.PubKey);
+	}
+
+	[Fact]
+	public async Task DoesNotCountABlockThatArrivesAfterAResyncWasRequestedAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		var keyManager = RecoverWallet();
+		node.MineBlocks(9);
+		var gate = new BlockGate(node);
+
+		using var wallet = await TestWallet.CreateAsync(node, keyManager, maxParallelBlockDownloads: 1);
+		using var testCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+		var round = wallet.Synchronizer.SynchronizeAsync(testCts.Token);
+
+		// Blocks 1 and 2 are processed, block 3 is on its way.
+		await gate.HandOutNextAsync(testCts.Token);
+		await gate.HandOutNextAsync(testCts.Token);
+		await WaitForAskedBlocksAsync(gate, 3, testCts.Token);
+		Assert.Equal(new Height.ChainHeight(2), keyManager.GetBestHeight());
+
+		wallet.Synchronizer.RequestResync(6, keyManager.MinGapLimit);
+
+		// Block 3 arrives. It must not make the wallet go on from there: the resync starts with block 6.
+		await gate.HandOutNextAsync(testCts.Token);
+		Assert.Equal(TimeSpan.Zero, await round.WaitAsync(testCts.Token));
+
+		Assert.Equal(new Height.ChainHeight(5), keyManager.GetBestHeight());
+		Assert.Empty(keyManager.GetProcessedBlocks().BlockHashes);
+
+		var (savedHeight, savedBlockHashes) = KeyManager.FromFile(keyManager.FilePath!).GetProcessedBlocks();
+		Assert.Equal(new Height.ChainHeight(5), savedHeight);
+		Assert.Empty(savedBlockHashes);
+
+		// Nothing is asked from the node any more.
+		Assert.Equal(wallet.Synchronizer.IdlePeriod, await wallet.Synchronizer.SynchronizeAsync(testCts.Token));
+		Assert.Equal(3, gate.AskedBlocks.Count);
+		Assert.Equal(new WalletSyncStatus.ResyncPending(), wallet.Synchronizer.Status);
+		Assert.Equal(new Height.ChainHeight(5), keyManager.GetBestHeight());
+		Assert.False(wallet.Synchronizer.InitialSynchronizationFinished.IsCompleted);
+	}
+
+	[Fact]
 	public async Task WaitsForTheNodeThatIsFarBehindAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
@@ -952,7 +1056,9 @@ public class WalletSynchronizerTests
 			_subscriptions.Add(EventBus.Subscribe<WalletSyncStatusChanged>(e => AnnouncedStatuses.Add(e.Status)));
 			_subscriptions.Add(EventBus.Subscribe<ClientTipHeightChanged>(e => AnnouncedHeights.Add(e.Height)));
 
-			// As the wallet does when it starts: what it knows already is processed before anything new.
+			// As the wallet does when it starts: it makes sure that it has the keys of its gap limit, and what it knows already
+			// is processed before anything new.
+			keyManager.GetKeys();
 			Processor.Process(transactionStore.ConfirmedStore.GetTransactions());
 
 			Synchronizer = new WalletSynchronizer(node.RpcClient, keyManager, transactionStore, Processor, EventBus, onSynchronizedFirst, watchMempool, maxParallelBlockDownloads)
