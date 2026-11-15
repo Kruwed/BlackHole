@@ -147,11 +147,14 @@ public partial class FluentNavigate
 		return new FluentDialog<string?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
+	/// <summary>
+	/// Opens the receive screen. Every time it is opened, it shows an address that was not given out before.
+	/// </summary>
 	public void Receive(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-#pragma warning disable CA2000 // Dispose objects before losing scope
-		UiContext.Navigate(navigationTarget).To(new ReceiveViewModel(UiContext, wallet), navigationMode);
-#pragma warning restore CA2000 // Dispose objects before losing scope
+		var address = wallet.Addresses.NextReceiveAddress();
+
+		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, address, isNew: true), navigationMode);
 	}
 
 	public FluentDialog<System.Reactive.Unit> ReleaseHighlightsDialog(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -253,9 +256,12 @@ public partial class FluentNavigate
 		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
+	/// <summary>
+	/// Shows an address that was generated earlier and still awaits its payment.
+	/// </summary>
 	public void ReceiveAddress(IWalletModel wallet, IAddress model, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model, isNew: false), navigationMode);
 	}
 
 	public void ShuttingDown(ApplicationViewModel applicationViewModel, bool restart, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

@@ -7,7 +7,8 @@
              x:DataType="receive:ReceiveAddressViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Receive.ReceiveAddressView">
-  <ContentArea Title="Address Awaiting Payment"
+  <ContentArea Title="{Binding Title}"
+                 Caption="{Binding Caption}"
                  EnableCancel="{Binding EnableCancel}"
                  EnableBack="{Binding EnableBack}"
                  EnableNext="True" NextContent="OK"
@@ -34,6 +35,10 @@
                             ClickIcon="{StaticResource copy_confirmed}" />
           </StackPanel>
         </DockPanel>
+        <Button Focusable="False" Content="Addresses Awaiting Payment"
+                IsVisible="{Binding OtherAddressesAwaitPayment^, FallbackValue=False}"
+                Classes="h8 plain activeHyperLink" Command="{Binding ShowOtherAddressesCommand}" Cursor="Hand"
+                HorizontalAlignment="Center" />
       </StackPanel>
 
       <AdorningContentControl HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
