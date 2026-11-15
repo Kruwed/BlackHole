@@ -134,9 +134,9 @@
       <Setter Property="HorizontalContentAlignment" Value="Right" />
     </Style>
 
-    <!-- Stretch Top Content -->
-    <Style Selector="^.StretchTopContent /template/ ContentPresenter#PART_TopContentPresenter">
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <!-- No header: for a page without a title, whose content starts at the very top -->
+    <Style Selector="^.NoHeader /template/ StackPanel#PART_Header">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
 
     <!-- Bottom ContentPresenter -->
