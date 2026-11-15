@@ -138,7 +138,7 @@
     <PathIcon
       IsVisible="{Binding HealthMonitor.State, Converter={x:Static converters:HealthMonitorStateVisibilityConverter.Instance}, ConverterParameter={x:Static models:HealthMonitorState.BitcoinRpcIssueDetected}}"
       Data="{StaticResource warning_circle}"
-      Foreground="Goldenrod"
+      Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
       VerticalAlignment="Center" HorizontalAlignment="Right"
       Classes.blink="{Binding $self.IsVisible}" />
 
