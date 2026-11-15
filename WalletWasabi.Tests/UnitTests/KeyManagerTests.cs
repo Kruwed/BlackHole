@@ -90,7 +90,7 @@ public class KeyManagerTests
 		Assert.NotEqual(manager.TaprootExtPubKey, otherManager.TaprootExtPubKey);
 
 		// A wider gap limit only means more keys of the same account.
-		var widerManager = KeyManager.Recover(shares, password, Network.Main, filePath: null, minGapLimit: 55);
+		var widerManager = KeyManager.Recover(shares, password, Network.Main, filePath: null, minGapLimit: 550);
 		Assert.Equal(manager.ChainCode, widerManager.ChainCode);
 		Assert.Equal(manager.EncryptedSecret, widerManager.EncryptedSecret);
 		Assert.Equal(manager.TaprootExtPubKey, widerManager.TaprootExtPubKey);
@@ -99,7 +99,7 @@ public class KeyManagerTests
 
 		var newKey = widerManager.GenerateNewKey(KeyState.Clean, true);
 		Assert.Equal(newKey.Index, widerManager.MinGapLimit);
-		Assert.Equal("86'/0'/0'/1/55", newKey.FullKeyPath.ToString());
+		Assert.Equal("86'/0'/0'/1/550", newKey.FullKeyPath.ToString());
 	}
 
 	[Fact]
@@ -169,6 +169,99 @@ public class KeyManagerTests
 
 		var newLastKey = manager.GetKeys(KeyState.Clean, isInternal: false).Last();
 		Assert.Equal(manager.MinGapLimit, newLastKey.Index - lastKey.Index);
+	}
+
+	[Fact]
+	public void WalletsWatch210UnusedAddressesAhead()
+	{
+		// The receive screen gives out a new address every time it is opened, so many of them can stay unused in a row.
+		Assert.Equal(210, KeyManager.AbsoluteMinGapLimit);
+
+		var manager = KeyManager.CreateNew(out Share[] shares, "", Network.Main);
+		Assert.Equal(210, manager.MinGapLimit);
+		Assert.Equal(Enumerable.Range(0, 210), manager.GetKeys(KeyState.Clean, isInternal: false).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(0, 210), manager.GetKeys(KeyState.Clean, isInternal: true).Select(key => key.Index));
+
+		// A recovered wallet looks as far ahead, also when it is asked for less.
+		Assert.Equal(210, KeyManager.Recover(shares, "", Network.Main).MinGapLimit);
+
+		var narrowManager = KeyManager.Recover(shares, "", Network.Main, minGapLimit: 21);
+		Assert.Equal(210, narrowManager.MinGapLimit);
+		Assert.Equal(210, narrowManager.GetKeys(isInternal: false).Length);
+
+		// A payment to the last of 210 unused addresses in a row is noticed, and moves the range on.
+		var lastKey = manager.GetKeys(isInternal: false).Last();
+		Assert.Equal(209, lastKey.Index);
+		Assert.True(manager.TryGetKeyForScriptPubKey(lastKey.P2Taproot, out _));
+
+		manager.SetKeyState(KeyState.Used, lastKey);
+		Assert.Equal(419, manager.GetKeys(isInternal: false).Last().Index);
+	}
+
+	[Fact]
+	public void WalletFilesWithANarrowerGapLimitAreWidened()
+	{
+		var filePath = "wallet-with-gap-limit-21.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.GetKeys();
+		var usedKey = manager.GetNextReceiveKey();
+		var waitingKey = manager.GetNextReceiveKey();
+		manager.SetKeyState(KeyState.Used, usedKey);
+		manager.ToFile();
+
+		// Make the file one that was written while the gap limit was 21: on both chains it ends with 21 unused keys.
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		json["MinGapLimit"] = 21;
+
+		var keys = json["HdPubKeys"]!.AsArray();
+		foreach (var key in keys.ToArray())
+		{
+			var keyPath = key!["FullKeyPath"]!.GetValue<string>();
+			var index = int.Parse(keyPath[(keyPath.LastIndexOf('/') + 1)..]);
+			var lastIndex = keyPath.StartsWith("86'/0'/0'/1/", StringComparison.Ordinal) ? 20 : 21;
+
+			if (index > lastIndex)
+			{
+				keys.Remove(key);
+			}
+		}
+
+		Assert.Equal(22 + 21, keys.Count);
+		File.WriteAllText(filePath, json.ToJsonString());
+
+		// Loading it widens the range to 210 unused keys on both chains ...
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(210, sameManager.MinGapLimit);
+		Assert.Equal(Enumerable.Range(0, 211), sameManager.GetKeys(isInternal: false).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(0, 210), sameManager.GetKeys(isInternal: true).Select(key => key.Index));
+
+		// ... and keeps what the file knew about its keys.
+		Assert.Equal(usedKey.PubKey, Assert.Single(sameManager.GetKeys(KeyState.Used)).PubKey);
+		Assert.Equal(new[] { usedKey.PubKey, waitingKey.PubKey }, sameManager.GetKeys(key => key.IsHandedOut).Select(key => key.PubKey));
+		Assert.Equal(2, sameManager.GetNextReceiveKey().Index);
+
+		// The file is written with the wider range the next time the wallet is saved.
+		json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		Assert.Equal(210, json["MinGapLimit"]!.GetValue<int>());
+		Assert.Equal(211 + 210, json["HdPubKeys"]!.AsArray().Count);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
+	public void TheGapLimitDoesNotMultiplyTheSilentPaymentKeys()
+	{
+		var manager = KeyManager.CreateNew(out _, "password", Network.Main);
+		manager.GetKeys();
+
+		// Entering the password prepares the silent payment keys: 22 to scan with and 22 to spend with, however wide the gap limit is.
+		manager.GetMasterExtKey("password");
+
+		Assert.Equal(22, manager.GetKeys(key => key.FullKeyPath.ToString().StartsWith("352'/0'/0'/1'/", StringComparison.Ordinal)).Length);
+		Assert.Equal(22, manager.GetKeys(key => key.FullKeyPath.ToString().StartsWith("352'/0'/0'/0'/", StringComparison.Ordinal)).Length);
+		Assert.Equal(210 + 210 + 22 + 22, manager.GetKeyCount());
 	}
 
 	[Fact]

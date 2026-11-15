@@ -5,6 +5,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Extensions;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
@@ -105,7 +106,7 @@ public partial class RecoverMultiShareWalletViewModel : RoutableViewModel
 
 	public ICommand AdvancedRecoveryOptionsDialogCommand { get; }
 
-	private int MinGapLimit { get; set; } = 114;
+	private int MinGapLimit { get; set; } = KeyManager.AbsoluteMinGapLimit;
 	private uint BirthHeight { get; set; }
 
 	public ObservableCollection<string> Mnemonics { get; } = new();

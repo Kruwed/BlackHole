@@ -25,8 +25,24 @@ public class KeyManager
 {
 	public const bool DefaultAutoCoinjoin = false;
 
-	public const int AbsoluteMinGapLimit = 21;
+	/// <summary>
+	/// The gap limit of a wallet that was not given a wider one. On the chain of its receive addresses and on the chain of
+	/// its change addresses, the wallet watches at least this many unused addresses after the last one that was used.
+	/// </summary>
+	/// <remarks>
+	/// A recovered wallet does not find a payment that follows more unused addresses in a row than its gap limit.
+	/// Every time the receive screen is opened it gives out a new address, so the unused ones can add up.
+	/// </remarks>
+	public const int AbsoluteMinGapLimit = 210;
+
 	public const int MaxGapLimit = 10_000;
+
+	/// <summary>
+	/// The gap limit of the generators of the silent payment keys. Those keys are not addresses that are given out one after
+	/// the other, so the gap limit of the wallet means nothing to them.
+	/// </summary>
+	private const int SilentPaymentKeyGapLimit = 21;
+
 	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.005m);
 
 	internal KeyManager(
@@ -58,12 +74,12 @@ public class KeyManager
 
 		if (SilentPaymentScanExtPubKey is { })
 		{
-			_silentPaymentScanKeyGenerator = new HdPubKeyGenerator(SilentPaymentScanExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan), MinGapLimit);
+			_silentPaymentScanKeyGenerator = new HdPubKeyGenerator(SilentPaymentScanExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan), SilentPaymentKeyGapLimit);
 		}
 
 		if (SilentPaymentSpendExtPubKey is { })
 		{
-			_silentPaymentSpendKeyGenerator = new HdPubKeyGenerator(SilentPaymentSpendExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend), MinGapLimit);
+			_silentPaymentSpendKeyGenerator = new HdPubKeyGenerator(SilentPaymentSpendExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend), SilentPaymentKeyGapLimit);
 		}
 
 		SetFilePath(filePath);
@@ -471,8 +487,8 @@ public class KeyManager
 	{
 		SilentPaymentScanExtPubKey ??= extKey.Derive(GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan)).Neuter();
 		SilentPaymentSpendExtPubKey ??= extKey.Derive(GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend)).Neuter();
-		_silentPaymentScanKeyGenerator = new HdPubKeyGenerator(SilentPaymentScanExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan), MinGapLimit);
-		_silentPaymentSpendKeyGenerator = new HdPubKeyGenerator(SilentPaymentSpendExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend), MinGapLimit);
+		_silentPaymentScanKeyGenerator = new HdPubKeyGenerator(SilentPaymentScanExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Scan), SilentPaymentKeyGapLimit);
+		_silentPaymentSpendKeyGenerator = new HdPubKeyGenerator(SilentPaymentSpendExtPubKey, GetAccountKeyPath(_blockchainState.Network, KeyPurpose.Spend), SilentPaymentKeyGapLimit);
 
 		var defaultSilentPaymentAddress = new SilentPaymentAddress(0, GetNextReceiveKey(KeyPurpose.Scan, handOut: false).PubKey, GetNextReceiveKey(KeyPurpose.Spend, handOut: false).PubKey);
 		Logger.LogDebug($"Default Silent Payment Address: {defaultSilentPaymentAddress.ToWip(_blockchainState.Network)} ");
