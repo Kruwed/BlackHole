@@ -52,6 +52,8 @@ A wallet watches 210 unused addresses after the last one that was paid to (its g
 
 Black Hole keeps its data in `~/.blackhole/client`. The folder button in the top right corner of the window shows that folder in the file manager; the wallet, the config file and the logs are in it. It does not read or change the data of a Wasabi Wallet installation (`~/.walletwasabi`), and its Tor listens on other ports (37250 and 37251), so both can run on the same computer.
 
+Started with `--loglevel=debug`, Black Hole writes into `Logs.txt` what the wallet asks the node for while it synchronizes: every block when it is asked for, when it arrives and when it is processed. That tells what a wallet that seems to be stuck is waiting for. The file starts anew when it reaches 10 MB, which is about 25,000 blocks; with `--loglevel=trace` it has no limit.
+
 ## Coinjoin
 
 Set the coordinator in *Settings → Coordinator*. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.

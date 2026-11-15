@@ -59,6 +59,12 @@ public static class Logger
 		}
 	}
 
+	/// <summary>
+	/// Whether messages of that level are logged at all. For a message that takes work to put together, so that the work
+	/// is only done when somebody is going to read it.
+	/// </summary>
+	public static bool IsEnabled(LogLevel level) => Core.Value.IsEnabled(level);
+
 	public static void LogTrace(string message, object? ctx = null, [CallerFilePath] string callerFilePath = "",
 		[CallerLineNumber] int callerLineNumber = -1) =>
 		Core.Value.Log(LogLevel.Trace, message, ctx, callerFilePath, callerLineNumber);

@@ -237,6 +237,11 @@ public class WalletSynchronizer : BackgroundService
 						Logger.LogError(ex);
 					}
 				}
+				else
+				{
+					// The debug log tells about every attempt, so that it shows what a wallet that makes no progress is doing.
+					Logger.LogDebug($"Wallet: another attempt to synchronize failed in the same way: {ex.GetType().Name}: {ex.Message}");
+				}
 
 				SetStatus(status);
 				delay = RetryPeriod;
@@ -268,11 +273,28 @@ public class WalletSynchronizer : BackgroundService
 			return IdlePeriod;
 		}
 
+		// After the start and after a failure, the debug log tells that the node is asked and what it answers: a node that
+		// does not answer leaves the wallet waiting right here. A wallet that only keeps up with the node asks it every few
+		// seconds, which is not worth a line each time.
+		var isTraced = Status is not (WalletSyncStatus.Synchronized or WalletSyncStatus.NodeSynchronizing);
+
+		if (isTraced)
+		{
+			Logger.LogDebug("Wallet: the node is asked how far its chain is.");
+		}
+
 		var info = await _rpcClient.GetBlockchainInfoAsync(cancellationToken).ConfigureAwait(false);
 		await AssertChainOfWalletAsync(cancellationToken).ConfigureAwait(false);
 
 		var nodeHeight = (uint)info.Blocks;
 		var nodeHeaders = (uint)Math.Max(info.Headers, info.Blocks);
+
+		if (isTraced)
+		{
+			Logger.LogDebug(nodeHeaders > nodeHeight
+				? $"Wallet: the node has {nodeHeight} of {nodeHeaders} blocks."
+				: $"Wallet: the node has {nodeHeight} blocks.");
+		}
 
 		if (_keyManager.GetBestHeight() is null)
 		{
@@ -445,6 +467,12 @@ public class WalletSynchronizer : BackgroundService
 		var startHeight = walletHeight;
 		var isHeightUnsaved = false;
 
+		// The debug log tells about every block: when it is asked for, when it arrives and when it is processed.
+		// A wallet that seems to be stuck is waiting for whatever was asked for last and did not arrive.
+		Logger.LogDebug(nodeHeight == walletHeight + 1
+			? $"Wallet: block {nodeHeight} is to be processed."
+			: $"Wallet: blocks {walletHeight + 1} to {nodeHeight} are to be processed.");
+
 		ReportProgress(walletHeight, nodeHeight, force: true);
 
 		try
@@ -472,7 +500,7 @@ public class WalletSynchronizer : BackgroundService
 						break;
 					}
 
-					downloads.Enqueue((next.Height, next.BlockHash, DownloadBlockAsync(next.BlockHash, downloadCts.Token)));
+					downloads.Enqueue((next.Height, next.BlockHash, DownloadBlockAsync(next.Height, next.BlockHash, downloads.Count + 1, downloadCts.Token)));
 				}
 
 				if (!downloads.TryDequeue(out var download))
@@ -498,6 +526,7 @@ public class WalletSynchronizer : BackgroundService
 					return;
 				}
 
+				var processingStarted = TimeProvider.GetTimestamp();
 				var results = _transactionProcessor.ProcessBlock(block, new ChainHeight(download.Height));
 
 				var isLastBlock = download.Height == nodeHeight;
@@ -517,6 +546,11 @@ public class WalletSynchronizer : BackgroundService
 				{
 					_lastPersisted = now;
 				}
+
+				var processingTime = TimeProvider.GetElapsedTime(processingStarted);
+				Logger.LogDebug(results.Count == 0
+					? $"Wallet: block {download.Height} is processed ({processingTime.TotalMilliseconds:0} ms)."
+					: $"Wallet: block {download.Height} is processed ({processingTime.TotalMilliseconds:0} ms). Transactions of the wallet in it: {results.Count}.");
 
 				ReportProgress(download.Height, nodeHeight, force: isLastBlock);
 			}
@@ -546,11 +580,36 @@ public class WalletSynchronizer : BackgroundService
 		}
 	}
 
-	private async Task<(Block Block, TimeSpan Elapsed)> DownloadBlockAsync(uint256 blockHash, CancellationToken cancellationToken)
+	/// <param name="onTheirWay">How many blocks the node is asked for at the moment, this one included.</param>
+	private async Task<(Block Block, TimeSpan Elapsed)> DownloadBlockAsync(uint height, uint256 blockHash, int onTheirWay, CancellationToken cancellationToken)
 	{
+		Logger.LogDebug($"Wallet: block {height} is asked for. Blocks on their way: {onTheirWay}.");
 		var started = TimeProvider.GetTimestamp();
-		var block = await _rpcClient.GetBlockAsync(blockHash, cancellationToken).ConfigureAwait(false);
-		return (block, TimeProvider.GetElapsedTime(started));
+
+		try
+		{
+			var block = await _rpcClient.GetBlockAsync(blockHash, cancellationToken).ConfigureAwait(false);
+			var elapsed = TimeProvider.GetElapsedTime(started);
+
+			// Measuring the block takes a moment, which is only spent when the message is going to be read.
+			if (Logger.IsEnabled(LogLevel.Debug))
+			{
+				var transactions = block.Transactions.Count == 1 ? "1 transaction" : $"{block.Transactions.Count:N0} transactions";
+				Logger.LogDebug($"Wallet: block {height} arrived after {elapsed.TotalSeconds:0.00} s ({block.GetSerializedSize():N0} bytes, {transactions}).");
+			}
+
+			return (block, elapsed);
+		}
+		catch (Exception ex)
+		{
+			var elapsed = TimeProvider.GetElapsedTime(started);
+
+			// When the round ends early, the blocks that are still on their way are given up, see ProcessBlocksAsync.
+			Logger.LogDebug(ex is OperationCanceledException && cancellationToken.IsCancellationRequested
+				? $"Wallet: block {height} is not waited for any more, {elapsed.TotalSeconds:0.00} s after it was asked for."
+				: $"Wallet: block {height} did not arrive. The request failed after {elapsed.TotalSeconds:0.00} s: {ex.GetType().Name}: {ex.Message}");
+			throw;
+		}
 	}
 
 	/// <summary>
@@ -567,25 +626,56 @@ public class WalletSynchronizer : BackgroundService
 		}
 		else if (elapsed >= SlowBlockDownload)
 		{
-			Logger.LogDebug($"Wallet: block {height} took {elapsed.TotalSeconds:0.#} seconds to arrive. Blocks are asked for one at a time.");
+			if (_parallelBlockDownloads > 1)
+			{
+				Logger.LogDebug($"Wallet: block {height} took {elapsed.TotalSeconds:0.#} seconds to arrive. Blocks are asked for one at a time from now on.");
+			}
+
 			_parallelBlockDownloads = 1;
 		}
 	}
 
 	private async Task<uint256[]> GetBlockHashesAsync(uint firstHeight, int count, CancellationToken cancellationToken)
 	{
-		if (count == 1)
+		// The node is asked for the hashes before it is asked for the blocks, so this is where a wallet can be stuck as well.
+		var (what, are) = count == 1
+			? ($"the hash of block {firstHeight}", "is")
+			: ($"the hashes of blocks {firstHeight} to {firstHeight + (uint)count - 1}", "are");
+
+		Logger.LogDebug($"Wallet: {what} {are} asked for.");
+		var started = TimeProvider.GetTimestamp();
+
+		try
 		{
-			return [await _rpcClient.GetBlockHashAsync((int)firstHeight, cancellationToken).ConfigureAwait(false)];
+			uint256[] blockHashes;
+
+			if (count == 1)
+			{
+				blockHashes = [await _rpcClient.GetBlockHashAsync((int)firstHeight, cancellationToken).ConfigureAwait(false)];
+			}
+			else
+			{
+				var batch = _rpcClient.PrepareBatch();
+				var requests = Enumerable.Range(0, count)
+					.Select(i => batch.GetBlockHashAsync((int)firstHeight + i, cancellationToken))
+					.ToArray();
+
+				await batch.SendBatchAsync(cancellationToken).ConfigureAwait(false);
+				blockHashes = await Task.WhenAll(requests).ConfigureAwait(false);
+			}
+
+			Logger.LogDebug($"Wallet: {what} arrived after {TimeProvider.GetElapsedTime(started).TotalSeconds:0.00} s.");
+			return blockHashes;
 		}
+		catch (Exception ex)
+		{
+			var elapsed = TimeProvider.GetElapsedTime(started);
 
-		var batch = _rpcClient.PrepareBatch();
-		var requests = Enumerable.Range(0, count)
-			.Select(i => batch.GetBlockHashAsync((int)firstHeight + i, cancellationToken))
-			.ToArray();
-
-		await batch.SendBatchAsync(cancellationToken).ConfigureAwait(false);
-		return await Task.WhenAll(requests).ConfigureAwait(false);
+			Logger.LogDebug(ex is OperationCanceledException && cancellationToken.IsCancellationRequested
+				? $"Wallet: {what} {are} not waited for any more, {elapsed.TotalSeconds:0.00} s after {(count == 1 ? "it was" : "they were")} asked for."
+				: $"Wallet: {what} did not arrive. The request failed after {elapsed.TotalSeconds:0.00} s: {ex.GetType().Name}: {ex.Message}");
+			throw;
+		}
 	}
 
 	/// <summary>Makes the next round ask the node about its mempool, however recently that was done. For tests.</summary>

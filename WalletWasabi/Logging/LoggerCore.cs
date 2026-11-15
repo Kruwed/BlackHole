@@ -95,14 +95,12 @@ public class LoggerCore
 			_ => ""
 		};
 
+	/// <summary>Whether a message of that level ends up anywhere.</summary>
+	public bool IsEnabled(LogLevel level) => Modes.Count > 0 && level >= MinimumLevel;
+
 	public void Log(LogLevel level, string message, object? ctx = null, string callerFilePath = "", int callerLineNumber = -1)
 	{
-		if (Modes.Count == 0)
-		{
-			return;
-		}
-
-		if (level < MinimumLevel)
+		if (!IsEnabled(level))
 		{
 			return;
 		}
