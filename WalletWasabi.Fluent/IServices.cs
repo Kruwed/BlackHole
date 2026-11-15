@@ -41,14 +41,11 @@ public interface IServices
 	/// <summary>Height of the last block that the wallet processed. The confirmations of its transactions are counted to there. Zero without a wallet.</summary>
 	uint GetTipHeight();
 
-
 	Network GetNetwork();
 	bool HasWallet();
-	string GetWalletsDir();
 	Task StartWalletAsync(Wallet wallet);
 	void AddWallet(KeyManager keyManager);
 
-	string GetTorLogFilePath();
 	TorMode GetUseTor();
 
 	double? GetWindowWidth();

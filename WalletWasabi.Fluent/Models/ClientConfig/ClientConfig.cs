@@ -1,5 +1,3 @@
-using WalletWasabi.Logging;
-
 namespace WalletWasabi.Fluent.Models.ClientConfig;
 
 public class ClientConfigModel
@@ -12,12 +10,4 @@ public class ClientConfigModel
 	}
 
 	public string DataDir => _services.DataDir;
-
-	public string WalletsDir => _services.GetWalletsDir();
-
-	public string ConfigFilePath => _services.PersistentConfigFilePath;
-
-	public string TorLogFilePath => _services.GetTorLogFilePath();
-
-	public string LoggerFilePath => Logger.FilePath;
 }

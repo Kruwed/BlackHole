@@ -20,7 +20,7 @@ Search for your error. Maybe someone else found it before you: https://github.co
 
 ### Logs
 
-Where to find the logs? Type `logs` in the search bar of Black Hole, or open `~/.blackhole/client/Logs.txt`.
+Where to find the logs? The folder button at the top right of Black Hole opens the data folder, and the log is the file `Logs.txt` in it. By default that is `~/.blackhole/client/Logs.txt`.
 
 ```
 Insert Your Logs Here

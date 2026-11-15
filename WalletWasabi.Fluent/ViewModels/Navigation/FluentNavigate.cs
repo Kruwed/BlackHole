@@ -12,7 +12,6 @@ using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Login;
-using WalletWasabi.Fluent.ViewModels.OpenDirectory;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
@@ -94,11 +93,6 @@ public partial class FluentNavigate
 	public void WalletCoins(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new WalletCoinsViewModel(UiContext, wallet), navigationMode);
-	}
-
-	public void OpenTorLogs(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new OpenTorLogsViewModel(UiContext), navigationMode);
 	}
 
 	public void WalletStats(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -202,16 +196,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new CancelTransactionDialogViewModel(UiContext, wallet, cancellingTransaction), navigationMode);
 	}
 
-	public void OpenDataFolder(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new OpenDataFolderViewModel(UiContext), navigationMode);
-	}
-
-	public void OpenWalletsFolder(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new OpenWalletsFolderViewModel(UiContext), navigationMode);
-	}
-
 	public FluentDialog<ResyncWalletDialogResult?> ResyncWallet(uint birthHeight, int minGapLimit, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ResyncWalletViewModel(UiContext, birthHeight, minGapLimit);
@@ -269,11 +253,6 @@ public partial class FluentNavigate
 		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void OpenConfigFile(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new OpenConfigFileViewModel(UiContext), navigationMode);
-	}
-
 	public void ReceiveAddress(IWalletModel wallet, IAddress model, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model), navigationMode);
@@ -296,11 +275,6 @@ public partial class FluentNavigate
 	public void CoinJoinDetails(IWalletModel wallet, CoinJoinTransactionModel transaction, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new CoinJoinDetailsViewModel(UiContext, wallet, transaction), navigationMode);
-	}
-
-	public void OpenLogs(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new OpenLogsViewModel(UiContext), navigationMode);
 	}
 
 	public void Send(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

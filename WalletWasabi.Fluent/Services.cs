@@ -15,7 +15,6 @@ using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Helpers;
 using WalletWasabi.Services;
 using WalletWasabi.Services.Terminate;
-using WalletWasabi.Tor;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent;
@@ -26,7 +25,6 @@ public class Services : IServices
 	public static Services Instance { get; private set; } = null!;
 
 	private readonly Global _global;
-	private readonly TorSettings _torSettings;
 	private readonly IHttpClientFactory _httpClientFactory;
 	private readonly TransactionBroadcaster _transactionBroadcaster;
 	private readonly HostedServices _hostedServices;
@@ -36,7 +34,6 @@ public class Services : IServices
 	private Services(Global global, UiConfig uiConfig, TerminateService terminateService)
 	{
 		Guard.NotNull(nameof(global.DataDir), global.DataDir);
-		Guard.NotNull(nameof(global.TorSettings), global.TorSettings);
 		Guard.NotNull(nameof(global.BitcoinRpcHttpClientFactory), global.BitcoinRpcHttpClientFactory);
 		Guard.NotNull(nameof(global.Config), global.Config);
 		Guard.NotNull(nameof(global.WalletManager), global.WalletManager);
@@ -46,7 +43,6 @@ public class Services : IServices
 		Guard.NotNull(nameof(terminateService), terminateService);
 
 		_global = global;
-		_torSettings = global.TorSettings;
 		_httpClientFactory = global.BitcoinRpcHttpClientFactory;
 		_transactionBroadcaster = global.TransactionBroadcaster;
 		_hostedServices = global.HostedServices;
@@ -75,17 +71,13 @@ public class Services : IServices
 		_global.ConnectToBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken);
 	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
-	// Transactions info
-
 	// WalletManager info
 	public Network GetNetwork() => WalletManager.Network;
 	public bool HasWallet() => WalletManager.HasWallet;
-	public string GetWalletsDir() => WalletManager.WalletDirectories.WalletsDir;
 	public Task StartWalletAsync(Wallet wallet) => WalletManager.StartWalletAsync(wallet);
 	public void AddWallet(KeyManager keyManager) => WalletManager.AddWallet(keyManager);
 
 	// Tor info
-	public string GetTorLogFilePath() => _torSettings.LogFilePath;
 	public TorMode GetUseTor() => Config.UseTor;
 
 	// UI Config
