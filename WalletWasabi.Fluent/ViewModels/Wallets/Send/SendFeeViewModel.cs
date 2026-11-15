@@ -20,7 +20,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 	Title = "Send",
 	Caption = "",
 	IconName = "wallet_action_send",
-	NavBarPosition = NavBarPosition.None,
 	Searchable = false,
 	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>

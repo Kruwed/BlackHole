@@ -14,7 +14,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
 	Order = 0,
 	Category = "Wallet",
 	Keywords = ["Wallet", "Coins", "UTXO"],
-	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen,
 	Searchable = false)]
 public partial class WalletCoinsViewModel : RoutableViewModel

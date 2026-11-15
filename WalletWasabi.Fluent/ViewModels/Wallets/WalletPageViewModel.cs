@@ -1,8 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using System.Windows.Input;
-using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Login;
@@ -17,9 +15,6 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	private readonly CompositeDisposable _disposables = new();
 
 	[AutoNotify] private bool _isLoggedIn;
-	[AutoNotify] private bool _isLoading;
-	[AutoNotify] private string? _iconName;
-	[AutoNotify] private string? _iconNameFocused;
 	[AutoNotify] private WalletViewModel? _walletViewModel;
 	[AutoNotify] private RoutableViewModel? _currentPage;
 
@@ -30,8 +25,6 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 		// TODO: Finish partial refactor
 		// Wallet property must be removed
 		Wallet = UiContext.Services.WalletManager.Wallet ?? throw new InvalidOperationException("There is no wallet.");
-
-		OpenCommand = ReactiveCommand.Create(ShowCurrentPage);
 
 		// Show Login Page when wallet is not logged in
 		this.WhenAnyValue(x => x.IsLoggedIn)
@@ -56,18 +49,11 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 		this.WhenAnyValue(x => x.WalletModel.Auth.IsLoggedIn)
 			.BindTo(this, x => x.IsLoggedIn)
 			.DisposeWith(_disposables);
-
-		SetIcon();
 	}
 
 	public IWalletModel WalletModel { get; }
 
 	public Wallet Wallet { get; }
-
-	public string Title => UiConstants.WalletTitle;
-
-	/// <summary>Brings the home screen back to the wallet.</summary>
-	public ICommand OpenCommand { get; }
 
 	/// <summary>
 	/// Starts showing the wallet on the home screen: its login page, then its loading page, then the wallet itself.
@@ -97,7 +83,6 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	private void ShowWalletLoading()
 	{
 		CurrentPage = new LoadingViewModel(UiContext, WalletModel);
-		IsLoading = true;
 	}
 
 	private void ShowWallet()
@@ -105,14 +90,7 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 		WalletViewModel = new WalletViewModel(UiContext, WalletModel, Wallet);
 
 		CurrentPage = WalletViewModel;
-		IsLoading = false;
 	}
 
 	public void Dispose() => _disposables.Dispose();
-
-	private void SetIcon()
-	{
-		IconName = "nav_wallet_24_regular";
-		IconNameFocused = "nav_wallet_24_filled";
-	}
 }

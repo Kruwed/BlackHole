@@ -10,7 +10,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
 	Order = 4,
 	Category = "Wallet",
 	Keywords = new[] { "Wallet", "Info", },
-	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen,
 	Searchable = false)]
 public partial class WalletInfoViewModel : RoutableViewModel

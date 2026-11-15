@@ -16,7 +16,6 @@ namespace WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 			"About", "Software", "Version", "Source", "Code", "Github", "Bug", "Report", "License", "Information",
 			"Fork", "Wasabi", "Wallet"
 	},
-	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class AboutViewModel : RoutableViewModel
 {

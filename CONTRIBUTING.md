@@ -294,11 +294,11 @@ The ViewModel structure should reflect the UI structure as much as possible. Thi
 
 Examples:
 
- - ✔️ `MainViewModel` represents the Main UI and references `NavBarViewModel`.
- - ✔️ `NavBarViewModel` represents the left-side navigation bar and references `WalletListViewModel`.
- - ❌ `NavBarViewModel` code must NOT reference `MainViewModel` (its logical parent).
- - ❌ `WalletListViewModel` code must NOT reference `NavBarViewModel` (its logical parent).
- - ❌ `WalletListViewModel` code must NOT reference other ViewModels that are logical children of `NavBarViewModel` (its logical siblings).
+ - ✔️ `MainViewModel` represents the Main UI and references `WalletPageViewModel`.
+ - ✔️ `WalletPageViewModel` represents the wallet on the home screen (its login, its loading and the wallet itself) and references `WalletViewModel`.
+ - ❌ `WalletPageViewModel` code must NOT reference `MainViewModel` (its logical parent).
+ - ❌ `WalletViewModel` code must NOT reference `WalletPageViewModel` (its logical parent).
+ - ❌ `WalletViewModel` code must NOT reference other ViewModels that are logical children of `WalletPageViewModel` (its logical siblings).
 
 ## UI Models
 

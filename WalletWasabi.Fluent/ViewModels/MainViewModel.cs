@@ -8,7 +8,6 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
-using WalletWasabi.Fluent.ViewModels.NavBar;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.SearchBar;
 using WalletWasabi.Fluent.ViewModels.SearchBar.Sources;
@@ -37,18 +36,15 @@ public partial class MainViewModel : ViewModelBase
 		DialogScreen = new DialogScreenViewModel(UiContext);
 		FullScreen = new DialogScreenViewModel(UiContext, NavigationTarget.FullScreen);
 		CompactDialogScreen = new DialogScreenViewModel(UiContext, NavigationTarget.CompactDialogScreen);
-		NavBar = new NavBarViewModel(UiContext);
 		MainScreen = new TargettedNavigationStack(UiContext, NavigationTarget.HomeScreen);
 		UiContext.RegisterNavigation(new NavigationState(UiContext, MainScreen, DialogScreen, FullScreen, CompactDialogScreen));
 
-		NavBar.Activate();
+		ShowWalletWhenItExists();
 
 		StatusIcon = new StatusIconViewModel(UiContext);
 
 		SettingsPage = new SettingsPageViewModel(UiContext);
-		Notifications = new WalletNotificationsViewModel(UiContext, () => NavBar.Wallet?.WalletViewModel);
-
-		NavigationManager.RegisterType(NavBar);
+		Notifications = new WalletNotificationsViewModel(UiContext, () => WalletPage?.WalletViewModel);
 
 		this.RegisterAllViewModels(UiContext);
 
@@ -120,7 +116,10 @@ public partial class MainViewModel : ViewModelBase
 	public DialogScreenViewModel DialogScreen { get; }
 	public DialogScreenViewModel FullScreen { get; }
 	public DialogScreenViewModel CompactDialogScreen { get; }
-	public NavBarViewModel NavBar { get; }
+
+	/// <summary>The wallet, once it was created or recovered.</summary>
+	public WalletPageViewModel? WalletPage { get; private set; }
+
 	public StatusIconViewModel StatusIcon { get; }
 	public SettingsPageViewModel SettingsPage { get; }
 	public WalletNotificationsViewModel Notifications { get; }
@@ -178,6 +177,23 @@ public partial class MainViewModel : ViewModelBase
 		WindowState = UiContext.ApplicationSettings.WindowState;
 	}
 
+	/// <summary>
+	/// Shows the wallet on the home screen: right away if there is one, otherwise as soon as it is created or recovered.
+	/// </summary>
+	private void ShowWalletWhenItExists()
+	{
+		UiContext.WalletRepository
+			.WhenAnyValue(x => x.Wallet)
+			.WhereNotNull()
+			.Take(1)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(wallet =>
+			{
+				WalletPage = new WalletPageViewModel(UiContext, wallet);
+				WalletPage.Activate();
+			});
+	}
+
 	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Same lifecycle as the application. Won't be disposed separately.")]
 	private SearchBarViewModel CreateSearchBar()
 	{
@@ -186,7 +202,7 @@ public partial class MainViewModel : ViewModelBase
 
 		var source = new CompositeSearchSource(
 			new ActionsSearchSource(UiContext, querySubject),
-			new TransactionsSearchSource(NavBar, querySubject),
+			new TransactionsSearchSource(() => WalletPage, querySubject),
 			UiContext.EditableSearchSource);
 
 		var searchBar = new SearchBarViewModel(source);

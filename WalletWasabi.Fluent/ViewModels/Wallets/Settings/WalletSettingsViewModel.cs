@@ -19,7 +19,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
     Order = 2,
     Category = "Wallet",
     Keywords = new[] { "Wallet", "Settings", },
-    NavBarPosition = NavBarPosition.None,
     NavigationTarget = NavigationTarget.DialogScreen,
     Searchable = false)]
 public partial class WalletSettingsViewModel : RoutableViewModel

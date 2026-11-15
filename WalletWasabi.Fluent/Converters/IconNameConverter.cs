@@ -5,11 +5,12 @@ using Avalonia.Media;
 
 namespace WalletWasabi.Fluent.Converters;
 
-public class NavBarIconConverter : IValueConverter
+/// <summary>Finds the geometry of an icon by the name of its resource.</summary>
+public class IconNameConverter : IValueConverter
 {
-	public static readonly NavBarIconConverter Instance = new();
+	public static readonly IconNameConverter Instance = new();
 
-	private NavBarIconConverter()
+	private IconNameConverter()
 	{
 	}
 

@@ -56,8 +56,6 @@
   <SolidColorBrush x:Key="FunctionButtonDisabledBackgroundColor" Color="{StaticResource SystemChromeDisabledLowColor}" />
   <SolidColorBrush x:Key="FunctionButtonDisabledForegroundColor" Color="{StaticResource SystemChromeDisabledHighColor}" />
 
-  <SolidColorBrush x:Key="NavBarItemSelectedBrush" Color="{StaticResource AcrylicTrimForeground}" />
-
   <LinearGradientBrush x:Key="LogoAccentColor" StartPoint="1,0" EndPoint="0,1">
       <GradientStop Color="#00FF4D" Offset="0"/>
       <GradientStop Color="#17C04A" Offset="1"/>

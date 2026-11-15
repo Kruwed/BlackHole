@@ -17,7 +17,6 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 	Category = "General",
 	Keywords = new[] { "Settings", "Bitcoin", "Coordinator", "Connections" },
 	IconName = "nav_settings_24_regular",
-	IconNameFocused = "nav_settings_24_filled",
 	Searchable = false,
 	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SettingsPageViewModel : DialogViewModelBase<Unit>

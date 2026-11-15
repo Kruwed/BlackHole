@@ -16,7 +16,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 [NavigationMetaData(
 	Title = "Select Coins",
 	IconName = "wallet_action_send",
-	NavBarPosition = NavBarPosition.None,
 	Searchable = false,
 	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumerable<SmartCoin>>

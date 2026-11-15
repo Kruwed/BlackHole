@@ -13,7 +13,6 @@ namespace WalletWasabi.Fluent.ViewModels.CoinControl;
 	Title = "Coin Control",
 	Caption = "",
 	IconName = "wallet_action_send",
-	NavBarPosition = NavBarPosition.None,
 	Searchable = false,
 	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SelectCoinsDialogViewModel : DialogViewModelBase<IEnumerable<SmartCoin>>

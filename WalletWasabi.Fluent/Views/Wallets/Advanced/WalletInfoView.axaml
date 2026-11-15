@@ -14,7 +14,7 @@
                  EnableBack="{Binding EnableBack}">
     <ContentArea.CancelContent>
       <StackPanel Spacing="10" Orientation="Horizontal">
-        <PathIcon Data="{Binding LockIconString, Converter={x:Static conv:NavBarIconConverter.Instance}}" />
+        <PathIcon Data="{Binding LockIconString, Converter={x:Static conv:IconNameConverter.Instance}}" />
         <TextBlock Text="{Binding ShowButtonText}" />
       </StackPanel>
     </ContentArea.CancelContent>

@@ -33,7 +33,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 	Order = 5,
 	Category = "Wallet",
 	Keywords = new[] { "Wallet", "Send", "Action", },
-	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen,
 	Searchable = false)]
 public partial class SendViewModel : RoutableViewModel

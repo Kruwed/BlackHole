@@ -7,7 +7,6 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Fluent.Extensions;
-using WalletWasabi.Fluent.ViewModels.NavBar;
 using WalletWasabi.Fluent.ViewModels.SearchBar.Patterns;
 using WalletWasabi.Fluent.ViewModels.SearchBar.SearchItems;
 using WalletWasabi.Fluent.ViewModels.Wallets;
@@ -21,11 +20,12 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 	private const int MinQueryLength = 3;
 
 	private readonly CompositeDisposable _disposables = new();
-	private readonly NavBarViewModel _navBarViewModel;
+	private readonly Func<WalletPageViewModel?> _getWalletPage;
 
-	public TransactionsSearchSource(NavBarViewModel navBarViewModel, IObservable<string> queries)
+	/// <param name="getWalletPage">Gives the page of the wallet, or nothing as long as there is no wallet.</param>
+	public TransactionsSearchSource(Func<WalletPageViewModel?> getWalletPage, IObservable<string> queries)
 	{
-		_navBarViewModel = navBarViewModel;
+		_getWalletPage = getWalletPage;
 
 #pragma warning disable CA2000 // Dispose objects before losing scope - disposed with the disposables
 		var sourceCache = new SourceCache<ISearchItem, ComposedKey>(x => x.Key)
@@ -91,7 +91,7 @@ public class TransactionsSearchSource : ReactiveObject, ISearchSource, IDisposab
 	{
 		// TODO: This is a workaround to get all the transactions of the loaded wallet. REMOVE after UIDecoupling #26
 
-		if (_navBarViewModel.Wallet is not { IsLoggedIn: true, Wallet.Loaded: true, WalletViewModel: { } wallet })
+		if (_getWalletPage() is not { IsLoggedIn: true, Wallet.Loaded: true, WalletViewModel: { } wallet })
 		{
 			return [];
 		}

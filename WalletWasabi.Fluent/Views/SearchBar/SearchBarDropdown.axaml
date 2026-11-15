@@ -47,7 +47,7 @@
 
         <DockPanel Background="Transparent" Margin="10">
           <PathIcon DockPanel.Dock="Left" Width="16" Height="16" Opacity="0.8" VerticalAlignment="Center" Foreground="{DynamicResource AcrylicTrimForeground}"
-                    Data="{Binding Icon, Converter={x:Static conv:NavBarIconConverter.Instance}}" />
+                    Data="{Binding Icon, Converter={x:Static conv:IconNameConverter.Instance}}" />
           <TextBlock Margin="10 0 10 0" Text="{Binding Name}"
                      ToolTip.Tip="{Binding Name}"
                      VerticalAlignment="Center"  TextTrimming="CharacterEllipsis" MaxWidth="150" />

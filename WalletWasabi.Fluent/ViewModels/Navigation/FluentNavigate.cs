@@ -13,7 +13,6 @@ using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 using WalletWasabi.Fluent.ViewModels.Login;
-using WalletWasabi.Fluent.ViewModels.NavBar;
 using WalletWasabi.Fluent.ViewModels.OpenDirectory;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.TransactionBroadcasting;
@@ -78,11 +77,6 @@ public partial class FluentNavigate
 	public void SpeedUpTransactionDialog(IWalletModel wallet, SpeedupTransaction speedupTransaction, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new SpeedUpTransactionDialogViewModel(UiContext, wallet, speedupTransaction), navigationMode);
-	}
-
-	public void NavBarItem(INavBarItem item, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new NavBarItemViewModel(UiContext, item), navigationMode);
 	}
 
 	public void About(bool navigateBack = false, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

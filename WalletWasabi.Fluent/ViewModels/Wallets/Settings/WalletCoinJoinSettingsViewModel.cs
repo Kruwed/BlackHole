@@ -20,7 +20,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 	Order = 1,
 	Category = "Wallet",
 	Keywords = new[] { "Wallet", "Settings", },
-	NavBarPosition = NavBarPosition.None,
 	NavigationTarget = NavigationTarget.DialogScreen,
 	Searchable = false)]
 public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel

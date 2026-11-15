@@ -8,27 +8,7 @@ public static class NavigationManager
 {
 	private static readonly Dictionary<NavigationMetaData, InstanceGeneratorBase> NavigationEntries = new();
 
-	private static readonly Dictionary<Type, ViewModelBase> TypeRegistry = new();
-
 	public static IEnumerable<NavigationMetaData> MetaData => NavigationEntries.Keys.Select(x => x);
-
-	public static void RegisterType<T>(T instance) where T : ViewModelBase
-	{
-		if (!TypeRegistry.ContainsKey(typeof(T)))
-		{
-			TypeRegistry.Add(typeof(T), instance);
-		}
-	}
-
-	public static T? Get<T>() where T : ViewModelBase
-	{
-		if (TypeRegistry.TryGetValue(typeof(T), out ViewModelBase? value) && value is T vmb)
-		{
-			return vmb;
-		}
-
-		return null;
-	}
 
 	public static async Task<RoutableViewModel?> MaterializeViewModelAsync(NavigationMetaData metaData)
 	{

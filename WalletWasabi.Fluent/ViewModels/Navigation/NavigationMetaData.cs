@@ -12,17 +12,11 @@ public sealed class NavigationMetaData
 
 	public string? IconName { get; init; }
 
-	public string? IconNameFocused { get; init; }
-
 	public int Order { get; init; }
 
 	public string? Category { get; init; }
 
 	public string[]? Keywords { get; init; }
-
-	public NavBarPosition NavBarPosition { get; init; }
-
-	public NavBarSelectionMode NavBarSelectionMode { get; init; }
 
 	public NavigationTarget NavigationTarget { get; init; }
 }

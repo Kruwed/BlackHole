@@ -55,11 +55,7 @@ public class ActionsSearchSource : ISearchSource
 				return;
 			}
 
-			if (vm is INavBarButton navBarButton)
-			{
-				await navBarButton.Activate();
-			}
-			else if (vm is TriggerCommandViewModel triggerCommandViewModel && triggerCommandViewModel.TargetCommand.CanExecute(default))
+			if (vm is TriggerCommandViewModel triggerCommandViewModel && triggerCommandViewModel.TargetCommand.CanExecute(default))
 			{
 				triggerCommandViewModel.TargetCommand.Execute(default);
 			}
