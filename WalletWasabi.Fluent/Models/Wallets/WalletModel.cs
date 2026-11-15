@@ -52,6 +52,12 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	IObservable<bool> Loaded { get; }
 
+	/// <summary>
+	/// Whether the wallet knows where it is in the chain. A new wallet learns that from the node, and its history starts there:
+	/// it has nothing to resync until then.
+	/// </summary>
+	bool IsHeightKnown { get; }
+
 	/// <summary>Whether <see cref="Resync"/> was called: the wallet waits for the restart of the application and does not follow the node until then.</summary>
 	bool IsResyncRequested { get; }
 
@@ -164,6 +170,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 
 	public IObservable<bool> Loaded { get; }
+
+	public bool IsHeightKnown => Wallet.KeyManager.GetBestHeight() is not null;
 
 	public bool IsResyncRequested => Wallet.Synchronizer.IsResyncRequested;
 

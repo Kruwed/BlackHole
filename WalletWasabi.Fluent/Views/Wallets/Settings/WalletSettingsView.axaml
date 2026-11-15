@@ -23,12 +23,6 @@
         </ScrollViewer>
       </TabItem>
 
-      <TabItem Header="Tools">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-          <v:WalletToolsView />
-        </ScrollViewer>
-      </TabItem>
-
     </TabControl>
 
   </ContentArea>

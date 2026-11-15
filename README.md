@@ -46,7 +46,7 @@ The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `
 
 Recovering a wallet scans every block since the activation of Taproot unless you tell the height the wallet was created at (*Advanced Recovery Options*). On mainnet the full scan takes hours.
 
-A wallet watches 210 unused addresses after the last one that was paid to (its gap limit). A recovered wallet does not find a payment whose address follows more unused addresses than that until the gap limit is raised, in *Advanced Recovery Options* or later in *Wallet Settings → Tools → Resync Wallet*.
+A wallet watches 210 unused addresses after the last one that was paid to (its gap limit). A recovered wallet does not find a payment whose address follows more unused addresses than that until the gap limit is raised, in *Advanced Recovery Options* or later with *Resync Wallet* in *Settings → Connections*.
 
 ## Data
 

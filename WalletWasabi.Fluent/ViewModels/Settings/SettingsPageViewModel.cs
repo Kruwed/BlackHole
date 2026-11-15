@@ -12,8 +12,13 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 [NavigationMetaData(Title = "Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 {
+	private const string ResyncWalletHint = "If your wallet is missing some confirmed transaction, try to resync.";
+	private const string ResyncLockedWalletHint = "Decrypt the wallet to resync it.";
+
 	[AutoNotify] private bool _isModified;
 	[AutoNotify] private int _selectedTab;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasWallet;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _resyncWalletToolTip = ResyncLockedWalletHint;
 
 	public SettingsPageViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -27,6 +32,25 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 		NextCommand = ReactiveCommand.Create(() => Close());
 		OpenCommand = ReactiveCommand.CreateFromTask(Activate);
+
+		// The wallet appears when it is created or recovered. It can be resynchronized once it is decrypted.
+		var wallet = UiContext.WalletRepository.WhenAnyValue(x => x.Wallet);
+
+		var isWalletDecrypted = wallet
+			.Select(x => x?.WhenAnyValue(w => w.IsLoggedIn) ?? Observable.Return(false))
+			.Switch()
+			.ObserveOn(RxApp.MainThreadScheduler);
+
+		wallet
+			.Select(x => x is not null)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.BindTo(this, x => x.HasWallet);
+
+		isWalletDecrypted
+			.Select(isDecrypted => isDecrypted ? ResyncWalletHint : ResyncLockedWalletHint)
+			.BindTo(this, x => x.ResyncWalletToolTip);
+
+		ResyncWalletCommand = ReactiveCommand.CreateFromTask(ResyncWalletAsync, isWalletDecrypted);
 
 		// Show restart message when needed
 		UiContext.ApplicationSettings.IsRestartNeeded
@@ -46,6 +70,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	/// <summary>Opens the settings. This is what the button in the title bar does.</summary>
 	public ICommand OpenCommand { get; }
 
+	/// <summary>Asks from where to resynchronize the wallet and restarts the application to do it.</summary>
+	public ICommand ResyncWalletCommand { get; }
+
 	public ConnectionsSettingsTabViewModel ConnectionsSettingsTab { get; }
 	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
 
@@ -58,5 +85,33 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	{
 		SelectedTab = 1;
 		await NavigateDialogAsync(this);
+	}
+
+	private async Task ResyncWalletAsync()
+	{
+		if (UiContext.WalletRepository.Wallet is not { } wallet)
+		{
+			return;
+		}
+
+		if (!wallet.IsHeightKnown)
+		{
+			// The dialog would offer to start with the first block of the chain, which makes a wallet without a history read all of it.
+			await ShowErrorAsync(
+				"Resync Wallet",
+				"The wallet is new and has not reached your node yet. Its history starts with the block that the node is at when it does.",
+				"There is nothing to resync yet.",
+				NavigationTarget.CompactDialogScreen);
+			return;
+		}
+
+		var result = await UiContext.Navigate().To().ResyncWallet(wallet.Settings.BirthHeight, wallet.Settings.MinGapLimit).GetResultAsync();
+
+		if (result is not null)
+		{
+			wallet.Resync(result.StartingHeight, result.MinGapLimit);
+			UiContext.Navigate(MetaData.NavigationTarget).Clear();
+			AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true);
+		}
 	}
 }

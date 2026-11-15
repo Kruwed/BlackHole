@@ -39,7 +39,18 @@
                   Classes="Settings">
         <TabItem Header="Connections">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:ConnectionsSettingsTabView DataContext="{Binding ConnectionsSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
+            <StackPanel Spacing="15">
+              <v:ConnectionsSettingsTabView DataContext="{Binding ConnectionsSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
+
+              <!-- The wallet reads the blocks of the node again. That is not a setting: it works while the settings are read-only too. -->
+              <StackPanel Classes="settingsLayout" IsVisible="{Binding HasWallet}">
+                <Separator />
+                <DockPanel ToolTip.Tip="{Binding ResyncWalletToolTip}">
+                  <TextBlock Text="Resync Wallet" />
+                  <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />
+                </DockPanel>
+              </StackPanel>
+            </StackPanel>
           </ScrollViewer>
         </TabItem>
 

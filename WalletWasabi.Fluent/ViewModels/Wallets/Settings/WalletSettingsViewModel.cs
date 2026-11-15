@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Windows.Input;
 using NBitcoin;
-using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
@@ -35,19 +33,7 @@ public partial class WalletSettingsViewModel : RoutableViewModel
         });
 
         WalletCoinJoinSettings = new WalletCoinJoinSettingsViewModel(UiContext, walletModel);
-
-        ResyncWalletCommand = ReactiveCommand.CreateFromTask(async () =>
-        {
-            var result = await UiContext.Navigate().To().ResyncWallet(walletModel.Settings.BirthHeight, walletModel.Settings.MinGapLimit).GetResultAsync();
-            if (result is not null)
-            {
-                walletModel.Resync(result.StartingHeight, result.MinGapLimit);
-                UiContext.Navigate(MetaData.NavigationTarget).Clear();
-                AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true);
-            }
-        });
     }
 
     public WalletCoinJoinSettingsViewModel WalletCoinJoinSettings { get; private set; }
-    public ICommand ResyncWalletCommand { get; }
 }
