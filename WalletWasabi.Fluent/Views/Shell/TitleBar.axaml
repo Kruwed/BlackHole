@@ -67,7 +67,14 @@
 
         <ContentControl Grid.Column="2" ContentTemplate="{StaticResource SearchBar}" />
 
-        <shell:NetworkBadge VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 8 0" Grid.Column="3" />
+        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6" Margin="0 0 8 0">
+          <shell:NetworkBadge VerticalAlignment="Center" />
+          <Button Classes="transparentFunction" Padding="7" VerticalAlignment="Center"
+                  Command="{Binding SettingsPage.OpenCommand}"
+                  ToolTip.Tip="Settings">
+            <PathIcon Data="{StaticResource nav_settings_24_regular}" Width="18" Height="18" Opacity="0.6" />
+          </Button>
+        </StackPanel>
 
       </Grid>
     </DataTemplate>

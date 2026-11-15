@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.SearchBar.Patterns;
 using WalletWasabi.Fluent.ViewModels.SearchBar.SearchItems;
@@ -60,6 +62,11 @@ public class ActionsSearchSource : ISearchSource
 			else if (vm is TriggerCommandViewModel triggerCommandViewModel && triggerCommandViewModel.TargetCommand.CanExecute(default))
 			{
 				triggerCommandViewModel.TargetCommand.Execute(default);
+			}
+			else if (vm is DialogViewModelBase<Unit> dialog)
+			{
+				// A dialog, like the settings, is opened in the way that waits for it: only that way it goes away when it is done.
+				await UiContext.Navigate(vm.DefaultTarget).NavigateDialogAsync(dialog);
 			}
 			else
 			{

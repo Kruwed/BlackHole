@@ -19,9 +19,7 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 	IconName = "nav_settings_24_regular",
 	IconNameFocused = "nav_settings_24_filled",
 	Searchable = false,
-	NavBarPosition = NavBarPosition.Bottom,
-	NavigationTarget = NavigationTarget.DialogScreen,
-	NavBarSelectionMode = NavBarSelectionMode.Button)]
+	NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 {
 	[AutoNotify] private bool _isModified;
@@ -44,6 +42,7 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 		NextCommand = ReactiveCommand.Create(() => Close());
+		OpenCommand = ReactiveCommand.CreateFromTask(Activate);
 
 		// Show restart message when needed
 		UiContext.ApplicationSettings.IsRestartNeeded
@@ -59,6 +58,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	public bool IsReadOnly => UiContext.ApplicationSettings.IsOverridden;
 
 	public ICommand RestartCommand { get; }
+
+	/// <summary>Opens the settings. This is what the button in the title bar does.</summary>
+	public ICommand OpenCommand { get; }
 
 	public ConnectionsSettingsTabViewModel ConnectionsSettingsTab { get; }
 	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
