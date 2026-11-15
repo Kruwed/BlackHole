@@ -19,13 +19,7 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	{
 		_selectedTab = 0;
 
-		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
-
-		CancelCommand = ReactiveCommand.Create(() =>
-		{
-			UiContext.ApplicationSettings.ResetToDefault();
-			return Task.CompletedTask;
-		});
+		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
 		ConnectionsSettingsTab = new ConnectionsSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
 		CoordinatorTabSettings = new CoordinatorTabSettingsViewModel(UiContext, UiContext.ApplicationSettings);

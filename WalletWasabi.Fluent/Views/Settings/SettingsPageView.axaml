@@ -13,9 +13,7 @@
   <ContentArea Title="{Binding Title}"
                  Caption="Manage connection and coordinator settings"
                  EnableNext="True"
-                 EnableCancel="{Binding !IsReadOnly}"
                  NextContent="Done"
-                 CancelContent="Reset All Settings"
                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
     <DockPanel LastChildFill="True">
 

@@ -94,35 +94,6 @@ public partial class ApplicationSettings : ReactiveObject
 		SetupObservables();
 	}
 
-	private void ApplyConfigs(PersistentConfig persistentConfig, UiConfig uiConfig)
-	{
-		// Connections
-		UseTor = Config.ObjectToTorMode(persistentConfig.UseTor);
-
-		// Bitcoin
-		Network = persistentConfig.Network;
-		BitcoinRpcUri = persistentConfig.BitcoinRpcUri;
-		BitcoinRpcCredentialString = persistentConfig.BitcoinRpcCredentialString;
-
-		// Coordinator
-		CoordinatorUri = persistentConfig.CoordinatorUri;
-
-		MaxCoinJoinMiningFeeRate = persistentConfig.MaxCoinJoinMiningFeeRate.ToString(CultureInfo.InvariantCulture);
-		AbsoluteMinInputCount = persistentConfig.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture);
-
-		// General
-		CustomChangeAddress = uiConfig.IsCustomChangeAddress;
-		TerminateTorOnExit = persistentConfig.TerminateTorOnExit;
-
-		// Experimental
-		ExperimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
-
-		Oobe = uiConfig.Oobe;
-		LastVersionHighlightsDisplayed = uiConfig.LastVersionHighlightsDisplayed;
-
-		WindowState = Enum.Parse<WindowState>(uiConfig.WindowState);
-	}
-
 	private void SetupObservables()
 	{
 		// Save on change
@@ -162,28 +133,6 @@ public partial class ApplicationSettings : ReactiveObject
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => ApplyUiConfigChanges())
 			.Subscribe();
-	}
-
-	public void ResetToDefault()
-	{
-		var defaultConfig = _runningConfig.Network switch
-		{
-			var network when network == Network.Main => PersistentConfigManager.DefaultMainNetConfig,
-			var network when network == Network.TestNet => PersistentConfigManager.DefaultTestNetConfig,
-			var network when network == Network.RegTest => PersistentConfigManager.DefaultRegTestConfig,
-			var network when network == Bitcoin.Instance.Signet => PersistentConfigManager.DefaultSignetConfig,
-			_ => throw new NotSupportedException($"Network '{_runningConfig.Network}' is not supported."),
-		};
-
-		var newPersistentConfig = defaultConfig with {CoordinatorUri = CoordinatorUri};
-
-		var newUiConfig = new UiConfig(_uiConfig.FilePath)
-		{
-			Oobe = Oobe,
-			LastVersionHighlightsDisplayed = LastVersionHighlightsDisplayed
-		};
-
-		ApplyConfigs(newPersistentConfig, newUiConfig);
 	}
 
 	public bool IsOverridden => _config.IsOverridden;
