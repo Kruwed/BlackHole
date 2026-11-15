@@ -30,15 +30,17 @@
       </DockPanel.Styles>
 
       <StackPanel MaxWidth="400" DockPanel.Dock="Bottom" Spacing="30">
-        <TextBlock Text="{Binding WalletTitle}"
+        <TextBlock Text="Black Hole"
                    TextWrapping="Wrap"
                    TextAlignment="Center"
                    HorizontalAlignment="Center"
                    FontSize="{StaticResource FontSizeH3}"
                    Margin="0 10 0 0" />
 
+        <!-- The panel is as high as the message about a wrong password that takes its place, so that the page does not move then. -->
         <DockPanel IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                    Classes="fadeAnimation"
+                   MinHeight="78"
                    x:Name="DockPanel">
           <Interaction.Behaviors>
             <DataTriggerBehavior Binding="{Binding #DockPanel.IsVisible}" Value="True">
@@ -46,26 +48,25 @@
             </DataTriggerBehavior>
           </Interaction.Behaviors>
 
-          <!-- Enter password -->
+          <!-- Enter password: the box, with the button to its right -->
           <DockPanel DockPanel.Dock="Top"
-                     VerticalAlignment="Bottom">
-            <CopyablePasswordTextBox DockPanel.Dock="Top" Text="{Binding Password}" Watermark="Password" PasswordChar="•"
+                     VerticalAlignment="Top">
+            <!-- The button is as high as the box. The padding puts its text on the line of the text in the box. -->
+            <Button DockPanel.Dock="Right" Content="Decrypt" Focusable="False" Classes="function" Margin="8 0 0 0" Padding="13 10 13 4" VerticalAlignment="Stretch" Command="{Binding NextCommand}">
+              <Button.IsDefault>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                  <Binding Path="ErrorMessage" Converter="{x:Static StringConverters.IsNullOrEmpty}" />
+                  <Binding Path="IsActive" />
+                </MultiBinding>
+              </Button.IsDefault>
+            </Button>
+            <CopyablePasswordTextBox Text="{Binding Password}" Watermark="Password" PasswordChar="•"
                                      Classes="revealPasswordButton copyablePasswordTextBox"
                                      x:Name="Password">
               <Interaction.Behaviors>
                 <FocusOnAttachedBehavior />
               </Interaction.Behaviors>
             </CopyablePasswordTextBox>
-            <Panel Margin="0 5 0 0 ">
-              <Button Content="Open" Focusable="False" Classes="function" HorizontalAlignment="Right" Command="{Binding NextCommand}">
-                <Button.IsDefault>
-                  <MultiBinding Converter="{x:Static BoolConverters.And}">
-                    <Binding Path="ErrorMessage" Converter="{x:Static StringConverters.IsNullOrEmpty}" />
-                    <Binding Path="IsActive" />
-                  </MultiBinding>
-                </Button.IsDefault>
-              </Button>
-            </Panel>
           </DockPanel>
         </DockPanel>
 
@@ -87,9 +88,9 @@
         </StackPanel>
       </StackPanel>
 
-      <!-- Icon -->
+      <!-- The galaxy of the logo -->
       <Viewbox MaxHeight="180" Margin="0 0 0 15">
-        <Image Source="{StaticResource NormalWalletIcon}" />
+        <Image Source="{DynamicResource app_logo_dynamic}" />
       </Viewbox>
     </DockPanel>
   </ContentArea>

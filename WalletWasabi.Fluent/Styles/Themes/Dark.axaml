@@ -127,13 +127,4 @@
 
   <!-- Network badge -->
   <Color x:Key="NetworkBadgeColor">Gold</Color>
-
-  <!-- WalletIcon -->
-  <Color x:Key="WalletIconBackgroundStartColor">#FF646464</Color>
-  <Color x:Key="WalletIconBackgroundEndColor">#FF333333</Color>
-  <Color x:Key="WalletIconAccentStartColor">#F7931A</Color>
-  <Color x:Key="WalletIconAccentEndColor">#F7931A</Color>
-  <Color x:Key="WalletIconShadeColor1">#00F7931A</Color>
-  <Color x:Key="WalletIconShadeColor2">#037D4600</Color>
-  <Color x:Key="WalletIconShadeColor3">#33000000</Color>
 </ResourceDictionary>
