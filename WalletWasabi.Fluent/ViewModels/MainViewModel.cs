@@ -1,6 +1,5 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Controls;
@@ -10,15 +9,12 @@ using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Fluent.ViewModels.SearchBar;
-using WalletWasabi.Fluent.ViewModels.SearchBar.Sources;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.StatusIcon;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Notifications;
 using WalletWasabi.Helpers;
 using WalletWasabi.Logging;
-using System.Diagnostics.CodeAnalysis;
 
 namespace WalletWasabi.Fluent.ViewModels;
 
@@ -48,8 +44,6 @@ public partial class MainViewModel : ViewModelBase
 		SettingsPage = new SettingsPageViewModel(UiContext);
 		OpenDataFolderCommand = ReactiveCommand.CreateFromTask(OpenDataFolderAsync);
 		Notifications = new WalletNotificationsViewModel(UiContext, () => WalletPage?.WalletViewModel);
-
-		this.RegisterAllViewModels(UiContext);
 
 		this.WhenAnyValue(x => x.WindowState)
 			.Where(state => state != WindowState.Minimized)
@@ -98,8 +92,6 @@ public partial class MainViewModel : ViewModelBase
 			}
 		});
 
-		SearchBar = CreateSearchBar();
-
 		NetworkBadgeName =
 			UiContext.ApplicationSettings.Network == Network.Main
 			? ""
@@ -113,8 +105,6 @@ public partial class MainViewModel : ViewModelBase
 	public IObservable<WalletViewModel> CurrentWallet { get; }
 
 	public TargettedNavigationStack MainScreen { get; }
-
-	public SearchBarViewModel SearchBar { get; }
 
 	public DialogScreenViewModel DialogScreen { get; }
 	public DialogScreenViewModel FullScreen { get; }
@@ -213,30 +203,5 @@ public partial class MainViewModel : ViewModelBase
 			Logger.LogError(ex);
 			await UiContext.Navigate().To().ShowErrorDialog(ex.ToUserFriendlyString(), "Data Folder", "Black Hole was unable to open its data folder.").GetResultAsync();
 		}
-	}
-
-	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Same lifecycle as the application. Won't be disposed separately.")]
-	private SearchBarViewModel CreateSearchBar()
-	{
-		// This subject is created to solve the circular dependency between the sources and SearchBarViewModel
-		var querySubject = new Subject<string>();
-
-		var source = new CompositeSearchSource(
-			new ActionsSearchSource(UiContext, querySubject),
-			new TransactionsSearchSource(() => WalletPage, querySubject),
-			UiContext.EditableSearchSource);
-
-		var searchBar = new SearchBarViewModel(source);
-
-		var queries = searchBar
-			.WhenAnyValue(a => a.SearchText)
-			.WhereNotNull();
-
-		UiContext.EditableSearchSource.SetQueries(queries);
-
-		queries
-			.Subscribe(querySubject);
-
-		return searchBar;
 	}
 }

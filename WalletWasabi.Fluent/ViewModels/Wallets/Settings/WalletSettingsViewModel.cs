@@ -12,15 +12,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 
 [AppLifetime]
-[NavigationMetaData(
-    Title = "Wallet Settings",
-    Caption = "Display wallet settings",
-    IconName = "nav_wallet_24_regular",
-    Order = 2,
-    Category = "Wallet",
-    Keywords = new[] { "Wallet", "Settings", },
-    NavigationTarget = NavigationTarget.DialogScreen,
-    Searchable = false)]
+[NavigationMetaData(Title = "Wallet Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletSettingsViewModel : RoutableViewModel
 {
     /// <summary>Index of the tab with the coinjoin settings.</summary>

@@ -13,11 +13,7 @@ using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 
-[NavigationMetaData(
-	Title = "Select Coins",
-	IconName = "wallet_action_send",
-	Searchable = false,
-	NavigationTarget = NavigationTarget.DialogScreen)]
+[NavigationMetaData(Title = "Select Coins", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumerable<SmartCoin>>
 {
 	[AutoNotify] private bool _hasSelection;

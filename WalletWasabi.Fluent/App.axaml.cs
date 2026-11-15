@@ -10,7 +10,6 @@ using WalletWasabi.Fluent.Models.ClientConfig;
 using WalletWasabi.Fluent.Models.FileSystem;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels;
-using WalletWasabi.Fluent.ViewModels.SearchBar.Sources;
 
 namespace WalletWasabi.Fluent;
 
@@ -121,7 +120,6 @@ public class App : Application
 			CreateFileSystem(),
 			CreateConfig(services),
 			applicationSettings,
-			new EditableSearchSource(),
 			new HealthMonitor(services),
 			new ReleaseHighlights());
 	}

@@ -2,7 +2,7 @@ using System.Windows.Input;
 using ReactiveUI;
 using WalletWasabi.Fluent.Helpers;
 
-namespace WalletWasabi.Fluent.ViewModels.SearchBar.Settings;
+namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 public class RestartViewModel : ViewModelBase
 {

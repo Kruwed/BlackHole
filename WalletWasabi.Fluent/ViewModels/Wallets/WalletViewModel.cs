@@ -14,8 +14,6 @@ using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
-using WalletWasabi.Fluent.ViewModels.SearchBar.SearchItems;
-using WalletWasabi.Fluent.ViewModels.SearchBar.Sources;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.Tiles;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
@@ -54,13 +52,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		Settings = new WalletSettingsViewModel(UiContext, WalletModel);
 		History = new HistoryViewModel(UiContext, WalletModel);
-
-		UiContext.EditableSearchSource.Add(CreateSearchItems());
-
-		var sendSearchItem = CreateSendItem();
-		this.WhenAnyValue(x => x.IsSendButtonVisible)
-			.Do(shouldAdd => UiContext.EditableSearchSource.Toggle(sendSearchItem, shouldAdd))
-			.Subscribe();
 
 		walletModel.HasBalance
 			.Select(x => !x)
@@ -127,25 +118,11 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 				Navigate(NavigationTarget.DialogScreen).To(Settings);
 			});
 
-		CoinJoinSettingsCommand = ReactiveCommand.Create(
-			() =>
-			{
-				Settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
-				Navigate(NavigationTarget.DialogScreen).To(Settings);
-			});
-
 		WalletCoinsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To().WalletCoins(WalletModel));
 
 		CoinJoinStateViewModel = WalletModel.IsCoinJoinEnabled
 			? new CoinJoinStateViewModel(uiContext, WalletModel, Wallet, WalletModel.Coinjoin!, Settings)
 			: null;
-
-		CoinJoinPaymentsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To().CoinJoinPayments(WalletModel, Wallet));
-
-		if (WalletModel.IsCoinJoinEnabled)
-		{
-			UiContext.EditableSearchSource.Add(CreateCoinJoinPaymentsItem());
-		}
 
 		NavigateToCoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
 		{
@@ -154,8 +131,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 				await mainViewModel.SettingsPage.ActivateCoordinatorTabAsync();
 			}
 		});
-
-		NavigateToExcludedCoinsCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().ExcludedCoins(WalletModel));
 
 		Tiles = GetTiles().ToList();
 	}
@@ -189,13 +164,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public ICommand WalletCoinsCommand { get; private set; }
 
-	public ICommand CoinJoinSettingsCommand { get; private set; }
-
-	public ICommand CoinJoinPaymentsCommand { get; private set; }
-
 	public ICommand NavigateToCoordinatorSettingsCommand { get; }
-
-	public ICommand NavigateToExcludedCoinsCommand { get; }
 
 	public override string Title
 	{
@@ -224,30 +193,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		WalletModel.Loaded
 			.BindTo(this, x => x.Loaded)
 			.DisposeWith(disposables);
-	}
-
-	private ISearchItem[] CreateSearchItems()
-	{
-		return new ISearchItem[]
-		{
-			new ActionableItem("Receive", "Display wallet receive dialog", () => { ReceiveCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Receive", "Action", }) { Icon = "wallet_action_receive", IsDefault = true, Priority = 2 },
-			new ActionableItem("Coinjoin Settings", "Display wallet coinjoin settings", () => { CoinJoinSettingsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Settings", }) { Icon = "wallet_action_coinjoin", IsDefault = true, Priority = 3 },
-			new ActionableItem("Wallet Settings", "Display wallet settings", () => { WalletSettingsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Settings", }) { Icon = "settings_wallet_regular", IsDefault = true, Priority = 4 },
-			new ActionableItem("Exclude Coins", "Display exclude coins", () => { NavigateToExcludedCoinsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Exclude", "Coins", "Coinjoin", "Freeze", "UTXO", }) { Icon = "exclude_coins", IsDefault = true, Priority = 5 },
-			new ActionableItem("Wallet Coins", "Display wallet coins", () => { WalletCoinsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Coins", "UTXO", }) { Icon = "wallet_coins", IsDefault = true, Priority = 6 },
-			new ActionableItem("Wallet Stats", "Display wallet stats", () => { WalletStatsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Stats", }) { Icon = "stats_wallet_regular", IsDefault = true, Priority = 7 },
-			new ActionableItem("Wallet Info", "Display wallet info", () => { WalletInfoCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Info", }) { Icon = "info_regular", IsDefault = true, Priority = 8 },
-		};
-	}
-
-	private ISearchItem CreateSendItem()
-	{
-		return new ActionableItem("Send", "Display wallet send dialog", () => { SendCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Send", "Action", }) { Icon = "wallet_action_send", IsDefault = true, Priority = 1 };
-	}
-
-	private ISearchItem CreateCoinJoinPaymentsItem()
-	{
-		return new ActionableItem("Coinjoin Payments", "Manage queued coinjoin payments", () => { CoinJoinPaymentsCommand.ExecuteIfCan(); return Task.CompletedTask; }, "Wallet", new[] { "Wallet", "Coinjoin", "Payments", "Send", "Batch" }) { Icon = "embedded_payment", IsDefault = true, Priority = 3 };
 	}
 
 	private IEnumerable<ActivatableViewModel> GetTiles()

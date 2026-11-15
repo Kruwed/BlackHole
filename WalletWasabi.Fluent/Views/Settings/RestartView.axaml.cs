@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace WalletWasabi.Fluent.Views.SearchBar.Settings;
+namespace WalletWasabi.Fluent.Views.Settings;
 
 public partial class RestartView : UserControl
 {

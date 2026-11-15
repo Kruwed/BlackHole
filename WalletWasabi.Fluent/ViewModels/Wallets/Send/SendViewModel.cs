@@ -26,15 +26,7 @@ using Constants = WalletWasabi.Helpers.Constants;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 
-[NavigationMetaData(
-	Title = "Send",
-	Caption = "Display wallet send dialog",
-	IconName = "wallet_action_send",
-	Order = 5,
-	Category = "Wallet",
-	Keywords = new[] { "Wallet", "Send", "Action", },
-	NavigationTarget = NavigationTarget.DialogScreen,
-	Searchable = false)]
+[NavigationMetaData(Title = "Send", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SendViewModel : RoutableViewModel
 {
 	private readonly Wallet _wallet;

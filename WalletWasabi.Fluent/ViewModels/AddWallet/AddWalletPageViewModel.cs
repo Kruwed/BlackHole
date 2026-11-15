@@ -9,11 +9,7 @@ namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 /// The choice between creating and recovering the wallet. It is offered as long as there is no wallet: the application works with a single one.
 /// The node that the wallet is going to work with can be chosen here too.
 /// </summary>
-[NavigationMetaData(
-	Title = "Add Wallet",
-	Caption = "Create or recover",
-	NavigationTarget = NavigationTarget.DialogScreen,
-	Searchable = false)]
+[NavigationMetaData(Title = "Add Wallet", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class AddWalletPageViewModel : DialogViewModelBase<Unit>
 {
 	public AddWalletPageViewModel(UiContext uiContext) : base(uiContext)

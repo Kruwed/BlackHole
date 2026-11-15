@@ -9,12 +9,7 @@ using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
 namespace WalletWasabi.Fluent.ViewModels.CoinControl;
 
-[NavigationMetaData(
-	Title = "Coin Control",
-	Caption = "",
-	IconName = "wallet_action_send",
-	Searchable = false,
-	NavigationTarget = NavigationTarget.DialogScreen)]
+[NavigationMetaData(Title = "Coin Control", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SelectCoinsDialogViewModel : DialogViewModelBase<IEnumerable<SmartCoin>>
 {
 	public SelectCoinsDialogViewModel(UiContext uiContext, IWalletModel wallet, IList<CoinModel> selectedCoins,

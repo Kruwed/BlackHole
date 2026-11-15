@@ -5,20 +5,11 @@ using System.Windows.Input;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
-using WalletWasabi.Fluent.ViewModels.SearchBar.Settings;
 
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 [AppLifetime]
-[NavigationMetaData(
-	Title = "Settings",
-	Caption = "Manage connection and coordinator settings",
-	Order = 1,
-	Category = "General",
-	Keywords = new[] { "Settings", "Bitcoin", "Coordinator", "Connections" },
-	IconName = "nav_settings_24_regular",
-	Searchable = false,
-	NavigationTarget = NavigationTarget.DialogScreen)]
+[NavigationMetaData(Title = "Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 {
 	[AutoNotify] private bool _isModified;

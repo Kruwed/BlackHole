@@ -15,17 +15,7 @@ using WalletWasabi.Models;
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 [AppLifetime]
-[NavigationMetaData(
-	Title = "Connections",
-	Caption = "Manage Bitcoin node and Tor settings",
-	Order = 1,
-	Category = "Settings",
-	Keywords =
-	[
-		"Settings", "Connections", "Bitcoin", "Network", "Main", "TestNet", "TestNet4", "Signet", "RegTest", "Run", "Node", "Core", "Knots", "Version", "Startup",
-		"Stop", "Shutdown", "Rpc", "Endpoint", "Anonymization", "Tor", "Terminate", "Black", "Hole", "Shut", "Reset"
-	],
-	IconName = "settings_general_regular")]
+[NavigationMetaData(Title = "Connections")]
 public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 {
 	[AutoNotify] private string _bitcoinRpcUri;

@@ -11,10 +11,8 @@ using System.Threading.Tasks;
 
 namespace WalletWasabi.Fluent.Helpers;
 
-public class ApplicationHelper
+public static class ApplicationHelper
 {
-	public static ApplicationHelper Instance { get; } = new();
-
 	public static Window? MainWindow => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
 	public static IFocusManager? FocusManager => GetTopLevel()?.FocusManager;

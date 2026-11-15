@@ -16,12 +16,7 @@ using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Send;
 
-[NavigationMetaData(
-	Title = "Send",
-	Caption = "",
-	IconName = "wallet_action_send",
-	Searchable = false,
-	NavigationTarget = NavigationTarget.DialogScreen)]
+[NavigationMetaData(Title = "Send", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>
 {
 	private readonly Wallet _wallet;

@@ -3,15 +3,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
 
-[NavigationMetaData(
-	Title = "Wallet Info",
-	Caption = "Display wallet info",
-	IconName = "nav_wallet_24_regular",
-	Order = 4,
-	Category = "Wallet",
-	Keywords = new[] { "Wallet", "Info", },
-	NavigationTarget = NavigationTarget.DialogScreen,
-	Searchable = false)]
+[NavigationMetaData(Title = "Wallet Info", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletInfoViewModel : RoutableViewModel
 {
 	private readonly WalletInfoModel _model;

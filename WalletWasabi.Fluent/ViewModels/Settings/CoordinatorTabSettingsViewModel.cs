@@ -8,16 +8,7 @@ using WalletWasabi.Helpers;
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 [AppLifetime]
-[NavigationMetaData(
-	Title = "Coordinator",
-	Caption = "Manage coordinator settings",
-	Order = 2,
-	Category = "Settings",
-	Keywords =
-	[
-		"Settings", "Coordinator", "URI", "Max", "Coinjoin", "Mining", "Fee", "Rate", "Min", "Input", "Count"
-	],
-	IconName = "settings_bitcoin_regular")]
+[NavigationMetaData(Title = "Coordinator")]
 public partial class CoordinatorTabSettingsViewModel : RoutableViewModel
 {
 	[AutoNotify] private string _coordinatorUri;

@@ -7,15 +7,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 
-[NavigationMetaData(
-	Title = "Receive",
-	Caption = "Display wallet receive dialog",
-	IconName = "wallet_action_receive",
-	Order = 6,
-	Category = "Wallet",
-	Keywords = new[] { "Wallet", "Receive", "Action", },
-	NavigationTarget = NavigationTarget.DialogScreen,
-	Searchable = false)]
+[NavigationMetaData(Title = "Receive", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class ReceiveViewModel : RoutableViewModel, IDisposable
 {
 	private readonly IWalletModel _wallet;
