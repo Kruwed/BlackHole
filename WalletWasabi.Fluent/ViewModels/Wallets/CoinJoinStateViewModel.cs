@@ -73,7 +73,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	private CoinjoinError? _lastPlebStopActivatedEvent;
 
-	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, WalletSettingsViewModel settings) : base(uiContext)
+	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, WalletCoinJoinSettingsViewModel settings) : base(uiContext)
 	{
 		_wallet = wallet;
 		_walletInstance = walletInstance;
@@ -156,12 +156,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 		_stateMachine.Start();
 
-		var coinJoinSettingsCommand = ReactiveCommand.Create(
-			() =>
-			{
-				settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
-				UiContext.Navigate(NavigationTarget.DialogScreen).To(settings);
-			});
+		var coinJoinSettingsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To(settings));
 
 		NavigateToSettingsCommand = coinJoinSettingsCommand;
 		CanNavigateToCoinjoinSettings = coinJoinSettingsCommand.CanExecute;

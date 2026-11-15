@@ -50,7 +50,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		WalletModel = walletModel;
 		Wallet = wallet;
 
-		Settings = new WalletSettingsViewModel(UiContext, WalletModel);
+		CoinJoinSettings = new WalletCoinJoinSettingsViewModel(UiContext, WalletModel);
 		History = new HistoryViewModel(UiContext, WalletModel);
 
 		walletModel.HasBalance
@@ -111,17 +111,12 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		WalletStatsCommand = ReactiveCommand.Create(() => Navigate().To().WalletStats(WalletModel));
 
-		WalletSettingsCommand = ReactiveCommand.Create(
-			() =>
-			{
-				Settings.SelectedTab = WalletSettingsViewModel.CoinjoinTab;
-				Navigate(NavigationTarget.DialogScreen).To(Settings);
-			});
+		CoinJoinSettingsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To(CoinJoinSettings));
 
 		WalletCoinsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To().WalletCoins(WalletModel));
 
 		CoinJoinStateViewModel = WalletModel.IsCoinJoinEnabled
-			? new CoinJoinStateViewModel(uiContext, WalletModel, Wallet, WalletModel.Coinjoin!, Settings)
+			? new CoinJoinStateViewModel(uiContext, WalletModel, Wallet, WalletModel.Coinjoin!, CoinJoinSettings)
 			: null;
 
 		NavigateToCoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -146,7 +141,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public CoinJoinStateViewModel? CoinJoinStateViewModel { get; private set; }
 
-	public WalletSettingsViewModel Settings { get; private set; }
+	public WalletCoinJoinSettingsViewModel CoinJoinSettings { get; private set; }
 
 	public HistoryViewModel History { get; }
 
@@ -158,7 +153,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public ICommand WalletInfoCommand { get; private set; }
 
-	public ICommand WalletSettingsCommand { get; private set; }
+	public ICommand CoinJoinSettingsCommand { get; private set; }
 
 	public ICommand WalletStatsCommand { get; private set; }
 

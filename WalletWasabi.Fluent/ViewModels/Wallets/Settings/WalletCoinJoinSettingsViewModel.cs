@@ -7,12 +7,17 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
 using WalletWasabi.CoinJoinProfiles;
+using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 
+/// <summary>
+/// The settings of the wallet, all of which are about its coinjoins. The menu of the wallet and the menu of the coinjoin controls open this page.
+/// </summary>
+[AppLifetime]
 [NavigationMetaData(Title = "Coinjoin Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 {
@@ -39,7 +44,11 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
-		NextCommand = CancelCommand;
+		NextCommand = ReactiveCommand.Create(() =>
+		{
+			_wallet.Settings.Save();
+			Navigate().Back();
+		});
 
 		SetAutoCoinJoin = ReactiveCommand.CreateFromTask(
 			() =>

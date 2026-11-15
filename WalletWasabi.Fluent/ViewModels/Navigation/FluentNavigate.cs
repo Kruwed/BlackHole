@@ -308,19 +308,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ReceiveAddressesViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public void WalletCoinJoinSettings(IWalletModel walletModel, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletCoinJoinSettingsViewModel(UiContext, walletModel), navigationMode);
-	}
-
 	public void MultiShareOptions(WalletCreationOptions.AddNewWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new MultiShareOptionsViewModel(UiContext, options), navigationMode);
-	}
-
-	public void WalletSettings(IWalletModel walletModel, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletSettingsViewModel(UiContext, walletModel), navigationMode);
 	}
 
 	public FluentDialog<System.Reactive.Unit> WelcomePage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

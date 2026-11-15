@@ -62,9 +62,9 @@
           <Button Classes="transparentFunction">
             <Button.Flyout>
               <MenuFlyout Placement="Bottom">
-                <MenuItem Header="Wallet Settings" Command="{Binding WalletSettingsCommand}">
+                <MenuItem Header="Coinjoin Settings" Command="{Binding CoinJoinSettingsCommand}">
                   <MenuItem.Icon>
-                    <PathIcon Data="{StaticResource settings_wallet_regular}" />
+                    <PathIcon Data="{StaticResource settings_general_regular}" />
                   </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="Wallet Coins" Command="{Binding WalletCoinsCommand}">
