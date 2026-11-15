@@ -57,7 +57,6 @@ public interface IServices
 	double? GetWindowHeight();
 	void SetWindowWidth(double? width);
 	void SetWindowHeight(double? height);
-	bool GetPrivacyMode();
 	int GetFeeTarget();
 	void SetFeeTarget(int value);
 

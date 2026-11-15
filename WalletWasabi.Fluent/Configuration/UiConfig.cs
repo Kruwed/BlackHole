@@ -8,7 +8,6 @@ namespace WalletWasabi.Fluent.Configuration;
 
 public class UiConfig : ConfigBase
 {
-	private bool _privacyMode;
 	private bool _isCustomChangeAddress;
 	private string _windowState;
 	private bool _oobe;
@@ -19,7 +18,6 @@ public class UiConfig : ConfigBase
 
 	public UiConfig(
 		string filePath,
-		bool privacyMode,
 		bool isCustomChangeAddress,
 		string windowState,
 		bool oobe,
@@ -28,7 +26,6 @@ public class UiConfig : ConfigBase
 		double? windowWidth,
 		double? windowHeight) : base(filePath)
 	{
-		_privacyMode = privacyMode;
 		_isCustomChangeAddress = isCustomChangeAddress;
 		_windowState = windowState;
 		_oobe = oobe;
@@ -42,9 +39,8 @@ public class UiConfig : ConfigBase
 				x => x.WindowState,
 				x => x.Oobe,
 				x => x.LastVersionHighlightsDisplayed,
-				x => x.PrivacyMode,
 				x => x.FeeTarget,
-				(_, _, _, _, _, _) => Unit.Default)
+				(_, _, _, _, _) => Unit.Default)
 			.Throttle(TimeSpan.FromMilliseconds(1000))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => ToFile());
@@ -60,7 +56,6 @@ public class UiConfig : ConfigBase
 	public UiConfig(string filePath)
 		: this(
 			filePath,
-			privacyMode: false,
 			isCustomChangeAddress: false,
 			windowState: "Normal",
 			oobe: true,
@@ -99,12 +94,6 @@ public class UiConfig : ConfigBase
 	{
 		get => _isCustomChangeAddress;
 		set => RaiseAndSetIfChanged(ref _isCustomChangeAddress, value);
-	}
-
-	public bool PrivacyMode
-	{
-		get => _privacyMode;
-		set => RaiseAndSetIfChanged(ref _privacyMode, value);
 	}
 
 	public double? WindowWidth

@@ -73,10 +73,9 @@ public partial class HistoryViewModel : ActivatableViewModel
 
 	private static IColumn<HistoryItemViewModelBase> DateColumn()
 	{
-		return new PrivacyTextColumn<HistoryItemViewModelBase>(
+		return new PlainTextColumn<HistoryItemViewModelBase>(
 			"Date / Time",
 			x => x.Transaction.DateString,
-			type: PrivacyCellType.Date,
 			options: new ColumnOptions<HistoryItemViewModelBase>
 			{
 				CanUserResizeColumn = false,
@@ -84,8 +83,7 @@ public partial class HistoryViewModel : ActivatableViewModel
 				CompareAscending = HistoryItemViewModelBase.SortAscending(x => x.Transaction.Date),
 				CompareDescending = HistoryItemViewModelBase.SortDescending(x => x.Transaction.Date),
 			},
-			width: new GridLength(0, GridUnitType.Auto),
-			numberOfPrivacyChars: 8);
+			width: new GridLength(0, GridUnitType.Auto));
 	}
 
 	private static IColumn<HistoryItemViewModelBase> AmountColumn()

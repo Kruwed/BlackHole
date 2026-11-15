@@ -98,7 +98,6 @@ public class Services : IServices
 	public double? GetWindowHeight() => UiConfig.WindowHeight;
 	public void SetWindowWidth(double? width) => UiConfig.WindowWidth = width;
 	public void SetWindowHeight(double? height) => UiConfig.WindowHeight = height;
-	public bool GetPrivacyMode() => UiConfig.PrivacyMode;
 	public int GetFeeTarget() => UiConfig.FeeTarget;
 	public void SetFeeTarget(int value) => UiConfig.FeeTarget = value;
 

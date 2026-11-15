@@ -29,62 +29,52 @@
     </PathIcon>
 
     <!-- Second icon (Transaction Type) -->
-    <!-- NOTE: We use UseOpacity=true so we do not trigger layout update in the TreeDataGrid -->
-    <PrivacyContentControl PrivacyReplacementMode="Icon" UseOpacity="True">
-      <PrivacyContentControl.Styles>
-        <Style Selector="PrivacyContentControl /template/ Viewbox#PART_Icon">
-          <Setter Property="Opacity" Value="0.6" />
-          <Setter Property="Height" Value="14" />
-          <Setter Property="Margin" Value="0" />
-        </Style>
-      </PrivacyContentControl.Styles>
-      <Panel Height="15">
-        <PathIcon Opacity="0.6"
-                  Classes.IncomingTransaction="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.IncomingTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.OutgoingTransaction="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.OutgoingTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.Coinjoin="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Coinjoin}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.Cancellation="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Cancellation}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.CoinjoinGroup="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CoinjoinGroup}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.CPFP="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CPFP}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                  Classes.SelfTransfer="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.SelfTransferTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
-          <PathIcon.Styles>
-            <Style Selector="PathIcon.IncomingTransaction">
-              <Setter Property="Data" Value="{StaticResource wallet_action_receive}" />
-              <Setter Property="Height" Value="15" />
-              <Setter Property="ToolTip.Tip" Value="Incoming" />
-            </Style>
-            <Style Selector="PathIcon.OutgoingTransaction">
-              <Setter Property="Data" Value="{StaticResource wallet_action_send}" />
-              <Setter Property="Height" Value="15" />
-              <Setter Property="ToolTip.Tip" Value="Outgoing" />
-            </Style>
-            <Style Selector="PathIcon.SelfTransfer">
-              <Setter Property="Data" Value="{StaticResource normal_transaction}" />
-              <Setter Property="ToolTip.Tip" Value="Self Transfer" />
-            </Style>
-            <Style Selector="PathIcon.Coinjoin">
-              <Setter Property="Data" Value="{StaticResource shield_regular}" />
-              <Setter Property="Height" Value="15" />
-              <Setter Property="ToolTip.Tip" Value="Coinjoin" />
-            </Style>
-            <Style Selector="PathIcon.CoinjoinGroup">
-              <Setter Property="Data" Value="{StaticResource double_shield_regular}" />
-              <Setter Property="Height" Value="15" />
-              <Setter Property="ToolTip.Tip" Value="Coinjoins" />
-            </Style>
-            <Style Selector="PathIcon.Cancellation">
-              <Setter Property="Data" Value="{StaticResource cancel_regular}" />
-              <Setter Property="Height" Value="15" />
-              <Setter Property="ToolTip.Tip" Value="Cancellation" />
-            </Style>
-            <Style Selector="PathIcon.CPFP">
-              <Setter Property="Data" Value="{StaticResource rocket_bolt}" />
-              <Setter Property="Height" Value="14" />
-              <Setter Property="ToolTip.Tip" Value="Accelerator" />
-            </Style>
-          </PathIcon.Styles>
-        </PathIcon>
-      </Panel>
-    </PrivacyContentControl>
+    <Panel Height="15" VerticalAlignment="Center">
+      <PathIcon Opacity="0.6"
+                Classes.IncomingTransaction="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.IncomingTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.OutgoingTransaction="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.OutgoingTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.Coinjoin="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Coinjoin}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.Cancellation="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Cancellation}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.CoinjoinGroup="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CoinjoinGroup}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.CPFP="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CPFP}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.SelfTransfer="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.SelfTransferTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+        <PathIcon.Styles>
+          <Style Selector="PathIcon.IncomingTransaction">
+            <Setter Property="Data" Value="{StaticResource wallet_action_receive}" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="ToolTip.Tip" Value="Incoming" />
+          </Style>
+          <Style Selector="PathIcon.OutgoingTransaction">
+            <Setter Property="Data" Value="{StaticResource wallet_action_send}" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="ToolTip.Tip" Value="Outgoing" />
+          </Style>
+          <Style Selector="PathIcon.SelfTransfer">
+            <Setter Property="Data" Value="{StaticResource normal_transaction}" />
+            <Setter Property="ToolTip.Tip" Value="Self Transfer" />
+          </Style>
+          <Style Selector="PathIcon.Coinjoin">
+            <Setter Property="Data" Value="{StaticResource shield_regular}" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="ToolTip.Tip" Value="Coinjoin" />
+          </Style>
+          <Style Selector="PathIcon.CoinjoinGroup">
+            <Setter Property="Data" Value="{StaticResource double_shield_regular}" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="ToolTip.Tip" Value="Coinjoins" />
+          </Style>
+          <Style Selector="PathIcon.Cancellation">
+            <Setter Property="Data" Value="{StaticResource cancel_regular}" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="ToolTip.Tip" Value="Cancellation" />
+          </Style>
+          <Style Selector="PathIcon.CPFP">
+            <Setter Property="Data" Value="{StaticResource rocket_bolt}" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="ToolTip.Tip" Value="Accelerator" />
+          </Style>
+        </PathIcon.Styles>
+      </PathIcon>
+    </Panel>
   </StackPanel>
 </UserControl>

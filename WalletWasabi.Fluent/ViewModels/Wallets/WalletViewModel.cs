@@ -69,9 +69,9 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		walletModel.IsCoinjoinRunning
 			.BindTo(this, x => x.IsCoinJoining);
 
-		 // Keep the send button visible while the discreet mode is on. Otherwise its absence reveals an empty wallet.
-		 this.WhenAnyValue(x => x.IsWalletBalanceZero, x => x.UiContext.ApplicationSettings.PrivacyMode)
-		 	.Subscribe(_ => IsSendButtonVisible = !IsWalletBalanceZero || UiContext.ApplicationSettings.PrivacyMode);
+		// There is nothing to send from an empty wallet.
+		this.WhenAnyValue(x => x.IsWalletBalanceZero)
+			.Subscribe(isWalletBalanceZero => IsSendButtonVisible = !isWalletBalanceZero);
 
 		 WalletModel.Privacy.IsWalletPrivate
 			 .BindTo(this, x => x.AreAllCoinsPrivate);

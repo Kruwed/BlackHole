@@ -14,13 +14,12 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 /// </summary>
 public class CoinGroupViewModel : CoinListItem
 {
-	public CoinGroupViewModel(UiContext uiContext, CoinGroup group, ICoinListModel availableCoins, bool canSelectCoinjoiningCoins, bool ignorePrivacyMode) : base(uiContext)
+	public CoinGroupViewModel(UiContext uiContext, CoinGroup group, ICoinListModel availableCoins, bool canSelectCoinjoiningCoins) : base(uiContext)
 	{
 		var groupCoins = group.Coins.ToList();
 
 		var unconfirmedCount = groupCoins.Count(x => !x.Confirmed);
 		IsConfirmed = unconfirmedCount == 0;
-		IgnorePrivacyMode = ignorePrivacyMode;
 		ConfirmationStatus = IsConfirmed ? "All coins are confirmed" : $"{unconfirmedCount} coins are waiting for confirmation";
 		IsBanned = groupCoins.Any(x => x.IsBanned);
 		BannedUntilUtcToolTip = IsBanned ? "Some coins can't participate in coinjoin" : null;
@@ -33,7 +32,7 @@ public class CoinGroupViewModel : CoinListItem
 			groupCoins
 				.Select(availableCoins.GetCoinModel)
 				.OrderByDescending(x => x.AnonScore)
-				.Select(coin => new CoinViewModel(uiContext, "", coin, canSelectCoinjoiningCoins, ignorePrivacyMode) { IsChild = true })
+				.Select(coin => new CoinViewModel(uiContext, "", coin, canSelectCoinjoiningCoins) { IsChild = true })
 				.ToList();
 
 		Children

@@ -27,7 +27,6 @@ public partial class WalletNotificationsViewModel : ViewModelBase
 			.WhereNotNull()
 			.Take(1)
 			.SelectMany(wallet => wallet.Transactions.NewTransactionArrived.Where(_ => wallet is { IsLoggedIn: true, IsLoaded: true }))
-			.Where(x => !UiContext.ApplicationSettings.PrivacyMode)
 			.Where(x => x.EventArgs.IsNews)
 			.DoAsync(x => OnNotificationReceivedAsync(x.Wallet, x.EventArgs))
 			.Subscribe();

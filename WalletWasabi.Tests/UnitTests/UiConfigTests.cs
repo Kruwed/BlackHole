@@ -31,7 +31,7 @@ public class UiConfigTests
 		using (var persisted = JsonDocument.Parse(File.ReadAllText(filePath)))
 		{
 			Assert.True(persisted.RootElement.GetProperty(nameof(UiConfig.Oobe)).GetBoolean());
-			Assert.False(persisted.RootElement.GetProperty(nameof(UiConfig.PrivacyMode)).GetBoolean());
+			Assert.Equal(2, persisted.RootElement.GetProperty(nameof(UiConfig.FeeTarget)).GetInt32());
 		}
 
 		// A subsequent save must not overlap the initial write or be overwritten by it.
@@ -78,7 +78,6 @@ public class UiConfigTests
 		Assert.Equal(new Version(2, 8, 0), config.LastVersionHighlightsDisplayed);
 		Assert.Equal("Maximized", config.WindowState);
 		Assert.Equal(6, config.FeeTarget);
-		Assert.True(config.PrivacyMode);
 		Assert.Equal(1280.0, config.WindowWidth);
 		Assert.Equal(800.0, config.WindowHeight);
 
@@ -86,7 +85,7 @@ public class UiConfigTests
 
 		using var saved = JsonDocument.Parse(File.ReadAllText(filePath));
 		Assert.False(saved.RootElement.GetProperty(nameof(UiConfig.Oobe)).GetBoolean());
-		Assert.True(saved.RootElement.GetProperty(nameof(UiConfig.PrivacyMode)).GetBoolean());
+		Assert.Equal(6, saved.RootElement.GetProperty(nameof(UiConfig.FeeTarget)).GetInt32());
 
 		foreach (var removedSetting in RemovedSettings)
 		{
@@ -95,5 +94,5 @@ public class UiConfigTests
 	}
 
 	/// <summary>Settings of earlier versions that the application does not have any more.</summary>
-	private static readonly string[] RemovedSettings = ["DarkModeEnabled", "RunOnSystemStartup", "HideOnClose", "Autocopy", "AutoPaste"];
+	private static readonly string[] RemovedSettings = ["DarkModeEnabled", "RunOnSystemStartup", "HideOnClose", "Autocopy", "AutoPaste", "PrivacyMode"];
 }

@@ -50,9 +50,6 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify] private TorMode _useTor;
 	[AutoNotify] private bool _terminateTorOnExit;
 
-	// Privacy Mode
-	[AutoNotify] private bool _privacyMode;
-
 	[AutoNotify] private bool _oobe;
 	[AutoNotify] private Version _lastVersionHighlightsDisplayed;
 	[AutoNotify] private WindowState _windowState;
@@ -90,9 +87,6 @@ public partial class ApplicationSettings : ReactiveObject
 		// Experimental
 		_experimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
 
-		// Privacy Mode
-		_privacyMode = uiConfig.PrivacyMode;
-
 		_oobe = uiConfig.Oobe;
 		_lastVersionHighlightsDisplayed = uiConfig.LastVersionHighlightsDisplayed;
 
@@ -122,9 +116,6 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Experimental
 		ExperimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
-
-		// Privacy Mode
-		PrivacyMode = uiConfig.PrivacyMode;
 
 		Oobe = uiConfig.Oobe;
 		LastVersionHighlightsDisplayed = uiConfig.LastVersionHighlightsDisplayed;
@@ -170,12 +161,6 @@ public partial class ApplicationSettings : ReactiveObject
 			.Skip(1)
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => ApplyUiConfigChanges())
-			.Subscribe();
-
-		// Save UiConfig on change without throttling
-		this.WhenAnyValue(x => x.PrivacyMode)
-			.Skip(1)
-			.Do(_ => ApplyUiConfigPrivacyModeChange())
 			.Subscribe();
 	}
 
@@ -296,10 +281,5 @@ public partial class ApplicationSettings : ReactiveObject
 		_uiConfig.Oobe = Oobe;
 		_uiConfig.LastVersionHighlightsDisplayed = LastVersionHighlightsDisplayed;
 		_uiConfig.WindowState = WindowState.ToString();
-	}
-
-	private void ApplyUiConfigPrivacyModeChange()
-	{
-		_uiConfig.PrivacyMode = PrivacyMode;
 	}
 }

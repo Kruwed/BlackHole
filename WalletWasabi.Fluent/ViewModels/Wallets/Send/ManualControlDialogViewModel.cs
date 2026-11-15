@@ -28,7 +28,7 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 
 	public ManualControlDialogViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
 	{
-		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, ignorePrivacyMode: true, allowSelection: true);
+		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, allowSelection: true);
 
 		var nextCommandCanExecute =
 			CoinList.Selection

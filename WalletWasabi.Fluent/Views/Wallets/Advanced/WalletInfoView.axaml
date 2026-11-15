@@ -57,7 +57,7 @@
         <PreviewItem Icon="{StaticResource key_regular}"
                      Label="Output Descriptor"
                      CopyableContent="{Binding OutputDescriptor}">
-          <PrivacyContentControl Classes="monoSpaced" Content="{Binding OutputDescriptor}" ForceShow="{Binding ShowSensitiveData}" />
+          <TextBlock Classes="monoSpaced" Text="{Binding OutputDescriptor}" />
         </PreviewItem>
       </StackPanel>
 
@@ -66,7 +66,7 @@
       <PreviewItem Icon="{StaticResource key_regular}"
                      Label="Extended Account Public Key"
                      CopyableContent="{Binding ExtendedAccountPublicKey}">
-        <PrivacyContentControl Classes="monoSpaced" Content="{Binding ExtendedAccountPublicKey}" ForceShow="{Binding ShowSensitiveData}" />
+        <TextBlock Classes="monoSpaced" Text="{Binding ExtendedAccountPublicKey}" />
       </PreviewItem>
     </StackPanel>
   </ContentArea>

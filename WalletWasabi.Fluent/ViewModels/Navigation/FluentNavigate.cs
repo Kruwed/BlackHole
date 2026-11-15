@@ -346,11 +346,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(viewModel, navigationMode);
 	}
 
-	public void PrivacyMode(ApplicationSettings applicationSettings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new PrivacyModeViewModel(UiContext, applicationSettings), navigationMode);
-	}
-
 	public FluentDialog<System.Reactive.Unit> ExcludedCoins(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ExcludedCoinsViewModel(UiContext, wallet);

@@ -50,14 +50,13 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <PrivacyContentControl Margin="0,0,6,0">
-                    <Button Classes="activeHyperLink"
-                            Focusable="False"
-                            Content="{Binding}"
-                            Command="{Binding $parent[TagsBox].AddTag}"
-                            CommandParameter="{Binding }"
-                            x:CompileBindings="False" />
-                  </PrivacyContentControl>
+                  <Button Classes="activeHyperLink"
+                          Margin="0,0,6,0"
+                          Focusable="False"
+                          Content="{Binding}"
+                          Command="{Binding $parent[TagsBox].AddTag}"
+                          CommandParameter="{Binding }"
+                          x:CompileBindings="False" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

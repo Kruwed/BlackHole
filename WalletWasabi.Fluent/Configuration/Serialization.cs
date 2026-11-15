@@ -20,7 +20,6 @@ public static class UiConfigEncode
 			yield return ("WindowState", String(cfg.WindowState));
 			yield return ("FeeTarget", Int(cfg.FeeTarget));
 			yield return ("IsCustomChangeAddress", Bool(cfg.IsCustomChangeAddress));
-			yield return ("PrivacyMode", Bool(cfg.PrivacyMode));
 			if (cfg is {WindowWidth: {} width, WindowHeight: {} height})
 			{
 				yield return ("WindowWidth", Double(width));
@@ -44,10 +43,9 @@ public static class UiConfigDecode
 			var windowState = get.Required("WindowState", Decode.String);
 			var feeTarget = get.Required("FeeTarget", Decode.Int);
 			var isCustomChangeAddress = get.Required("IsCustomChangeAddress", Decode.Bool);
-			var privacyMode = get.Required("PrivacyMode", Decode.Bool);
 			var windowWidth = get.Optional("WindowWidth", Decode.Double, 0);
 			var windowHeight = get.Optional("WindowHeight", Decode.Double, 0);
-			return new UiConfig(filePath, privacyMode, isCustomChangeAddress,
+			return new UiConfig(filePath, isCustomChangeAddress,
 				windowState, oobe, lastVersionHighlightsDisplayed,
 				feeTarget, windowWidth > 0 ? windowWidth : null, windowHeight > 0 ? windowHeight : null);
 		});

@@ -9,9 +9,7 @@
              x:Class="WalletWasabi.Fluent.Views.Wallets.Home.Tiles.WalletBalanceTileView" ClipToBounds="False">
   <TileControl Title="BALANCE" IsBottomContentVisible="False">
     <CopyableItem ContentToCopy="{Binding Amounts^.Btc}" HorizontalContentAlignment="Center">
-      <PrivacyContentControl Classes="h3" Margin="4" HorizontalContentAlignment="Center">
-        <AmountControl Amount="{Binding Amounts^}"/>
-      </PrivacyContentControl>
+      <AmountControl Classes="h3" Margin="4" VerticalAlignment="Center" Amount="{Binding Amounts^}"/>
     </CopyableItem>
   </TileControl>
 </UserControl>

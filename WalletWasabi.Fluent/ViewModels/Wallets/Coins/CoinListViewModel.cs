@@ -19,7 +19,6 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 {
 	private readonly CompositeDisposable _disposables = new();
 	private readonly ReadOnlyObservableCollection<CoinListItem> _itemsCollection;
-	private readonly bool _ignorePrivacyMode;
 	private readonly bool _allowCoinjoiningCoinSelection;
 
 	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Uses DisposeWith()")]
@@ -28,10 +27,8 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 		ICoinListModel availableCoins,
 		IList<CoinModel> initialCoinSelection,
 		bool allowCoinjoiningCoinSelection,
-		bool ignorePrivacyMode,
 		bool allowSelection = true) : base(uiContext)
 	{
-		_ignorePrivacyMode = ignorePrivacyMode;
 		_allowCoinjoiningCoinSelection = allowCoinjoiningCoinSelection;
 
 		var viewModels = new SourceList<CoinListItem>().DisposeWith(_disposables);
@@ -171,10 +168,10 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 					var coin = group.Coins.First();
 					var coinModel = availableCoins.GetCoinModel(coin);
 
-					return (CoinListItem)new CoinViewModel(UiContext, group.Title, coinModel, _allowCoinjoiningCoinSelection, _ignorePrivacyMode);
+					return (CoinListItem)new CoinViewModel(UiContext, group.Title, coinModel, _allowCoinjoiningCoinSelection);
 				}
 
-				return new CoinGroupViewModel(UiContext, group, availableCoins, _allowCoinjoiningCoinSelection, _ignorePrivacyMode);
+				return new CoinGroupViewModel(UiContext, group, availableCoins, _allowCoinjoiningCoinSelection);
 			});
 
 		source.EditDiff(newItems, new LambdaComparer<CoinListItem>((a, b) => Equals(a?.Key, b?.Key)));

@@ -33,9 +33,4 @@
     <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
   </Style>
 
-  <!-- TODO: Move to PrivacyContentControl.axaml file -->
-  <Style Selector="PrivacyContentControl.monoSpaced">
-    <Setter Property="(TextElement.FontFamily)" Value="{StaticResource MonospacedFont}" />
-  </Style>
-
 </Styles>

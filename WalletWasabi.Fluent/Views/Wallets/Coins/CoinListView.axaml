@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:treeDataGrid="clr-namespace:WalletWasabi.Fluent.TreeDataGrid"
              xmlns:behaviors="clr-namespace:WalletWasabi.Fluent.Behaviors"
              xmlns:coins="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Coins"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -25,15 +24,6 @@
   <Panel>
     <TreeDataGrid x:Name="TreeDataGrid" Source="{Binding TreeDataGridSource}" IsVisible="{Binding !!CoinItems.Count}">
       <TreeDataGrid.Styles>
-        <Style Selector="treeDataGrid|TreeDataGridAmountPrivacyTextCell">
-          <Setter Property="FontFamily" Value="{StaticResource MonospacedFont}" />
-          <Setter Property="FontWeight" Value="Bold" />
-          <Setter Property="Opacity" Value="1" />
-          <Setter Property="FontSize" Value="14" />
-          <Setter Property="Margin" Value="20 0" />
-          <Setter Property="Background" Value="Transparent" />
-          <Setter Property="Foreground" Value="{DynamicResource TextForegroundColor}" />
-        </Style>
         <Style Selector="TreeDataGridExpanderCell">
           <Setter Property="Theme" Value="{StaticResource SelectCoinsDialogViewTreeDataGridExpanderCell}" />
         </Style>
@@ -48,9 +38,6 @@
         <behaviors:SetLastChildBehavior />
         <TreeDataGridMissingCellsWorkaroundBehavior />
       </Interaction.Behaviors>
-      <TreeDataGrid.ElementFactory>
-        <treeDataGrid:PrivacyElementFactory />
-      </TreeDataGrid.ElementFactory>
     </TreeDataGrid>
     <DummyRowsControl Margin="{StaticResource HistoryTablePlaceholderPanelMargin}"
                       RowHeight="{StaticResource TreeDataGridRowHeight}"

@@ -16,17 +16,17 @@
 
       <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Spacing="20">
         <DockPanel HorizontalAlignment="Center">
-          <PrivacyContentControl FontSize="{StaticResource FontSizeH5}">
-            <TextBlock ToolTip.Tip="{Binding Address}"
-                       Classes="monoSpaced"
-                       Text="{Binding ShortenedAddress}"
-                       IsVisible="{Binding AddressHasBeenShortened}"/>
-          </PrivacyContentControl>
-          <PrivacyContentControl FontSize="{StaticResource FontSizeH5}">
-            <TextBlock Classes="monoSpaced"
-                       Text="{Binding ShortenedAddress}"
-                       IsVisible="{Binding Path=AddressHasBeenShortened, Converter={x:Static BoolConverters.Not}}"/>
-          </PrivacyContentControl>
+          <TextBlock ToolTip.Tip="{Binding Address}"
+                     Classes="monoSpaced"
+                     FontSize="{StaticResource FontSizeH5}"
+                     VerticalAlignment="Center"
+                     Text="{Binding ShortenedAddress}"
+                     IsVisible="{Binding AddressHasBeenShortened}"/>
+          <TextBlock Classes="monoSpaced"
+                     FontSize="{StaticResource FontSizeH5}"
+                     VerticalAlignment="Center"
+                     Text="{Binding ShortenedAddress}"
+                     IsVisible="{Binding Path=AddressHasBeenShortened, Converter={x:Static BoolConverters.Not}}"/>
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" Margin="10 0 0 0">
             <AnimatedButton ToolTip.Tip="Copy"
                             Command="{Binding CopyAddressCommand}"
@@ -46,9 +46,9 @@
           </Panel>
         </AdorningContentControl.Adornment>
         <Viewbox Margin="20" MaxHeight="270" MinHeight="100">
-          <PrivacyContentControl Height="264" PrivacyReplacementMode="Icon">
-            <QrCode x:Name="QrCode" Matrix="{Binding QrCode^}" />
-          </PrivacyContentControl>
+          <Panel Height="264">
+            <QrCode x:Name="QrCode" Matrix="{Binding QrCode^}" VerticalAlignment="Center" />
+          </Panel>
         </Viewbox>
       </AdorningContentControl>
     </DockPanel>

@@ -8,13 +8,10 @@
              x:DataType="coinjoins:CoinjoinCoinListItem"
              x:CompileBindings="True">
 
-  <PrivacyContentControl PrivacyReplacementMode="Text"
-                         VerticalAlignment="Center"
-                         HorizontalAlignment="Center"
-                         UseOpacity="True"
-                         MaxPrivacyChars="14"
-                         Margin="10 0 0 0"
-                         ToolTip.Tip="{Binding BtcAddress}">
-    <AmountControl MinWidth="140" Amount="{Binding Amount}"/>
-  </PrivacyContentControl>
+  <AmountControl VerticalAlignment="Center"
+                 HorizontalAlignment="Center"
+                 Margin="10 0 0 0"
+                 MinWidth="140"
+                 ToolTip.Tip="{Binding BtcAddress}"
+                 Amount="{Binding Amount}" />
 </UserControl>

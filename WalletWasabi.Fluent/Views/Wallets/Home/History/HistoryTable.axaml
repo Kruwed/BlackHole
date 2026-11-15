@@ -150,22 +150,10 @@
           <TreeDataGridMissingCellsWorkaroundBehavior />
         </Interaction.Behaviors>
         <TreeDataGrid.ElementFactory>
-          <treeDataGrid:PrivacyElementFactory />
+          <treeDataGrid:PlainTextElementFactory />
         </TreeDataGrid.ElementFactory>
         <TreeDataGrid.Styles>
-          <Style Selector="treeDataGrid|TreeDataGridAmountPrivacyTextCell">
-            <Setter Property="FontFamily" Value="{StaticResource MonospacedFont}" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Margin" Value="20 0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource TextForegroundColor}" />
-            <Setter Property="PrivacyForeground" Value="{DynamicResource TextForegroundColor}" />
-          </Style>
-          <Style Selector="TreeDataGridRow.PositiveAmount treeDataGrid|TreeDataGridAmountPrivacyTextCell">
-            <Setter Property="Foreground" Value="{DynamicResource PositiveAmountColor}" />
-          </Style>
-          <Style Selector="treeDataGrid|TreeDataGridDatePrivacyTextCell" x:DataType="historyItems:HistoryItemViewModelBase">
+          <Style Selector="treeDataGrid|TreeDataGridPlainTextCell" x:DataType="historyItems:HistoryItemViewModelBase">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="20 0" />
             <Setter Property="Background" Value="Transparent" />
@@ -177,7 +165,7 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Center" />
           </Style>
-          <Style Selector="TextBlock, PrivacyContentControl">
+          <Style Selector="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
           </Style>
           <Style Selector="TreeDataGridRow Button.historyDetails">

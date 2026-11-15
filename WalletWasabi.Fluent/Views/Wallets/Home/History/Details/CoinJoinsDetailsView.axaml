@@ -22,9 +22,7 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <PreviewItem CopyableContent="{Binding }">
-                <PrivacyContentControl>
-                  <TextBlock Text="{Binding }" Classes="monoSpaced" />
-                </PrivacyContentControl>
+                <TextBlock Text="{Binding }" Classes="monoSpaced" />
               </PreviewItem>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

@@ -19,9 +19,7 @@
       <PreviewItem Icon="{StaticResource transaction_id}"
                      Label="Transaction ID"
                      CopyableContent="{Binding TransactionId}">
-        <PrivacyContentControl>
-          <TextBlock Text="{Binding TransactionId}" Classes="monoSpaced" />
-        </PrivacyContentControl>
+        <TextBlock Text="{Binding TransactionId}" Classes="monoSpaced" />
       </PreviewItem>
 
       <Separator />
@@ -70,9 +68,7 @@
                      Icon="{StaticResource paper_cash_regular}"
                      Label="Fee Rate"
                      CopyableContent="{Binding FeeRate.SatoshiPerByte}">
-        <PrivacyContentControl>
-         <TextBlock Text="{Binding FeeRate.SatoshiPerByte, Converter={x:Static conv:FeeRateConverters.FeeRateConverter}}" />
-        </PrivacyContentControl>
+        <TextBlock Text="{Binding FeeRate.SatoshiPerByte, Converter={x:Static conv:FeeRateConverters.FeeRateConverter}}" />
       </PreviewItem>
 
       <Separator IsVisible="{Binding FeeRateVisible}" />

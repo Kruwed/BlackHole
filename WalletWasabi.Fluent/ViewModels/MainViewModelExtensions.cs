@@ -11,7 +11,6 @@ public static class MainViewModelExtensions
 {
 	public static void RegisterAllViewModels(this MainViewModel mainViewModel, UiContext uiContext)
 	{
-		PrivacyModeViewModel.Register(mainViewModel.PrivacyMode);
 		AddWalletPageViewModel.RegisterLazy(() => new AddWalletPageViewModel(uiContext));
 		SettingsPageViewModel.Register(mainViewModel.SettingsPage);
 

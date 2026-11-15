@@ -9,7 +9,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 public class CoinViewModel : CoinListItem
 {
 	/// <param name="title">Title of the row. Empty for a coin that is shown inside its group.</param>
-	public CoinViewModel(UiContext uiContext, string title, CoinModel coin, bool canSelectWhenCoinjoining, bool ignorePrivacyMode) : base(uiContext)
+	public CoinViewModel(UiContext uiContext, string title, CoinModel coin, bool canSelectWhenCoinjoining) : base(uiContext)
 	{
 		Title = title;
 		PrivacyLevel = coin.PrivacyLevel;
@@ -24,7 +24,6 @@ public class CoinViewModel : CoinListItem
 		AnonymityScore = coin.AnonScore;
 		BannedUntilUtc = coin.BannedUntilUtc;
 		IsSelected = false;
-		IgnorePrivacyMode = ignorePrivacyMode;
 		this.WhenAnyValue(x => x.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress).BindTo(this, x => x.IsCoinjoining).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.CanBeSelected)
