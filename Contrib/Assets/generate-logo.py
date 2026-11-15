@@ -21,8 +21,7 @@ DOT = (575.0, 505.0, 105.0)
 TILE_TOP = (38, 38, 38)
 TILE_BOTTOM = (12, 12, 12)
 RING_COLOR = (255, 255, 255)
-DOT_TOP_RIGHT = (0x00, 0xFF, 0x4D)
-DOT_BOTTOM_LEFT = (0x17, 0xC0, 0x4A)
+DOT_COLOR = (0xF7, 0x93, 0x1A)       # The accent colour of the application.
 
 PNG_SIZES = (16, 24, 32, 48, 256)
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
@@ -39,13 +38,13 @@ def circle(draw, shape, scale, offset, fill):
         fill=fill)
 
 
-def gradient(size, start, end, direction):
-    """A linear gradient: 'vertical' goes from the top to the bottom, 'diagonal' from the top right to the bottom left corner."""
+def gradient(size, start, end):
+    """A linear gradient from the top to the bottom."""
     image = Image.new("RGB", (size, size))
     pixels = image.load()
     for y in range(size):
         for x in range(size):
-            t = y / (size - 1) if direction == "vertical" else ((size - 1 - x) + y) / (2 * (size - 1))
+            t = y / (size - 1)
             pixels[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(start, end))
     return image
 
@@ -66,15 +65,14 @@ def render(size):
     dot_mask = Image.new("L", (big, big), 0)
     circle(ImageDraw.Draw(dot_mask), DOT, scale, offset, 255)
 
-    # Gradients are smooth already, so they are made small and stretched.
-    tile = gradient(64, TILE_TOP, TILE_BOTTOM, "vertical").resize((big, big), Image.BILINEAR)
-    dot = gradient(64, DOT_TOP_RIGHT, DOT_BOTTOM_LEFT, "diagonal").resize((big, big), Image.BILINEAR)
+    # The gradient is smooth already, so it is made small and stretched.
+    tile = gradient(64, TILE_TOP, TILE_BOTTOM).resize((big, big), Image.BILINEAR)
 
     # The colours cover the whole square and the shape of the tile is in the alpha channel, so
     # scaling down does not darken the edge of the tile.
     image = tile
     image.paste(Image.new("RGB", (big, big), RING_COLOR), (0, 0), ring_mask)
-    image.paste(dot, (0, 0), dot_mask)
+    image.paste(Image.new("RGB", (big, big), DOT_COLOR), (0, 0), dot_mask)
 
     result = image.resize((size, size), Image.LANCZOS)
     result.putalpha(tile_mask.resize((size, size), Image.LANCZOS))

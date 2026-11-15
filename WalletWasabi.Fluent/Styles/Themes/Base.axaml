@@ -56,10 +56,7 @@
   <SolidColorBrush x:Key="FunctionButtonDisabledBackgroundColor" Color="{StaticResource SystemChromeDisabledLowColor}" />
   <SolidColorBrush x:Key="FunctionButtonDisabledForegroundColor" Color="{StaticResource SystemChromeDisabledHighColor}" />
 
-  <LinearGradientBrush x:Key="LogoAccentColor" StartPoint="1,0" EndPoint="0,1">
-      <GradientStop Color="#00FF4D" Offset="0"/>
-      <GradientStop Color="#17C04A" Offset="1"/>
-  </LinearGradientBrush>
+  <SolidColorBrush x:Key="LogoAccentColor" Color="{StaticResource SystemAccentColor}" />
 
   <Color x:Key="LogoFixedForegroundColor">White</Color>
 
