@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionBuilding;
@@ -10,7 +8,6 @@ using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Exceptions;
 using WalletWasabi.Extensions;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
-using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.Helpers;
@@ -108,41 +105,6 @@ public static class TransactionHelpers
 		}
 
 		return false;
-	}
-
-	public static async Task<SmartTransaction> ParseTransactionAsync(string path, Network network)
-	{
-		var psbtBytes = await File.ReadAllBytesAsync(path);
-		PSBT psbt;
-
-		try
-		{
-			psbt = PSBT.Load(psbtBytes, network);
-		}
-		catch (Exception ex)
-		{
-			// Couldn't parse to PSBT with bytes, try parsing with string.
-			Logger.LogWarning($"Failed to load PSBT by bytes. Trying with string. {ex}");
-			var text = await File.ReadAllTextAsync(path);
-			text = text.Trim();
-			try
-			{
-				psbt = PSBT.Parse(text, network);
-			}
-			catch (Exception exc)
-			{
-				// Couldn't parse to PSBT with string. All else failed, try to build SmartTransaction and broadcast that.
-				Logger.LogWarning($"Failed to parse PSBT by string. Fall back to building SmartTransaction from the string. {exc}");
-				return new SmartTransaction(Transaction.Parse(text, network), Height.Unknown);
-			}
-		}
-
-		if (!psbt.IsAllFinalized())
-		{
-			psbt.Finalize();
-		}
-
-		return psbt.ExtractSmartTransaction();
 	}
 
 	internal static PaymentIntent BuildPayToManyIntent(TransactionInfo transactionInfo)

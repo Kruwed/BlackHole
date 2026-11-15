@@ -34,18 +34,6 @@ public static class FileDialogHelper
 		MimeTypes = new[] { MediaTypeNames.Text.Plain }
 	};
 
-	private static FilePickerFileType Psbt { get; } = new("PSBT files")
-	{
-		Patterns = new[] { "*.psbt" },
-		MimeTypes = new[] { "*/*" }
-	};
-
-	private static FilePickerFileType Txn { get; } = new("TXN files")
-	{
-		Patterns = new[] { "*.txn" },
-		MimeTypes = new[] { "*/*" }
-	};
-
 	private static FilePickerFileType Png { get; } = new("PNG files")
 	{
 		Patterns = new[] { "*.png" },
@@ -95,16 +83,6 @@ public static class FileDialogHelper
 						fileTypeFilters.Add(Text);
 						break;
 					}
-				case "psbt":
-					{
-						fileTypeFilters.Add(Psbt);
-						break;
-					}
-				case "txn":
-					{
-						fileTypeFilters.Add(Txn);
-						break;
-					}
 				case "png":
 					{
 						fileTypeFilters.Add(Png);
@@ -114,27 +92,6 @@ public static class FileDialogHelper
 		}
 
 		return fileTypeFilters;
-	}
-
-	public static async Task<IStorageFile?> OpenFileAsync(string title, string[] filterExtTypes, string? directory = null)
-	{
-		var storageProvider = GetStorageProvider();
-		if (storageProvider is null)
-		{
-			return null;
-		}
-
-		var suggestedStartLocation = await GetSuggestedStartLocationAsync(directory, storageProvider);
-
-		var result = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-		{
-			Title = title,
-			SuggestedStartLocation = suggestedStartLocation,
-			FileTypeFilter = GetFilePickerFileTypes(filterExtTypes),
-			AllowMultiple = false
-		});
-
-		return result.FirstOrDefault();
 	}
 
 	public static async Task<IStorageFile?> SaveFileAsync(string title, string[] filterExtTypes, string? initialFileName = null, string? directory = null)

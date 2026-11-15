@@ -5,7 +5,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using NBitcoin;
 using WalletWasabi.Announcements;
 using WalletWasabi.Fluent.Models.ClientConfig;
 using WalletWasabi.Fluent.Models.FileSystem;
@@ -105,11 +104,6 @@ public class App : Application
 		return new ApplicationSettings(services, services.PersistentConfig, services.Config, services.UiConfig);
 	}
 
-	private static TransactionBroadcasterModel CreateBroadcaster(IServices services, Network network)
-	{
-		return new TransactionBroadcasterModel(services, network);
-	}
-
 	private UiContext CreateUiContext()
 	{
 		var services = Services.Instance;
@@ -127,7 +121,6 @@ public class App : Application
 			CreateFileSystem(),
 			CreateConfig(services),
 			applicationSettings,
-			CreateBroadcaster(services, applicationSettings.Network),
 			new EditableSearchSource(),
 			new HealthMonitor(services),
 			new ReleaseHighlights());

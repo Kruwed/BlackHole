@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -28,7 +27,6 @@ public class Services : IServices
 
 	private readonly Global _global;
 	private readonly TorSettings _torSettings;
-	private readonly AllTransactionStore _transactionStore;
 	private readonly IHttpClientFactory _httpClientFactory;
 	private readonly TransactionBroadcaster _transactionBroadcaster;
 	private readonly HostedServices _hostedServices;
@@ -39,7 +37,6 @@ public class Services : IServices
 	{
 		Guard.NotNull(nameof(global.DataDir), global.DataDir);
 		Guard.NotNull(nameof(global.TorSettings), global.TorSettings);
-		Guard.NotNull(nameof(global.TransactionStore), global.TransactionStore);
 		Guard.NotNull(nameof(global.BitcoinRpcHttpClientFactory), global.BitcoinRpcHttpClientFactory);
 		Guard.NotNull(nameof(global.Config), global.Config);
 		Guard.NotNull(nameof(global.WalletManager), global.WalletManager);
@@ -50,7 +47,6 @@ public class Services : IServices
 
 		_global = global;
 		_torSettings = global.TorSettings;
-		_transactionStore = global.TransactionStore;
 		_httpClientFactory = global.BitcoinRpcHttpClientFactory;
 		_transactionBroadcaster = global.TransactionBroadcaster;
 		_hostedServices = global.HostedServices;
@@ -80,7 +76,6 @@ public class Services : IServices
 	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
 	// Transactions info
-	public bool TryGetTransaction(uint256 hash, [NotNullWhen(true)] out SmartTransaction? tx) => _transactionStore.TryGetTransaction(hash, out tx);
 
 	// WalletManager info
 	public Network GetNetwork() => WalletManager.Network;
