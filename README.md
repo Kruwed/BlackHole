@@ -47,7 +47,7 @@ Recovering a wallet scans every block since the activation of Taproot unless you
 
 ## Data
 
-Black Hole keeps its data in `~/.blackhole/client`. It does not read or change the data of a Wasabi Wallet installation (`~/.walletwasabi`), and its Tor listens on other ports (37250 and 37251), so both can run on the same computer.
+Black Hole keeps its data in `~/.blackhole/client`. The folder button in the top right corner of the window shows that folder in the file manager; the wallet, the config file and the logs are in it. It does not read or change the data of a Wasabi Wallet installation (`~/.walletwasabi`), and its Tor listens on other ports (37250 and 37251), so both can run on the same computer.
 
 ## Coinjoin
 

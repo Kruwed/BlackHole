@@ -2,6 +2,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Avalonia.Controls;
 using NBitcoin;
 using WalletWasabi.Fluent.Extensions;
@@ -16,6 +17,7 @@ using WalletWasabi.Fluent.ViewModels.StatusIcon;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Notifications;
 using WalletWasabi.Helpers;
+using WalletWasabi.Logging;
 using System.Diagnostics.CodeAnalysis;
 
 namespace WalletWasabi.Fluent.ViewModels;
@@ -44,6 +46,7 @@ public partial class MainViewModel : ViewModelBase
 		StatusIcon = new StatusIconViewModel(UiContext);
 
 		SettingsPage = new SettingsPageViewModel(UiContext);
+		OpenDataFolderCommand = ReactiveCommand.CreateFromTask(OpenDataFolderAsync);
 		Notifications = new WalletNotificationsViewModel(UiContext, () => WalletPage?.WalletViewModel);
 
 		this.RegisterAllViewModels(UiContext);
@@ -122,6 +125,10 @@ public partial class MainViewModel : ViewModelBase
 
 	public StatusIconViewModel StatusIcon { get; }
 	public SettingsPageViewModel SettingsPage { get; }
+
+	/// <summary>Shows the data folder in the file manager. This is what the folder button in the title bar does.</summary>
+	public ICommand OpenDataFolderCommand { get; }
+
 	public WalletNotificationsViewModel Notifications { get; }
 
 	public bool IsDialogOpen()
@@ -192,6 +199,20 @@ public partial class MainViewModel : ViewModelBase
 				WalletPage = new WalletPageViewModel(UiContext, wallet);
 				WalletPage.Activate();
 			});
+	}
+
+	private async Task OpenDataFolderAsync()
+	{
+		try
+		{
+			UiContext.FileSystem.OpenFolderInFileExplorer(UiContext.Config.DataDir);
+		}
+		catch (Exception ex)
+		{
+			// For example, there is no program on this computer that opens folders.
+			Logger.LogError(ex);
+			await UiContext.Navigate().To().ShowErrorDialog(ex.ToUserFriendlyString(), "Data Folder", "Black Hole was unable to open its data folder.").GetResultAsync();
+		}
 	}
 
 	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Same lifecycle as the application. Won't be disposed separately.")]

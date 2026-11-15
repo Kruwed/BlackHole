@@ -70,6 +70,11 @@
         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6" Margin="0 0 8 0">
           <shell:NetworkBadge VerticalAlignment="Center" />
           <Button Classes="transparentFunction" Padding="7" VerticalAlignment="Center"
+                  Command="{Binding OpenDataFolderCommand}"
+                  ToolTip.Tip="Data Folder">
+            <PathIcon Data="{StaticResource folder_regular}" Width="18" Height="18" Opacity="0.6" />
+          </Button>
+          <Button Classes="transparentFunction" Padding="7" VerticalAlignment="Center"
                   Command="{Binding SettingsPage.OpenCommand}"
                   ToolTip.Tip="Settings">
             <PathIcon Data="{StaticResource nav_settings_24_regular}" Width="18" Height="18" Opacity="0.6" />
