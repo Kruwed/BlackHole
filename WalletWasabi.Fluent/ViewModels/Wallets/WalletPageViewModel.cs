@@ -33,15 +33,10 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 			.Subscribe()
 			.DisposeWith(_disposables);
 
-		// Show Loading page when wallet is logged in
+		// Show the wallet as soon as it is logged in. It fills up while the wallet processes the blocks of the node,
+		// and the title bar tells how far that is.
 		this.WhenAnyValue(x => x.IsLoggedIn)
 			.Where(x => x)
-			.Do(_ => ShowWalletLoading())
-			.Subscribe()
-			.DisposeWith(_disposables);
-
-		// Show main Wallet UI when wallet load is completed
-		this.WhenAnyObservable(x => x.WalletModel.Loader.LoadCompleted)
 			.Do(_ => ShowWallet())
 			.Subscribe()
 			.DisposeWith(_disposables);
@@ -56,7 +51,7 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	public Wallet Wallet { get; }
 
 	/// <summary>
-	/// Starts showing the wallet on the home screen: its login page, then its loading page, then the wallet itself.
+	/// Starts showing the wallet on the home screen: its login page, then the wallet itself.
 	/// </summary>
 	public void Activate()
 	{
@@ -78,11 +73,6 @@ public partial class WalletPageViewModel : ViewModelBase, IDisposable
 	private void ShowLogin()
 	{
 		CurrentPage = new LoginViewModel(UiContext, WalletModel);
-	}
-
-	private void ShowWalletLoading()
-	{
-		CurrentPage = new LoadingViewModel(UiContext, WalletModel);
 	}
 
 	private void ShowWallet()

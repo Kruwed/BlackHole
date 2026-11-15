@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using NBitcoin;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
+using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -24,6 +25,9 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
 	[AutoNotify] private bool _isOobeBackgroundVisible;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSyncProgressVisible;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncProgress = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncStatus = "";
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -188,6 +192,28 @@ public partial class MainViewModel : ViewModelBase
 			{
 				WalletPage = new WalletPageViewModel(UiContext, wallet);
 				WalletPage.Activate();
+				ShowSyncProgress(wallet);
+			});
+	}
+
+	/// <summary>
+	/// The title bar tells how far the wallet is with the blocks of the node, from the moment it is decrypted until it has caught up.
+	/// </summary>
+	private void ShowSyncProgress(IWalletModel wallet)
+	{
+		wallet.WhenAnyValue(x => x.IsLoggedIn, x => x.IsLoaded, (isLoggedIn, isLoaded) => isLoggedIn && !isLoaded)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.BindTo(this, x => x.IsSyncProgressVisible);
+
+		wallet.Loader.Progress
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(progress =>
+			{
+				// Until the node told how long the chain is, there is nothing to count towards.
+				SyncProgress = progress.Blocks.Target is { } target
+					? $"{progress.Blocks.Current:N0}/{target:N0} blocks synced"
+					: "Waiting for the Bitcoin node";
+				SyncStatus = progress.Status.ToUserFriendlyString();
 			});
 	}
 

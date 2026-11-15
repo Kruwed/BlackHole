@@ -57,11 +57,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new TransactionDetailsViewModel(UiContext, wallet, model), navigationMode);
 	}
 
-	public void Loading(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new LoadingViewModel(UiContext, wallet), navigationMode);
-	}
-
 	public FluentDialog<bool> PasswordAuthDialog(IWalletModel wallet, string continueText = "Continue", NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new PasswordAuthDialogViewModel(UiContext, wallet, continueText);

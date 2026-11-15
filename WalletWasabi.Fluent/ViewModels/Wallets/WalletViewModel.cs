@@ -44,6 +44,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	private string _title = UiConstants.WalletTitle;
 	[AutoNotify(SetterModifier = AccessModifier.Protected)] private bool _loaded;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinStateViewModel? _coinJoinStateViewModel;
 
 	public WalletViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
 	{
@@ -60,9 +61,14 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		walletModel.IsCoinjoinRunning
 			.BindTo(this, x => x.IsCoinJoining);
 
+		// The page shows while the wallet still processes the blocks of the node. What it knows about its coins is not
+		// complete until then, so sending and coinjoining wait for it.
+		WalletModel.WhenAnyValue(x => x.IsLoaded)
+			.BindTo(this, x => x.Loaded);
+
 		// There is nothing to send from an empty wallet.
-		this.WhenAnyValue(x => x.IsWalletBalanceZero)
-			.Subscribe(isWalletBalanceZero => IsSendButtonVisible = !isWalletBalanceZero);
+		this.WhenAnyValue(x => x.IsWalletBalanceZero, x => x.Loaded)
+			.Subscribe(x => IsSendButtonVisible = !x.Item1 && x.Item2);
 
 		 WalletModel.Privacy.IsWalletPrivate
 			 .BindTo(this, x => x.AreAllCoinsPrivate);
@@ -73,8 +79,14 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			 x => x.AreAllCoinsPrivate,
 			 x => x.IsPointerOver,
 			 x => x.IsMusicBoxFlyoutDisplayed,
-			 (hasBeenDisplayed, hasNoBalance, areAllCoinsPrivate, isPointerOver, isMusicBoxFlyoutDisplayed) =>
+			 x => x.Loaded,
+			 (hasBeenDisplayed, hasNoBalance, areAllCoinsPrivate, isPointerOver, isMusicBoxFlyoutDisplayed, loaded) =>
 			 {
+				 if (!loaded)
+				 {
+					 return false;
+				 }
+
 				 if (!hasBeenDisplayed)
 				 {
 					 if (!WalletModel.IsCoinJoinEnabled)
@@ -111,13 +123,14 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		WalletStatsCommand = ReactiveCommand.Create(() => Navigate().To().WalletStats(WalletModel));
 
-		CoinJoinSettingsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To(CoinJoinSettings));
+		CoinJoinSettingsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To(CoinJoinSettings), this.WhenAnyValue(x => x.Loaded));
 
 		WalletCoinsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To().WalletCoins(WalletModel));
 
-		CoinJoinStateViewModel = WalletModel.IsCoinJoinEnabled
-			? new CoinJoinStateViewModel(uiContext, WalletModel, Wallet, WalletModel.Coinjoin!, CoinJoinSettings)
-			: null;
+		// The coinjoin controls come with the loaded wallet: they start coinjoins on their own.
+		this.WhenAnyValue(x => x.Loaded)
+			.Where(loaded => loaded && CoinJoinStateViewModel is null && WalletModel.IsCoinJoinEnabled)
+			.Subscribe(_ => CoinJoinStateViewModel = new CoinJoinStateViewModel(uiContext, WalletModel, Wallet, WalletModel.Coinjoin!, CoinJoinSettings));
 
 		NavigateToCoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
 		{
@@ -138,8 +151,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	public bool IsLoggedIn => WalletModel.Auth.IsLoggedIn;
 
 	public IObservable<bool> IsMusicBoxVisible { get; }
-
-	public CoinJoinStateViewModel? CoinJoinStateViewModel { get; private set; }
 
 	public WalletCoinJoinSettingsViewModel CoinJoinSettings { get; private set; }
 
@@ -185,9 +196,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			tile.Activate(disposables);
 		}
 
-		WalletModel.Loaded
-			.BindTo(this, x => x.Loaded)
-			.DisposeWith(disposables);
 	}
 
 	private IEnumerable<ActivatableViewModel> GetTiles()
