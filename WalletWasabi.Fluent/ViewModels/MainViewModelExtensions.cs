@@ -1,6 +1,5 @@
 using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
-using WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 using WalletWasabi.Fluent.ViewModels.OpenDirectory;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.TransactionBroadcasting;
@@ -26,9 +25,7 @@ public static class MainViewModelExtensions
 			return mainViewModel.SettingsPage;
 		});
 
-		AboutViewModel.RegisterLazy(() => new AboutViewModel(uiContext));
 		BroadcasterViewModel.RegisterLazy(() => new BroadcasterViewModel(uiContext));
-		BugReportLinkViewModel.RegisterLazy(() => new BugReportLinkViewModel(uiContext));
 		OpenDataFolderViewModel.RegisterLazy(() => new OpenDataFolderViewModel(uiContext));
 		OpenWalletsFolderViewModel.RegisterLazy(() => new OpenWalletsFolderViewModel(uiContext));
 		OpenLogsViewModel.RegisterLazy(() => new OpenLogsViewModel(uiContext));

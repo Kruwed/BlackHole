@@ -2,7 +2,6 @@ using ReactiveUI;
 using System.Windows.Input;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.ViewModels;
-using WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 using WalletWasabi.Models;
 using WalletWasabi.Helpers;
 
@@ -33,7 +32,8 @@ public class CrashReportWindowViewModel : ViewModelBase
 
 	public string Caption => "A problem has occurred and Black Hole is unable to continue.";
 
-	public string Link => AboutViewModel.BugReportLink;
+	/// <summary>Where a bug is reported.</summary>
+	public string Link => "https://github.com/Kruwed/BlackHole/issues/new?template=bug-report.md";
 
 	public string Trace => SerializedException.ToString();
 

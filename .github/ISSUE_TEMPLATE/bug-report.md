@@ -37,4 +37,4 @@ Insert Your Logs Here
 ### Black Hole Version
 
 <!-- Which release or commit are you using? Where did you get it from?
-You can figure out which version you are using by choosing `About Black Hole` from the dropdown menu in the search bar. -->
+Black Hole prints its version when it is started with `--version`. If you built it from source, `git rev-parse HEAD` in the source folder tells the commit. -->

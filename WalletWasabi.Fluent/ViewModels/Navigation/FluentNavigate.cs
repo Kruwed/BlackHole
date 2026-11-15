@@ -11,7 +11,6 @@ using WalletWasabi.Fluent.ViewModels.CoinControl;
 using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
-using WalletWasabi.Fluent.ViewModels.HelpAndSupport;
 using WalletWasabi.Fluent.ViewModels.Login;
 using WalletWasabi.Fluent.ViewModels.OpenDirectory;
 using WalletWasabi.Fluent.ViewModels.Settings;
@@ -79,11 +78,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new SpeedUpTransactionDialogViewModel(UiContext, wallet, speedupTransaction), navigationMode);
 	}
 
-	public void About(bool navigateBack = false, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new AboutViewModel(UiContext, navigateBack), navigationMode);
-	}
-
 	public FluentDialog<bool> ShowErrorDialog(string message, string title, string caption, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ShowErrorDialogViewModel(UiContext, message, title, caption);
@@ -130,11 +124,6 @@ public partial class FluentNavigate
 	public void ConnectToFullNode(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ConnectToFullNodeViewModel(UiContext), navigationMode);
-	}
-
-	public void BugReportLink(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new BugReportLinkViewModel(UiContext), navigationMode);
 	}
 
 	public void PrivacyRing(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -285,15 +274,6 @@ public partial class FluentNavigate
 	public FluentDialog<bool> ConfirmHideAddress(string address, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ConfirmHideAddressViewModel(UiContext, address);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
-	public FluentDialog<bool> ConfirmOpenLink(string link, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new ConfirmOpenLinkViewModel(UiContext, link);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 
