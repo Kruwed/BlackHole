@@ -50,8 +50,7 @@
     </Style>
   </UserControl.Styles>
 
-  <ContentArea Title="{Binding WalletTitle}"
-               ScrollViewer.VerticalScrollBarVisibility="Disabled">
+  <ContentArea ScrollViewer.VerticalScrollBarVisibility="Disabled">
     <!-- The wallet learns everything from the user's node: how far the node is, and how far the wallet is with the blocks of the node. -->
     <StackPanel Spacing="10" VerticalAlignment="Center">
       <WrapPanel x:Name="InfoCards" HorizontalAlignment="Center" Margin="0 0 0 20">
