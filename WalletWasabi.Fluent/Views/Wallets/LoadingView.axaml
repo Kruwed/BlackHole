@@ -11,7 +11,6 @@
              x:Class="WalletWasabi.Fluent.Views.Wallets.LoadingView">
 
   <UserControl.Resources>
-    <SolidColorBrush x:Key="SyncProgressOrangeBrush" Color="{StaticResource OrangeCoinColor}" />
     <SolidColorBrush x:Key="SyncProgressNeutralBrush" Color="White" />
   </UserControl.Resources>
 
@@ -85,14 +84,8 @@
             <TextBlock Text="{Binding Current, StringFormat={}{0:N0}}" Classes="CardValue" HorizontalAlignment="Center" />
             <Panel Height="5" Margin="0 4 0 0" MinWidth="90">
               <Border Background="{DynamicResource SystemBaseLowColor}" CornerRadius="2" Height="5" />
-              <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100" Height="5">
-                <Interaction.Behaviors>
-                  <behaviors:BrushSwitchBehavior
-                    Value="{Binding IsComplete}"
-                    FalseBrush="{StaticResource SyncProgressOrangeBrush}"
-                    TrueBrush="{DynamicResource SystemAccentColor}" />
-                </Interaction.Behaviors>
-              </ProgressBar>
+              <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100" Height="5"
+                           Foreground="{DynamicResource SystemAccentColor}" />
             </Panel>
           </StackPanel>
         </Border>
@@ -126,14 +119,8 @@
             <TextBlock Text="{Binding Current, StringFormat={}{0:N0}}" Classes="CardValue" HorizontalAlignment="Center" />
             <Panel Height="5" Margin="0 4 0 0" MinWidth="90">
               <Border Background="{DynamicResource SystemBaseLowColor}" CornerRadius="2" Height="5" />
-              <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100" Height="5">
-                <Interaction.Behaviors>
-                  <behaviors:BrushSwitchBehavior
-                    Value="{Binding IsComplete}"
-                    FalseBrush="{StaticResource SyncProgressOrangeBrush}"
-                    TrueBrush="{DynamicResource SystemAccentColor}" />
-                </Interaction.Behaviors>
-              </ProgressBar>
+              <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100" Height="5"
+                           Foreground="{DynamicResource SystemAccentColor}" />
             </Panel>
           </StackPanel>
         </Border>
