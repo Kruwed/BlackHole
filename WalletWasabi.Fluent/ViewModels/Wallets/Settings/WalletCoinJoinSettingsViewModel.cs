@@ -40,7 +40,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		_wallet = walletModel;
 		_autoCoinJoin = _wallet.Settings.AutoCoinjoin;
 		_plebStopThreshold = _wallet.Settings.PlebStopThreshold.ToString();
-		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.Satoshi.ToString();
+		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.ToString();
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
 		_nonPrivateCoinIsolation = _wallet.Settings.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _wallet.Settings.OnlyUsePrivateFundsForPayments;
@@ -146,19 +146,17 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	}
 
 	/// <summary>
-	/// The limit is a number of satoshis, and there always is one. As with the anonymity score target, a valid value is stored right away.
+	/// The dust forfeit limit is an amount in BTC, and there always is one. As with the anonymity score target, a valid value is stored right away.
 	/// </summary>
 	private void ValidateMaxCoinjoinLeftover(IValidationErrors errors)
 	{
-		var highest = KeyManager.HighestMaxCoinjoinLeftover.Satoshi;
+		var highest = KeyManager.HighestMaxCoinjoinLeftover;
 
-		if (!long.TryParse(MaxCoinjoinLeftover.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var satoshis) || satoshis > highest)
+		if (!Money.TryParse(MaxCoinjoinLeftover, out var limit) || limit is null || limit < Money.Zero || limit > highest)
 		{
-			errors.Add(ErrorSeverity.Error, $"Must be a number of satoshis between 0 and {highest:N0}.");
+			errors.Add(ErrorSeverity.Error, $"Must be between 0 and {highest} BTC.");
 			return;
 		}
-
-		var limit = Money.Satoshis(satoshis);
 
 		if (limit != _wallet.Settings.MaxCoinjoinLeftover)
 		{
