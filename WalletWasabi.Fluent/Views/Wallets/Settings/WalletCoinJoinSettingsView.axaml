@@ -63,6 +63,10 @@
       <DockPanel>
         <TextBlock Text="Anonymity score target" ToolTip.Tip="Minimum anonymity score to consider a coin private." />
         <TextBox Classes="standalone" Name="AnonScoreTargetTextBox" Text="{Binding AnonScoreTarget}" DockPanel.Dock="Right" Watermark="Choose between 2 and 300." MaxLength="3" />
+        <Slider Name="AnonScoreTargetSlider" Value="{Binding AnonScoreTargetSliderPosition}"
+                Minimum="0" Maximum="1" SmallChange="0.01" LargeChange="0.1"
+                Margin="0 -6 20 0" VerticalAlignment="Top"
+                ToolTip.Tip="Minimum anonymity score to consider a coin private." />
       </DockPanel>
 
       <Separator />

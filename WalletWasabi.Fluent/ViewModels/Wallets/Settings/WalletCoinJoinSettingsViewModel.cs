@@ -25,6 +25,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	private readonly IWalletModel _wallet;
 
 	[AutoNotify] private string _anonScoreTarget;
+	[AutoNotify] private double _anonScoreTargetSliderPosition;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 	[AutoNotify] private bool _maximizePrivacyProfileSelected;
@@ -42,6 +43,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		_plebStopThreshold = _wallet.Settings.PlebStopThreshold.ToString();
 		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.ToString();
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
+		_anonScoreTargetSliderPosition = AnonScoreTargetToSliderPosition(_wallet.Settings.AnonScoreTarget);
 		_nonPrivateCoinIsolation = _wallet.Settings.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _wallet.Settings.OnlyUsePrivateFundsForPayments;
 
@@ -100,6 +102,28 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 				DefaultProfileSelected = selectedProfile?.Name == "Default";
 			});
 
+		// The slider and the text box show the same number. A text that is not a valid target leaves the slider where it is.
+		this.WhenAnyValue(x => x.AnonScoreTarget)
+			.Skip(1)
+			.Subscribe(text =>
+			{
+				if (TryParseAnonScoreTarget(text, out var target) && SliderPositionToAnonScoreTarget(AnonScoreTargetSliderPosition) != target)
+				{
+					AnonScoreTargetSliderPosition = AnonScoreTargetToSliderPosition(target);
+				}
+			});
+
+		this.WhenAnyValue(x => x.AnonScoreTargetSliderPosition)
+			.Skip(1)
+			.Subscribe(position =>
+			{
+				var target = SliderPositionToAnonScoreTarget(position);
+				if (!TryParseAnonScoreTarget(AnonScoreTarget, out var current) || current != target)
+				{
+					AnonScoreTarget = target.ToString();
+				}
+			});
+
 		this.ValidateProperty(x => x.AnonScoreTarget, ValidateAnonScoreTarget);
 		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
 
@@ -124,6 +148,29 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	public ICommand SelectMaximizePrivacySettings { get; }
 	public ICommand SelectDefaultSettings { get; }
 	public ICommand SelectEconomicalSettings { get; }
+
+	/// <summary>
+	/// Where the slider stands for an anonymity score target, between 0 and 1. The scale is logarithmic, because the targets
+	/// that people choose are near the low end of the allowed range: on an even scale they would share a few pixels.
+	/// </summary>
+	public static double AnonScoreTargetToSliderPosition(int anonScoreTarget)
+	{
+		var clamped = Math.Clamp(anonScoreTarget, PrivacyProfiles.AbsoluteMinAnonScoreTarget, PrivacyProfiles.AbsoluteMaxAnonScoreTarget);
+		return Math.Log((double)clamped / PrivacyProfiles.AbsoluteMinAnonScoreTarget) / SliderScale;
+	}
+
+	/// <summary>The anonymity score target that a position of the slider between 0 and 1 stands for.</summary>
+	public static int SliderPositionToAnonScoreTarget(double position)
+	{
+		var target = (int)Math.Round(PrivacyProfiles.AbsoluteMinAnonScoreTarget * Math.Exp(Math.Clamp(position, 0, 1) * SliderScale));
+		return Math.Clamp(target, PrivacyProfiles.AbsoluteMinAnonScoreTarget, PrivacyProfiles.AbsoluteMaxAnonScoreTarget);
+	}
+
+	private static double SliderScale => Math.Log((double)PrivacyProfiles.AbsoluteMaxAnonScoreTarget / PrivacyProfiles.AbsoluteMinAnonScoreTarget);
+
+	private static bool TryParseAnonScoreTarget(string text, out int anonScoreTarget) =>
+		int.TryParse(text, out anonScoreTarget)
+		&& anonScoreTarget is >= PrivacyProfiles.AbsoluteMinAnonScoreTarget and <= PrivacyProfiles.AbsoluteMaxAnonScoreTarget;
 
 	private void ValidateAnonScoreTarget(IValidationErrors errors)
 	{
