@@ -6,7 +6,6 @@
              x:DataType="viewModels:MainViewModel"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:shell="clr-namespace:WalletWasabi.Fluent.Views.Shell"
-             xmlns:statusIcon="clr-namespace:WalletWasabi.Fluent.Views.StatusIcon"
              d:DesignWidth="1000" d:DesignHeight="1000"
              x:CompileBindings="True">
   <DockPanel IsEnabled="True">
@@ -42,9 +41,6 @@
             </ContentControl.Styles>
           </ContentControl>
         </DockPanel>
-
-        <!-- Status Icon -->
-        <statusIcon:StatusIcon Margin="10" Foreground="{DynamicResource AcrylicTrimForeground}" DataContext="{Binding StatusIcon}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
       </Panel>
     </Border>
   </DockPanel>

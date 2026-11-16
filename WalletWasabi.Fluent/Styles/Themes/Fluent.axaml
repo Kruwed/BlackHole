@@ -20,7 +20,6 @@
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/ProgressRing.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/ProgressRingArc.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/QuestionControl.axaml" />
-        <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/StatusItem.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/SuggestionItem.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/TagControl.axaml" />
         <MergeResourceInclude Source="avares://WalletWasabi.Fluent/Controls/TextBox.axaml" />

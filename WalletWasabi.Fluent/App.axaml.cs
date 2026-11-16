@@ -49,7 +49,6 @@ public class App : Application
 				desktop.Exit += (sender, args) =>
 				{
 					mainViewModel.ClearStacks();
-					uiContext.HealthMonitor.Dispose();
 				};
 
 				RxApp.MainThreadScheduler.Schedule(
@@ -120,7 +119,6 @@ public class App : Application
 			CreateFileSystem(),
 			CreateConfig(services),
 			applicationSettings,
-			new HealthMonitor(services),
 			new ReleaseHighlights());
 	}
 }

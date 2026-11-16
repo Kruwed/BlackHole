@@ -21,7 +21,6 @@ public class UiContext
 		FileSystemModel fileSystem,
 		ClientConfigModel config,
 		ApplicationSettings applicationSettings,
-		HealthMonitor healthMonitor,
 		ReleaseHighlights releaseHighlights)
 	{
 		Services = services ?? throw new ArgumentNullException(nameof(services));
@@ -33,7 +32,6 @@ public class UiContext
 		FileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
 		Config = config ?? throw new ArgumentNullException(nameof(config));
 		ApplicationSettings = applicationSettings ?? throw new ArgumentNullException(nameof(applicationSettings));
-		HealthMonitor = healthMonitor ?? throw new ArgumentNullException(nameof(healthMonitor));
 		ReleaseHighlights = releaseHighlights ?? throw new ArgumentNullException(nameof(releaseHighlights));
 	}
 
@@ -46,7 +44,6 @@ public class UiContext
 	public FileSystemModel FileSystem { get; }
 	public ClientConfigModel Config { get; }
 	public ApplicationSettings ApplicationSettings { get; }
-	public HealthMonitor HealthMonitor { get; }
 	public ReleaseHighlights ReleaseHighlights { get; }
 	public MainViewModel? MainViewModel { get; private set; }
 

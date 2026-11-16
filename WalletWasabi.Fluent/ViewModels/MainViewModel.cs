@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -11,11 +12,11 @@ using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.Settings;
-using WalletWasabi.Fluent.ViewModels.StatusIcon;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Notifications;
 using WalletWasabi.Helpers;
 using WalletWasabi.Logging;
+using WalletWasabi.Services;
 
 namespace WalletWasabi.Fluent.ViewModels;
 
@@ -28,6 +29,7 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSyncProgressVisible;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncProgress = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncStatus = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _feeRate = "";
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -43,7 +45,7 @@ public partial class MainViewModel : ViewModelBase
 
 		ShowWalletWhenItExists();
 
-		StatusIcon = new StatusIconViewModel(UiContext);
+		ShowFeeRate();
 
 		SettingsPage = new SettingsPageViewModel(UiContext);
 		OpenDataFolderCommand = ReactiveCommand.CreateFromTask(OpenDataFolderAsync);
@@ -117,7 +119,6 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>The wallet, once it was created or recovered.</summary>
 	public WalletPageViewModel? WalletPage { get; private set; }
 
-	public StatusIconViewModel StatusIcon { get; }
 	public SettingsPageViewModel SettingsPage { get; }
 
 	/// <summary>Shows the data folder in the file manager. This is what the folder button in the title bar does.</summary>
@@ -219,6 +220,18 @@ public partial class MainViewModel : ViewModelBase
 				};
 				SyncStatus = progress.Status.ToUserFriendlyString();
 			});
+	}
+
+	/// <summary>
+	/// The title bar tells the fee rate that the node estimates for a confirmation within two blocks, once the node gave its estimates.
+	/// </summary>
+	private void ShowFeeRate()
+	{
+		UiContext.Services.EventBus.AsObservable<MiningFeeRatesChanged>()
+			.Select(e => e.AllFeeEstimate.Estimations.FirstOrDefault(x => x.Key == 2).Value)
+			.WhereNotNull()
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(feeRate => FeeRate = $"Fee Rate: {feeRate.SatoshiPerByte:0.##} sat/vB");
 	}
 
 	private async Task OpenDataFolderAsync()
