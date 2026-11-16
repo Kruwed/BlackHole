@@ -197,11 +197,12 @@ public partial class MainViewModel : ViewModelBase
 	}
 
 	/// <summary>
-	/// The title bar tells how far the wallet is with the blocks of the node, from the moment it is decrypted until it has caught up.
+	/// The title bar tells how far the wallet is with the blocks of the node, from the moment it is decrypted on.
+	/// While the wallet is behind the chain it shows both heights, afterwards the one height that they share.
 	/// </summary>
 	private void ShowSyncProgress(IWalletModel wallet)
 	{
-		wallet.WhenAnyValue(x => x.IsLoggedIn, x => x.IsLoaded, (isLoggedIn, isLoaded) => isLoggedIn && !isLoaded)
+		wallet.WhenAnyValue(x => x.IsLoggedIn)
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.BindTo(this, x => x.IsSyncProgressVisible);
 
@@ -210,9 +211,12 @@ public partial class MainViewModel : ViewModelBase
 			.Subscribe(progress =>
 			{
 				// Until the node told how long the chain is, there is nothing to count towards.
-				SyncProgress = progress.Blocks.Target is { } target
-					? $"{progress.Blocks.Current:N0}/{target:N0} blocks synced"
-					: "Waiting for the Bitcoin node";
+				SyncProgress = progress.Blocks.Target switch
+				{
+					null => "Waiting for the Bitcoin node",
+					{ } target when progress.Blocks.Current >= target => $"{progress.Blocks.Current:N0} blocks synced",
+					{ } target => $"{progress.Blocks.Current:N0}/{target:N0} blocks synced"
+				};
 				SyncStatus = progress.Status.ToUserFriendlyString();
 			});
 	}

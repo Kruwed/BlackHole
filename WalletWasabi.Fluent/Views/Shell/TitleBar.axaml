@@ -17,7 +17,7 @@
     </Viewbox>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6" Margin="0 0 8 0">
-      <!-- How far the wallet is with the blocks of the node, until it has caught up. The tooltip tells what it is doing. -->
+      <!-- How far the wallet is with the blocks of the node. The tooltip tells what it is doing. -->
       <TextBlock Text="{Binding SyncProgress}"
                  IsVisible="{Binding IsSyncProgressVisible}"
                  ToolTip.Tip="{Binding SyncStatus}"

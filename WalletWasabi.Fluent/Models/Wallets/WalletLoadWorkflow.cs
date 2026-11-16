@@ -80,11 +80,6 @@ public partial class WalletLoadWorkflow
 			.DisposeWith(_disposables);
 	}
 
-	public void Stop()
-	{
-		_disposables.Dispose();
-	}
-
 	private async Task LoadWalletAsync()
 	{
 		IsLoading = true;

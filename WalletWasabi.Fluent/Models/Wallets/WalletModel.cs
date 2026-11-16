@@ -125,10 +125,7 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 			.Do(_ => Loader.Start())
 			.Subscribe();
 
-		// Stop the loader after load is completed
-		Loaded.Where(x => x)
-			 .Do(_ => Loader.Stop())
-			 .Subscribe();
+		// The loader keeps reporting after the load is completed: the title bar goes on showing how many blocks the wallet processed.
 
 		this.WhenAnyValue(x => x.Auth.IsLoggedIn)
 			.BindTo(this, x => x.IsLoggedIn);
