@@ -7,7 +7,7 @@ using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
 
-[NavigationMetaData(Title = "Wallet Coins", NavigationTarget = NavigationTarget.DialogScreen)]
+[NavigationMetaData(Title = "Coins (UTXOs)", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletCoinsViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _wallet;

@@ -51,7 +51,7 @@
     </DockPanel>
 
     <DockPanel>
-      <TextBlock Text="Network anonymization (Tor)" />
+      <TextBlock Text="Tor" />
       <ComboBox ItemsSource="{Binding TorModes}" SelectedItem="{Binding Settings.UseTor}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="basemodels:TorMode">

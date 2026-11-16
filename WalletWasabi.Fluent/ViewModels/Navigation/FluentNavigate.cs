@@ -90,11 +90,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new WalletCoinsViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public void WalletStats(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletStatsViewModel(UiContext, wallet), navigationMode);
-	}
-
 	public FluentDialog<System.Reactive.Unit> AddWalletPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new AddWalletPageViewModel(UiContext);

@@ -44,7 +44,6 @@
 
               <!-- The wallet reads the blocks of the node again. That is not a setting: it works while the settings are read-only too. -->
               <StackPanel Classes="settingsLayout" IsVisible="{Binding HasWallet}">
-                <Separator />
                 <DockPanel ToolTip.Tip="{Binding ResyncWalletToolTip}">
                   <TextBlock Text="Resync Wallet" />
                   <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />

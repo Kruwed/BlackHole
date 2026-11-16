@@ -66,7 +66,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	/// </summary>
 	void Resync(uint startingHeight, int minGapLimit);
 
-	IWalletStatsModel GetWalletStats();
 
 	WalletInfoModel GetWalletInfo();
 
@@ -175,11 +174,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public void Resync(uint startingHeight, int minGapLimit)
 	{
 		Wallet.Synchronizer.RequestResync(startingHeight, minGapLimit);
-	}
-
-	public IWalletStatsModel GetWalletStats()
-	{
-		return new WalletStatsModel(this, Wallet);
 	}
 
 	public WalletInfoModel GetWalletInfo()

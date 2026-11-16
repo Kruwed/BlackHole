@@ -121,8 +121,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 			}
 		});
 
-		WalletStatsCommand = ReactiveCommand.Create(() => Navigate().To().WalletStats(WalletModel));
-
 		// The settings only decide how the wallet coinjoins later, so they are open while the wallet still processes blocks.
 		CoinJoinSettingsCommand = ReactiveCommand.Create(() => Navigate(NavigationTarget.DialogScreen).To(CoinJoinSettings));
 
@@ -167,7 +165,6 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public ICommand CoinJoinSettingsCommand { get; private set; }
 
-	public ICommand WalletStatsCommand { get; private set; }
 
 	public ICommand WalletCoinsCommand { get; private set; }
 
