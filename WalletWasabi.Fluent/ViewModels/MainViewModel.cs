@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Controls;
 using NBitcoin;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
@@ -30,6 +31,8 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncProgress = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncStatus = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _feeRate = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _chainHeight = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightVisible;
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -46,6 +49,7 @@ public partial class MainViewModel : ViewModelBase
 		ShowWalletWhenItExists();
 
 		ShowFeeRate();
+		ShowChainHeight();
 
 		SettingsPage = new SettingsPageViewModel(UiContext);
 		OpenDataFolderCommand = ReactiveCommand.CreateFromTask(OpenDataFolderAsync);
@@ -220,6 +224,24 @@ public partial class MainViewModel : ViewModelBase
 				};
 				SyncStatus = progress.Status.ToUserFriendlyString();
 			});
+	}
+
+	/// <summary>
+	/// Until a wallet is opened, the title bar tells how many blocks the chain has according to the node. Then the progress of the wallet takes its place.
+	/// </summary>
+	private void ShowChainHeight()
+	{
+		UiContext.Services.EventBus.AsObservable<RpcStatusChanged>()
+			.Select(x => x.Status.Match(node => (ConnectedRpcStatus?)node, _ => null))
+			.StartWith(UiContext.Services.GetNodeStatus())
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(node =>
+				// The node knows the height of the chain from the headers, also while it is still downloading the blocks.
+				// Nothing is told while the node does not answer.
+				ChainHeight = node is not null ? $"{Math.Max(node.Headers, node.Blocks):N0} blocks mined" : "");
+
+		this.WhenAnyValue(x => x.ChainHeight, x => x.IsSyncProgressVisible, (height, isWalletOpen) => height != "" && !isWalletOpen)
+			.BindTo(this, x => x.IsChainHeightVisible);
 	}
 
 	/// <summary>
