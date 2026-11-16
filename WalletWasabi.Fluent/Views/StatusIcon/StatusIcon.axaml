@@ -84,18 +84,6 @@
               </StatusItem.Icon>
             </StatusItem>
 
-            <StatusItem Title="Chain Tip" StatusText="{Binding HealthMonitor.BlockchainTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
-              <StatusItem.Icon>
-                <PathIcon Data="{StaticResource block_height}" />
-              </StatusItem.Icon>
-            </StatusItem>
-
-            <StatusItem Title="Wallet Tip" StatusText="{Binding HealthMonitor.ClientTip, Converter={x:Static converters:StatusConverters.HeightToString}}">
-              <StatusItem.Icon>
-                <PathIcon Data="{StaticResource block_height}" />
-              </StatusItem.Icon>
-            </StatusItem>
-
             <StatusItem Title="Tor" StatusText="{Binding HealthMonitor.TorStatus, Converter={x:Static converters:StatusConverters.TorStatusToString}}">
               <StatusItem.Icon>
                 <PathIcon Data="{StaticResource tor_icon}" />
