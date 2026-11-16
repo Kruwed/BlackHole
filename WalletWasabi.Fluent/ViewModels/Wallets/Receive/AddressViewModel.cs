@@ -20,7 +20,7 @@ public partial class AddressViewModel : ViewModelBase, IDisposable
 	public AddressViewModel(UiContext uiContext, AddressAction onShow, IAddress address) : base(uiContext)
 	{
 		Address = address;
-		_addressText = address.ShortenedText;
+		_addressText = address.Text;
 
 		CopyAddressCommand = ReactiveCommand.CreateFromTask(() => UiContext.Clipboard.SetTextAsync(Address.Text));
 		HideAddressCommand = ReactiveCommand.CreateFromTask(PromptHideAddressAsync);
@@ -37,7 +37,7 @@ public partial class AddressViewModel : ViewModelBase, IDisposable
 
 	private async Task PromptHideAddressAsync()
 	{
-		var result = await UiContext.Navigate().NavigateDialogAsync(new ConfirmHideAddressViewModel(UiContext, Address.ShortenedText));
+		var result = await UiContext.Navigate().NavigateDialogAsync(new ConfirmHideAddressViewModel(UiContext, Address.Text));
 
 		if (result.Result == false)
 		{

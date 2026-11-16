@@ -7,9 +7,11 @@
              x:DataType="receive:AddressViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Receive.Columns.AddressColumnView">
-  <DockPanel LastChildFill="True" Margin="15 0 0 0">
+  <DockPanel LastChildFill="True" Margin="12 0 0 0">
+    <!-- The whole address shows. The size is the largest at which it still fits next to the buttons in the smallest window. -->
     <TextBlock Text="{Binding AddressText}"
                VerticalAlignment="Center"
+               FontSize="13"
                Classes="monoSpaced bold" />
   </DockPanel>
 </UserControl>

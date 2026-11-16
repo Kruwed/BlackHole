@@ -27,21 +27,10 @@ public class Address : ReactiveObject, IAddress
 	public PubKey PubKey => HdPubKey.PubKey;
 	public KeyPath FullKeyPath => HdPubKey.FullKeyPath;
 	public string Text => BitcoinAddress.ToString();
-	public string ShortenedText => ShortenAddress(BitcoinAddress.ToString());
 
 	public void Hide()
 	{
 		_onHide(this);
-	}
-
-	public static string ShortenAddress(string input)
-	{
-		if (input.Length <= 47)
-		{
-			return input;
-		}
-
-		return $"{input[..21]}...{input[^20..]}";
 	}
 
 	public override int GetHashCode() => Text.GetHashCode();

@@ -19,7 +19,7 @@
       </QuestionControl.IconContent>
       <StackPanel Spacing="10">
         <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="Do you wish to hide this address?" />
-        <TextBlock HorizontalAlignment="Center" Classes="monoSpaced" Text="{Binding Address}" />
+        <TextBlock HorizontalAlignment="Center" Classes="monoSpaced" TextWrapping="Wrap" TextAlignment="Center" Text="{Binding Address}" />
         <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="This can not be undone." />
       </StackPanel>
     </QuestionControl>

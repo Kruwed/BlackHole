@@ -9,11 +9,9 @@ public class TestAddress : ReactiveObject, IAddress
 	public TestAddress(string address)
 	{
 		Text = address;
-		ShortenedText = address;
 	}
 
 	public string Text { get; }
-	public string ShortenedText { get; }
 
 	public bool IsUsed
 	{
