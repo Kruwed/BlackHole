@@ -42,6 +42,8 @@ public class AmountDecomposer
 	/// The most that the user accepts to leave over. The part of the inputs that no output takes is left over: it is too
 	/// small for an output of its own, and it goes to the miners. A decomposition that leaves more than this is not used
 	/// as it is: what it leaves is added to one of its outputs, which is not a standard denomination any more then.
+	/// If that is not possible either, there is no decomposition and the round is given up. The more a round asks for
+	/// its smallest output, the more it would leave over, so this is what limits the loss in such a round.
 	/// </summary>
 	public Money? MaxLeftover { get; }
 
@@ -185,6 +187,10 @@ public class AmountDecomposer
 		{
 			throw new InvalidOperationException("The decomposer is losing money. Aborting.");
 		}
+		if (MaxLeftover is { } limit && totalOutputAmount + limit < myInputSum)
+		{
+			throw new InvalidOperationException("The decomposer is leaving more than the user allows. Aborting.");
+		}
 
 		var totalOutputVsize = finalCandidate.Sum(d => d.ScriptType.EstimateOutputVsize());
 		if (totalOutputVsize > AvailableVsize)
@@ -202,7 +208,6 @@ public class AmountDecomposer
 	private (IEnumerable<Output> Decomposition, Money Cost)[] KeepLeftoversWithin(Money maxLeftover, (IEnumerable<Output> Decomposition, Money Cost)[] candidates, Money myInputSum)
 	{
 		var result = new Dictionary<int, (IEnumerable<Output> Decomposition, Money Cost)>();
-		var candidatesThatCannotComply = new List<(IEnumerable<Output> Decomposition, Money Cost)>();
 
 		foreach (var candidate in candidates)
 		{
@@ -225,7 +230,6 @@ public class AmountDecomposer
 
 			if (index is null)
 			{
-				candidatesThatCannotComply.Add(candidate);
 				continue;
 			}
 
@@ -237,7 +241,13 @@ public class AmountDecomposer
 		}
 
 		// If no candidate can comply, the limit cannot be kept: for example the only output is the largest allowed one.
-		return result.Count > 0 ? result.Values.ToArray() : candidatesThatCannotComply.ToArray();
+		// The limit is what makes rounds with a large smallest output safe to join, so the round is given up then.
+		if (result.Count == 0)
+		{
+			throw new InvalidOperationException($"No decomposition leaves {maxLeftover.Satoshi} satoshis or less. Aborting.");
+		}
+
+		return result.Values.ToArray();
 	}
 
 	private static Money FindChange(IEnumerable<Output> decomposition, HashSet<Output> denomHashSet)

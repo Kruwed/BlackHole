@@ -13,7 +13,6 @@ namespace WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 
 public class CoinJoinClient
 {
-	private static readonly Money MinimumOutputAmountSanity = Money.Coins(0.0001m); // ignore rounds with too big minimum denominations
 	private static readonly TimeSpan ExtraPhaseTimeoutMargin = TimeSpan.FromMinutes(2);
 	private static readonly TimeSpan ExtraRoundTimeoutMargin = TimeSpan.FromMinutes(10);
 
@@ -75,7 +74,6 @@ public class CoinJoinClient
 			.CreateRoundAwaiterAsync(
 				roundState =>
 					roundState.InputRegistrationEnd - DateTimeOffset.UtcNow > _doNotRegisterInLastMinuteTimeLimit
-					&& roundState.CoinjoinState.Parameters.AllowedOutputAmounts.Min < MinimumOutputAmountSanity
 					&& roundState.Phase == Phase.InputRegistration
 					&& !roundState.IsBlame
 					&& roundState.Id != excludeRound,
@@ -100,11 +98,6 @@ public class CoinJoinClient
 		if (roundState.Phase is not Phase.InputRegistration)
 		{
 			throw new InvalidOperationException($"Blame Round ({roundState.Id}): Abandoning: the round is not in Input Registration but in '{roundState.Phase}'.");
-		}
-
-		if (roundState.CoinjoinState.Parameters.AllowedOutputAmounts.Min >= MinimumOutputAmountSanity)
-		{
-			throw new InvalidOperationException($"Blame Round ({roundState.Id}): Abandoning: the minimum output amount is too high.");
 		}
 
 		if (roundState.CoinjoinState.Parameters.MinInputCountByRound < _coinJoinConfiguration.AbsoluteMinInputCount)

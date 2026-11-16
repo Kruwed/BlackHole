@@ -340,7 +340,7 @@ public static class WabiSabiFactory
 		return CreateTestCoinJoinClient(
 			apiClientFactory,
 			new KeyChain(keyManager, ""),
-			new OutputProvider(new InternalDestinationProvider(keyManager), RandomnessProviders.Insecure),
+			new OutputProvider(new InternalDestinationProvider(keyManager), RandomnessProviders.Insecure, () => keyManager.MaxCoinjoinLeftover),
 			roundStateProvider,
 			keyManager.NonPrivateCoinIsolation);
 	}

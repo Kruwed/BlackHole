@@ -1,4 +1,5 @@
 using NBitcoin;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using WalletWasabi.Crypto.Randomness;
@@ -128,6 +129,82 @@ public class AmountDecomposerTests
 
 		// The test would prove nothing if the limit never had to be enforced.
 		Assert.True(roundsWhereTheLimitMattered > 5, $"The limit mattered in {roundsWhereTheLimitMattered} rounds only.");
+	}
+
+	/// <summary>
+	/// A round may ask for a large smallest output. What cannot be put into such an output is a lot more than dust,
+	/// and the limit of the user is what keeps it: no more than the limit is left over, however large the smallest output is.
+	/// </summary>
+	[Theory]
+	[InlineData(100_000)]
+	[InlineData(1_000_000)]
+	[InlineData(50_000_000)]
+	public void RoundsWithALargeSmallestOutputLeaveNoMoreThanTheLimit(long minOutputSatoshis)
+	{
+		var maxLeftover = Money.Satoshis(5_000);
+		var minOutputAmount = Money.Satoshis(minOutputSatoshis);
+		var maxOutputAmount = Money.Satoshis(ProtocolConstants.MaxAmountPerAlice);
+		var allowedOutputTypes = new List<ScriptType> { ScriptType.Taproot };
+		var random = RandomExtensions.CreateSeeded(seed: 13);
+		var roundsThatWouldHaveLeftMore = 0;
+		var mostLeftWithoutLimit = Money.Zero;
+
+		for (var round = 0; round < 40; round++)
+		{
+			var feeRate = new FeeRate((decimal)(int)random.GetInt64(1, 60));
+			var availableVsize = (int)random.GetInt64(1, 9) * Constants.P2trOutputVirtualSize;
+			var myInputs = Enumerable.Range(0, (int)random.GetInt64(1, 4)).Select(_ => Money.Satoshis(random.GetInt64(2 * minOutputSatoshis, 40 * minOutputSatoshis))).ToList();
+			var theirInputs = Enumerable.Range(0, 30).Select(_ => Money.Satoshis(random.GetInt64(2 * minOutputSatoshis, 400 * minOutputSatoshis))).ToList();
+			var myInputSum = myInputs.Sum();
+			var allInputs = theirInputs.Concat(myInputs).ToList();
+
+			var unlimited = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round))
+				.Decompose(myInputSum, allInputs)
+				.ToList();
+			var leftWithoutLimit = myInputSum - unlimited.Sum(x => x.EffectiveCost);
+			mostLeftWithoutLimit = Money.Max(mostLeftWithoutLimit, leftWithoutLimit);
+			if (leftWithoutLimit > maxLeftover)
+			{
+				roundsThatWouldHaveLeftMore++;
+			}
+
+			var outputs = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round), maxLeftover)
+				.Decompose(myInputSum, allInputs)
+				.ToList();
+
+			var leftover = myInputSum - outputs.Sum(x => x.EffectiveCost);
+			Assert.InRange(leftover.Satoshi, 0, maxLeftover.Satoshi);
+			Assert.NotEmpty(outputs);
+			Assert.InRange(outputs.Sum(x => x.ScriptType.EstimateOutputVsize()), 1, availableVsize);
+			Assert.All(outputs, output => Assert.InRange(output.Amount.Satoshi, minOutputAmount.Satoshi, maxOutputAmount.Satoshi));
+		}
+
+		// Without the limit these rounds cost a lot more than the limit, or the test proves nothing.
+		Assert.True(roundsThatWouldHaveLeftMore > 5, $"The limit mattered in {roundsThatWouldHaveLeftMore} rounds only.");
+		Assert.True(mostLeftWithoutLimit > Money.Satoshis(minOutputSatoshis / 4), $"Without the limit at most {mostLeftWithoutLimit.Satoshi} satoshis were left.");
+	}
+
+	/// <summary>
+	/// A round can be such that the limit cannot be kept: its only allowed output amount leaves most of a coin over and
+	/// no output may take that. Without a limit the decomposer gives the rest away. With a limit it gives up the round.
+	/// </summary>
+	[Fact]
+	public void RoundThatCannotKeepTheLimitIsGivenUp()
+	{
+		var feeRate = new FeeRate(2m);
+		var onlyAllowedAmount = Money.Satoshis(1_000_000);
+		var allowedOutputTypes = new List<ScriptType> { ScriptType.Taproot };
+		var availableVsize = 8 * Constants.P2trOutputVirtualSize;
+		var myInputSum = Money.Satoshis(1_900_000);
+		var allInputs = new[] { Money.Satoshis(5_000_000), Money.Satoshis(3_000_000), Money.Satoshis(2_500_000), myInputSum };
+
+		var unlimited = new AmountDecomposer(feeRate, onlyAllowedAmount, onlyAllowedAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: 1))
+			.Decompose(myInputSum, allInputs)
+			.ToList();
+		Assert.True(myInputSum - unlimited.Sum(x => x.EffectiveCost) > Money.Satoshis(800_000));
+
+		var limited = new AmountDecomposer(feeRate, onlyAllowedAmount, onlyAllowedAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: 1), Money.Satoshis(5_000));
+		Assert.Throws<InvalidOperationException>(() => limited.Decompose(myInputSum, allInputs).ToList());
 	}
 
 	/// <summary>

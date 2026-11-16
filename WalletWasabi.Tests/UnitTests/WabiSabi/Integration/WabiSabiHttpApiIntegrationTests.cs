@@ -174,6 +174,70 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 	}
 
 	/// <summary>
+	/// A coordinator may ask for a smallest output far above dust. The client joins such a round, and what the wallet
+	/// gives up in it stays within its dust forfeit limit, although the round could not put up to its smallest output
+	/// into an output of its own.
+	/// </summary>
+	[Theory]
+	[InlineData(1_000_000, new long[] { 31_234_567, 47_111_113, 52_999_001, 88_000_077, 123_456_789 })]
+	[InlineData(20_000_000, new long[] { 131_234_567, 247_111_113, 352_999_001, 488_000_077, 923_456_789 })]
+	public async Task CoinJoinInARoundWithALargeSmallestOutputAsync(long smallestOutput, long[] amounts)
+	{
+		int inputCount = amounts.Length;
+		var transactionCompleted = new TaskCompletionSource<Transaction>();
+
+		KeyManager keyManager = KeyManager.CreateNew(out _, password: "", Network.Main);
+		var coins = GenerateSmartCoins(keyManager, amounts, inputCount);
+
+		await using var coordinatorApp = _apiApplicationFactory.WithWebHostBuilder(builder =>
+			builder.AddMockRpcClient(coins,
+				rpc =>
+					rpc.OnSendRawTransactionAsync = (tx) =>
+					{
+						transactionCompleted.SetResult(tx);
+						return tx.GetHash();
+					})
+			.ConfigureServices(services =>
+				services.AddSingleton(s => new WabiSabiConfig
+				{
+					MinRegistrableAmount = Money.Satoshis(smallestOutput),
+					MaxInputCountByRound = inputCount,
+					StandardInputRegistrationTimeout = TimeSpan.FromSeconds(20),
+					ConnectionConfirmationTimeout = TimeSpan.FromSeconds(20),
+					OutputRegistrationTimeout = TimeSpan.FromSeconds(20),
+					TransactionSigningTimeout = TimeSpan.FromSeconds(20),
+				})));
+
+		using var httpClient = coordinatorApp.CreateClient();
+		var apiClient = _apiApplicationFactory.CreateWabiSabiHttpApiClient(httpClient);
+
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(200));
+		cts.Token.Register(() => transactionCompleted.TrySetCanceled(), useSynchronizationContext: false);
+
+		using var roundStateUpdater = RoundStateUpdaterForTesting.Create(apiClient);
+		var roundStateProvider = new RoundStateProvider(roundStateUpdater);
+
+		// The client keeps the limit of the wallet, as the wallet does.
+		var coinJoinClient = WabiSabiFactory.CreateTestCoinJoinClient(_ => apiClient, keyManager, roundStateProvider);
+
+		var coinjoinResult = await coinJoinClient.StartCoinJoinAsync(() => coins, cts.Token);
+		var success = Assert.IsType<SuccessfulCoinJoinResult>(coinjoinResult);
+
+		var broadcastedTx = await transactionCompleted.Task;
+
+		// Every output of the transaction is one that the round allows, so the round was what the test wanted.
+		Assert.All(broadcastedTx.Outputs, output => Assert.True(output.Value >= Money.Satoshis(smallestOutput)));
+
+		// What the wallet gave up beyond the mining fee, counted on the transaction.
+		Assert.InRange(success.Costs.WastedDust.Satoshi, 0, keyManager.MaxCoinjoinLeftover.Satoshi);
+
+		var spent = broadcastedTx.Inputs.Sum(input => coins.Single(coin => coin.Outpoint == input.PrevOut).Amount.Satoshi);
+		var received = broadcastedTx.Outputs.Where(output => success.OutputScripts.Contains(output.ScriptPubKey)).Sum(output => output.Value.Satoshi);
+		Assert.Equal((success.Costs.MiningFee + success.Costs.WastedDust).Satoshi, spent - received);
+		_output.WriteLine($"Smallest output {smallestOutput}: spent {spent}, received {received}, mining fee {success.Costs.MiningFee.Satoshi}, given up {success.Costs.WastedDust.Satoshi}, outputs {string.Join(", ", broadcastedTx.Outputs.Select(o => o.Value.Satoshi))}.");
+	}
+
+	/// <summary>
 	/// A participant whose signature request fails for one input must still join the blame round with the
 	/// inputs it did sign: the coordinator removes only the unsigned input and whitelists the rest.
 	/// </summary>
