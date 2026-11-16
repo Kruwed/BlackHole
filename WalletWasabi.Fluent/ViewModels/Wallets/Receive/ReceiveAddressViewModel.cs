@@ -26,7 +26,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		_wallet = wallet;
 		Model = model;
 		Address = model.Text;
-		ShortenedAddress = model.ShortenedText;
 
 		Title = isNew ? "Receive" : "Address Awaiting Payment";
 		Caption = isNew
@@ -66,8 +65,6 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 	public ICommand ShowOtherAddressesCommand { get; }
 
 	public string Address { get; }
-	public string ShortenedAddress { get; }
-	public bool AddressHasBeenShortened => Address != ShortenedAddress;
 
 	public IObservable<bool[,]> QrCode { get; }
 
