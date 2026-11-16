@@ -6,6 +6,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
@@ -21,9 +22,6 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 [NavigationMetaData(Title = "Coinjoin Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 {
-	/// <summary>A coinjoin never leaves over more than what is too small for an output, so a higher limit would never apply.</summary>
-	private const long MaxCoinjoinLeftoverSatoshis = 100_000;
-
 	private readonly IWalletModel _wallet;
 
 	[AutoNotify] private string _anonScoreTarget;
@@ -42,7 +40,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		_wallet = walletModel;
 		_autoCoinJoin = _wallet.Settings.AutoCoinjoin;
 		_plebStopThreshold = _wallet.Settings.PlebStopThreshold.ToString();
-		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover?.Satoshi.ToString() ?? "";
+		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.Satoshi.ToString();
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
 		_nonPrivateCoinIsolation = _wallet.Settings.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _wallet.Settings.OnlyUsePrivateFundsForPayments;
@@ -148,25 +146,19 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	}
 
 	/// <summary>
-	/// The limit is a number of satoshis. An empty field sets no limit. As with the anonymity score target, a valid value is stored right away.
+	/// The limit is a number of satoshis, and there always is one. As with the anonymity score target, a valid value is stored right away.
 	/// </summary>
 	private void ValidateMaxCoinjoinLeftover(IValidationErrors errors)
 	{
-		Money? limit;
+		var highest = KeyManager.HighestMaxCoinjoinLeftover.Satoshi;
 
-		if (string.IsNullOrWhiteSpace(MaxCoinjoinLeftover))
+		if (!long.TryParse(MaxCoinjoinLeftover.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var satoshis) || satoshis > highest)
 		{
-			limit = null;
-		}
-		else if (long.TryParse(MaxCoinjoinLeftover.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var satoshis) && satoshis <= MaxCoinjoinLeftoverSatoshis)
-		{
-			limit = Money.Satoshis(satoshis);
-		}
-		else
-		{
-			errors.Add(ErrorSeverity.Error, $"Must be a number of satoshis between 0 and {MaxCoinjoinLeftoverSatoshis:N0}, or empty for no limit.");
+			errors.Add(ErrorSeverity.Error, $"Must be a number of satoshis between 0 and {highest:N0}.");
 			return;
 		}
+
+		var limit = Money.Satoshis(satoshis);
 
 		if (limit != _wallet.Settings.MaxCoinjoinLeftover)
 		{

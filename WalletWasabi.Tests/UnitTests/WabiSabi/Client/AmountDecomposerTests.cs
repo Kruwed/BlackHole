@@ -106,7 +106,7 @@ public class AmountDecomposerTests
 			var myInputSum = myInputs.Sum();
 			var allInputs = theirInputs.Concat(myInputs).ToList();
 
-			// What the same round leaves over when the user sets no limit.
+			// What the same round leaves over when the decomposer is given no limit.
 			var unlimited = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round))
 				.Decompose(myInputSum, allInputs)
 				.ToList();

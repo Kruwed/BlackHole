@@ -16,7 +16,7 @@ public class OutputProvider
 
 	private readonly Func<Money?>? _getMaxLeftover;
 
-	/// <summary>The most that the user accepts to leave over in a coinjoin, or <c>null</c> if the user set no limit.</summary>
+	/// <summary>The most that the user accepts to leave over in a coinjoin, or <c>null</c> if the provider was made without one.</summary>
 	protected Money? MaxLeftover => _getMaxLeftover?.Invoke();
 
 	internal IDestinationProvider DestinationProvider { get; }

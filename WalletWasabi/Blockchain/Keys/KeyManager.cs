@@ -45,6 +45,12 @@ public class KeyManager
 
 	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.005m);
 
+	/// <summary>What a coinjoin may leave over unless the user decides otherwise.</summary>
+	public static readonly Money DefaultMaxCoinjoinLeftover = Money.Satoshis(5_000);
+
+	/// <summary>The user cannot allow a coinjoin to leave over more than this.</summary>
+	public static readonly Money HighestMaxCoinjoinLeftover = Money.Satoshis(10_000);
+
 	internal KeyManager(
 		BitcoinEncryptedSecretNoEC encryptedSecret,
 		byte[] chainCode,
@@ -155,9 +161,14 @@ public class KeyManager
 
 	/// <summary>
 	/// The most that a coinjoin of this wallet may leave over. What a coinjoin cannot put into an output goes to the
-	/// miners; above this limit it is added to an output instead. <c>null</c> sets no limit of the wallet's own.
+	/// miners; above this limit it is added to an output instead. Every wallet has a limit, and it is never above
+	/// <see cref="HighestMaxCoinjoinLeftover"/>.
 	/// </summary>
-	public Money? MaxCoinjoinLeftover { get; set; }
+	public Money MaxCoinjoinLeftover
+	{
+		get;
+		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
+	} = DefaultMaxCoinjoinLeftover;
 
 	public int AnonScoreTarget { get; set; } = PrivacyProfiles.DefaultProfile.AnonScoreTarget;
 
@@ -716,7 +727,7 @@ public class KeyManager
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
 			("PlebStopThreshold", Encode.MoneyBitcoins(keyManager.PlebStopThreshold)),
-			("MaxCoinjoinLeftover", Encode.Optional(keyManager.MaxCoinjoinLeftover, Encode.MoneyBitcoins)),
+			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
@@ -749,7 +760,7 @@ public class KeyManager
 			{
 				AutoCoinJoin = get.Optional("AutoCoinJoin", Decode.Bool, false),
 				PlebStopThreshold = get.Optional("PlebStopThreshold", Decode.MoneyBitcoins) ?? DefaultPlebStopThreshold,
-				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins),
+				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),

@@ -383,11 +383,11 @@ public class KeyManagerTests
 	{
 		var filePath = "wallet-max-coinjoin-leftover.json";
 
-		// A wallet has no limit of its own until the user sets one.
+		// Every wallet has a limit: 5,000 satoshis until the user sets another one.
 		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
-		Assert.Null(manager.MaxCoinjoinLeftover);
+		Assert.Equal(Money.Satoshis(5_000), manager.MaxCoinjoinLeftover);
 		manager.ToFile();
-		Assert.Null(KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+		Assert.Equal(Money.Satoshis(5_000), KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
 
 		manager.MaxCoinjoinLeftover = Money.Satoshis(1_234);
 		manager.ToFile();
@@ -398,9 +398,21 @@ public class KeyManagerTests
 		manager.ToFile();
 		Assert.Equal(Money.Zero, KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
 
-		manager.MaxCoinjoinLeftover = null;
-		manager.ToFile();
-		Assert.Null(KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+		// The user cannot allow more than 10,000 satoshis, whichever way the value gets into the wallet.
+		manager.MaxCoinjoinLeftover = Money.Satoshis(10_001);
+		Assert.Equal(Money.Satoshis(10_000), manager.MaxCoinjoinLeftover);
+
+		var json = File.ReadAllText(filePath);
+		var storedLimit = new System.Text.RegularExpressions.Regex("\"MaxCoinjoinLeftover\": \"[^\"]*\"");
+		Assert.Matches(storedLimit, json);
+		File.WriteAllText(filePath, storedLimit.Replace(json, "\"MaxCoinjoinLeftover\": \"0.5\""));
+		Assert.Equal(Money.Satoshis(10_000), KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+
+		// A wallet file with an empty limit, or one from before the limit existed, gets the default.
+		File.WriteAllText(filePath, storedLimit.Replace(json, "\"MaxCoinjoinLeftover\": null"));
+		Assert.Equal(Money.Satoshis(5_000), KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+		File.WriteAllText(filePath, storedLimit.Replace(json, "\"Unrelated\": null"));
+		Assert.Equal(Money.Satoshis(5_000), KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

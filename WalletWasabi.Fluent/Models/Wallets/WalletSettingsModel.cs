@@ -20,7 +20,7 @@ public partial class WalletSettingsModel : ReactiveObject
 	[AutoNotify] private bool _isNewWallet;
 	[AutoNotify] private bool _autoCoinjoin;
 	[AutoNotify] private Money _plebStopThreshold;
-	[AutoNotify] private Money? _maxCoinjoinLeftover;
+	[AutoNotify] private Money _maxCoinjoinLeftover;
 	[AutoNotify] private int _anonScoreTarget;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
