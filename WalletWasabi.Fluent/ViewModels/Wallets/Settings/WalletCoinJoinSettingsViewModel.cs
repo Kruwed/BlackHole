@@ -21,6 +21,9 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 [NavigationMetaData(Title = "Coinjoin Settings", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 {
+	/// <summary>A coinjoin never leaves over more than what is too small for an output, so a higher limit would never apply.</summary>
+	private const long MaxCoinjoinLeftoverSatoshis = 100_000;
+
 	private readonly IWalletModel _wallet;
 
 	[AutoNotify] private string _anonScoreTarget;
@@ -32,12 +35,14 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 
 	[AutoNotify] private bool _autoCoinJoin;
 	[AutoNotify] private string _plebStopThreshold;
+	[AutoNotify] private string _maxCoinjoinLeftover;
 
 	public WalletCoinJoinSettingsViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
 	{
 		_wallet = walletModel;
 		_autoCoinJoin = _wallet.Settings.AutoCoinjoin;
 		_plebStopThreshold = _wallet.Settings.PlebStopThreshold.ToString();
+		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover?.Satoshi.ToString() ?? "";
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
 		_nonPrivateCoinIsolation = _wallet.Settings.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _wallet.Settings.OnlyUsePrivateFundsForPayments;
@@ -98,6 +103,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 			});
 
 		this.ValidateProperty(x => x.AnonScoreTarget, ValidateAnonScoreTarget);
+		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
 
 		this.WhenAnyValue(x => x.PlebStopThreshold)
 			.Skip(1)
@@ -138,6 +144,34 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		else
 		{
 			errors.Add(ErrorSeverity.Error, $"Must be a number between {PrivacyProfiles.AbsoluteMinAnonScoreTarget} and {PrivacyProfiles.AbsoluteMaxAnonScoreTarget}");
+		}
+	}
+
+	/// <summary>
+	/// The limit is a number of satoshis. An empty field sets no limit. As with the anonymity score target, a valid value is stored right away.
+	/// </summary>
+	private void ValidateMaxCoinjoinLeftover(IValidationErrors errors)
+	{
+		Money? limit;
+
+		if (string.IsNullOrWhiteSpace(MaxCoinjoinLeftover))
+		{
+			limit = null;
+		}
+		else if (long.TryParse(MaxCoinjoinLeftover.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var satoshis) && satoshis <= MaxCoinjoinLeftoverSatoshis)
+		{
+			limit = Money.Satoshis(satoshis);
+		}
+		else
+		{
+			errors.Add(ErrorSeverity.Error, $"Must be a number of satoshis between 0 and {MaxCoinjoinLeftoverSatoshis:N0}, or empty for no limit.");
+			return;
+		}
+
+		if (limit != _wallet.Settings.MaxCoinjoinLeftover)
+		{
+			_wallet.Settings.MaxCoinjoinLeftover = limit;
+			_wallet.Settings.Save();
 		}
 	}
 

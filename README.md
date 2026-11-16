@@ -58,6 +58,8 @@ Started with `--loglevel=debug`, Black Hole writes into `Logs.txt` what the wall
 
 Set the coordinator in *Settings → Coordinator*. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
 
+A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Max coinjoin leftover* in the *Coinjoin Settings* of the wallet limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. Without a limit, a coinjoin can leave up to the smallest output that the round allows plus the fee of an output.
+
 ## License
 
 [MIT](LICENSE.md), as Wasabi Wallet.

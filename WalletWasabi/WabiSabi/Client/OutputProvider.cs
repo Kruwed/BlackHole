@@ -6,11 +6,18 @@ namespace WalletWasabi.WabiSabi.Client;
 
 public class OutputProvider
 {
-	public OutputProvider(IDestinationProvider destinationProvider, RandomnessProvider random)
+	/// <param name="getMaxLeftover">Tells the most that the user accepts to leave over in a coinjoin, see <see cref="AmountDecomposer.MaxLeftover"/>. It is asked for every round.</param>
+	public OutputProvider(IDestinationProvider destinationProvider, RandomnessProvider random, Func<Money?>? getMaxLeftover = null)
 	{
 		DestinationProvider = destinationProvider;
 		Random = random;
+		_getMaxLeftover = getMaxLeftover;
 	}
+
+	private readonly Func<Money?>? _getMaxLeftover;
+
+	/// <summary>The most that the user accepts to leave over in a coinjoin, or <c>null</c> if the user set no limit.</summary>
+	protected Money? MaxLeftover => _getMaxLeftover?.Invoke();
 
 	internal IDestinationProvider DestinationProvider { get; }
 	protected RandomnessProvider Random { get; }
@@ -30,7 +37,8 @@ public class OutputProvider
 			roundParameters.AllowedOutputAmounts.Max,
 			availableVsize,
 			DestinationProvider.SupportedScriptTypes,
-			Random);
+			Random,
+			MaxLeftover);
 
 		var allCoinEffectiveValues = theirCoinEffectiveValues.Concat(registeredCoinEffectiveValues);
 		var outputValues = amountDecomposer.Decompose(registeredCoinEffectiveValues.Sum(), allCoinEffectiveValues).ToArray();

@@ -3,6 +3,7 @@ using System.Linq;
 using WabiSabi.Crypto;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Crypto.Randomness;
+using WalletWasabi.Extensions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Tests.Helpers;
 using WalletWasabi.Tests.UnitTests.Mocks;
@@ -59,6 +60,50 @@ public class PaymentAwareOutputProviderTests
 		// Make sure this doesn't throw
 		var vsizes = Enumerable.Repeat(0L, int.MaxValue).Prepend(availableVsize);
 		DependencyGraph.ResolveCredentialDependencies(registeredCoinsEffectiveValues, outputs, roundParameters.MiningFeeRate, vsizes, ProtocolConstants.MaxAmountPerAlice, ProtocolConstants.MaxVsizeCredentialValue);
+	}
+
+	/// <summary>
+	/// The limit of the wallet reaches the outputs that are registered in a round: with a limit of zero the outputs and
+	/// their fees take all that the inputs are worth, and the round can still issue the credentials for them.
+	/// </summary>
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void OutputsLeaveNoMoreThanTheWalletAllows(bool arePaymentsAllowed)
+	{
+		var rpc = new MockRpcClient();
+		var wallet = new TestWallet("random-wallet", rpc);
+		var roundParameters = WabiSabiFactory.CreateRoundParameters(new WabiSabiConfig());
+		var theirCoinEffectiveValues = new[] { Money.Coins(0.2m), Money.Coins(0.1m), Money.Coins(0.05m), Money.Coins(0.0025m), Money.Coins(0.0001m) };
+		var availableVsize = roundParameters.MaxVsizeAllocationPerAlice - Constants.P2wpkhInputVirtualSize;
+		var feeRate = roundParameters.MiningFeeRate;
+		Money? maxLeftover = null;
+		var outputProvider = new PaymentAwareOutputProvider(wallet, new PaymentBatch(new CoinsRegistry()), RandomnessProviders.Insecure, () => maxLeftover);
+		var roundsWithLeftover = 0;
+
+		foreach (var satoshis in new long[] { 12_345_678, 1_003_333, 777_777, 250_001, 99_999, 61_234, 5_000_123, 33_333_333 })
+		{
+			var registeredCoinsEffectiveValues = new[] { Money.Satoshis(satoshis) };
+
+			TxOut[] GetOutputs() => outputProvider.GetOutputs(uint256.Zero, roundParameters, registeredInputs: [], registeredCoinsEffectiveValues, theirCoinEffectiveValues, availableVsize, arePaymentsAllowed).ToArray();
+			Money Leftover(TxOut[] outputs) => Money.Satoshis(satoshis) - outputs.Sum(x => x.Value + feeRate.GetFee(x.ScriptPubKey.EstimateOutputVsize()));
+
+			maxLeftover = null;
+			if (Leftover(GetOutputs()) > Money.Zero)
+			{
+				roundsWithLeftover++;
+			}
+
+			// The limit is read for every round: it applies without making the provider anew.
+			maxLeftover = Money.Zero;
+			var outputs = GetOutputs();
+			Assert.Equal(Money.Zero, Leftover(outputs));
+
+			var vsizes = Enumerable.Repeat(0L, int.MaxValue).Prepend(availableVsize);
+			DependencyGraph.ResolveCredentialDependencies(registeredCoinsEffectiveValues, outputs, feeRate, vsizes, ProtocolConstants.MaxAmountPerAlice, ProtocolConstants.MaxVsizeCredentialValue);
+		}
+
+		Assert.True(roundsWithLeftover > 0, "No round left anything over without the limit, so the limit was not put to the test.");
 	}
 
 	[Theory]

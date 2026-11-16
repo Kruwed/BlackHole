@@ -11,8 +11,9 @@ namespace WalletWasabi.WabiSabi.Client.Batching;
 public class PaymentAwareOutputProvider(
 	IDestinationProvider destinationProvider,
 	PaymentBatch batchedPayments,
-	RandomnessProvider random)
-	: OutputProvider(destinationProvider, random)
+	RandomnessProvider random,
+	Func<Money?>? getMaxLeftover = null)
+	: OutputProvider(destinationProvider, random, getMaxLeftover)
 {
 	public override IEnumerable<TxOut> GetOutputs(
 		uint256 roundId,
@@ -87,7 +88,8 @@ public class PaymentAwareOutputProvider(
 			roundParameters.AllowedOutputAmounts.Max,
 			availableVsize,
 			DestinationProvider.SupportedScriptTypes,
-			Random);
+			Random,
+			MaxLeftover);
 
 		var outputValues = amountDecomposer.Decompose(availableValues.Sum(), allCoinEffectiveValues, bestPaymentSet.TotalAmount > Money.Zero).ToArray();
 		var decomposedOutputs = GetTxOuts(outputValues, DestinationProvider);

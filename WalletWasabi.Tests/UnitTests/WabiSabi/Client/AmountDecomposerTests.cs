@@ -79,6 +79,84 @@ public class AmountDecomposerTests
 		}
 	}
 
+	/// <summary>
+	/// The user sets the most that a coinjoin may leave over. Whatever the round looks like, no more than that is left,
+	/// no money is made up, and every output is one that the round allows.
+	/// </summary>
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(500)]
+	[InlineData(3_000)]
+	public void LeftoverStaysWithinTheLimitOfTheUser(long maxLeftoverSatoshis)
+	{
+		var maxLeftover = Money.Satoshis(maxLeftoverSatoshis);
+		var minOutputAmount = Money.Satoshis(5_000);
+		var maxOutputAmount = Money.Satoshis(ProtocolConstants.MaxAmountPerAlice);
+		var allowedOutputTypes = new List<ScriptType> { ScriptType.Taproot };
+		var random = RandomExtensions.CreateSeeded(seed: 7);
+		var roundsWhereTheLimitMattered = 0;
+
+		for (var round = 0; round < 60; round++)
+		{
+			var feeRate = new FeeRate((decimal)(int)random.GetInt64(1, 60));
+			var availableVsize = (int)random.GetInt64(1, 9) * Constants.P2trOutputVirtualSize;
+			var myInputs = Enumerable.Range(0, (int)random.GetInt64(1, 4)).Select(_ => Money.Satoshis(random.GetInt64(20_000, 50_000_000))).ToList();
+			var theirInputs = Enumerable.Range(0, 30).Select(_ => Money.Satoshis(random.GetInt64(20_000, 500_000_000))).ToList();
+			var myInputSum = myInputs.Sum();
+			var allInputs = theirInputs.Concat(myInputs).ToList();
+
+			// What the same round leaves over when the user sets no limit.
+			var unlimited = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round))
+				.Decompose(myInputSum, allInputs)
+				.ToList();
+			if (myInputSum - unlimited.Sum(x => x.EffectiveCost) > maxLeftover)
+			{
+				roundsWhereTheLimitMattered++;
+			}
+
+			var outputs = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round), maxLeftover)
+				.Decompose(myInputSum, allInputs)
+				.ToList();
+
+			var leftover = myInputSum - outputs.Sum(x => x.EffectiveCost);
+			Assert.InRange(leftover.Satoshi, 0, maxLeftoverSatoshis);
+			Assert.NotEmpty(outputs);
+			Assert.InRange(outputs.Sum(x => x.ScriptType.EstimateOutputVsize()), 1, availableVsize);
+			Assert.All(outputs, output => Assert.InRange(output.Amount.Satoshi, minOutputAmount.Satoshi, maxOutputAmount.Satoshi));
+		}
+
+		// The test would prove nothing if the limit never had to be enforced.
+		Assert.True(roundsWhereTheLimitMattered > 5, $"The limit mattered in {roundsWhereTheLimitMattered} rounds only.");
+	}
+
+	/// <summary>
+	/// A limit that no decomposition exceeds changes nothing: the outputs are the ones that the user gets without a limit.
+	/// </summary>
+	[Fact]
+	public void LimitAboveWhatARoundCanLeaveChangesNothing()
+	{
+		var minOutputAmount = Money.Satoshis(5_000);
+		var maxOutputAmount = Money.Satoshis(ProtocolConstants.MaxAmountPerAlice);
+		var allowedOutputTypes = new List<ScriptType> { ScriptType.Taproot };
+		var random = RandomExtensions.CreateSeeded(seed: 11);
+
+		for (var round = 0; round < 20; round++)
+		{
+			var feeRate = new FeeRate((decimal)(int)random.GetInt64(1, 60));
+			var availableVsize = (int)random.GetInt64(1, 9) * Constants.P2trOutputVirtualSize;
+			var myInputSum = Money.Satoshis(random.GetInt64(20_000, 50_000_000));
+			var allInputs = Enumerable.Range(0, 30).Select(_ => Money.Satoshis(random.GetInt64(20_000, 500_000_000))).Append(myInputSum).ToList();
+
+			var unlimited = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round))
+				.Decompose(myInputSum, allInputs);
+			var limited = new AmountDecomposer(feeRate, minOutputAmount, maxOutputAmount, availableVsize, allowedOutputTypes, RandomExtensions.CreateSeeded(seed: round), Money.Coins(1))
+				.Decompose(myInputSum, allInputs);
+
+			Assert.Equal(unlimited.Select(x => x.Amount), limited.Select(x => x.Amount));
+		}
+	}
+
 	private static IEnumerable<Coin> GenerateRandomCoins()
 	{
 		using var key = new Key();

@@ -50,7 +50,7 @@ public class Wallet : BackgroundService
 		Synchronizer = new WalletSynchronizer(rpcClient, keyManager, TransactionStore, TransactionProcessor, eventBus, onSynchronizedFirst: LoadDummyMempool, watchMempool: watchMempool);
 		Coins = TransactionProcessor.Coins;
 		BatchedPayments = new PaymentBatch(Coins);
-		OutputProvider = new PaymentAwareOutputProvider(DestinationProvider, BatchedPayments, RandomnessProviders.Secure);
+		OutputProvider = new PaymentAwareOutputProvider(DestinationProvider, BatchedPayments, RandomnessProviders.Secure, () => KeyManager.MaxCoinjoinLeftover);
 		_eventBus = eventBus;
 		WalletId = new WalletId(Guid.NewGuid());
 

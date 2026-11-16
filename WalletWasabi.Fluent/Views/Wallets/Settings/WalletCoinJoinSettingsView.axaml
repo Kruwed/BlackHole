@@ -76,6 +76,11 @@
         <TextBlock Text="Stop coinjoin threshold" />
         <CurrencyEntryBox Classes="standalone" Text="{Binding PlebStopThreshold}" CurrencyCode="BTC" />
       </DockPanel>
+
+      <DockPanel ToolTip.Tip="A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. If more than this limit would be left, it is added to one of your outputs instead: you keep it, but that output has a non-standard amount and gains less privacy. Leave empty to set no limit.">
+        <TextBlock Text="Max coinjoin leftover (sats)" />
+        <TextBox Classes="standalone" Text="{Binding MaxCoinjoinLeftover}" DockPanel.Dock="Right" Watermark="No limit" MaxLength="6" />
+      </DockPanel>
     </StackPanel>
   </ContentArea>
 </UserControl>

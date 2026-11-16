@@ -379,6 +379,33 @@ public class KeyManagerTests
 	}
 
 	[Fact]
+	public void MaxCoinjoinLeftoverIsKeptInTheWalletFile()
+	{
+		var filePath = "wallet-max-coinjoin-leftover.json";
+
+		// A wallet has no limit of its own until the user sets one.
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		Assert.Null(manager.MaxCoinjoinLeftover);
+		manager.ToFile();
+		Assert.Null(KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+
+		manager.MaxCoinjoinLeftover = Money.Satoshis(1_234);
+		manager.ToFile();
+		Assert.Equal(Money.Satoshis(1_234), KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+
+		// Zero is a limit, not the absence of one.
+		manager.MaxCoinjoinLeftover = Money.Zero;
+		manager.ToFile();
+		Assert.Equal(Money.Zero, KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+
+		manager.MaxCoinjoinLeftover = null;
+		manager.ToFile();
+		Assert.Null(KeyManager.FromFile(filePath).MaxCoinjoinLeftover);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
 	public void CanSerializeCoinjoinCosts()
 	{
 		var filePath = "wallet-coinjoin-costs.json";

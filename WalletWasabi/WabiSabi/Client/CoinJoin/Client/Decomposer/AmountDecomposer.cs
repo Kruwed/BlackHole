@@ -9,9 +9,13 @@ public class AmountDecomposer
 	/// <param name="maxAllowedOutputAmount">Max output amount that's allowed to be registered.</param>
 	/// <param name="availableVsize">Available virtual size for outputs.</param>
 	/// <param name="random">Allows testing by setting a seed value for the random number generator.</param>
-	public AmountDecomposer(FeeRate feeRate, Money minAllowedOutputAmount, Money maxAllowedOutputAmount, int availableVsize, IEnumerable<ScriptType> allowedOutputTypes, RandomnessProvider random)
+	/// <param name="maxLeftover">
+	/// The most that may be left over, see <see cref="MaxLeftover"/>. <c>null</c> leaves it to the round: what is too small for an output of its own is left over.
+	/// </param>
+	public AmountDecomposer(FeeRate feeRate, Money minAllowedOutputAmount, Money maxAllowedOutputAmount, int availableVsize, IEnumerable<ScriptType> allowedOutputTypes, RandomnessProvider random, Money? maxLeftover = null)
 	{
 		FeeRate = feeRate;
+		MaxLeftover = maxLeftover;
 
 		AvailableVsize = availableVsize;
 		AllowedOutputTypes = allowedOutputTypes;
@@ -33,6 +37,13 @@ public class AmountDecomposer
 	public IEnumerable<ScriptType> AllowedOutputTypes { get; }
 	public Money MinAllowedOutputAmount { get; }
 	public Money MaxAllowedOutputAmount { get; }
+
+	/// <summary>
+	/// The most that the user accepts to leave over. The part of the inputs that no output takes is left over: it is too
+	/// small for an output of its own, and it goes to the miners. A decomposition that leaves more than this is not used
+	/// as it is: what it leaves is added to one of its outputs, which is not a standard denomination any more then.
+	/// </summary>
+	public Money? MaxLeftover { get; }
 
 	public IReadOnlyList<Output> Denominations { get; }
 	public ScriptType ChangeScriptType { get; }
@@ -115,6 +126,11 @@ public class AmountDecomposer
 		var denomHashSet = denoms.ToHashSet();
 		var preCandidates = setCandidates.Select(x => x.Value).ToArray();
 
+		if (MaxLeftover is { } maxLeftover)
+		{
+			preCandidates = KeepLeftoversWithin(maxLeftover, preCandidates, myInputSum);
+		}
+
 		// If there are changeless candidates, don't even consider ones with change.
 		var changelessCandidates = preCandidates.Where(x => x.Decomposition.All(y => denomHashSet.Contains(y))).ToArray();
 		var changeAvoided = changelessCandidates.Length != 0;
@@ -176,6 +192,52 @@ public class AmountDecomposer
 			throw new InvalidOperationException("The decomposer created more outputs than it can. Aborting.");
 		}
 		return finalCandidate;
+	}
+
+	/// <summary>
+	/// Makes the candidates respect the limit of the user. A candidate that leaves more than the limit is replaced by one
+	/// that leaves nothing: its smallest output takes what was left. That output is change from then on, so the usual
+	/// choice between the candidates weighs it against the candidates that have change anyway.
+	/// </summary>
+	private (IEnumerable<Output> Decomposition, Money Cost)[] KeepLeftoversWithin(Money maxLeftover, (IEnumerable<Output> Decomposition, Money Cost)[] candidates, Money myInputSum)
+	{
+		var result = new Dictionary<int, (IEnumerable<Output> Decomposition, Money Cost)>();
+		var candidatesThatCannotComply = new List<(IEnumerable<Output> Decomposition, Money Cost)>();
+
+		foreach (var candidate in candidates)
+		{
+			var leftover = myInputSum - candidate.Decomposition.Sum(x => x.EffectiveCost);
+			if (leftover <= maxLeftover)
+			{
+				result.TryAdd(CalculateHash(candidate.Decomposition), candidate);
+				continue;
+			}
+
+			var outputs = candidate.Decomposition.ToList();
+
+			// The smallest output that stays an allowed one with the leftover added to it.
+			var index = outputs
+				.Select((output, i) => (Output: output, Index: i))
+				.Where(x => x.Output.Amount + leftover <= MaxAllowedOutputAmount)
+				.OrderBy(x => x.Output.Amount)
+				.Select(x => (int?)x.Index)
+				.FirstOrDefault();
+
+			if (index is null)
+			{
+				candidatesThatCannotComply.Add(candidate);
+				continue;
+			}
+
+			var smallest = outputs[index.Value];
+			outputs[index.Value] = Output.FromAmount(smallest.EffectiveCost + leftover, smallest.ScriptType, FeeRate);
+
+			// Nothing is lost any more, the cost is the one of the outputs.
+			result.TryAdd(CalculateHash(outputs), (outputs, CalculateCost(outputs)));
+		}
+
+		// If no candidate can comply, the limit cannot be kept: for example the only output is the largest allowed one.
+		return result.Count > 0 ? result.Values.ToArray() : candidatesThatCannotComply.ToArray();
 	}
 
 	private static Money FindChange(IEnumerable<Output> decomposition, HashSet<Output> denomHashSet)

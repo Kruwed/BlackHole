@@ -153,6 +153,12 @@ public class KeyManager
 	/// </summary>
 	public Money PlebStopThreshold { get; set; } = DefaultPlebStopThreshold;
 
+	/// <summary>
+	/// The most that a coinjoin of this wallet may leave over. What a coinjoin cannot put into an output goes to the
+	/// miners; above this limit it is added to an output instead. <c>null</c> sets no limit of the wallet's own.
+	/// </summary>
+	public Money? MaxCoinjoinLeftover { get; set; }
+
 	public int AnonScoreTarget { get; set; } = PrivacyProfiles.DefaultProfile.AnonScoreTarget;
 
 	public bool NonPrivateCoinIsolation { get; set; } = PrivacyProfiles.DefaultProfile.NonPrivateCoinIsolation;
@@ -710,6 +716,7 @@ public class KeyManager
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
 			("PlebStopThreshold", Encode.MoneyBitcoins(keyManager.PlebStopThreshold)),
+			("MaxCoinjoinLeftover", Encode.Optional(keyManager.MaxCoinjoinLeftover, Encode.MoneyBitcoins)),
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
@@ -742,6 +749,7 @@ public class KeyManager
 			{
 				AutoCoinJoin = get.Optional("AutoCoinJoin", Decode.Bool, false),
 				PlebStopThreshold = get.Optional("PlebStopThreshold", Decode.MoneyBitcoins) ?? DefaultPlebStopThreshold,
+				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins),
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),
