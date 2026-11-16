@@ -24,6 +24,9 @@ namespace WalletWasabi.Fluent.ViewModels;
 [AppLifetime]
 public partial class MainViewModel : ViewModelBase
 {
+	/// <summary>What the title bar tells in place of a block count while the node does not answer.</summary>
+	private const string WaitingForNode = "Waiting for Bitcoin node";
+
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
 	[AutoNotify] private bool _isOobeBackgroundVisible;
@@ -31,7 +34,7 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncProgress = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncStatus = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _feeRate = "";
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _chainHeight = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _chainHeight = WaitingForNode;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightVisible;
 
 	public MainViewModel(UiContext uiContext) : base(uiContext)
@@ -218,7 +221,7 @@ public partial class MainViewModel : ViewModelBase
 				// Until the node told how long the chain is, there is nothing to count towards.
 				SyncProgress = progress.Blocks.Target switch
 				{
-					null => "Waiting for the Bitcoin node",
+					null => WaitingForNode,
 					{ } target when progress.Blocks.Current >= target => $"{progress.Blocks.Current:N0} blocks synced",
 					{ } target => $"{progress.Blocks.Current:N0}/{target:N0} blocks synced"
 				};
@@ -237,10 +240,9 @@ public partial class MainViewModel : ViewModelBase
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(node =>
 				// The node knows the height of the chain from the headers, also while it is still downloading the blocks.
-				// Nothing is told while the node does not answer.
-				ChainHeight = node is not null ? $"{Math.Max(node.Headers, node.Blocks):N0} blocks mined" : "");
+				ChainHeight = node is not null ? $"{Math.Max(node.Headers, node.Blocks):N0} blocks mined" : WaitingForNode);
 
-		this.WhenAnyValue(x => x.ChainHeight, x => x.IsSyncProgressVisible, (height, isWalletOpen) => height != "" && !isWalletOpen)
+		this.WhenAnyValue(x => x.IsSyncProgressVisible, isWalletOpen => !isWalletOpen)
 			.BindTo(this, x => x.IsChainHeightVisible);
 	}
 
