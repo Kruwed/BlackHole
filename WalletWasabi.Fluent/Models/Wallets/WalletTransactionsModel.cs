@@ -35,13 +35,15 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 		_wallet = wallet;
 		_treeBuilder = new TransactionTreeBuilder(wallet, services);
 
+		// A subscriber gets a signal at once, to read what the wallet has. The events are subscribed to before that
+		// signal: while the wallet is processing blocks, what changes during the first reading must not be missed.
 		TransactionProcessed =
 			services.EventBus.AsObservable<WalletRelevantTransactionProcessed>().ToSignal()
 				// A new block changes the confirmations of the transactions.
 				.Merge(services.EventBus.AsObservable<ClientTipHeightChanged>().ToSignal())
 				.Sample(TimeSpan.FromSeconds(1))
 				.ObserveOn(RxApp.MainThreadScheduler)
-				.StartWith(Unit.Default);
+				.Merge(Observable.Return(Unit.Default));
 
 		NewTransactionArrived =
 			services.EventBus.AsObservable<WalletRelevantTransactionProcessed>()

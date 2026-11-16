@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
+using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
 
@@ -41,8 +43,26 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 				.Merge(isCoinjoinRunningChanged)
 				.Publish();
 
-		List = signals.Fetch(CreateCoinModels, x => x.Key).DisposeWith(_disposables);
-		Groups = signals.Fetch(GetGroups, x => x.PrivacyLevel).DisposeWith(_disposables);
+		// The list and the groups are made of the same reading of the coins. The wallet may be processing blocks in the
+		// background, so two readings can differ, and a group must not hold a coin that the list does not know.
+		// The list is subscribed first: it has the coins by the time the groups announce them.
+		var coins = signals.Select(_ => GetCoins().ToArray()).Publish();
+
+		List = coins
+			.Select(x => x.Select(CreateCoinModel))
+			.EditDiff(x => x.Key)
+			.DisposeMany()
+			.AsObservableCache()
+			.DisposeWith(_disposables);
+
+		Groups = coins
+			.Select(x => x.GetCoinGroups(AnonScoreTarget))
+			.EditDiff(x => x.PrivacyLevel)
+			.AsObservableCache()
+			.DisposeWith(_disposables);
+
+		coins.Connect()
+			.DisposeWith(_disposables);
 
 		signals
 			.Do(_ => Logger.LogDebug("Refresh signal emitted in the coin list"))
@@ -70,9 +90,11 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 		return new CoinModel(smartCoin, WalletModel.Network, WalletModel.Settings.AnonScoreTarget, _services);
 	}
 
-	protected abstract CoinGroup[] GetGroups();
+	/// <summary>The coins of the list as they are now.</summary>
+	protected abstract IEnumerable<SmartCoin> GetCoins();
 
-	protected abstract CoinModel[] CreateCoinModels();
+	/// <summary>The anonymity score from which a coin counts as private.</summary>
+	protected virtual int AnonScoreTarget => WalletModel.Settings.AnonScoreTarget;
 
 	public void Dispose() => _disposables.Dispose();
 }

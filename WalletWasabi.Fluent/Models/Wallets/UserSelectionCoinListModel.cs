@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using WalletWasabi.Blockchain.TransactionOutputs;
@@ -9,13 +10,5 @@ namespace WalletWasabi.Fluent.Models.Wallets;
 public partial class UserSelectionCoinListModel(Wallet wallet, IWalletModel walletModel, SmartCoin[] selectedCoins, IServices services)
 	: CoinListModel(wallet, walletModel, services)
 {
-	protected override CoinModel[] CreateCoinModels()
-	{
-		return selectedCoins.Select(CreateCoinModel).ToArray();
-	}
-
-	protected override CoinGroup[] GetGroups()
-	{
-		return selectedCoins.GetCoinGroups(WalletModel.Settings.AnonScoreTarget).ToArray();
-	}
+	protected override IEnumerable<SmartCoin> GetCoins() => selectedCoins;
 }
