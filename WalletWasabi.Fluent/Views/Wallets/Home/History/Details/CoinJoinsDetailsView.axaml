@@ -40,14 +40,6 @@
 
       <Separator />
 
-      <!-- Status -->
-      <PreviewItem Icon="{StaticResource status_regular}"
-                     Label="Status">
-        <TextBlock Text="{Binding Status}" />
-      </PreviewItem>
-
-      <Separator />
-
       <!-- TX Count  -->
       <PreviewItem Icon="{StaticResource info_regular}"
                      Label="Number of transactions"

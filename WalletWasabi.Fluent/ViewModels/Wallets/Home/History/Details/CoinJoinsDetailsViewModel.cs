@@ -19,7 +19,6 @@ public partial class CoinJoinsDetailsViewModel : RoutableViewModel
 	private readonly CoinJoinTransactionGroupModel _transaction;
 
 	[AutoNotify] private string _date = "";
-	[AutoNotify] private string _status = "";
 	[AutoNotify] private uint256? _transactionId;
 	[AutoNotify] private ObservableCollection<uint256>? _transactionIds;
 	[AutoNotify] private int _txCount;
@@ -74,7 +73,6 @@ public partial class CoinJoinsDetailsViewModel : RoutableViewModel
 		if (_wallet.Transactions.TryGetById<CoinJoinTransactionGroupModel>(_transaction.Id, out var transaction))
 		{
 			Date = transaction.DateToolTipString;
-			Status = transaction.IsConfirmed ? "Confirmed" : "Pending";
 			Costs.Update(transaction.CoinjoinCosts, transaction.Amount);
 			TransactionId = transaction.Id;
 			TransactionIds = new ObservableCollection<uint256>(transaction.Children.Select(x => x.Id));
