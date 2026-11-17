@@ -172,13 +172,16 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		int.TryParse(text, out anonScoreTarget)
 		&& anonScoreTarget is >= PrivacyProfiles.AbsoluteMinAnonScoreTarget and <= PrivacyProfiles.AbsoluteMaxAnonScoreTarget;
 
+	/// <summary>The error under the text box of the target. The box is only as wide as three digits, so the message has to be short.</summary>
+	private static string AnonScoreTargetRange => $"{PrivacyProfiles.AbsoluteMinAnonScoreTarget} to {PrivacyProfiles.AbsoluteMaxAnonScoreTarget}";
+
 	private void ValidateAnonScoreTarget(IValidationErrors errors)
 	{
 		if (int.TryParse(AnonScoreTarget, out var anonScoreTarget))
 		{
 			if (anonScoreTarget is < PrivacyProfiles.AbsoluteMinAnonScoreTarget or > PrivacyProfiles.AbsoluteMaxAnonScoreTarget)
 			{
-				errors.Add(ErrorSeverity.Error, $"Must be between {PrivacyProfiles.AbsoluteMinAnonScoreTarget} and {PrivacyProfiles.AbsoluteMaxAnonScoreTarget}");
+				errors.Add(ErrorSeverity.Error, AnonScoreTargetRange);
 			}
 			else
 			{
@@ -188,7 +191,7 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		}
 		else
 		{
-			errors.Add(ErrorSeverity.Error, $"Must be a number between {PrivacyProfiles.AbsoluteMinAnonScoreTarget} and {PrivacyProfiles.AbsoluteMaxAnonScoreTarget}");
+			errors.Add(ErrorSeverity.Error, AnonScoreTargetRange);
 		}
 	}
 
