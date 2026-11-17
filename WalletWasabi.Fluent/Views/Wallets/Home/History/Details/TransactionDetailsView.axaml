@@ -81,22 +81,7 @@
 
       <Separator IsVisible="{Binding IsFeeRateVisible}" />
 
-      <!-- Status -->
-      <PreviewItem Icon="{StaticResource copy_confirmed}"
-                     Label="Status">
-        <StackPanel Orientation="Horizontal">
-          <Panel>
-            <TextBlock Text="Confirmed" IsVisible="{Binding IsConfirmed}" />
-            <TextBlock Text="Pending" IsVisible="{Binding !IsConfirmed}" />
-          </Panel>
-          <TextBlock IsVisible="{Binding IsConfirmed}" Margin="4 0 0 0 " Text="{Binding Confirmations, StringFormat='({0} confirmations)'}" />
-        </StackPanel>
-      </PreviewItem>
-
-      <Separator />
-
       <!-- Inputs/Outputs -->
-      <Separator />
       <PreviewItem Icon="{StaticResource input_count}" />
       <DockPanel Margin="30 -30 0 0" LastChildFill="True">
         <Grid >
@@ -110,16 +95,6 @@
           <outputs:OutputsCoinListView Grid.Column="2" Margin="10 -15 10 0" DataContext="{Binding OutputList}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
         </Grid>
       </DockPanel>
-
-      <Separator IsVisible="{Binding IsConfirmed}" />
-
-      <!-- Block height -->
-      <PreviewItem Icon="{StaticResource block_height}"
-                     Label="Block height"
-                     CopyableContent="{Binding BlockHeight}"
-                     IsVisible="{Binding IsConfirmed}">
-        <TextBlock Text="{Binding BlockHeight}" />
-      </PreviewItem>
 
       <!-- Hex -->
       <Separator />

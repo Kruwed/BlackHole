@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
@@ -18,10 +19,7 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _wallet;
 
-	[AutoNotify] private bool _isConfirmed;
 	[AutoNotify] private string? _amountText = "";
-	[AutoNotify] private uint _blockHeight;
-	[AutoNotify] private uint _confirmations;
 	[AutoNotify] private string? _dateString;
 	[AutoNotify] private Amount? _amount;
 	[AutoNotify] private FeeRate? _feeRate;
@@ -66,13 +64,9 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 
 	private async Task UpdateValuesAsync(RegularTransactionModel model, CancellationToken cancellationToken)
 	{
-		DateString = model.DateToolTipString;
-		BlockHeight = model.BlockHeight;
-		Confirmations = model.Confirmations;
+		DateString = DescribeDate(model.Confirmations > 0, model.BlockHeight, model.Date);
 		FeeRate = model.FeeRate;
 		IsFeeRateVisible = FeeRate is not null && FeeRate != FeeRate.Zero;
-
-		IsConfirmed = Confirmations > 0;
 
 		if (model.Amount < Money.Zero)
 		{
@@ -84,6 +78,19 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 			Amount = new Amount(model.Amount);
 			AmountText = "Amount received";
 		}
+	}
+
+	/// <summary>
+	/// Tells in one sentence whether the transaction is confirmed, in which block, and when.
+	/// </summary>
+	/// <param name="date">The time the wallet has for the transaction, which is the time it first saw it.</param>
+	public static string DescribeDate(bool isConfirmed, uint blockHeight, DateTimeOffset date)
+	{
+		var when = date.ToUserFacingString();
+
+		return isConfirmed
+			? $"Confirmed in block {blockHeight.ToString("N0", CultureInfo.InvariantCulture)} at {when}"
+			: $"Broadcast at {when}";
 	}
 
 	private void OnNext()
