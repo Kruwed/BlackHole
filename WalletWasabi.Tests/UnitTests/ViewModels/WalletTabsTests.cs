@@ -147,6 +147,14 @@ public class WalletTabsTests
 		Assert.Equal("The wallet has no coins to spend", SendTabViewModel.DescribeSelectionHint(hasCoins: false));
 	}
 
+	[Fact]
+	public void MarketMakersAreListedWithWhatTheyOffer()
+	{
+		Assert.Equal(
+			["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"],
+			JoinMarketTabViewModel.Columns);
+	}
+
 	[Theory]
 	[InlineData(500, "200", 300)]
 	[InlineData(200, "200", 0)]

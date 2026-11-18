@@ -22,7 +22,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
 - **Send**: the coins of the wallet, and above them the address, the amount and the fee rate of a payment. Tick the coins that the transaction may spend, fill in the rest, and *Continue* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one.
 - **Receive**: *New Address* generates an address and shows it. The list has the addresses that were generated and have not been paid to yet; a right click on one copies it.
 - **WabiSabi**: the privacy progress of the wallet and its WabiSabi coinjoins, with their controls and settings.
-- **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far.
+- **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far, and a list of market makers that is a placeholder: it has its columns and no rows yet.
 - **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
 
 To the right of the tabs the title bar tells the fee rate, how many blocks the wallet has processed and the balance. In a window that is too narrow for all of it these give way, the fee rate first and the balance last, so that the tabs and the buttons stay. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Connections*.

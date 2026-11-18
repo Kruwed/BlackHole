@@ -3,13 +3,46 @@
              xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
              x:DataType="tabs:JoinMarketTabViewModel"
              x:CompileBindings="True"
+             ClipToBounds="False"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.JoinMarketTabView">
-  <!-- The fidelity bonds are all that there is of this protocol so far. The button waits for the wallet to know its transactions. -->
-  <Button Classes="function" Command="{Binding BondCommand}"
-          HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0 10 0 0">
-    <StackPanel Orientation="Horizontal">
-      <PathIcon Data="{StaticResource wallet_action_bond}" />
-      <TextBlock Text="Bond" />
-    </StackPanel>
-  </Button>
+  <DockPanel>
+
+    <!-- The fidelity bonds are at the right end. The button waits for the wallet to know its transactions. -->
+    <DockPanel DockPanel.Dock="Top" Margin="0 10 0 20">
+      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding BondCommand}" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal">
+          <PathIcon Data="{StaticResource wallet_action_bond}" />
+          <TextBlock Text="Bond" />
+        </StackPanel>
+      </Button>
+      <TextBlock VerticalAlignment="Center" Text="Market Makers" FontSize="{StaticResource FontSizeH5}" />
+    </DockPanel>
+
+    <!-- The list of the market makers is a placeholder: its columns, and rows that are empty until the wallet finds makers. -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,*,*,*,*,*,*" Margin="14 0 14 8">
+      <Grid.Styles>
+        <Style Selector="TextBlock">
+          <Setter Property="Opacity" Value="0.6" />
+          <Setter Property="FontSize" Value="13" />
+        </Style>
+      </Grid.Styles>
+      <!-- The maker has the widest column: it is the one with a name in it. -->
+      <TextBlock Grid.Column="0" Text="{Binding MarketMakerColumns[0]}" />
+      <TextBlock Grid.Column="1" Text="{Binding MarketMakerColumns[1]}" />
+      <TextBlock Grid.Column="2" Text="{Binding MarketMakerColumns[2]}" />
+      <TextBlock Grid.Column="3" Text="{Binding MarketMakerColumns[3]}" />
+      <TextBlock Grid.Column="4" Text="{Binding MarketMakerColumns[4]}" />
+      <TextBlock Grid.Column="5" Text="{Binding MarketMakerColumns[5]}" />
+      <TextBlock Grid.Column="6" Text="{Binding MarketMakerColumns[6]}" />
+    </Grid>
+
+    <DummyRowsControl Margin="{StaticResource HistoryTablePlaceholderPanelMargin}"
+                      RowHeight="{StaticResource TreeDataGridRowHeight}">
+      <DummyRowsControl.RowTemplate>
+        <ControlTemplate>
+          <Border CornerRadius="15" Background="{DynamicResource Layer1BackgroundBrush}" Margin="2" />
+        </ControlTemplate>
+      </DummyRowsControl.RowTemplate>
+    </DummyRowsControl>
+  </DockPanel>
 </UserControl>

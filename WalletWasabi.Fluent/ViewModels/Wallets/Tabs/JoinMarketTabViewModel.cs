@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows.Input;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
@@ -7,7 +8,8 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
 /// <summary>
 /// The tab of the JoinMarket-style coinjoins. The fidelity bonds are all that the wallet has of that protocol so far,
-/// and this tab is the only place that opens them.
+/// and this tab is the only place that opens them. The list of the market makers is a placeholder: it has its columns
+/// and no rows, as the wallet does not look for makers yet.
 /// </summary>
 [AppLifetime]
 public partial class JoinMarketTabViewModel : WalletTabViewModel
@@ -28,6 +30,13 @@ public partial class JoinMarketTabViewModel : WalletTabViewModel
 			this.WhenAnyValue(x => x.IsWalletLoaded));
 	}
 
+	/// <summary>
+	/// The columns of the list of market makers. The first one names the maker, the others tell what it offers.
+	/// </summary>
+	public static IReadOnlyList<string> Columns { get; } = ["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"];
+
 	/// <summary>Opens the fidelity bonds of the wallet.</summary>
 	public ICommand BondCommand { get; }
+
+	public IReadOnlyList<string> MarketMakerColumns => Columns;
 }
