@@ -80,7 +80,7 @@
     <!-- The payment: where to, how much, and at what fee rate. With many payments it scrolls, so that the coins keep their room below. -->
     <ScrollViewer DockPanel.Dock="Top" Margin="0 10 0 0"
                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                  MaxHeight="{Binding #Layout.Bounds.Height, Converter={x:Static converters:DoubleConverters.Minus}, ConverterParameter=200}">
+                  MaxHeight="{Binding #Layout.Bounds.Height, Converter={x:Static converters:DoubleConverters.Minus}, ConverterParameter=180}">
     <StackPanel IsEnabled="{Binding IsWalletLoaded}">
       <Interaction.Behaviors>
         <KeyDownTrigger Key="Enter" EventRoutingStrategy="Bubble" MarkAsHandled="False">
@@ -94,8 +94,12 @@
       <!-- To -->
       <DockPanel Classes="field">
         <Label DockPanel.Dock="Left" Content="_To:" Target="toTb" />
+        <!-- The way on: it shows the transaction, and nothing is signed before that. -->
+        <Button DockPanel.Dock="Right" Classes="action" Content="Continue" Command="{Binding ContinueCommand}"
+                VerticalAlignment="Top" Margin="12 0 0 0"
+                ToolTip.Tip="Shows the transaction. Nothing is sent before you confirm it there." />
         <TextBox x:Name="toTb" MaxLength="250" Text="{Binding To}" Classes="monoSpaced"
-                 Watermark="(e.g. Bitcoin address or Silent Payment address)"
+                 Watermark="Bitcoin address"
                  ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
                  AcceptsReturn="False">
@@ -204,7 +208,7 @@
                 <DockPanel Margin="0 0 0 10">
                   <Label DockPanel.Dock="Left" Content="To:" MinWidth="80" />
                   <TextBox Text="{Binding Value.To}" Classes="monoSpaced" MaxLength="250"
-                           Watermark="(e.g. Bitcoin address or Silent Payment address)">
+                           Watermark="Bitcoin address">
                     <TextBox.InnerRightContent>
                       <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Margin="10 0">
                         <AnimatedButton KeyboardNavigation.IsTabStop="False"
@@ -250,27 +254,27 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <!-- Fee rate, and the way on. The fee rate starts as the estimate of the node, the one of the title bar. -->
+      <!-- Fee rate. It starts as the estimate of the node, the one of the title bar. -->
       <DockPanel Classes="field">
         <Label DockPanel.Dock="Left" Content="_Fee rate:" Target="feeRateTb" />
-        <Button DockPanel.Dock="Right" Classes="action" Content="Continue" Command="{Binding ContinueCommand}"
-                VerticalAlignment="Top" Margin="12 0 0 0"
-                ToolTip.Tip="Shows the transaction. Nothing is sent before you confirm it there." />
-        <Button DockPanel.Dock="Right" Command="{Binding AddRecipientCommand}"
-                Content="+ Add another payment" Classes="activeHyperLink plain" Margin="12 8 0 0" VerticalAlignment="Top"
-                Cursor="Hand" Focusable="False"
-                ToolTip.ShowOnDisabled="True">
-          <Button.Styles>
-            <Style Selector="Button:disabled">
-              <Setter Property="ToolTip.Tip" Value="Pay to many is not available when using a BIP21 payment URI." />
-            </Style>
-          </Button.Styles>
-        </Button>
         <StackPanel Orientation="Horizontal" Spacing="8">
           <TextBox x:Name="feeRateTb" Text="{Binding FeeRateText}" Width="210" MaxLength="12" VerticalAlignment="Top" />
           <TextBlock Text="sat/vB" VerticalAlignment="Top" Margin="0 9 0 0" Opacity="0.6" />
         </StackPanel>
       </DockPanel>
+
+      <!-- One more payment in the same transaction. It is as wide as its text, like the button that removes a payment. -->
+      <Button Command="{Binding AddRecipientCommand}"
+              Content="+ Add another payment" Classes="activeHyperLink plain" Margin="80 0 0 0"
+              HorizontalAlignment="Left"
+              Cursor="Hand" Focusable="False"
+              ToolTip.ShowOnDisabled="True">
+        <Button.Styles>
+          <Style Selector="Button:disabled">
+            <Setter Property="ToolTip.Tip" Value="Pay to many is not available when using a BIP21 payment URI." />
+          </Style>
+        </Button.Styles>
+      </Button>
     </StackPanel>
     </ScrollViewer>
 
