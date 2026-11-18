@@ -50,10 +50,10 @@ public class TitleBarTests
 		var node = new SyncProgressCardModel(0, 976_172, 976_172);
 
 		Assert.Equal(
-			"120/976,172 blocks synced",
+			"120/976,172 blocks",
 			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(new WalletSyncStatus.Scanning(120, 976_172), node, new SyncProgressCardModel(0, 120, 976_172))));
 		Assert.Equal(
-			"976,172 blocks synced",
+			"976,172 blocks",
 			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(new WalletSyncStatus.Synchronized(976_172), node, new SyncProgressCardModel(0, 976_172, 976_172))));
 		Assert.Equal(
 			"Waiting for Bitcoin node",

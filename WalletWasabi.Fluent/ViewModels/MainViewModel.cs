@@ -296,8 +296,8 @@ public partial class MainViewModel : ViewModelBase
 
 			// Until the node told how long the chain is, there is nothing to count towards.
 			{ Blocks.Target: null } => WaitingForNode,
-			{ Blocks: { Target: { } target, Current: var current } } when current >= target => $"{current:N0} blocks synced",
-			{ Blocks: { Target: { } target, Current: var current } } => $"{current:N0}/{target:N0} blocks synced"
+			{ Blocks: { Target: { } target, Current: var current } } when current >= target => $"{current:N0} blocks",
+			{ Blocks: { Target: { } target, Current: var current } } => $"{current:N0}/{target:N0} blocks"
 		};
 
 	/// <summary>
