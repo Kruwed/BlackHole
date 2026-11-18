@@ -65,9 +65,7 @@ public partial class WalletRepository : ReactiveObject
 	{
 		walletSettings.Save();
 
-		var result = Wallet ?? throw new InvalidOperationException("The wallet was not added.");
-		result.Settings.IsCoinJoinPaused = walletSettings.IsCoinJoinPaused;
-		return result;
+		return Wallet ?? throw new InvalidOperationException("The wallet was not added.");
 	}
 
 	private async Task<WalletSettingsModel> CreateNewWalletAsync(WalletCreationOptions.AddNewWallet options)
@@ -111,6 +109,6 @@ public partial class WalletRepository : ReactiveObject
 				minGapLimit.Value,
 				birthHeight: birthHeight));
 
-		return new WalletSettingsModel(_services, keyManager, true, true);
+		return new WalletSettingsModel(_services, keyManager, true);
 	}
 }

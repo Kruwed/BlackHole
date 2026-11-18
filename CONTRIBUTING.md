@@ -224,7 +224,7 @@ this.WhenAnyValue(...)
 When you subscribe with the usage of `.WhenAnyValue()` right after the creation one call of Subscription will be triggered. This is by design and most of the cases it is fine. Still you can suppress this behaviour by adding `Skip(1)`.
 
 ```cs
-this.WhenAnyValue(x => x.AutoCoinjoin)
+this.WhenAnyValue(x => x.MaxCoinjoinLeftover)
 	.Skip(1)
 	.Subscribe(value =>
 	{

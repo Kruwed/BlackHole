@@ -15,29 +15,32 @@ using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
+/// <summary>
+/// The controls of the coinjoin and what they say about it. A coinjoin is one round: Play starts it, and when the round is
+/// over, however it ended, the coinjoin is stopped again. The outcome stays on display until the next round is started.
+/// </summary>
 [AppLifetime]
 public partial class CoinJoinStateViewModel : ViewModelBase
 {
-	private const string CountDownMessage = "Awaiting auto-start of coinjoin";
 	private const string WaitingMessage = "Awaiting coinjoin";
 	private const string CoinjoinMiningFeeRateTooHighMessage = "Mining fee rate was too high";
 	private const string MinInputCountTooLowMessage = "Min input count was too low";
-	private const string PauseMessage = "Coinjoin is paused";
 	private const string StoppedMessage = "Coinjoin is stopped";
-	private const string PressPlayToStartMessage = "Press Play to start";
-	private const string RoundSucceedMessage = "Coinjoin successful! Continuing...";
-	private const string RoundFinishedMessage = "Round ended, awaiting next round";
-	private const string AbortedNotEnoughAlicesMessage = "Insufficient participants, retrying...";
+	private const string PressPlayToStartMessage = "Press Play to start a round";
+	private const string RoundSucceedMessage = "Coinjoin successful";
+	private const string RoundFinishedMessage = "Round ended without a coinjoin";
+	private const string AbortedNotEnoughAlicesMessage = "Insufficient participants";
 	private const string CoinJoinInProgress = "Coinjoin in progress";
 	private const string InputRegistrationMessage = "Awaiting other participants";
 	private const string WaitingForBlameRoundMessage = "Awaiting the blame round";
 	private const string WaitingRoundMessage = "Awaiting a round";
+	private const string NoRoundMessage = "No round was found";
 	private const string NoCoinsEligibleToMixMessage = "Insufficient funds eligible for coinjoin";
-	private const string UserInSendWorkflowMessage = "Awaiting closure of send dialog";
+	private const string UserInSendWorkflowMessage = "The send dialog is open";
 	private const string AllPrivateMessage = "Hurray! All your funds are private!";
 	private const string AllCoinsArePrivate = "All coins are private";
-	private const string GeneralErrorMessage = "Awaiting valid conditions";
-	private const string WaitingForConfirmedFunds = "Awaiting confirmed funds";
+	private const string GeneralErrorMessage = "Coinjoin did not take place";
+	private const string NoConfirmedCoinsMessage = "The funds are not confirmed yet";
 	private const string CoinsRejectedMessage = "Some funds are rejected from coinjoining";
 	private const string OnlyImmatureCoinsAvailableMessage = "Only immature funds are available";
 	private const string OnlyExcludedCoinsAvailableMessage = "Only excluded funds are available";
@@ -47,13 +50,10 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private readonly Wallet _walletInstance;
 	private readonly StateMachine<State, Trigger> _stateMachine;
 	private readonly DispatcherTimer _countdownTimer;
-	private readonly DispatcherTimer _autoCoinJoinStartTimer;
 
-	[AutoNotify] private bool _isAutoWaiting;
 	[AutoNotify] private bool _playVisible;
 	[AutoNotify] private bool _playEnabled = true;
-	[AutoNotify] private bool _pauseVisible;
-	[AutoNotify] private bool _pauseSpreading;
+	[AutoNotify] private bool _isStopping;
 	[AutoNotify] private bool _stopVisible;
 	[AutoNotify] private string _currentStatus = "";
 	[AutoNotify] private bool _isProgressReversed;
@@ -68,6 +68,12 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private DateTimeOffset _countDownStartTime;
 	private DateTimeOffset _countDownEndTime;
 
+	/// <summary>
+	/// How the last coinjoin ended, unless it was stopped: what its round came to, or why there was no round. It is shown
+	/// while the coinjoin is stopped, and forgotten when the next one starts.
+	/// </summary>
+	private string? _outcome;
+
 	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel) : base(uiContext)
 	{
 		_wallet = wallet;
@@ -80,17 +86,8 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		wallet.Privacy.IsWalletPrivate
 					  .BindTo(this, x => x.AreAllCoinsPrivate);
 
-		var initialState =
-			wallet.Settings.AutoCoinjoin
-			? State.WaitingForAutoStart
-			: State.StoppedOrPaused;
-
-		if (wallet.Settings.IsCoinJoinPaused)
-		{
-			initialState = State.StoppedOrPaused;
-		}
-
-		_stateMachine = new StateMachine<State, Trigger>(initialState);
+		// Nothing starts a coinjoin but the user.
+		_stateMachine = new StateMachine<State, Trigger>(State.Stopped);
 
 		ConfigureStateMachine();
 
@@ -98,37 +95,22 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			.Do(_ => _stateMachine.Fire(Trigger.AreAllCoinsPrivateChanged))
 			.Subscribe();
 
-		// Refresh the paused music box when a pending payment is added or removed (when paying in coinjoin regardless of anon score)
+		// A pending payment lets a wallet coinjoin whose coins are all private, so the Play button follows the payments.
 		UiContext.Services.EventBus.AsObservable<PaymentBatchChanged>()
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Do(_ => _stateMachine.Fire(Trigger.PendingPaymentsChanged))
 			.Subscribe();
 
-		PlayCommand = ReactiveCommand.CreateFromTask(async () => await walletCoinjoinModel.StartAsync(stopWhenAllMixed: !IsAutoCoinJoinEnabled));
+		PlayCommand = ReactiveCommand.CreateFromTask(walletCoinjoinModel.StartAsync);
 
-		var stopPauseCommandCanExecute =
+		// A coinjoin cannot be stopped in its critical phase, and not twice.
+		var stopCommandCanExecute =
 			this.WhenAnyValue(
 				x => x.IsInCriticalPhase,
-				x => x.PauseSpreading,
-				(isInCriticalPhase, pauseSpreading) => !isInCriticalPhase && !pauseSpreading);
+				x => x.IsStopping,
+				(isInCriticalPhase, isStopping) => !isInCriticalPhase && !isStopping);
 
-		StopPauseCommand = ReactiveCommand.CreateFromTask(walletCoinjoinModel.StopAsync, stopPauseCommandCanExecute);
-
-		AutoCoinJoinObservable = wallet.Settings.WhenAnyValue(x => x.AutoCoinjoin);
-
-		AutoCoinJoinObservable
-			.Skip(1) // The first one is triggered at the creation.
-			.Where(x => !x)
-			.Do(_ => _stateMachine.Fire(Trigger.AutoCoinJoinOff))
-			.Subscribe();
-
-		_autoCoinJoinStartTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Random.Shared.Next(60, 180)) };
-		_autoCoinJoinStartTimer.Tick += async (_, _) =>
-		{
-			await walletCoinjoinModel.StartAsync(stopWhenAllMixed: false);
-
-			_autoCoinJoinStartTimer.Stop();
-		};
+		StopCommand = ReactiveCommand.CreateFromTask(walletCoinjoinModel.StopAsync, stopCommandCanExecute);
 
 		_countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 		_countdownTimer.Tick += (_, _) => _stateMachine.Fire(Trigger.Tick);
@@ -143,9 +125,8 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private enum State
 	{
 		Invalid = 0,
-		StoppedOrPaused,
+		Stopped,
 		Playing,
-		WaitingForAutoStart,
 	}
 
 	private enum Trigger
@@ -155,14 +136,9 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		Tick,
 		WalletStartedCoinJoin,
 		WalletStoppedCoinJoin,
-		AutoCoinJoinOff,
 		AreAllCoinsPrivateChanged,
 		PendingPaymentsChanged
 	}
-
-	public bool IsAutoCoinJoinEnabled => _wallet.Settings.AutoCoinjoin;
-
-	public IObservable<bool> AutoCoinJoinObservable { get; }
 
 	private bool IsCountDownFinished => GetRemainingTime() <= TimeSpan.Zero;
 
@@ -170,95 +146,84 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	public ICommand PlayCommand { get; }
 
-	public ICommand StopPauseCommand { get; }
+	public ICommand StopCommand { get; }
 
 	public ICommand CoinJoinPaymentsCommand { get; }
 
+	/// <summary>What the controls say about a round that came to its end and was not stopped.</summary>
+	public static string DescribeRoundEnd(EndRoundState endRoundState) =>
+		endRoundState switch
+		{
+			EndRoundState.TransactionBroadcasted => RoundSucceedMessage,
+			EndRoundState.AbortedNotEnoughAlices => AbortedNotEnoughAlicesMessage,
+			_ => RoundFinishedMessage
+		};
+
+	/// <summary>What the controls say about a coinjoin that did not take place.</summary>
+	public static string DescribeError(CoinjoinError error) =>
+		error switch
+		{
+			CoinjoinError.NoCoinsEligibleToMix => NoCoinsEligibleToMixMessage,
+			CoinjoinError.NoConfirmedCoinsEligibleToMix => NoConfirmedCoinsMessage,
+			CoinjoinError.UserInSendWorkflow => UserInSendWorkflowMessage,
+			CoinjoinError.AllCoinsPrivate => AllPrivateMessage,
+			CoinjoinError.UserWasntInRound => RoundFinishedMessage,
+			CoinjoinError.CoinsRejected => CoinsRejectedMessage,
+			CoinjoinError.OnlyImmatureCoinsAvailable => OnlyImmatureCoinsAvailableMessage,
+			CoinjoinError.OnlyExcludedCoinsAvailable => OnlyExcludedCoinsAvailableMessage,
+			CoinjoinError.MiningFeeRateTooHigh => CoinjoinMiningFeeRateTooHighMessage,
+			CoinjoinError.MinInputCountTooLow => MinInputCountTooLowMessage,
+			CoinjoinError.CoordinatorLiedAboutInputs => CoordinatorLiedMessage,
+			CoinjoinError.NoRoundAvailable => NoRoundMessage,
+			_ => GeneralErrorMessage
+		};
+
 	private void ConfigureStateMachine()
 	{
-		_stateMachine.Configure(State.WaitingForAutoStart)
+		_stateMachine.Configure(State.Stopped)
 			.Permit(Trigger.WalletStartedCoinJoin, State.Playing)
-			.Permit(Trigger.AutoCoinJoinOff, State.StoppedOrPaused)
-			.Permit(Trigger.StartError, State.Playing)
 			.OnEntry(() =>
 			{
+				StopCountDown();
+				IsStopping = false;
+				StopVisible = false;
 				PlayVisible = true;
-				PauseVisible = false;
-				StopVisible = false;
-				IsAutoWaiting = true;
 
-				var now = DateTimeOffset.UtcNow;
-				var autoStartEnd = now + _autoCoinJoinStartTimer.Interval;
-				_autoCoinJoinStartTimer.Start();
-
-				StartCountDown(CountDownMessage, now, autoStartEnd);
+				RefreshStopped();
 			})
-			.OnExit(() =>
-			{
-				IsAutoWaiting = false;
-				_autoCoinJoinStartTimer.Stop();
-				StopCountDown();
-			})
-			.OnTrigger(Trigger.Tick, UpdateCountDown);
-
-		_stateMachine.Configure(State.StoppedOrPaused)
-			.Permit(Trigger.WalletStartedCoinJoin, State.Playing)
-			.OnEntry(() =>
-			{
-				StopCountDown();
-				PauseVisible = false;
-				PauseSpreading = false;
-				StopVisible = false;
-
-				// PlayVisible, CurrentStatus and LeftText set inside.
-				RefreshButtonAndTextInStateStoppedOrPaused();
-			})
-			.OnTrigger(Trigger.AreAllCoinsPrivateChanged, () =>
-			{
-				// Refresh the UI according to AreAllCoinsPrivate, the play button and the left-text.
-				RefreshButtonAndTextInStateStoppedOrPaused();
-			})
-			.OnTrigger(Trigger.PendingPaymentsChanged, () =>
-			{
-				RefreshButtonAndTextInStateStoppedOrPaused();
-			})
+			.OnTrigger(Trigger.StartError, RefreshStopped)
+			.OnTrigger(Trigger.AreAllCoinsPrivateChanged, RefreshStopped)
+			.OnTrigger(Trigger.PendingPaymentsChanged, RefreshStopped)
 			.OnExit(() => LeftText = "");
 
 		_stateMachine.Configure(State.Playing)
-			.Permit(Trigger.WalletStoppedCoinJoin, State.StoppedOrPaused)
+			.Permit(Trigger.WalletStoppedCoinJoin, State.Stopped)
 			.OnEntry(() =>
 			{
 				PlayVisible = false;
-				PauseVisible = IsAutoCoinJoinEnabled;
-				StopVisible = !IsAutoCoinJoinEnabled;
+				StopVisible = true;
 
 				CurrentStatus = WaitingMessage;
 			})
 			.OnTrigger(Trigger.Tick, UpdateCountDown);
 	}
 
-	private void RefreshButtonAndTextInStateStoppedOrPaused()
+	/// <summary>
+	/// What the controls say and offer while no coinjoin is under way: how the last one ended, if it was not stopped, and
+	/// that Play starts a round. A wallet whose coins are all private has nothing to coinjoin, unless a payment is pending.
+	/// </summary>
+	private void RefreshStopped()
 	{
-		if (IsAutoCoinJoinEnabled)
+		if (AreAllCoinsPrivate && !_walletInstance.BatchedPayments.AreTherePendingPayments)
 		{
-			PlayVisible = true;
-			PlayEnabled = true;
-			CurrentStatus = PauseMessage;
-			LeftText = PressPlayToStartMessage;
-		}
-		else if (AreAllCoinsPrivate)
-		{
-			var hasPendingPayments = _walletInstance.BatchedPayments.AreTherePendingPayments;
-			PlayVisible = true;
-			PlayEnabled = hasPendingPayments;
-			CurrentStatus = hasPendingPayments ? StoppedMessage : AllCoinsArePrivate;
-			LeftText = hasPendingPayments ? PressPlayToStartMessage : "";
+			PlayEnabled = false;
+			CurrentStatus = _outcome ?? AllCoinsArePrivate;
+			LeftText = "";
 		}
 		else
 		{
-			PlayVisible = true;
 			PlayEnabled = true;
-			CurrentStatus = StoppedMessage;
+			CurrentStatus = _outcome ?? StoppedMessage;
 			LeftText = PressPlayToStartMessage;
 		}
 	}
@@ -295,6 +260,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		switch (e)
 		{
 			case WalletStartedCoinJoinEventArgs:
+				_outcome = null;
 				_stateMachine.Fire(Trigger.WalletStartedCoinJoin);
 				break;
 
@@ -303,24 +269,9 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 				break;
 
 			case StartErrorEventArgs start:
+				// The coinjoin is over. Its end is told right after this, and by then the controls know why.
+				_outcome = DescribeError(start.Error);
 				_stateMachine.Fire(Trigger.StartError);
-				CurrentStatus = start.Error switch
-				{
-					CoinjoinError.NoCoinsEligibleToMix => NoCoinsEligibleToMixMessage,
-					CoinjoinError.NoConfirmedCoinsEligibleToMix => WaitingForConfirmedFunds,
-					CoinjoinError.UserInSendWorkflow => UserInSendWorkflowMessage,
-					CoinjoinError.AllCoinsPrivate => AllPrivateMessage,
-					CoinjoinError.UserWasntInRound => RoundFinishedMessage,
-					CoinjoinError.CoinsRejected => CoinsRejectedMessage,
-					CoinjoinError.OnlyImmatureCoinsAvailable => OnlyImmatureCoinsAvailableMessage,
-					CoinjoinError.OnlyExcludedCoinsAvailable => OnlyExcludedCoinsAvailableMessage,
-					CoinjoinError.MiningFeeRateTooHigh => CoinjoinMiningFeeRateTooHighMessage,
-					CoinjoinError.MinInputCountTooLow => MinInputCountTooLowMessage,
-					CoinjoinError.CoordinatorLiedAboutInputs => CoordinatorLiedMessage,
-					_ => GeneralErrorMessage
-				};
-
-				StopCountDown();
 				break;
 
 			case CoinJoinStatusEventArgs coinJoinStatusEventArgs:
@@ -336,16 +287,13 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			case RoundEnded roundEnded:
 				if (roundEnded.IsStopped)
 				{
-					PauseSpreading = true;
+					IsStopping = true;
 				}
 				else
 				{
-					CurrentStatus = roundEnded.LastRoundState.EndRoundState switch
-					{
-						EndRoundState.TransactionBroadcasted => RoundSucceedMessage,
-						EndRoundState.AbortedNotEnoughAlices => AbortedNotEnoughAlicesMessage,
-						_ => RoundFinishedMessage
-					};
+					// A disrupted round is followed by its blame round, and then this is not the last word.
+					_outcome = DescribeRoundEnd(roundEnded.LastRoundState.EndRoundState);
+					CurrentStatus = _outcome;
 					StopCountDown();
 				}
 				break;

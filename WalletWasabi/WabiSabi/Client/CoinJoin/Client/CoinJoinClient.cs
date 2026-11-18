@@ -70,15 +70,23 @@ public class CoinJoinClient
 		using CancellationTokenSource cts = new(_maxWaitingTimeForRound);
 		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token, cts.Token);
 
-		return await _roundStatusProvider
-			.CreateRoundAwaiterAsync(
-				roundState =>
-					roundState.InputRegistrationEnd - DateTimeOffset.UtcNow > _doNotRegisterInLastMinuteTimeLimit
-					&& roundState.Phase == Phase.InputRegistration
-					&& !roundState.IsBlame
-					&& roundState.Id != excludeRound,
-				linkedCts.Token)
-			.ConfigureAwait(false);
+		try
+		{
+			return await _roundStatusProvider
+				.CreateRoundAwaiterAsync(
+					roundState =>
+						roundState.InputRegistrationEnd - DateTimeOffset.UtcNow > _doNotRegisterInLastMinuteTimeLimit
+						&& roundState.Phase == Phase.InputRegistration
+						&& !roundState.IsBlame
+						&& roundState.Id != excludeRound,
+					linkedCts.Token)
+				.ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (cts.IsCancellationRequested && !token.IsCancellationRequested)
+		{
+			// Nobody stopped the coinjoin: the wait is over. The coinjoin ends with that, and its user is told why.
+			throw new CoinJoinClientException(CoinjoinError.NoRoundAvailable, $"No round to register to was seen for {_maxWaitingTimeForRound.TotalMinutes} minutes.");
+		}
 	}
 
 	private async Task<RoundState> WaitForBlameRoundAsync(uint256 blameRoundId, CancellationToken token)

@@ -23,8 +23,6 @@ namespace WalletWasabi.Blockchain.Keys;
 
 public class KeyManager
 {
-	public const bool DefaultAutoCoinjoin = false;
-
 	/// <summary>
 	/// The gap limit of a wallet that was not given a wider one. On the chain of its receive addresses and on the chain of
 	/// its change addresses, the wallet watches at least this many unused addresses after the last one that was used.
@@ -169,8 +167,6 @@ public class KeyManager
 	public ExtPubKey? SilentPaymentSpendExtPubKey { get; private set; }
 
 	private readonly BlockchainState _blockchainState;
-
-	public bool AutoCoinJoin { get; set; } = DefaultAutoCoinjoin;
 
 	/// <summary>
 	/// The most that a coinjoin of this wallet may leave over. What a coinjoin cannot put into an output goes to the
@@ -815,7 +811,6 @@ public class KeyManager
 			("MinGapLimit", Encode.Int(keyManager.GetEffectiveMinGapLimit())),
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
-			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
@@ -849,7 +844,6 @@ public class KeyManager
 				get.Optional("TaprootAccountKeyPath", Decode.KeyPath)
 			)
 			{
-				AutoCoinJoin = get.Optional("AutoCoinJoin", Decode.Bool, false),
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),

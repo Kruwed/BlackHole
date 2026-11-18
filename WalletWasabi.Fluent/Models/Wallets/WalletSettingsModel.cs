@@ -18,29 +18,25 @@ public partial class WalletSettingsModel : ReactiveObject
 	private bool _isDirty;
 
 	[AutoNotify] private bool _isNewWallet;
-	[AutoNotify] private bool _autoCoinjoin;
 	[AutoNotify] private Money _maxCoinjoinLeftover;
 	[AutoNotify] private int _anonScoreTarget;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 
-	public WalletSettingsModel(IServices services, KeyManager keyManager, bool isNewWallet = false, bool isCoinJoinPaused = false)
+	public WalletSettingsModel(IServices services, KeyManager keyManager, bool isNewWallet = false)
 	{
 		_services = services;
 		_keyManager = keyManager;
 
 		_isNewWallet = isNewWallet;
 		_isDirty = isNewWallet;
-		IsCoinJoinPaused = isCoinJoinPaused;
 
-		_autoCoinjoin = _keyManager.AutoCoinJoin;
 		_maxCoinjoinLeftover = _keyManager.MaxCoinjoinLeftover;
 		_anonScoreTarget = _keyManager.AnonScoreTarget;
 		_nonPrivateCoinIsolation = _keyManager.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _keyManager.OnlyUsePrivateFundsForPayments;
 
 		this.WhenAnyValue(
-				x => x.AutoCoinjoin,
 				x => x.MaxCoinjoinLeftover,
 				x => x.AnonScoreTarget,
 				x => x.NonPrivateCoinIsolation,
@@ -54,8 +50,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	/// <summary>No block below this height concerns the wallet. Zero if the wallet does not know.</summary>
 	public uint BirthHeight => _keyManager.GetBirthHeight()?.Height ?? 0;
-
-	public bool IsCoinJoinPaused { get; set; }
 
 	/// <summary>
 	/// Saves the current configuration to the wallet file. A new wallet becomes the wallet of the application by that.
@@ -83,7 +77,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	private void SetValues()
 	{
-		_keyManager.AutoCoinJoin = AutoCoinjoin;
 		_keyManager.MaxCoinjoinLeftover = MaxCoinjoinLeftover;
 		_keyManager.AnonScoreTarget = AnonScoreTarget;
 		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;

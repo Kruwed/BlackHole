@@ -33,11 +33,6 @@
 
       <Separator />
 
-      <DockPanel>
-        <TextBlock Text="Automatically start coinjoin" />
-        <ToggleSwitch IsChecked="{Binding AutoCoinJoin}" Command="{Binding SetAutoCoinJoin}" />
-      </DockPanel>
-
       <DockPanel ToolTip.Tip="A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. If more than this limit would be left, it is added to one of your outputs instead: you keep it, but that output has a non-standard amount and gains less privacy. The limit is 0.0001 BTC at most.">
         <TextBlock Text="Dust forfeit limit" />
         <CurrencyEntryBox Classes="standalone" Text="{Binding MaxCoinjoinLeftover}" CurrencyCode="BTC" />

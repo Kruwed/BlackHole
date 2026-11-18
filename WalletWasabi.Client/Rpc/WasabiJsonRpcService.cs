@@ -168,7 +168,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 			["loaded"] = activeWallet.Loaded,
 			["masterKeyFingerprint"] = km.MasterFingerprint?.ToString() ?? "",
 			["anonScoreTarget"] = activeWallet.AnonScoreTarget,
-			["isAutoCoinjoin"] = activeWallet.KeyManager.AutoCoinJoin,
 			["isNonPrivateCoinIsolation"] = activeWallet.KeyManager.NonPrivateCoinIsolation,
 			["onlyUsePrivateFundsForPayments"] = activeWallet.KeyManager.OnlyUsePrivateFundsForPayments,
 			["accounts"] = new[]
@@ -509,14 +508,14 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	[JsonRpcMethod("startcoinjoin")]
-	public void StartCoinJoining(string? password = null, bool stopWhenAllMixed = true)
+	public void StartCoinJoining(string? password = null)
 	{
 		var coinJoinManager = GetCoinJoinManager();
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		AssertWalletIsLoaded();
 		AssertWalletIsLoggedIn(activeWallet, password ?? "");
-		coinJoinManager.RequestCoinJoinStart(activeWallet, stopWhenAllMixed);
+		coinJoinManager.RequestCoinJoinStart(activeWallet);
 	}
 
 	[JsonRpcMethod("stopcoinjoin")]
@@ -563,7 +562,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 		{
 			CoinJoinClientState.Idle => "Idle",
 			CoinJoinClientState.InProgress => "In progress",
-			CoinJoinClientState.InSchedule => "In schedule",
 			CoinJoinClientState.InCriticalPhase => "In critical phase",
 			_ => throw new Exception($"The state {walletCoinjoinClientState.FriendlyName()} is unknown.")
 		};

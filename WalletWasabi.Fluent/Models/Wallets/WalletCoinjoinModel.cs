@@ -17,15 +17,13 @@ public partial class WalletCoinjoinModel : ReactiveObject
 {
 	private readonly IServices _services;
 	private readonly Wallet _wallet;
-	private readonly WalletSettingsModel _settings;
 	private CoinJoinManager _coinJoinManager;
 	[AutoNotify] private bool _isCoinjoining;
 
-	public WalletCoinjoinModel(IServices services, Wallet wallet, CoinJoinManager coinjoinManager, WalletSettingsModel settings)
+	public WalletCoinjoinModel(IServices services, Wallet wallet, CoinJoinManager coinjoinManager)
 	{
 		_services = services;
 		_wallet = wallet;
-		_settings = settings;
 		_coinJoinManager = coinjoinManager;
 
 		StatusUpdated = Observable
@@ -35,21 +33,6 @@ public partial class WalletCoinjoinModel : ReactiveObject
 			.Where(x => x is WalletStartedCoinJoinEventArgs or WalletStoppedCoinJoinEventArgs or StartErrorEventArgs
 				or CoinJoinStatusEventArgs or CompletedEventArgs or StartedEventArgs)
 			.ObserveOn(RxApp.MainThreadScheduler);
-
-		settings.WhenAnyValue(x => x.AutoCoinjoin)
-				.Skip(1) // The first one is triggered at the creation.
-				.DoAsync(async (autoCoinJoin) =>
-				{
-					if (autoCoinJoin)
-					{
-						await StartAsync(stopWhenAllMixed: false);
-					}
-					else
-					{
-						await StopAsync();
-					}
-				})
-				.Subscribe();
 
 		var coinjoinInputStarted =
 			StatusUpdated.OfType<CoinJoinStatusEventArgs>()
@@ -86,9 +69,10 @@ public partial class WalletCoinjoinModel : ReactiveObject
 
 	public IObservable<bool> IsStarted { get; }
 
-	public async Task StartAsync(bool stopWhenAllMixed)
+	/// <summary>Starts one coinjoin round. When it is over the coinjoin is stopped again.</summary>
+	public async Task StartAsync()
 	{
-		_coinJoinManager.RequestCoinJoinStart(_wallet, stopWhenAllMixed);
+		_coinJoinManager.RequestCoinJoinStart(_wallet);
 	}
 
 	public async Task StopAsync()

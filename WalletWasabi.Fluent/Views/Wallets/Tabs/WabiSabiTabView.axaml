@@ -83,20 +83,13 @@
                     IsVisible="{Binding CoinJoinState.PlayVisible, FallbackValue=False}"
                     IsEnabled="{Binding CoinJoinState.PlayEnabled, FallbackValue=False}"
                     Command="{Binding CoinJoinState.PlayCommand}"
-                    ToolTip.Tip="Start coinjoin">
+                    ToolTip.Tip="Start a coinjoin round">
               <PathIcon Data="{StaticResource play_regular}" />
             </Button>
 
             <Button Classes="plain"
-                    IsVisible="{Binding CoinJoinState.PauseVisible, FallbackValue=False}"
-                    Command="{Binding CoinJoinState.StopPauseCommand}"
-                    ToolTip.Tip="Pause coinjoin">
-              <PathIcon Data="{StaticResource pause_regular}" />
-            </Button>
-
-            <Button Classes="plain"
                     IsVisible="{Binding CoinJoinState.StopVisible, FallbackValue=False}"
-                    Command="{Binding CoinJoinState.StopPauseCommand}"
+                    Command="{Binding CoinJoinState.StopCommand}"
                     ToolTip.Tip="Stop coinjoin">
               <PathIcon Data="{StaticResource stop_regular}" />
             </Button>

@@ -30,7 +30,7 @@ public class CoinJoinTrackerFactory
 	private readonly CancellationToken _cancellationToken;
 	private readonly LiquidityClueProvider _liquidityClueProvider;
 
-	public CoinJoinTracker CreateAndStart(Wallet wallet, Func<IEnumerable<SmartCoin>> coinCandidatesFunc, bool stopWhenAllMixed)
+	public CoinJoinTracker CreateAndStart(Wallet wallet, Func<IEnumerable<SmartCoin>> coinCandidatesFunc)
 	{
 		_liquidityClueProvider.InitLiquidityClue(wallet);
 
@@ -56,6 +56,6 @@ public class CoinJoinTrackerFactory
 			doNotRegisterInLastMinuteTimeLimit: TimeSpan.FromMinutes(1),
 			minAnonScoreForPayments: minAnonScoreForPayments);
 
-		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, stopWhenAllMixed, _cancellationToken);
+		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, _cancellationToken);
 	}
 }

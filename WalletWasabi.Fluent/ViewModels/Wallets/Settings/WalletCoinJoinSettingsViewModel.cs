@@ -28,13 +28,11 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 
-	[AutoNotify] private bool _autoCoinJoin;
 	[AutoNotify] private string _maxCoinjoinLeftover;
 
 	public WalletCoinJoinSettingsViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
 	{
 		_wallet = walletModel;
-		_autoCoinJoin = _wallet.Settings.AutoCoinjoin;
 		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.ToString();
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
 		_anonScoreTargetSliderPosition = AnonScoreTargetToSliderPosition(_wallet.Settings.AnonScoreTarget);
@@ -48,14 +46,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 			_wallet.Settings.Save();
 			Navigate().Back();
 		});
-
-		SetAutoCoinJoin = ReactiveCommand.CreateFromTask(
-			() =>
-			{
-				_wallet.Settings.AutoCoinjoin = AutoCoinJoin;
-				_wallet.Settings.Save();
-				return Task.CompletedTask;
-			});
 
 		SetNonPrivateCoinIsolationCommand = ReactiveCommand.CreateFromTask(() =>
 		{
@@ -97,7 +87,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
 	}
 
-	public ICommand SetAutoCoinJoin { get; }
 	public ICommand SetNonPrivateCoinIsolationCommand { get; }
 	public ICommand SetOnlyUsePrivateFundsForPaymentsCommand { get; }
 

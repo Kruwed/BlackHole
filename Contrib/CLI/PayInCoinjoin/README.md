@@ -58,7 +58,7 @@ Select by number, cancel multiple with 1,3 or 1 3, or cancel all with A.
 
 ## wcj.sh - Run Coinjoin
 
-Start coinjoin and monitor until all payments complete:
+Start coinjoin and monitor until all payments complete. A coinjoin is one round, so the script starts another round while payments are pending:
 
 ```
 $ ./wcj.sh
@@ -80,7 +80,7 @@ Pending payments:
 CoinJoin stopped
 ```
 
-The script: - Shows initial state - Starts coinjoin automatically - Detects when payments complete - Detects if you add new payments while running - Stops coinjoin when done - Handles Ctrl+C gracefully
+The script: - Shows initial state - Starts coinjoin, round after round - Detects when payments complete - Detects if you add new payments while running - Stops coinjoin when done - Handles Ctrl+C gracefully
 
 ## Setup
 

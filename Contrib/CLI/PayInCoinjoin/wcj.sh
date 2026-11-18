@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Black Hole CoinJoin Payment Runner
-# Starts coinjoin and monitors payments, adapting to new/cancelled payments
+# Starts coinjoin rounds and monitors payments, adapting to new/cancelled payments
 
 function config_extract() {
   jq -r "$1" ~/.blackhole/client/Config.json
@@ -50,6 +50,15 @@ get_pending() {
         | jq '[.result[] | select(.state[0].status == "Pending")] | sort_by(.address)'
 }
 
+# A coinjoin is one round: the wallet stops when the round is over.
+start_round() {
+    curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"startcoinjoin","params":[""]}' "$RPC_ENDPOINT" > /dev/null
+}
+
+coinjoin_status() {
+    curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"getwalletinfo"}' "$RPC_ENDPOINT" | jq -r '.result.coinjoinStatus'
+}
+
 show_pending() {
     local payments="$1"
     local count=$(echo "$payments" | jq 'length')
@@ -79,7 +88,7 @@ fi
 
 # Start coinjoin
 echo ""
-curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"startcoinjoin","params":["",false]}' "$RPC_ENDPOINT" > /dev/null
+start_round
 echo "=== CoinJoin started ==="
 echo ""
 
@@ -89,6 +98,8 @@ ever_had_payments=false
 if [ "$prev_count" -gt 0 ]; then
     ever_had_payments=true
 fi
+
+first_look=true
 
 while true; do
     curr=$(get_pending)
@@ -124,6 +135,14 @@ while true; do
     if [ "$curr_count" -eq 0 ] && [ "$ever_had_payments" = true ]; then
         break
     fi
+
+    # The round is over and payments are still pending: they take another round.
+    # Not at the first look: the round that was just asked for may not show as running yet.
+    if [ "$first_look" = false ] && [ "$curr_count" -gt 0 ] && [ "$(coinjoin_status)" == "Idle" ]; then
+        echo "[$(date +%H:%M:%S)] Starting another round"
+        start_round
+    fi
+    first_look=false
 
     # Update state
     prev="$curr"

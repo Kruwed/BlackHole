@@ -377,6 +377,36 @@ public class KeyManagerTests
 	}
 
 	[Fact]
+	public void SettingsThatAreGoneAreReadOverAndNotWrittenAgain()
+	{
+		var filePath = "wallet-settings-that-are-gone.json";
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.ToFile();
+
+		// A wallet file of an older version has the settings of the automatic coinjoin.
+		var json = File.ReadAllText(filePath);
+		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
+		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
+
+		var start = json.IndexOf('{') + 1;
+		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\","));
+
+		// The wallet opens as it did, and what it knows is as it was.
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(manager.MasterFingerprint, sameManager.MasterFingerprint);
+		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
+
+		// The next time the file is written, they are not in it any more.
+		sameManager.ToFile();
+		json = File.ReadAllText(filePath);
+		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
+		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
 	public void MaxCoinjoinLeftoverIsKeptInTheWalletFile()
 	{
 		var filePath = "wallet-max-coinjoin-leftover.json";

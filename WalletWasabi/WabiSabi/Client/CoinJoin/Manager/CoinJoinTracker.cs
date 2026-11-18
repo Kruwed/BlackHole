@@ -13,14 +13,12 @@ public class CoinJoinTracker : IDisposable
 		Wallet wallet,
 		CoinJoinClient coinJoinClient,
 		Func<IEnumerable<SmartCoin>> coinCandidatesFunc,
-		bool stopWhenAllMixed,
 		CancellationToken cancellationToken)
 	{
 		Wallet = wallet;
 		_coinJoinClient = coinJoinClient;
 		_coinJoinClient.CoinJoinClientProgress += CoinJoinClient_CoinJoinClientProgress;
 
-		StopWhenAllMixed = stopWhenAllMixed;
 		_cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		CoinJoinTask = coinJoinClient.StartCoinJoinAsync(coinCandidatesFunc, _cancellationTokenSource.Token);
 	}
@@ -33,11 +31,19 @@ public class CoinJoinTracker : IDisposable
 
 	public Wallet Wallet { get; }
 	public Task<CoinJoinResult> CoinJoinTask { get; }
-	public bool StopWhenAllMixed { get; set; }
 
 	public bool IsCompleted => CoinJoinTask.IsCompleted;
 	public bool InCriticalCoinJoinState { get; private set; }
 	public bool IsStopped { get; set; }
+
+	/// <summary>Whether a stop took the coinjoin down: it is cancelled, and it will be over within a moment.</summary>
+	public bool IsCancelled => _cancellationTokenSource.IsCancellationRequested;
+
+	/// <summary>
+	/// A start was asked for while the coinjoin was on its way down. The coinjoin that was asked for takes its place
+	/// when it is gone.
+	/// </summary>
+	public bool IsStartRequested { get; set; }
 	public List<CoinBanned> BannedCoins { get; private set; } = new();
 
 	public void Stop()

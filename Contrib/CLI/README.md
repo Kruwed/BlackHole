@@ -39,7 +39,6 @@ $ ./wcli.sh getwalletinfo
   "state": "Started",
   "masterKeyFingerprint": "3442193e",
   "anonScoreTarget": 5,
-  "isAutoCoinjoin": true,
   "isRedCoinIsolation": false,
   "accounts": [
     {

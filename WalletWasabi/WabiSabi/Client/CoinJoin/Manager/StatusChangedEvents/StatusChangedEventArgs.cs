@@ -16,7 +16,6 @@ public enum CompletionStatus
 public enum CoinjoinError
 {
 	NoCoinsEligibleToMix,
-	AutoConjoinDisabled,
 	UserInSendWorkflow,
 	AllCoinsPrivate,
 	UserWasntInRound,
@@ -26,7 +25,10 @@ public enum CoinjoinError
 	OnlyExcludedCoinsAvailable,
 	MiningFeeRateTooHigh,
 	MinInputCountTooLow,
-	CoordinatorLiedAboutInputs
+	CoordinatorLiedAboutInputs,
+
+	/// <summary>The coordinator had no round to register to for as long as the client waits for one.</summary>
+	NoRoundAvailable
 }
 
 public class StatusChangedEventArgs : EventArgs
