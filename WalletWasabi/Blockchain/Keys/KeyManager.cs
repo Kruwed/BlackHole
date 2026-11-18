@@ -7,7 +7,6 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
-using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.FidelityBonds;
 using WalletWasabi.Io;
 using WalletWasabi.Models;
@@ -43,6 +42,13 @@ public class KeyManager
 	/// the other, so the gap limit of the wallet means nothing to them.
 	/// </summary>
 	private const int SilentPaymentKeyGapLimit = 21;
+
+	/// <summary>The anonymity score target of a wallet whose user did not choose one.</summary>
+	public const int DefaultAnonScoreTarget = 10;
+
+	public const int MinAnonScoreTarget = 2;
+
+	public const int MaxAnonScoreTarget = 300;
 
 	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.005m);
 
@@ -184,11 +190,12 @@ public class KeyManager
 		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
 	} = DefaultMaxCoinjoinLeftover;
 
-	public int AnonScoreTarget { get; set; } = PrivacyProfiles.DefaultProfile.AnonScoreTarget;
+	public int AnonScoreTarget { get; set; } = DefaultAnonScoreTarget;
 
-	public bool NonPrivateCoinIsolation { get; set; } = PrivacyProfiles.DefaultProfile.NonPrivateCoinIsolation;
+	/// <summary>A new wallet registers at most one non-private coin in a round.</summary>
+	public bool NonPrivateCoinIsolation { get; set; } = true;
 
-	public bool OnlyUsePrivateFundsForPayments { get; set; } = PrivacyProfiles.DefaultProfile.OnlyUsePrivateFundsForPayments;
+	public bool OnlyUsePrivateFundsForPayments { get; set; }
 
 	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
 

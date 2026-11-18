@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
@@ -28,9 +27,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	[AutoNotify] private double _anonScoreTargetSliderPosition;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
-	[AutoNotify] private bool _maximizePrivacyProfileSelected;
-	[AutoNotify] private bool _defaultProfileSelected;
-	[AutoNotify] private bool _economicalProfileSelected;
 
 	[AutoNotify] private bool _autoCoinJoin;
 	[AutoNotify] private string _plebStopThreshold;
@@ -77,31 +73,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 			return Task.CompletedTask;
 		});
 
-		SelectMaximizePrivacySettings = ReactiveCommand.CreateFromTask(() => SetProfile("MaximizePrivacy"));
-
-		SelectDefaultSettings = ReactiveCommand.CreateFromTask(() => SetProfile("Default"));
-
-		SelectEconomicalSettings = ReactiveCommand.CreateFromTask(() => SetProfile("Economical"));
-
-		this.WhenAnyValue(
-				x => x.AnonScoreTarget,
-				x => x.NonPrivateCoinIsolation,
-				x => x.OnlyUsePrivateFundsForPayments)
-			.ObserveOn(RxApp.TaskpoolScheduler)
-			.Subscribe(_ =>
-			{
-				var selectedProfile = PrivacyProfiles.Profiles
-					.FirstOrDefault(p =>
-						p.Equals(
-							int.TryParse(AnonScoreTarget, out var anonScoreTarget) ? anonScoreTarget : 0,
-							NonPrivateCoinIsolation,
-							OnlyUsePrivateFundsForPayments));
-
-				MaximizePrivacyProfileSelected = selectedProfile?.Name == "MaximizePrivacy";
-				EconomicalProfileSelected = selectedProfile?.Name == "Economical";
-				DefaultProfileSelected = selectedProfile?.Name == "Default";
-			});
-
 		// The slider and the text box show the same number. A text that is not a valid target leaves the slider where it is.
 		this.WhenAnyValue(x => x.AnonScoreTarget)
 			.Skip(1)
@@ -145,9 +116,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	public ICommand SetAutoCoinJoin { get; }
 	public ICommand SetNonPrivateCoinIsolationCommand { get; }
 	public ICommand SetOnlyUsePrivateFundsForPaymentsCommand { get; }
-	public ICommand SelectMaximizePrivacySettings { get; }
-	public ICommand SelectDefaultSettings { get; }
-	public ICommand SelectEconomicalSettings { get; }
 
 	/// <summary>
 	/// Where the slider stands for an anonymity score target, between 0 and 1. The scale is logarithmic, because the targets
@@ -155,31 +123,31 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	/// </summary>
 	public static double AnonScoreTargetToSliderPosition(int anonScoreTarget)
 	{
-		var clamped = Math.Clamp(anonScoreTarget, PrivacyProfiles.AbsoluteMinAnonScoreTarget, PrivacyProfiles.AbsoluteMaxAnonScoreTarget);
-		return Math.Log((double)clamped / PrivacyProfiles.AbsoluteMinAnonScoreTarget) / SliderScale;
+		var clamped = Math.Clamp(anonScoreTarget, KeyManager.MinAnonScoreTarget, KeyManager.MaxAnonScoreTarget);
+		return Math.Log((double)clamped / KeyManager.MinAnonScoreTarget) / SliderScale;
 	}
 
 	/// <summary>The anonymity score target that a position of the slider between 0 and 1 stands for.</summary>
 	public static int SliderPositionToAnonScoreTarget(double position)
 	{
-		var target = (int)Math.Round(PrivacyProfiles.AbsoluteMinAnonScoreTarget * Math.Exp(Math.Clamp(position, 0, 1) * SliderScale));
-		return Math.Clamp(target, PrivacyProfiles.AbsoluteMinAnonScoreTarget, PrivacyProfiles.AbsoluteMaxAnonScoreTarget);
+		var target = (int)Math.Round(KeyManager.MinAnonScoreTarget * Math.Exp(Math.Clamp(position, 0, 1) * SliderScale));
+		return Math.Clamp(target, KeyManager.MinAnonScoreTarget, KeyManager.MaxAnonScoreTarget);
 	}
 
-	private static double SliderScale => Math.Log((double)PrivacyProfiles.AbsoluteMaxAnonScoreTarget / PrivacyProfiles.AbsoluteMinAnonScoreTarget);
+	private static double SliderScale => Math.Log((double)KeyManager.MaxAnonScoreTarget / KeyManager.MinAnonScoreTarget);
 
 	private static bool TryParseAnonScoreTarget(string text, out int anonScoreTarget) =>
 		int.TryParse(text, out anonScoreTarget)
-		&& anonScoreTarget is >= PrivacyProfiles.AbsoluteMinAnonScoreTarget and <= PrivacyProfiles.AbsoluteMaxAnonScoreTarget;
+		&& anonScoreTarget is >= KeyManager.MinAnonScoreTarget and <= KeyManager.MaxAnonScoreTarget;
 
 	/// <summary>The error under the text box of the target. The box is only as wide as three digits, so the message has to be short.</summary>
-	private static string AnonScoreTargetRange => $"{PrivacyProfiles.AbsoluteMinAnonScoreTarget} to {PrivacyProfiles.AbsoluteMaxAnonScoreTarget}";
+	private static string AnonScoreTargetRange => $"{KeyManager.MinAnonScoreTarget} to {KeyManager.MaxAnonScoreTarget}";
 
 	private void ValidateAnonScoreTarget(IValidationErrors errors)
 	{
 		if (int.TryParse(AnonScoreTarget, out var anonScoreTarget))
 		{
-			if (anonScoreTarget is < PrivacyProfiles.AbsoluteMinAnonScoreTarget or > PrivacyProfiles.AbsoluteMaxAnonScoreTarget)
+			if (anonScoreTarget is < KeyManager.MinAnonScoreTarget or > KeyManager.MaxAnonScoreTarget)
 			{
 				errors.Add(ErrorSeverity.Error, AnonScoreTargetRange);
 			}
@@ -213,26 +181,5 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 			_wallet.Settings.MaxCoinjoinLeftover = limit;
 			_wallet.Settings.Save();
 		}
-	}
-
-	private Task SetProfile(string profileName)
-	{
-		var profile = PrivacyProfiles.Profiles.FirstOrDefault(p => p.Name == profileName);
-		if (profile is null)
-		{
-			return Task.CompletedTask;
-		}
-
-		AnonScoreTarget = profile.AnonScoreTarget.ToString();
-		_wallet.Settings.AnonScoreTarget = profile.AnonScoreTarget;
-
-		NonPrivateCoinIsolation = profile.NonPrivateCoinIsolation;
-		_wallet.Settings.NonPrivateCoinIsolation = profile.NonPrivateCoinIsolation;
-
-		OnlyUsePrivateFundsForPayments = profile.OnlyUsePrivateFundsForPayments;
-		_wallet.Settings.OnlyUsePrivateFundsForPayments = profile.OnlyUsePrivateFundsForPayments;
-
-		_wallet.Settings.Save();
-		return Task.CompletedTask;
 	}
 }

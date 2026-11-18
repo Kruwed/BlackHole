@@ -4,7 +4,6 @@ using System.Linq;
 using System.Security;
 using System.Text.Json.Nodes;
 using WalletWasabi.Blockchain.Keys;
-using WalletWasabi.CoinJoinProfiles;
 using WalletWasabi.Models;
 using WalletWasabi.Tests.Helpers;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
@@ -336,7 +335,6 @@ public class KeyManagerTests
 	public void OnlyUsePrivateFundsForPaymentsIsOffByDefault()
 	{
 		Assert.False(KeyManager.CreateNew(out _, "", Network.Main).OnlyUsePrivateFundsForPayments);
-		Assert.True(new PrivacyProfiles.MaximizePrivacy().OnlyUsePrivateFundsForPayments);
 	}
 
 	[Fact]

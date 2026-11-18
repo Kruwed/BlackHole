@@ -1,4 +1,4 @@
-using WalletWasabi.CoinJoinProfiles;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 using Xunit;
 
@@ -12,11 +12,11 @@ public class AnonScoreTargetSliderTests
 	[Fact]
 	public void EndsOfTheSliderAreTheLimitsOfTheTarget()
 	{
-		Assert.Equal(PrivacyProfiles.AbsoluteMinAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(0));
-		Assert.Equal(PrivacyProfiles.AbsoluteMaxAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(1));
+		Assert.Equal(KeyManager.MinAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(0));
+		Assert.Equal(KeyManager.MaxAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(1));
 
-		Assert.Equal(0, WalletCoinJoinSettingsViewModel.AnonScoreTargetToSliderPosition(PrivacyProfiles.AbsoluteMinAnonScoreTarget), precision: 9);
-		Assert.Equal(1, WalletCoinJoinSettingsViewModel.AnonScoreTargetToSliderPosition(PrivacyProfiles.AbsoluteMaxAnonScoreTarget), precision: 9);
+		Assert.Equal(0, WalletCoinJoinSettingsViewModel.AnonScoreTargetToSliderPosition(KeyManager.MinAnonScoreTarget), precision: 9);
+		Assert.Equal(1, WalletCoinJoinSettingsViewModel.AnonScoreTargetToSliderPosition(KeyManager.MaxAnonScoreTarget), precision: 9);
 	}
 
 	[Fact]
@@ -24,7 +24,7 @@ public class AnonScoreTargetSliderTests
 	{
 		var previous = -1.0;
 
-		for (var target = PrivacyProfiles.AbsoluteMinAnonScoreTarget; target <= PrivacyProfiles.AbsoluteMaxAnonScoreTarget; target++)
+		for (var target = KeyManager.MinAnonScoreTarget; target <= KeyManager.MaxAnonScoreTarget; target++)
 		{
 			var position = WalletCoinJoinSettingsViewModel.AnonScoreTargetToSliderPosition(target);
 
@@ -39,7 +39,7 @@ public class AnonScoreTargetSliderTests
 	[Fact]
 	public void PositionsOutsideTheSliderGiveTheLimits()
 	{
-		Assert.Equal(PrivacyProfiles.AbsoluteMinAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(-1));
-		Assert.Equal(PrivacyProfiles.AbsoluteMaxAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(2));
+		Assert.Equal(KeyManager.MinAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(-1));
+		Assert.Equal(KeyManager.MaxAnonScoreTarget, WalletCoinJoinSettingsViewModel.SliderPositionToAnonScoreTarget(2));
 	}
 }
