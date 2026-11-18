@@ -11,9 +11,9 @@
 
   <Panel Height="42">
 
-    <!-- The logo starts where the content of the pages starts. -->
+    <!-- The logo starts where the content of the pages starts. It is the plain one: the detailed one would blur at this size. -->
     <Viewbox Height="18" Width="18" Margin="31 0 0 0" HorizontalAlignment="Left" IsHitTestVisible="False">
-      <Image Source="{DynamicResource app_logo_dynamic}" />
+      <Image Source="{DynamicResource app_logo_small}" />
     </Viewbox>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6" Margin="0 0 8 0">

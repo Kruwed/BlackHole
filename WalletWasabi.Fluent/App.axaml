@@ -34,7 +34,8 @@
   </Application.Styles>
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon Icon="/Assets/BlackHoleLogo.ico" Command="{Binding ShowCommand}" ToolTipText="Black Hole">
+      <!-- The icon of the tray is only the galaxy, without the dark tile of the application icon: the panel is its background. -->
+      <TrayIcon Icon="/Assets/BlackHoleTray.png" Command="{Binding ShowCommand}" ToolTipText="Black Hole">
         <!-- TODO: This is temporary workaround until https://github.com/WalletWasabi/WalletWasabi/issues/8151 is fixed. -->
         <!--<NativeMenu.Menu>
           <NativeMenu>

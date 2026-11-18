@@ -101,8 +101,6 @@
 
   <BoxShadows x:Key="OptionButtonShadow">0 2 2 #121212</BoxShadows>
 
-  <SolidColorBrush x:Key="LogoBaseColor" Color="#FFFFFF" />
-
   <SolidColorBrush x:Key="TagsBoxItemBackground" Color="#323232" />
 
   <!-- DropShadowEffects -->

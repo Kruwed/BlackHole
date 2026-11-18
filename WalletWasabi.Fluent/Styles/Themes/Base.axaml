@@ -55,8 +55,6 @@
   <SolidColorBrush x:Key="FunctionButtonDisabledBackgroundColor" Color="{StaticResource SystemChromeDisabledLowColor}" />
   <SolidColorBrush x:Key="FunctionButtonDisabledForegroundColor" Color="{StaticResource SystemChromeDisabledHighColor}" />
 
-  <SolidColorBrush x:Key="LogoAccentColor" Color="{StaticResource SystemAccentColor}" />
-
   <SolidColorBrush x:Key="PrivacyControlItemBlackListHighlight" Color="{StaticResource SystemAccentColorLight2}" />
   <SolidColorBrush x:Key="PrivacyControlItemWhiteListHighlight" Color="{StaticResource SystemAccentColorLight2}" />
 
