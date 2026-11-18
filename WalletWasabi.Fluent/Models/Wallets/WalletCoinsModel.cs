@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using NBitcoin;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Helpers;
@@ -13,13 +14,13 @@ namespace WalletWasabi.Fluent.Models.Wallets;
 public partial class WalletCoinsModel(Wallet wallet, IWalletModel walletModel, IServices services)
 	: CoinListModel(wallet, walletModel, services)
 {
-	public async Task UpdateExcludedCoinsFromCoinjoinAsync(CoinModel[] coinsToExclude)
+	/// <summary>
+	/// Keeps the given coins out of coinjoins or lets them in again. The coins that are not named stay as they are.
+	/// </summary>
+	/// <param name="exclusions">For every coin that is to change, whether it is kept out.</param>
+	public async Task ExcludeFromCoinjoinAsync(IReadOnlyDictionary<OutPoint, bool> exclusions)
 	{
-		await Task.Run(() =>
-		{
-			var outPoints = coinsToExclude.Select(x => x.GetSmartCoin().Outpoint).ToArray();
-			Wallet.UpdateExcludedCoinsFromCoinJoin(outPoints);
-		});
+		await Task.Run(() => Wallet.ExcludeCoinsFromCoinJoin(exclusions));
 	}
 
 	public List<CoinModel> GetSpentCoins(BuildTransactionResult? transaction)

@@ -155,6 +155,23 @@ public class WalletTabsTests
 			JoinMarketTabViewModel.Columns);
 	}
 
+	[Fact]
+	public void TickOfACoinDecidesWhetherItMayGoIntoRounds()
+	{
+		// The user unticked a coin that the wallet lets into coinjoins: it is kept out from now on.
+		Assert.True(WabiSabiTabViewModel.GetExclusionChange(isTicked: false, isExcluded: false));
+
+		// The user ticked a coin that the wallet keeps out: it is let in again.
+		Assert.False(WabiSabiTabViewModel.GetExclusionChange(isTicked: true, isExcluded: true));
+	}
+
+	[Fact]
+	public void TickThatSaysWhatTheWalletDoesAlreadyChangesNothing()
+	{
+		Assert.Null(WabiSabiTabViewModel.GetExclusionChange(isTicked: true, isExcluded: false));
+		Assert.Null(WabiSabiTabViewModel.GetExclusionChange(isTicked: false, isExcluded: true));
+	}
+
 	[Theory]
 	[InlineData(500, "200", 300)]
 	[InlineData(200, "200", 0)]

@@ -416,11 +416,18 @@ public class Wallet : BackgroundService
 		UpdateExcludedCoinFromCoinJoin();
 	}
 
-	public void UpdateExcludedCoinsFromCoinJoin(OutPoint[] outPointsToExclude)
+	/// <summary>
+	/// Keeps the given coins out of coinjoins or lets them in again, all of them at once. The coins that are not named stay as they are.
+	/// </summary>
+	/// <param name="exclusions">For every coin that is to change, whether it is kept out.</param>
+	public void ExcludeCoinsFromCoinJoin(IReadOnlyDictionary<OutPoint, bool> exclusions)
 	{
 		foreach (var coin in Coins)
 		{
-			coin.IsExcludedFromCoinJoin = outPointsToExclude.Contains(coin.Outpoint);
+			if (exclusions.TryGetValue(coin.Outpoint, out var exclude))
+			{
+				coin.IsExcludedFromCoinJoin = exclude;
+			}
 		}
 
 		UpdateExcludedCoinFromCoinJoin();

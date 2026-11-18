@@ -2,6 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
              xmlns:tiles="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Home.Tiles"
+             xmlns:coins="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Coins"
+             xmlns:sorting="clr-namespace:WalletWasabi.Fluent.Controls.Sorting"
              x:DataType="tabs:WabiSabiTabViewModel"
              x:CompileBindings="True"
              ClipToBounds="False"
@@ -15,16 +17,17 @@
     </Style>
   </UserControl.Styles>
 
-  <StackPanel HorizontalAlignment="Left">
+  <DockPanel>
+
+    <!-- The privacy progress, and to its right the coinjoin. In a window that is too narrow for both the coinjoin goes below. -->
+    <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal">
 
     <!-- How private the coins of the wallet are. The tile has a margin of its own, which the offsets take back. -->
     <tiles:PrivacyControlTileView DataContext="{Binding PrivacyProgress}" Width="310" Height="132"
-                                  HorizontalAlignment="Left" Margin="-6 4 0 0" />
-
-    <TextBlock Text="Coinjoin" FontSize="{StaticResource FontSizeH5}" Margin="0 20 0 20" />
+                                  Margin="-6 4 14 0" />
 
     <!-- The coinjoin that is running or waiting, and its controls -->
-    <Border Name="CoinjoinBox" HorizontalAlignment="Left" ClipToBounds="True"
+    <Border Name="CoinjoinBox" VerticalAlignment="Center" ClipToBounds="True" Margin="0 4 0 4"
             TextElement.FontFamily="{StaticResource MonospacedFont}"
             CornerRadius="4"
             BorderBrush="{DynamicResource GlassEdgeColor}"
@@ -111,12 +114,6 @@
                       <PathIcon Data="{StaticResource coordinator}" />
                     </MenuItem.Icon>
                   </MenuItem>
-                  <MenuItem Header="Exclude Coins" Command="{Binding CoinJoinState.NavigateToExcludedCoinsCommand}"
-                            IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <MenuItem.Icon>
-                      <PathIcon Data="{StaticResource exclude_coins}" />
-                    </MenuItem.Icon>
-                  </MenuItem>
                   <MenuItem Header="Coinjoin Payments" Command="{Binding CoinJoinState.CoinJoinPaymentsCommand}"
                             IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <MenuItem.Icon>
@@ -154,5 +151,34 @@
         </StackPanel>
       </Panel>
     </Border>
-  </StackPanel>
+    </WrapPanel>
+
+    <!-- The coins of the wallet. The ticked ones may be submitted into rounds. -->
+    <DockPanel DockPanel.Dock="Top" Margin="0 16 0 4">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
+        <Button Theme="{StaticResource DialogSortButton}" ToolTip.Tip="Sorting">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <sorting:SortControl Sortables="{Binding CoinList.Sortables}" />
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <ToggleButton Theme="{StaticResource DialogSelectAllButton}"
+                      Command="{Binding ToggleSelectionCommand}"
+                      IsChecked="{Binding HasSelection}" />
+      </StackPanel>
+      <TextBlock VerticalAlignment="Center" Text="Coins" FontSize="{StaticResource FontSizeH5}" />
+    </DockPanel>
+
+    <Panel DockPanel.Dock="Top" Margin="0 0 0 10" Opacity="0.6">
+      <TextBlock Text="The ticked coins may be submitted into coinjoin rounds. Untick a coin to keep it out."
+                 TextWrapping="Wrap" IsVisible="{Binding !IsCoinjoining}" />
+      <TextBlock Text="A round is under way. The ticks can be changed once it is over or the coinjoin is stopped."
+                 TextWrapping="Wrap" IsVisible="{Binding IsCoinjoining}" />
+    </Panel>
+
+    <Panel IsEnabled="{Binding !IsCoinjoining}">
+      <coins:CoinListView DataContext="{Binding CoinList}" />
+    </Panel>
+  </DockPanel>
 </UserControl>

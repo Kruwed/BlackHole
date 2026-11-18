@@ -279,15 +279,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new RedeemBondViewModel(UiContext, walletModel, bond), navigationMode);
 	}
 
-	public FluentDialog<System.Reactive.Unit> ExcludedCoins(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new ExcludedCoinsViewModel(UiContext, wallet);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<System.Reactive.Unit>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
 	public void AddedWalletPage(WalletSettingsModel walletSettings, WalletCreationOptions options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new AddedWalletPageViewModel(UiContext, walletSettings, options), navigationMode);

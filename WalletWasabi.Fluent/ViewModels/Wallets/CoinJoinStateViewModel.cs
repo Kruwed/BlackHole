@@ -156,7 +156,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 		_stateMachine.Start();
 
-		NavigateToExcludedCoinsCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().ExcludedCoins(_wallet));
 		CoinJoinPaymentsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To().CoinJoinPayments(_wallet, _walletInstance));
 
 		IsCoinjoinSupported = _wallet.Coinjoin is not null;
@@ -185,8 +184,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		AreAllCoinsPrivateChanged,
 		PendingPaymentsChanged
 	}
-
-	public ICommand NavigateToExcludedCoinsCommand { get; }
 
 	public bool IsAutoCoinJoinEnabled => _wallet.Settings.AutoCoinjoin;
 

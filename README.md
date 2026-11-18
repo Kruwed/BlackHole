@@ -21,7 +21,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
 - **History**: the transactions of the wallet. The wallet opens with it.
 - **Send**: the coins of the wallet, and above them the address, the amount and the fee rate of a payment. Tick the coins that the transaction may spend, fill in the rest, and *Continue* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one.
 - **Receive**: *New Address* generates an address and shows it. The list has the addresses that were generated and have not been paid to yet; a right click on one copies it.
-- **WabiSabi**: the privacy progress of the wallet and its WabiSabi coinjoins, with their controls and settings.
+- **WabiSabi**: the privacy progress of the wallet, its WabiSabi coinjoins with their controls and settings, and the coins of the wallet. The ticked coins may be submitted into rounds; untick a coin to keep it out of coinjoins. A coin is ticked until you untick it, so a coin that arrives may be submitted.
 - **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far, and a list of market makers that is a placeholder: it has its columns and no rows yet.
 - **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
 

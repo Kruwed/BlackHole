@@ -80,16 +80,25 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 			.Do(
 				groups =>
 				{
-					IList<CoinModel> oldSelection = Selection.ToArray();
-					var oldExpandedItemKeys = _itemsCollection.Where(x => x.IsExpanded).Select(x => x.Key).ToArray();
-					Rebuild(viewModels, groups, availableCoins);
-					UpdateSelection(coinItemsCollection, oldSelection);
-					RestoreExpandedRows(oldExpandedItemKeys);
+					IsRebuilding = true;
 
-					// For user convenience, expand the only available group.
-					if (_itemsCollection is [CoinGroupViewModel group])
+					try
 					{
-						group.IsExpanded = true;
+						IList<CoinModel> oldSelection = Selection.ToArray();
+						var oldExpandedItemKeys = _itemsCollection.Where(x => x.IsExpanded).Select(x => x.Key).ToArray();
+						Rebuild(viewModels, groups, availableCoins);
+						UpdateSelection(coinItemsCollection, oldSelection);
+						RestoreExpandedRows(oldExpandedItemKeys);
+
+						// For user convenience, expand the only available group.
+						if (_itemsCollection is [CoinGroupViewModel group])
+						{
+							group.IsExpanded = true;
+						}
+					}
+					finally
+					{
+						IsRebuilding = false;
 					}
 				})
 			.Subscribe()
@@ -131,6 +140,12 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 	}
 
 	public ReadOnlyObservableCollection<CoinViewModel> CoinItems { get; }
+
+	/// <summary>
+	/// Whether the list is putting its rows together again because the coins of the wallet changed. Ticks that change
+	/// meanwhile are the list restoring what was ticked, not the user ticking.
+	/// </summary>
+	public bool IsRebuilding { get; private set; }
 
 	public ReactiveCommand<Unit, Unit> ExpandAllCommand { get; set; }
 
