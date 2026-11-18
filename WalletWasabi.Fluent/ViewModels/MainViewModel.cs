@@ -36,6 +36,7 @@ public partial class MainViewModel : ViewModelBase
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncProgress = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _syncStatus = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _feeRate = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _balance = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _chainHeight = WaitingForNode;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightVisible;
 
@@ -247,8 +248,25 @@ public partial class MainViewModel : ViewModelBase
 				WalletPage = new WalletPageViewModel(UiContext, wallet);
 				WalletPage.Activate();
 				ShowSyncProgress(wallet);
+				ShowBalance(wallet);
 			});
 	}
+
+	/// <summary>
+	/// The title bar tells what the wallet owns, from the moment it is decrypted on. It is one amount: the coins of the wallet
+	/// and what is locked in its fidelity bonds, private or not.
+	/// </summary>
+	private void ShowBalance(IWalletModel wallet)
+	{
+		wallet.WhenAnyValue(x => x.IsLoggedIn)
+			.Select(isLoggedIn => isLoggedIn ? wallet.Balances.Select(DescribeBalance) : Observable.Return(""))
+			.Switch()
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(balance => Balance = balance);
+	}
+
+	/// <summary>Tells an amount the way the title bar shows the balance of the wallet.</summary>
+	public static string DescribeBalance(Amount balance) => $"{balance.FormattedBtc} BTC";
 
 	/// <summary>
 	/// The title bar tells how far the wallet is with the blocks of the node, from the moment it is decrypted on.

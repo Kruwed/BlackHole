@@ -6,7 +6,6 @@ using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
-using WalletWasabi.Fluent.ViewModels.Wallets.Home.Tiles;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
 using WalletWasabi.Models;
 using Xunit;
@@ -374,15 +373,6 @@ public class FidelityBondPagesTests
 		// Nothing new about it, or no bond in it: nothing to tell here.
 		Assert.Null(NotificationHelpers.DescribeBondTransaction(bond, Money.Zero, isNew: false, isConfirmation: false));
 		Assert.Null(NotificationHelpers.DescribeBondTransaction(Money.Zero, Money.Zero, isNew: true, isConfirmation: false));
-	}
-
-	[Fact]
-	public void BalanceTellsHowMuchOfItIsLocked()
-	{
-		Assert.Null(WalletBalanceTileViewModel.DescribeBonds(Amount.Zero));
-		Assert.Equal(
-			$"{Money.Coins(0.3m).ToFormattedString()} BTC of it is locked in fidelity bonds.",
-			WalletBalanceTileViewModel.DescribeBonds(new Amount(Money.Coins(0.3m))));
 	}
 
 	private static BondItemViewModel CreateItem(FidelityBondState state, BigInteger? value, uint? chainHeight) =>

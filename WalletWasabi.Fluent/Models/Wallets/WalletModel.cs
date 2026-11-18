@@ -37,9 +37,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	/// <summary>What the wallet owns: its coins and the coins that are locked in its fidelity bonds.</summary>
 	IObservable<Amount> Balances { get; }
 
-	/// <summary>The part of <see cref="Balances"/> that is locked in fidelity bonds.</summary>
-	IObservable<Amount> BondBalances { get; }
-
 	/// <summary>Whether the wallet has coins to spend. What is locked in fidelity bonds does not count.</summary>
 	IObservable<bool> HasBalance { get; }
 
@@ -126,7 +123,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 			.Select(_ => (Coins: Wallet.Coins.TotalAmount(), Bonds: Wallet.GetFidelityBondBalance()));
 
 		Balances = owned.Select(x => new Amount(x.Coins + x.Bonds));
-		BondBalances = owned.Select(x => new Amount(x.Bonds));
 		HasBalance = owned.Select(x => x.Coins != Money.Zero);
 
 		// Start the Loader after wallet is logged in
@@ -162,8 +158,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletTransactionsModel Transactions { get; }
 
 	public IObservable<Amount> Balances { get; }
-
-	public IObservable<Amount> BondBalances { get; }
 
 	public IObservable<bool> HasBalance { get; }
 

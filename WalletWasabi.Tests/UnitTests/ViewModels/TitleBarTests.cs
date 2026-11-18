@@ -1,3 +1,4 @@
+using NBitcoin;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels;
 using WalletWasabi.Wallets;
@@ -7,6 +8,7 @@ namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
 /// A dialog lies over the title bar and takes it out of use. The welcome and the pages that follow it until there is a wallet are the exception.
+/// The title bar tells the balance of the wallet and how far the wallet is with the blocks of the node.
 /// </summary>
 public class TitleBarTests
 {
@@ -64,5 +66,14 @@ public class TitleBarTests
 			"Preparing the search for bonds",
 			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(preparing, node, new SyncProgressCardModel(0, 0, 976_172))));
 		Assert.Contains("792,141 unlock heights", preparing.ToUserFriendlyString());
+	}
+
+	[Fact]
+	public void BalanceIsToldAsOneAmountOfBitcoin()
+	{
+		Assert.Equal("0.00 000 000 BTC", MainViewModel.DescribeBalance(Amount.Zero));
+		Assert.Equal("0.00 000 546 BTC", MainViewModel.DescribeBalance(new Amount(Money.Satoshis(546))));
+		Assert.Equal("0.29 982 056 BTC", MainViewModel.DescribeBalance(new Amount(Money.Satoshis(29_982_056))));
+		Assert.Equal("1 234.50 000 000 BTC", MainViewModel.DescribeBalance(new Amount(Money.Coins(1234.5m))));
 	}
 }

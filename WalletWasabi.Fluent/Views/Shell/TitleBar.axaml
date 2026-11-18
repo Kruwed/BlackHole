@@ -9,17 +9,22 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Shell.TitleBar">
 
-  <Panel Height="42">
+  <Grid Height="42" ColumnDefinitions="Auto,*">
 
     <!-- The logo starts where the content of the pages starts. It is the plain one: the detailed one would blur at this size. -->
-    <Viewbox Height="18" Width="18" Margin="31 0 0 0" HorizontalAlignment="Left" IsHitTestVisible="False">
+    <Viewbox Grid.Column="0" Height="18" Width="18" Margin="31 0 12 0" IsHitTestVisible="False">
       <Image Source="{DynamicResource app_logo_small}" />
     </Viewbox>
 
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6" Margin="0 0 8 0">
+    <!-- In a window that is too narrow for all of it, the texts give way from the left on, so that the buttons stay. -->
+    <RightAlignedRow Grid.Column="1" Spacing="6" Margin="0 0 8 0">
       <!-- The fee rate for a quick confirmation, once the node gave its estimates. -->
       <TextBlock Text="{Binding FeeRate}"
                  IsVisible="{Binding FeeRate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 VerticalAlignment="Center" Margin="0 0 12 0" Opacity="0.8" />
+      <!-- What the wallet owns, once it is opened: all of it in one amount. -->
+      <TextBlock Text="{Binding Balance}"
+                 IsVisible="{Binding Balance, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                  VerticalAlignment="Center" Margin="0 0 12 0" Opacity="0.8" />
       <!-- The height of the chain, until a wallet is opened. -->
       <TextBlock Text="{Binding ChainHeight}"
@@ -42,7 +47,7 @@
               ToolTip.Tip="Settings">
         <PathIcon Data="{StaticResource nav_settings_24_regular}" Width="18" Height="18" Opacity="0.6" />
       </Button>
-    </StackPanel>
+    </RightAlignedRow>
 
-  </Panel>
+  </Grid>
 </UserControl>

@@ -15,7 +15,7 @@
     <ShowWalletCoinsOnKeyCombinationBehavior Wallet="{Binding}" Key1="LeftCtrl" Key2="D" Key3="C" />
   </Interaction.Behaviors>
   <UserControl.Styles>
-    <!-- The buttons are to the right of the tiles. A window that is too narrow for both side by side shows them above the tiles. -->
+    <!-- The buttons are to the right of the tile. A window that is too narrow for both side by side shows them above the tile. -->
     <Style Selector="DockPanel#TopPanel > StackPanel#Buttons">
       <Setter Property="DockPanel.Dock" Value="Right" />
     </Style>
@@ -27,11 +27,11 @@
   <ContentArea ScrollViewer.VerticalScrollBarVisibility="Disabled" ClipToBounds="False" Classes="NoHeader">
     <DockPanel Name="Panel" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
 
-      <!-- The page has no title. Its first row is the balance and the privacy progress on the left and the buttons on the right. -->
+      <!-- The page has no title. Its first row is the privacy progress on the left and the buttons on the right. The balance is in the title bar. -->
       <DockPanel Name="TopPanel" DockPanel.Dock="Top" Margin="0 10 0 0">
         <Interaction.Behaviors>
           <AdaptiveBehavior>
-            <AdaptiveClassSetter MinWidth="0" MaxWidth="890" ClassName="narrow" TargetControl="{Binding #TopPanel}" />
+            <AdaptiveClassSetter MinWidth="0" MaxWidth="681" ClassName="narrow" TargetControl="{Binding #TopPanel}" />
           </AdaptiveBehavior>
         </Interaction.Behaviors>
 
@@ -94,7 +94,7 @@
           </Button>
         </StackPanel>
 
-        <!-- Balance, privacy progress -->
+        <!-- Privacy progress -->
         <home:WalletTiles DataContext="{Binding Tiles}" Margin="-6 -6 0 0" />
       </DockPanel>
 

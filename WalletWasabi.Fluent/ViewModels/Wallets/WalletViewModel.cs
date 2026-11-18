@@ -202,12 +202,10 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	}
 
+	/// <summary>The tiles at the top of the page. The balance is not one of them: the title bar shows it.</summary>
 	private IEnumerable<ActivatableViewModel> GetTiles()
 	{
-		yield return new WalletBalanceTileViewModel(UiContext, WalletModel.Balances, WalletModel.BondBalances);
-
 		yield return new PrivacyControlTileViewModel(UiContext, WalletModel);
-
 	}
 
 	private async Task<bool> AuthorizeForPasswordAsync()
