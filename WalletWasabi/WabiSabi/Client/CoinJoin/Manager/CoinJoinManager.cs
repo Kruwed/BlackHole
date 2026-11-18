@@ -178,20 +178,9 @@ public class CoinJoinManager : BackgroundService
 				throw new CoinJoinClientException(CoinjoinError.UserInSendWorkflow);
 			}
 
-			var coinSelectionResult = SelectCandidateCoins(walletToStart);
-			var coinCandidates = coinSelectionResult.CandidateCoins;
-
-			// If there are pending payments, ignore already achieved privacy.
-			if (!walletToStart.BatchedPayments.AreTherePendingPayments)
-			{
-				// If all coin candidates are private it makes no sense to mix them.
-				if (coinCandidates.All(x => x.IsPrivate(walletToStart.AnonScoreTarget)))
-				{
-					throw new CoinJoinClientException(
-						GetUnavailableNonPrivateCoinsError(coinSelectionResult, walletToStart),
-						"All coin candidates are already private.");
-				}
-			}
+			// Every coin that the user lets in is a candidate, whatever its anonymity score: no coin is too private for
+			// another round.
+			var coinCandidates = SelectCandidateCoins(walletToStart);
 
 			NotifyWalletStartedCoinJoin(walletToStart);
 
@@ -231,80 +220,82 @@ public class CoinJoinManager : BackgroundService
 		}
 	}
 
-	private record CoinSelectionResult(SmartCoin[] CandidateCoins, SmartCoin[] BannedCoins, SmartCoin[] ImmatureCoins, SmartCoin[] UnconfirmedCoins, SmartCoin[] ExcludedCoins)
+	/// <summary>
+	/// The coins of a wallet as a coinjoin sees them. The user decides first: a coin that is kept out of coinjoins is
+	/// nothing but that. Of the coins that are let in, some cannot be registered for the time being, and the rest are the
+	/// candidates.
+	/// </summary>
+	public record CoinSelectionResult(SmartCoin[] CandidateCoins, SmartCoin[] BannedCoins, SmartCoin[] ImmatureCoins, SmartCoin[] UnconfirmedCoins, SmartCoin[] ExcludedCoins)
 	{
 		public CoinSelectionResult() : this([], [], [], [], []) { }
 	}
 
 	private CoinSelectionResult GetCoinSelection(Wallet wallet)
 	{
-		var coinCandidates = new CoinsView(wallet.GetCoinjoinCoinCandidates())
+		var coins = new CoinsView(wallet.GetCoinjoinCoinCandidates())
 			.Available()
 			.Where(x => !_coinRefrigerator.IsFrozen(x))
 			.ToArray();
 
-		if (coinCandidates.Length == 0)
-		{
-			return new CoinSelectionResult();
-		}
+		var excludedCoins = coins.Where(x => x.IsExcludedFromCoinJoin).ToArray();
+		var allowedCoins = coins.Except(excludedCoins).ToArray();
 
-		var bannedCoins = coinCandidates.Where(x => _coinPrison.IsBanned(x.Outpoint)).ToArray();
+		var bannedCoins = allowedCoins.Where(x => _coinPrison.IsBanned(x.Outpoint)).ToArray();
 		var immatureCoins = _serverTipHeight > 0
-			? coinCandidates.Where(x => x.Transaction.IsImmature(_serverTipHeight)).ToArray()
+			? allowedCoins.Where(x => x.Transaction.IsImmature(_serverTipHeight)).ToArray()
 			: [];
-		var unconfirmedCoins = coinCandidates.Where(x => !x.Confirmed).ToArray();
-		var excludedCoins = coinCandidates.Where(x => x.IsExcludedFromCoinJoin).ToArray();
+		var unconfirmedCoins = allowedCoins.Where(x => !x.Confirmed).ToArray();
 
-		var availableCoins = coinCandidates
+		var candidateCoins = allowedCoins
 			.Except(bannedCoins)
 			.Except(immatureCoins)
 			.Except(unconfirmedCoins)
-			.Except(excludedCoins)
 			.ToArray();
 
 		return new CoinSelectionResult(
-			availableCoins,
+			candidateCoins,
 			bannedCoins,
 			immatureCoins,
 			unconfirmedCoins,
 			excludedCoins);
 	}
 
-	private CoinSelectionResult SelectCandidateCoins(Wallet wallet)
+	private SmartCoin[] SelectCandidateCoins(Wallet wallet)
 	{
 		var result = GetCoinSelection(wallet);
 
 		if (result.CandidateCoins.Length > 0)
 		{
-			return result;
+			return result.CandidateCoins;
 		}
 
-		throw new CoinJoinClientException(GetUnavailableNonPrivateCoinsError(result, wallet), "No candidate coins available for coinjoin.");
+		throw new CoinJoinClientException(GetUnavailableCoinsError(result), "No candidate coins available for coinjoin.");
 	}
 
-
-	private static CoinjoinError GetUnavailableNonPrivateCoinsError(CoinSelectionResult result, Wallet wallet)
+	/// <summary>
+	/// Tells why a wallet has no coin for a coinjoin. The coins that the user lets in come first: what holds them back
+	/// passes by itself. If there is none of those, the coins that the user keeps out are the reason.
+	/// </summary>
+	public static CoinjoinError GetUnavailableCoinsError(CoinSelectionResult result)
 	{
-		bool AnyNonPrivate(SmartCoin[] coins) => coins.Any(x => !x.IsPrivate(wallet.AnonScoreTarget));
-
-		if (AnyNonPrivate(result.UnconfirmedCoins))
+		if (result.UnconfirmedCoins.Length > 0)
 		{
 			return CoinjoinError.NoConfirmedCoinsEligibleToMix;
 		}
 
-		if (AnyNonPrivate(result.ImmatureCoins))
+		if (result.ImmatureCoins.Length > 0)
 		{
 			return CoinjoinError.OnlyImmatureCoinsAvailable;
 		}
 
-		if (AnyNonPrivate(result.ExcludedCoins))
-		{
-			return CoinjoinError.OnlyExcludedCoinsAvailable;
-		}
-
-		if (AnyNonPrivate(result.BannedCoins))
+		if (result.BannedCoins.Length > 0)
 		{
 			return CoinjoinError.CoinsRejected;
+		}
+
+		if (result.ExcludedCoins.Length > 0)
+		{
+			return CoinjoinError.OnlyExcludedCoinsAvailable;
 		}
 
 		return CoinjoinError.NoCoinsEligibleToMix;

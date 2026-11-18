@@ -388,9 +388,10 @@ public class KeyManagerTests
 		var json = File.ReadAllText(filePath);
 		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
+		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 
 		var start = json.IndexOf('{') + 1;
-		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\","));
+		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\", \"AnonScoreTarget\": 50,"));
 
 		// The wallet opens as it did, and what it knows is as it was.
 		var sameManager = KeyManager.FromFile(filePath);
@@ -402,6 +403,7 @@ public class KeyManagerTests
 		json = File.ReadAllText(filePath);
 		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
+		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

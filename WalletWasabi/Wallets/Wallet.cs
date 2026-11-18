@@ -106,8 +106,6 @@ public class Wallet : BackgroundService
 	public OutputProvider OutputProvider { get; }
 	public PaymentBatch BatchedPayments { get; }
 
-	public int AnonScoreTarget => KeyManager.AnonScoreTarget;
-
 	public ICoinsView GetAllCoins() => Coins.AsAllCoinsView();
 
 	public IEnumerable<SmartCoin> GetCoinjoinCoinCandidates() => Coins;

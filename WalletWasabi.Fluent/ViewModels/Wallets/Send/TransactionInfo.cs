@@ -12,10 +12,9 @@ public partial class TransactionInfo
 	[AutoNotify] private FeeRate _feeRate = FeeRate.Zero;
 	[AutoNotify] private IEnumerable<SmartCoin> _coins = Enumerable.Empty<SmartCoin>();
 
-	public TransactionInfo(Destination destination, int anonScoreTarget)
+	public TransactionInfo(Destination destination)
 	{
 		Destination = destination;
-		PrivateCoinThreshold = anonScoreTarget;
 
 		this.WhenAnyValue(x => x.FeeRate)
 			.Subscribe(_ => OnFeeChanged());
@@ -23,8 +22,6 @@ public partial class TransactionInfo
 		this.WhenAnyValue(x => x.Coins)
 			.Subscribe(_ => OnCoinsChanged());
 	}
-
-	public int PrivateCoinThreshold { get; }
 
 	public Money Amount { get; init; } = Money.Zero;
 
@@ -73,7 +70,7 @@ public partial class TransactionInfo
 
 	public TransactionInfo Clone()
 	{
-		return new TransactionInfo(Destination, PrivateCoinThreshold)
+		return new TransactionInfo(Destination)
 		{
 			FeeRate = FeeRate,
 			Coins = Coins,

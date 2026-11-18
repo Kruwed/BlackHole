@@ -34,12 +34,10 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 		Wallet = wallet;
 		WalletModel = walletModel;
 		var transactionProcessed = walletModel.Transactions.TransactionProcessed;
-		var anonScoreTargetChanged = this.WhenAnyValue(x => x.WalletModel.Settings.AnonScoreTarget).Skip(1).ToSignal();
 		var isCoinjoinRunningChanged = walletModel.IsCoinjoinRunning.ToSignal();
 
 		var signals =
 			transactionProcessed
-				.Merge(anonScoreTargetChanged)
 				.Merge(isCoinjoinRunningChanged)
 				.Publish();
 
@@ -56,7 +54,7 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 			.DisposeWith(_disposables);
 
 		Groups = coins
-			.Select(x => x.GetCoinGroups(AnonScoreTarget))
+			.Select(x => x.GetCoinGroups())
 			.EditDiff(x => x.PrivacyLevel)
 			.AsObservableCache()
 			.DisposeWith(_disposables);
@@ -87,14 +85,11 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 
 	protected CoinModel CreateCoinModel(SmartCoin smartCoin)
 	{
-		return new CoinModel(smartCoin, WalletModel.Network, WalletModel.Settings.AnonScoreTarget, _services);
+		return new CoinModel(smartCoin, WalletModel.Network, _services);
 	}
 
 	/// <summary>The coins of the list as they are now.</summary>
 	protected abstract IEnumerable<SmartCoin> GetCoins();
-
-	/// <summary>The anonymity score from which a coin counts as private.</summary>
-	protected virtual int AnonScoreTarget => WalletModel.Settings.AnonScoreTarget;
 
 	public void Dispose() => _disposables.Dispose();
 }

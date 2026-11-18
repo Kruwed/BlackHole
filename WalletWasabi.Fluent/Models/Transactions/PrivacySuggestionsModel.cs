@@ -75,7 +75,7 @@ public partial class PrivacySuggestionsModel
 		// Coins that are spent together are linked to each other from then on. For private coins that says little,
 		// for non-private ones it ties together what was known about each of them.
 		var clusters = parameters.Transaction.SpentCoins
-			.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate)
+			.Where(x => x.GetPrivacyLevel() == PrivacyLevel.NonPrivate)
 			.Select(x => x.HdPubKey.Cluster)
 			.Distinct()
 			.Count();
@@ -99,10 +99,10 @@ public partial class PrivacySuggestionsModel
 		var canModifyTransactionAmount = !parameters.TransactionInfo.IsFixedAmount && !parameters.TransactionInfo.IsPayToMany;
 
 		var foundNonPrivate =
-			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate);
+			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel() == PrivacyLevel.NonPrivate);
 
 		var foundSemiPrivate =
-			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.SemiPrivate);
+			parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel() == PrivacyLevel.SemiPrivate);
 
 		if (foundNonPrivate)
 		{
@@ -126,12 +126,12 @@ public partial class PrivacySuggestionsModel
 		bool wasCoinjoiningCoinUsed = parameters.Transaction.SpentCoins.Any(coinsToExclude.Contains);
 
 		// Only exclude coins if the original transaction doesn't use them either.
-		var allPrivateCoin = availableCoins.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.Private).ToArray();
+		var allPrivateCoin = availableCoins.Where(x => x.GetPrivacyLevel() == PrivacyLevel.Private).ToArray();
 
 		allPrivateCoin = wasCoinjoiningCoinUsed ? allPrivateCoin : allPrivateCoin.Except(coinsToExclude).ToArray();
 
 		var allSemiPrivateCoin =
-			availableCoins.Where(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.SemiPrivate)
+			availableCoins.Where(x => x.GetPrivacyLevel() == PrivacyLevel.SemiPrivate)
 						  .ToArray();
 
 		allSemiPrivateCoin = wasCoinjoiningCoinUsed ? allSemiPrivateCoin : allSemiPrivateCoin.Except(coinsToExclude).ToArray();
@@ -182,7 +182,7 @@ public partial class PrivacySuggestionsModel
 	private IEnumerable<PrivacyItem> VerifyLargePercentSpent(Parameters parameters)
 	{
 		// No need to check this warning if a Red Coin is selected.
-		if(parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel(_wallet.AnonScoreTarget) == PrivacyLevel.NonPrivate))
+		if(parameters.Transaction.SpentCoins.Any(x => x.GetPrivacyLevel() == PrivacyLevel.NonPrivate))
 		{
 			yield break;
 		}

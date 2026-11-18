@@ -39,7 +39,7 @@ public class CoinJoinTrackerFactory
 			throw new NotSupportedException("Wallet has no key chain.");
 		}
 
-		var minAnonScoreForPayments = wallet.OnlyUsePrivateFundsForPayments ? wallet.AnonScoreTarget : 0;
+		var minAnonScoreForPayments = wallet.OnlyUsePrivateFundsForPayments ? Constants.PrivateThreshold : 0;
 		var coinJoinCoinSelector = CoinJoinCoinSelector.FromWallet(wallet);
 		var coinSelector = CoinSelectors.ComposedCoinSelector([
 			CoinSelectors.PrivatePaymentCoinSelector(wallet.BatchedPayments, minAnonScoreForPayments, coinJoinCoinSelector.SemiPrivateThreshold),

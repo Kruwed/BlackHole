@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WalletWasabi.Blockchain.Keys;
+using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
@@ -134,6 +135,31 @@ public class CoinJoinManagerTests
 		// The send workflow and the shutdown start a coinjoin again that they interrupted. A round that ran to its end,
 		// which a stop in the critical phase does not prevent, is not followed by another one.
 		Assert.Equal(expected, CoinJoinManager.WasInterrupted(isStopped, coinJoinTaskStatus));
+	}
+
+	[Fact]
+	public void WalletWithoutCandidatesIsToldWhatHoldsItsCoinsBack()
+	{
+		var km = KeyManager.CreateNew(out _, "", Network.Main);
+		SmartCoin[] Coins(int count) => Enumerable.Range(0, count).Select(_ => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(1m))).ToArray();
+
+		static CoinjoinError Error(SmartCoin[]? banned = null, SmartCoin[]? immature = null, SmartCoin[]? unconfirmed = null, SmartCoin[]? excluded = null) =>
+			CoinJoinManager.GetUnavailableCoinsError(new CoinJoinManager.CoinSelectionResult([], banned ?? [], immature ?? [], unconfirmed ?? [], excluded ?? []));
+
+		// A wallet without coins.
+		Assert.Equal(CoinjoinError.NoCoinsEligibleToMix, Error());
+
+		// The user keeps every coin out.
+		Assert.Equal(CoinjoinError.OnlyExcludedCoinsAvailable, Error(excluded: Coins(2)));
+
+		// What holds back a coin that the user lets in is told before the coins that the user keeps out: it passes by itself.
+		Assert.Equal(CoinjoinError.NoConfirmedCoinsEligibleToMix, Error(unconfirmed: Coins(1), excluded: Coins(2)));
+		Assert.Equal(CoinjoinError.OnlyImmatureCoinsAvailable, Error(immature: Coins(1), excluded: Coins(2)));
+		Assert.Equal(CoinjoinError.CoinsRejected, Error(banned: Coins(1), excluded: Coins(2)));
+
+		// Of several reasons, the one that passes soonest.
+		Assert.Equal(CoinjoinError.NoConfirmedCoinsEligibleToMix, Error(banned: Coins(1), immature: Coins(1), unconfirmed: Coins(1)));
+		Assert.Equal(CoinjoinError.OnlyImmatureCoinsAvailable, Error(banned: Coins(1), immature: Coins(1)));
 	}
 
 	/// <summary>The manager learns the state of a wallet about once a second, so the state that is expected may take a moment.</summary>

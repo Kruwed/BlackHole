@@ -19,7 +19,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	[AutoNotify] private bool _isNewWallet;
 	[AutoNotify] private Money _maxCoinjoinLeftover;
-	[AutoNotify] private int _anonScoreTarget;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 
@@ -32,13 +31,11 @@ public partial class WalletSettingsModel : ReactiveObject
 		_isDirty = isNewWallet;
 
 		_maxCoinjoinLeftover = _keyManager.MaxCoinjoinLeftover;
-		_anonScoreTarget = _keyManager.AnonScoreTarget;
 		_nonPrivateCoinIsolation = _keyManager.NonPrivateCoinIsolation;
 		_onlyUsePrivateFundsForPayments = _keyManager.OnlyUsePrivateFundsForPayments;
 
 		this.WhenAnyValue(
 				x => x.MaxCoinjoinLeftover,
-				x => x.AnonScoreTarget,
 				x => x.NonPrivateCoinIsolation,
 				x => x.OnlyUsePrivateFundsForPayments)
 			.Skip(1)
@@ -78,7 +75,6 @@ public partial class WalletSettingsModel : ReactiveObject
 	private void SetValues()
 	{
 		_keyManager.MaxCoinjoinLeftover = MaxCoinjoinLeftover;
-		_keyManager.AnonScoreTarget = AnonScoreTarget;
 		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;
 		_keyManager.OnlyUsePrivateFundsForPayments = OnlyUsePrivateFundsForPayments;
 		_isDirty = true;

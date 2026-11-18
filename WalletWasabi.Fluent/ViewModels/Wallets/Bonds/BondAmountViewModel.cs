@@ -91,7 +91,7 @@ public partial class BondAmountViewModel : RoutableViewModel
 		var amount = new Money(amountBtc, MoneyUnit.BTC);
 		var destination = new Destination.Loudly(_walletModel.Bonds.GetAddress(_unlockHeight).ScriptPubKey);
 
-		var transactionInfo = new TransactionInfo(destination, _walletModel.Settings.AnonScoreTarget)
+		var transactionInfo = new TransactionInfo(destination)
 		{
 			Amount = amount,
 

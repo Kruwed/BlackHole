@@ -40,6 +40,13 @@ public static class Constants
 
 	public const int SemiPrivateThreshold = 2;
 
+	/// <summary>
+	/// The anonymity score from which on a coin counts as private. Lists and warnings sort the coins by it, and payments
+	/// in coinjoins can be limited to private coins. It was a setting of the wallet once, the anonymity score target, and
+	/// this was its default. It does not decide which coins take part in a coinjoin: the user does.
+	/// </summary>
+	public const int PrivateThreshold = 10;
+
 	public const int TwentyMinutesConfirmationTarget = 2;
 	public const int OneDayConfirmationTarget = 144;
 	public const int SevenDaysConfirmationTarget = 1008;

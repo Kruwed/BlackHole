@@ -41,13 +41,6 @@ public class KeyManager
 	/// </summary>
 	private const int SilentPaymentKeyGapLimit = 21;
 
-	/// <summary>The anonymity score target of a wallet whose user did not choose one.</summary>
-	public const int DefaultAnonScoreTarget = 10;
-
-	public const int MinAnonScoreTarget = 2;
-
-	public const int MaxAnonScoreTarget = 300;
-
 	/// <summary>What a coinjoin may leave over unless the user decides otherwise.</summary>
 	public static readonly Money DefaultMaxCoinjoinLeftover = Money.Satoshis(5_000);
 
@@ -178,8 +171,6 @@ public class KeyManager
 		get;
 		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
 	} = DefaultMaxCoinjoinLeftover;
-
-	public int AnonScoreTarget { get; set; } = DefaultAnonScoreTarget;
 
 	/// <summary>A new wallet registers at most one non-private coin in a round.</summary>
 	public bool NonPrivateCoinIsolation { get; set; } = true;
@@ -812,7 +803,6 @@ public class KeyManager
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
-			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
@@ -845,7 +835,6 @@ public class KeyManager
 			)
 			{
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
-				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],

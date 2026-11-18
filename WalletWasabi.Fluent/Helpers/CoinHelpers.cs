@@ -9,14 +9,18 @@ public static class CoinHelpers
 {
 	public static uint GetConfirmations(this SmartCoin coin, uint bestHeight) => coin.Transaction.GetConfirmations(bestHeight);
 
-	public static PrivacyLevel GetPrivacyLevel(this SmartCoin coin, int privateThreshold)
+	/// <summary>
+	/// Sorts a coin by its anonymity score: private from <see cref="Constants.PrivateThreshold"/> on, semi-private from
+	/// <see cref="Constants.SemiPrivateThreshold"/> on, non-private below that.
+	/// </summary>
+	public static PrivacyLevel GetPrivacyLevel(this SmartCoin coin)
 	{
-		if (coin.IsPrivate(privateThreshold))
+		if (coin.IsPrivate(Constants.PrivateThreshold))
 		{
 			return PrivacyLevel.Private;
 		}
 
-		if (coin.IsSemiPrivate(privateThreshold))
+		if (coin.IsSemiPrivate(Constants.PrivateThreshold))
 		{
 			return PrivacyLevel.SemiPrivate;
 		}

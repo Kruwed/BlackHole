@@ -468,7 +468,7 @@ public partial class SendTabViewModel : WalletTabViewModel
 			? IsPrimarySubtractFee
 			: amount == coins.Sum(x => x.Amount) && !IsFixedAmount;
 
-		var transactionInfo = new TransactionInfo(AddressToDestination(parsedAddress), _walletModel.Settings.AnonScoreTarget)
+		var transactionInfo = new TransactionInfo(AddressToDestination(parsedAddress))
 		{
 			Amount = amount,
 			IsFixedAmount = IsFixedAmount,

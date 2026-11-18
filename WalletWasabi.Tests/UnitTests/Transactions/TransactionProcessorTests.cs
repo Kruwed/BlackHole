@@ -1466,7 +1466,9 @@ public class TransactionProcessorTests
 	[Fact]
 	public async Task GetCoinGroupsAsync()
 	{
-		int targetAnonSet = 60;
+		// A coin is private from this anonymity score on. It is not a setting.
+		int targetAnonSet = Constants.PrivateThreshold;
+		Assert.Equal(10, targetAnonSet);
 		using var txStore = await CreateTransactionStoreAsync();
 		var transactionProcessor = CreateTransactionProcessor(txStore);
 
@@ -1487,7 +1489,7 @@ public class TransactionProcessorTests
 		transactionProcessor.Process(CreateCreditingTransaction(privateCoin2.P2Taproot, Money.Coins(1.0m)));
 		privateCoin2.SetAnonymitySet(targetAnonSet, 0);
 
-		var groups = transactionProcessor.Coins.GetCoinGroups(targetAnonSet).ToArray();
+		var groups = transactionProcessor.Coins.GetCoinGroups().ToArray();
 
 		// The most private coins come first.
 		Assert.Equal([PrivacyLevel.Private, PrivacyLevel.SemiPrivate, PrivacyLevel.NonPrivate], groups.Select(x => x.PrivacyLevel));
@@ -1502,13 +1504,12 @@ public class TransactionProcessorTests
 	[Fact]
 	public async Task GetCoinGroupsLeavesOutEmptyGroupsAsync()
 	{
-		int targetAnonSet = 10;
 		using var txStore = await CreateTransactionStoreAsync();
 		var transactionProcessor = CreateTransactionProcessor(txStore);
 		transactionProcessor.Process(CreateCreditingTransaction(transactionProcessor.NewKey().P2Taproot, Money.Coins(0.0000_1000m)));
 		transactionProcessor.Process(CreateCreditingTransaction(transactionProcessor.NewKey().P2Taproot, Money.Coins(0.0000_0670m)));
 
-		var group = Assert.Single(transactionProcessor.Coins.GetCoinGroups(targetAnonSet));
+		var group = Assert.Single(transactionProcessor.Coins.GetCoinGroups());
 
 		Assert.Equal(PrivacyLevel.NonPrivate, group.PrivacyLevel);
 		Assert.Equal(2, group.Coins.Count());

@@ -248,7 +248,7 @@ public static class TransactionModifierWalletExtensions
 			// Let's only do this once, because the more we try to merge the more problematic it'll get from privacy point of view.
 			var remainingCoins = wallet.Coins
 				.Except(allowedInputs)
-				.Where(x => x.HdPubKey.Cluster == ownOutput.HdPubKey.Cluster || x.IsPrivate(wallet.AnonScoreTarget)) // Coins that are already linked to the output, or to nothing.
+				.Where(x => x.HdPubKey.Cluster == ownOutput.HdPubKey.Cluster || x.IsPrivate(Constants.PrivateThreshold)) // Coins that are already linked to the output, or to nothing.
 				.OrderByDescending(x => x.Confirmed)
 				.ThenByDescending(x => x.Amount);
 

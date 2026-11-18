@@ -34,7 +34,5 @@ public partial class WalletCoinsModel(Wallet wallet, IWalletModel walletModel, I
 		return TransactionHelpers.TryBuildTransactionWithoutPrevTx(Wallet.KeyManager, transactionInfo, Wallet.Coins, coins.GetSmartCoins(), Wallet.Password, out _);
 	}
 
-	protected override int AnonScoreTarget => Wallet.AnonScoreTarget;
-
 	protected override IEnumerable<SmartCoin> GetCoins() => Wallet.Coins;
 }

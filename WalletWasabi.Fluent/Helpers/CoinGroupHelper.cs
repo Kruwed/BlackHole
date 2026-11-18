@@ -10,9 +10,9 @@ public static class CoinGroupHelper
 	/// <summary>
 	/// Groups the coins by their privacy level. Levels without coins are left out.
 	/// </summary>
-	public static IEnumerable<CoinGroup> GetCoinGroups(this IEnumerable<SmartCoin> coins, int privateAnonSetThreshold) =>
+	public static IEnumerable<CoinGroup> GetCoinGroups(this IEnumerable<SmartCoin> coins) =>
 		coins
-			.GroupBy(coin => coin.GetPrivacyLevel(privateAnonSetThreshold))
+			.GroupBy(coin => coin.GetPrivacyLevel())
 			.OrderBy(group => group.Key)
 			.Select(group => new CoinGroup(group.Key, new CoinsView(group)));
 }
