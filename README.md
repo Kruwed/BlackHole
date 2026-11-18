@@ -12,6 +12,7 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 - **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions are broadcast through it. The wallet scans the blocks of the node, starting with the block the wallet was created at.
 - **Coinjoins** with the WabiSabi coordinator that you choose, over Tor.
 - **Manual coin control** when sending.
+- **Fidelity bonds**: coins that are locked until a date, in the format of JoinMarket. See [Fidelity bonds](#fidelity-bonds).
 
 ## What was removed from Wasabi Wallet
 
@@ -59,6 +60,19 @@ Started with `--loglevel=debug`, Black Hole writes into `Logs.txt` what the wall
 Set the coordinator in *Settings → Coordinator*. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
 
 A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Dust forfeit limit* in the *Coinjoin Settings* of the wallet limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. The limit is 0.00005 BTC unless you change it, and it cannot be set above 0.0001 BTC. Because of this limit the wallet also joins rounds whose smallest output is large ("whale rounds"), which Wasabi Wallet refuses from 0.0001 BTC on: what such a round cannot put into an output is kept the same way. If a round cannot keep the limit at all, the wallet gives up that round instead of signing it.
+
+## Fidelity bonds
+
+A fidelity bond is coins that are locked until a date. A maker of JoinMarket coinjoins shows one to prove that it has something to lose, which makes it costly to pose as many makers. *Bond* on the wallet screen creates, lists and redeems such bonds in the format of JoinMarket. Black Hole does not use them for anything yet: it has no JoinMarket-style coinjoin so far, and it makes no proof of a bond and shows none to anyone.
+
+- **Format.** A bond is an output that pays to the hash (P2WSH) of the script `<locktime> OP_CHECKLOCKTIMEVERIFY OP_DROP <public key> OP_CHECKSIG`. It is the one thing in the wallet that is not Taproot.
+- **Lock dates.** A bond unlocks at the start of a month, at 00:00 UTC. The wallet offers the months of the next ten years; the format has every month until December 2099. Locked coins cannot be spent before that date by anyone, and there is no way to undo it.
+- **Keys.** The key of a bond is `m/86'/0'/0'/2/i` on mainnet, where `i` counts the months since January 2020. It is a key of the account of the wallet, so the recovery words bring the bonds back: a recovered wallet finds them when it scans the blocks. JoinMarket takes the keys of its bonds from `m/84'/0'/0'/2/i`, so a bond of one of the two wallets is not found by the other.
+- **Creating.** Choose the month, pick the coins and the amount. The transaction is previewed and sent like a payment. Every month has one address, and it can be paid from another wallet too; such a bond is listed once its transaction is confirmed. Every payment to the address is a bond of its own, and several small bonds count for less than one large one, so pay to it once.
+- **Not part of the balance.** Locked coins are not in the balance and not among the coins of the wallet, and no payment and no coinjoin spends them.
+- **Bond value.** The list tells what a bond counts for by the formula of JoinMarket: `(amount × (e^(0.015 × years) − 1))^1.3`, with the amount in satoshis and the years from the confirmation of the bond to its lock date. The number has no unit; it compares bonds. After the lock date it wears off.
+- **Redeeming.** Once the chain is past the lock date, *Redeem* pays a bond back to the wallet, to a new address of it, less the mining fee. The chain goes by the median time of its last eleven blocks, which is about an hour behind the clock.
+- **Privacy.** A bond that is shown to others is public, and so is the history of the coins in it.
 
 ## License
 

@@ -2,6 +2,7 @@ using WalletWasabi.Blockchain.Analysis;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Cache;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 
@@ -36,10 +37,7 @@ public class TransactionProcessor(
 			}
 		}
 
-		foreach (var result in results.Where(x => x.IsNews))
-		{
-			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
-		}
+		Publish(results);
 
 		return results;
 	}
@@ -104,17 +102,30 @@ public class TransactionProcessor(
 			while (KeyManager.GetKeyCount() != keyCount);
 		}
 
-		foreach (var result in results.Where(x => x.IsNews))
-		{
-			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
-		}
+		Publish(results);
 
 		return results;
 	}
 
+	private void Publish(IEnumerable<ProcessedResult> results)
+	{
+		foreach (var result in results)
+		{
+			if (result.IsNews)
+			{
+				eventBus.Publish(new WalletRelevantTransactionProcessed(result));
+			}
+
+			if (result.ConcernsFidelityBonds)
+			{
+				eventBus.Publish(new FidelityBondTransactionProcessed(result.Transaction));
+			}
+		}
+	}
+
 	/// <summary>
 	/// Tells if the transaction has anything to do with the wallet: it pays to the wallet, it spends a coin of the wallet,
-	/// or it spends what a transaction of the wallet spends too.
+	/// it spends what a transaction of the wallet spends too, or it creates or spends a fidelity bond of the wallet.
 	/// </summary>
 	/// <remarks>Cheap enough to be asked about every transaction of the chain.</remarks>
 	public bool ConcernsWallet(Transaction transaction)
@@ -138,7 +149,18 @@ public class TransactionProcessor(
 			}
 		}
 
-		return false;
+		return FidelityBondFinder.Concerns(transaction, KeyManager.FidelityBonds);
+	}
+
+	/// <summary>
+	/// The fidelity bonds of the wallet, the redeemed ones included. They are read from the transactions that the wallet knows.
+	/// </summary>
+	public IReadOnlyList<FidelityBond> GetFidelityBonds()
+	{
+		lock (Lock)
+		{
+			return FidelityBondFinder.Find(TransactionStore.GetTransactions(), KeyManager.FidelityBonds);
+		}
 	}
 
 	/// <summary>
@@ -161,10 +183,7 @@ public class TransactionProcessor(
 			result = ProcessNoLock(tx);
 		}
 
-		if (result.IsNews)
-		{
-			eventBus.Publish(new WalletRelevantTransactionProcessed(result));
-		}
+		Publish([result]);
 
 		return result;
 	}
@@ -326,7 +345,14 @@ public class TransactionProcessor(
 			}
 		}
 
-		if (tx.WalletInputs.Count != 0 || tx.WalletOutputs.Count != 0)
+		var isOfWallet = tx.WalletInputs.Count != 0 || tx.WalletOutputs.Count != 0;
+
+		// A transaction that only has to do with a bond of the wallet is kept too: the bonds are read from the kept
+		// transactions. It is kept once it is confirmed. Before that it leaves no coin of the wallet behind that would tell
+		// when it is replaced, and the wallet would show a bond that never comes.
+		result.ConcernsFidelityBonds = (isOfWallet || tx.Confirmed) && FidelityBondFinder.Concerns(tx.Transaction, KeyManager.FidelityBonds);
+
+		if (isOfWallet || result.ConcernsFidelityBonds)
 		{
 			TransactionStore.AddOrUpdate(tx);
 		}

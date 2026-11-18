@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.AddWallet;
@@ -15,6 +16,7 @@ using WalletWasabi.Fluent.ViewModels.Login;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
+using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Features;
@@ -217,9 +219,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConfirmMultiShareViewModel(UiContext, options, wordsDictionary), navigationMode);
 	}
 
-	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, BondLocktime? bondLocktime = null, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet);
+		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet, bondLocktime);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 
@@ -271,6 +273,26 @@ public partial class FluentNavigate
 	public void CoinJoinDetails(IWalletModel wallet, CoinJoinTransactionModel transaction, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new CoinJoinDetailsViewModel(UiContext, wallet, transaction), navigationMode);
+	}
+
+	public void Bonds(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new BondsViewModel(UiContext, walletModel, wallet), navigationMode);
+	}
+
+	public void CreateBond(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new CreateBondViewModel(UiContext, walletModel, wallet), navigationMode);
+	}
+
+	public void BondAmount(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new BondAmountViewModel(UiContext, walletModel, parameters), navigationMode);
+	}
+
+	public void RedeemBond(IWalletModel walletModel, FidelityBondModel bond, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new RedeemBondViewModel(UiContext, walletModel, bond), navigationMode);
 	}
 
 	public void Send(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

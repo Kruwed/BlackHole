@@ -37,7 +37,7 @@ public static class RpcMonitor
 			var bci = await rpcClient.GetBlockchainInfoAsync(cancellationToken).ConfigureAwait(false);
 			var pi = await PeersInfoAsync().ConfigureAwait(false);
 			var peerCount = pi.Map(x => x.Length);
-			return new ConnectedRpcStatus(bci.Headers, bci.Blocks, peerCount, bci.BestBlockHash, bci.Pruned, bci.InitialBlockDownload);
+			return new ConnectedRpcStatus(bci.Headers, bci.Blocks, peerCount, bci.BestBlockHash, bci.Pruned, bci.InitialBlockDownload, DateTimeOffset.FromUnixTimeSeconds((long)bci.MedianTime));
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException and not TimeoutException)
 		{

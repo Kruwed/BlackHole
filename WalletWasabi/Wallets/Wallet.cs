@@ -5,6 +5,7 @@ using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Crypto.Randomness;
 using WalletWasabi.FeeRateEstimation;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
@@ -46,6 +47,7 @@ public class Wallet : BackgroundService
 		DestinationProvider = new InternalDestinationProvider(KeyManager);
 		TransactionStore = transactionStore;
 
+		_rpcClient = rpcClient;
 		TransactionProcessor = new TransactionProcessor(TransactionStore, keyManager, eventBus);
 		Synchronizer = new WalletSynchronizer(rpcClient, keyManager, TransactionStore, TransactionProcessor, eventBus, onSynchronizedFirst: LoadDummyMempool, watchMempool: watchMempool);
 		Coins = TransactionProcessor.Coins;
@@ -65,6 +67,8 @@ public class Wallet : BackgroundService
 	}
 
 	private readonly EventBus _eventBus;
+	private readonly IRPCClient _rpcClient;
+	private readonly System.Collections.Concurrent.ConcurrentDictionary<uint256, DateTimeOffset> _blockTimes = new();
 	public AllTransactionStore TransactionStore { get; }
 
 	public WalletId WalletId { get; }
@@ -183,6 +187,43 @@ public class Wallet : BackgroundService
 	public HdPubKey GetNextReceiveAddress()
 	{
 		return KeyManager.GetNextReceiveKey();
+	}
+
+	/// <summary>
+	/// The fidelity bonds of the wallet, the redeemed ones included. A bond is not a coin of the wallet: it is not part of
+	/// the balance and nothing spends it but the transaction that redeems it.
+	/// </summary>
+	public IReadOnlyList<FidelityBond> GetFidelityBonds() => TransactionProcessor.GetFidelityBonds();
+
+	/// <summary>
+	/// The time that the header of a block states, as the node tells it. The value of a bond is counted from the time of
+	/// the block that confirmed it.
+	/// </summary>
+	public async Task<DateTimeOffset> GetBlockTimeAsync(uint256 blockHash, CancellationToken cancellationToken)
+	{
+		if (_blockTimes.TryGetValue(blockHash, out var known))
+		{
+			return known;
+		}
+
+		var header = await _rpcClient.GetBlockHeaderAsync(blockHash, cancellationToken).ConfigureAwait(false);
+		_blockTimes[blockHash] = header.BlockTime;
+		return header.BlockTime;
+	}
+
+	/// <summary>
+	/// Builds the transaction that pays a bond whose timelock is over back to the wallet, to an address of its own.
+	/// </summary>
+	/// <param name="medianTimePast">The median time of the last eleven blocks of the chain, which decides whether the timelock is over.</param>
+	/// <exception cref="InvalidOperationException">The bond cannot be redeemed, at least not now or not at this fee rate.</exception>
+	/// <exception cref="System.Security.SecurityException">The password is wrong.</exception>
+	public SmartTransaction BuildFidelityBondRedemption(FidelityBond bond, string password, FeeRate feeRate, DateTimeOffset medianTimePast)
+	{
+		using var key = KeyManager.GetFidelityBondSecret(password, bond.Locktime);
+		var destination = KeyManager.GetNextChangeKey().GetAssumedScriptPubKey();
+		var transaction = BondRedemption.Create(bond, key, destination, feeRate, medianTimePast, Network);
+
+		return new SmartTransaction(transaction, Height.Unknown);
 	}
 
 	public int GetPrivacyPercentage()

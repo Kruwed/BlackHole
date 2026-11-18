@@ -58,6 +58,17 @@
             </StackPanel>
           </Button>
 
+          <!-- Bond button. The bonds are read from the transactions of the wallet, so it waits for the wallet to know them all. -->
+          <Button
+            Classes="function"
+            Command="{Binding BondCommand}"
+            IsVisible="{Binding Loaded}">
+            <StackPanel Orientation="Horizontal">
+              <PathIcon Data="{StaticResource wallet_action_bond}" />
+              <TextBlock Text="Bond" />
+            </StackPanel>
+          </Button>
+
           <!-- Three-dot button -->
           <Button Classes="transparentFunction">
             <Button.Flyout>

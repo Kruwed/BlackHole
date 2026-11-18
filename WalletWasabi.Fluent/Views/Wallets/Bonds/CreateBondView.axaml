@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Wallets.Bonds"
+             x:DataType="vm:CreateBondViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.CreateBondView">
+  <ContentArea Title="{Binding Title}"
+               Caption="Choose the month that the coins are locked until. Then pick the coins."
+               EnableBack="{Binding EnableBack}"
+               EnableCancel="{Binding EnableCancel}"
+               EnableNext="True" NextContent="Continue"
+               ScrollViewer.VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="18" Margin="0 0 20 0">
+
+      <!-- The bond unlocks at the start of a month, so a year and a month are all there is to choose. The year comes
+           first: it decides which months are left. -->
+      <DockPanel>
+        <TextBlock Text="Locked until the start of" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+          <ComboBox Name="YearBox" Width="110" PlaceholderText="Year"
+                    ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear}" />
+          <ComboBox Name="MonthBox" Width="170" PlaceholderText="Month"
+                    IsEnabled="{Binding SelectedYear, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    ItemsSource="{Binding Months}" SelectedItem="{Binding SelectedMonth}" />
+        </StackPanel>
+      </DockPanel>
+
+      <TextBlock Text="{Binding UnlockText}" TextWrapping="Wrap"
+                 IsVisible="{Binding UnlockText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+      <PreviewItem Icon="{StaticResource transceive_regular}"
+                   Label="Address of the bond"
+                   CopyableContent="{Binding Address}"
+                   IsVisible="{Binding Address, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Text="{Binding Address}" Classes="monoSpaced" TextWrapping="Wrap" />
+      </PreviewItem>
+
+      <Separator />
+
+      <StackPanel Spacing="8" Opacity="0.8">
+        <TextBlock TextWrapping="Wrap" Text="• Coins in a bond cannot be spent before that date. There is no way to undo it." />
+        <TextBlock TextWrapping="Wrap" Text="• Every payment to the address is a bond of its own. Pay to it once: several small bonds count for less than one." />
+        <TextBlock TextWrapping="Wrap" Text="• The recovery words of the wallet restore its bonds too." />
+        <TextBlock TextWrapping="Wrap" Text="• A bond that is shown to others is public, and with it the history of the coins that it holds." />
+      </StackPanel>
+
+      <TextBlock TextWrapping="Wrap" Opacity="0.6"
+                 Text="The address can be paid from another wallet too. Such a bond is listed once its transaction is confirmed."
+                 IsVisible="{Binding Address, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+      <TextBlock TextWrapping="Wrap" Opacity="0.6"
+                 Text="This wallet has no coins to lock."
+                 IsVisible="{Binding !HasCoins}" />
+    </StackPanel>
+  </ContentArea>
+</UserControl>

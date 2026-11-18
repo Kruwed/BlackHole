@@ -120,5 +120,8 @@ public record WalletLoaded(Wallet Wallet);
 
 public record NewTransactionInMempool(SmartTransaction Transaction);
 public record WalletRelevantTransactionProcessed(ProcessedResult Result);
+
+/// <summary>The wallet processed a transaction that creates or spends a fidelity bond of it.</summary>
+public record FidelityBondTransactionProcessed(SmartTransaction Transaction);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);
 public record CoinjoinCostsAdded(uint256 TransactionId, CoinjoinCosts Costs);

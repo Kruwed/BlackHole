@@ -2,6 +2,7 @@ using NBitcoin;
 using System.Collections.Generic;
 using System.Linq;
 using WalletWasabi.Blockchain.TransactionOutputs;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
@@ -31,6 +32,12 @@ public record SendFlowModel
 	public ICoinListModel CoinList { get; }
 
 	public TransactionInfo? TransactionInfo { get; init; } = null;
+
+	/// <summary>
+	/// The month that the coins are locked until, if the flow does not pay anybody but creates a fidelity bond. The
+	/// destination of the transaction is the address of the bond then.
+	/// </summary>
+	public BondLocktime? BondLocktime { get; init; } = null;
 
 	public decimal AvailableAmountBtc => AvailableAmount.ToDecimal(MoneyUnit.BTC);
 

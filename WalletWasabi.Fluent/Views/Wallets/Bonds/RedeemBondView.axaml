@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Wallets.Bonds"
+             xmlns:send="using:WalletWasabi.Fluent.ViewModels.Wallets.Send"
+             x:DataType="vm:RedeemBondViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.RedeemBondView">
+  <ContentArea Title="{Binding Title}"
+               Caption="The timelock of the bond is over. Its coins go back to the wallet, to a new address of it."
+               EnableBack="{Binding EnableBack}"
+               EnableCancel="{Binding EnableCancel}"
+               EnableNext="True" NextContent="Redeem"
+               IsBusy="{Binding IsBusy}"
+               ScrollViewer.VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="15" Margin="0 0 20 0">
+
+      <PreviewItem Icon="{StaticResource btc_logo}" Label="Bond">
+        <AmountControl Amount="{Binding BondAmount}" />
+      </PreviewItem>
+
+      <Separator />
+
+      <PreviewItem Icon="{StaticResource timer_regular}" Label="Unlocked since">
+        <TextBlock Text="{Binding UnlockDate}" />
+      </PreviewItem>
+
+      <Separator />
+
+      <!-- The bond pays for its own redemption. The fee rate is one that the node estimated, or one that the user types. -->
+      <PreviewItem Icon="{StaticResource paper_cash_regular}" Label="Mining fee">
+        <StackPanel Spacing="10">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <ComboBox Name="FeeBox" Width="230" PlaceholderText="Custom fee rate" VerticalAlignment="Top" Margin="0 2 0 0"
+                      FontWeight="Normal"
+                      ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="send:FeeRateOption">
+                  <TextBlock Text="{Binding BlockTargetText}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <CurrencyEntryBox Name="FeeRateBox" Text="{Binding FeeRateText}" CurrencyCode="sat/vByte"
+                              Width="280" MaxDecimals="2" Classes="standalone" FontWeight="Normal"
+                              Watermark="1 sat/vByte" VerticalAlignment="Top" />
+          </StackPanel>
+          <AmountControl Amount="{Binding Fee}" HorizontalAlignment="Left"
+                         IsVisible="{Binding Fee, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </PreviewItem>
+
+      <Separator />
+
+      <PreviewItem Icon="{StaticResource wallet_action_receive}" Label="The wallet receives">
+        <AmountControl Amount="{Binding Received}"
+                       IsVisible="{Binding Received, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </PreviewItem>
+
+      <InfoMessage Foreground="{DynamicResource WarningMessageForeground}"
+                   IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+      </InfoMessage>
+    </StackPanel>
+  </ContentArea>
+</UserControl>

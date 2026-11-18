@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 using WalletWasabi.CoinJoinProfiles;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Io;
 using WalletWasabi.Models;
 using WalletWasabi.Serialization;
@@ -75,6 +76,7 @@ public class KeyManager
 		_blockchainState = blockchainState;
 
 		TaprootAccountKeyPath = taprootAccountKeyPath ?? GetAccountKeyPath(_blockchainState.Network);
+		FidelityBonds = new FidelityBondKeys(TaprootExtPubKey, TaprootAccountKeyPath);
 		TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
 		_taprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
 
@@ -145,6 +147,12 @@ public class KeyManager
 	public int MinGapLimit { get; private set; }
 
 	public KeyPath TaprootAccountKeyPath { get; }
+
+	/// <summary>
+	/// The keys of the fidelity bonds of the wallet. They are keys of the account too, but not addresses of the wallet: a
+	/// bond pays to a script with a timelock.
+	/// </summary>
+	public FidelityBondKeys FidelityBonds { get; }
 
 	public ExtPubKey? SilentPaymentScanExtPubKey { get; private set; }
 
@@ -427,6 +435,20 @@ public class KeyManager
 		{
 			yield return extKey.Derive(key.FullKeyPath).PrivateKey;
 		}
+	}
+
+	/// <summary>The private key that redeems the bond of the given month.</summary>
+	/// <exception cref="SecurityException">The password is wrong.</exception>
+	public Key GetFidelityBondSecret(string password, BondLocktime locktime)
+	{
+		var key = GetMasterExtKey(password).Derive(FidelityBonds.GetKeyPath(locktime)).PrivateKey;
+
+		if (key.PubKey != FidelityBonds.GetPubKey(locktime))
+		{
+			throw new InvalidOperationException($"The key of the fidelity bond of {locktime} does not belong to the account of the wallet.");
+		}
+
+		return key;
 	}
 
 	private (byte[] PasswordHash, ExtKey MasterKey)? MasterKeyAndPasswordHash { get; set; }

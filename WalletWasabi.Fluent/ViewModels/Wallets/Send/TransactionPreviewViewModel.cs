@@ -19,6 +19,7 @@ using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Authorization;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Logging;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using WalletWasabi.Wallets;
@@ -49,6 +50,10 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		_sendFlow = sendFlow;
 
 		_info = _sendFlow.TransactionInfo ?? throw new InvalidOperationException($"Missing required TransactionInfo.");
+
+		Notice = _sendFlow.BondLocktime is { } bondLocktime
+			? $"This transaction creates a fidelity bond. {CreateBondViewModel.DescribeLock(bondLocktime, DateTimeOffset.UtcNow)} Nothing can spend the coins before."
+			: "";
 		_currentTransactionInfo = _info.Clone();
 		_cancellationTokenSource = new CancellationTokenSource();
 
@@ -84,6 +89,9 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 		ChangeCoinsCommand = ReactiveCommand.CreateFromTask(OnChangeCoinsAsync);
 	}
+
+	/// <summary>What the user has to know before confirming, if the transaction is more than a payment.</summary>
+	public string Notice { get; }
 
 	public TransactionSummaryViewModel CurrentTransactionSummary { get; }
 
@@ -385,6 +393,17 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	private async Task OnConfirmAsync()
 	{
+		// The month of a bond may have begun while these pages were open. Coins that are locked until a date that is over
+		// are not locked, and getting them back costs a second fee.
+		if (_sendFlow.BondLocktime is { } bondLocktime && !_walletModel.Bonds.IsSelectable(bondLocktime))
+		{
+			await ShowErrorAsync(
+				"Fidelity Bond",
+				$"{BondItemViewModel.FormatDate(bondLocktime.Date)} is not ahead any more. Choose a later month.",
+				"Black Hole did not create the fidelity bond.");
+			return;
+		}
+
 		try
 		{
 			var transaction = await Task.Run(() => TransactionHelpers.BuildTransaction(_wallet, _info));
@@ -396,7 +415,15 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 				var finalTransaction = transaction.Transaction;
 				await SendTransactionAsync(finalTransaction);
 				_cancellationTokenSource.Cancel();
-				Navigate().To().SendSuccess(finalTransaction);
+
+				if (_sendFlow.BondLocktime is not null)
+				{
+					Navigate().To().SendSuccess(finalTransaction, "Bond created", "The coins are on their way into the fidelity bond.");
+				}
+				else
+				{
+					Navigate().To().SendSuccess(finalTransaction);
+				}
 			}
 		}
 		catch (Exception ex)
@@ -420,7 +447,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			return true;
 		}
 
-		var authDialog = new PasswordAuthDialogViewModel(UiContext, _walletModel, "Send");
+		var authDialog = new PasswordAuthDialogViewModel(UiContext, _walletModel, _sendFlow.BondLocktime is null ? "Send" : "Lock Coins");
 		var authDialogResult = await NavigateDialogAsync(authDialog, authDialog.DefaultTarget, NavigationMode.Clear);
 
 		return authDialogResult.Result;

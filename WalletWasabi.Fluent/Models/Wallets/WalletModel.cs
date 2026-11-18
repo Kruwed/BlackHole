@@ -50,6 +50,9 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletCoinjoinModel? Coinjoin { get; }
 
+	/// <summary>The fidelity bonds of the wallet: coins that are locked until a date.</summary>
+	WalletBondsModel Bonds { get; }
+
 	IObservable<bool> Loaded { get; }
 
 	/// <summary>
@@ -104,6 +107,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 		Transactions = new WalletTransactionsModel(services, this, wallet);
 
 		Addresses = new AddressesModel(services, Wallet);
+
+		Bonds = new WalletBondsModel(services, Wallet);
 
 		Loaded = services.EventBus.AsObservable<WalletLoaded>()
 			.ObserveOn(RxApp.MainThreadScheduler)
@@ -164,6 +169,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletPrivacyModel Privacy { get; }
 
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
+
+	public WalletBondsModel Bonds { get; }
 
 	public IObservable<bool> Loaded { get; }
 

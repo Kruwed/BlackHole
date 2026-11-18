@@ -22,6 +22,13 @@ public class ProcessedResult
 
 	public bool IsOwnCoinJoin => Transaction.IsOwnCoinjoin();
 
+	/// <summary>
+	/// Whether the transaction creates or spends a fidelity bond of the wallet, and the wallet keeps it. A bond is not a
+	/// coin of the wallet, so this alone is no news about its coins. An unconfirmed transaction that has nothing else to do
+	/// with the wallet is not kept: see <see cref="TransactionProcessor"/>.
+	/// </summary>
+	public bool ConcernsFidelityBonds { get; set; }
+
 	/// <summary>Gets the coins we received in this transaction.</summary>
 	public List<SmartCoin> ReceivedCoins { get; } = new();
 

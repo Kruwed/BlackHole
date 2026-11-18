@@ -4,13 +4,18 @@ using WalletWasabi.Helpers;
 
 namespace WalletWasabi.BitcoinRpc;
 
+/// <param name="MedianTimePast">
+/// The median of the times of the last eleven blocks. A timelock that names a time is over once this time is past it,
+/// which is about an hour later than by the clock.
+/// </param>
 public record ConnectedRpcStatus(
 	ulong Headers,
 	ulong Blocks,
 	Result<int, RPCResponse> PeersCount,
 	uint256 BestBlockHash,
 	bool Pruned,
-	bool InitialBlockDownload)
+	bool InitialBlockDownload,
+	DateTimeOffset MedianTimePast)
 {
 	public override string? ToString() =>
 		PeersCount.Match(

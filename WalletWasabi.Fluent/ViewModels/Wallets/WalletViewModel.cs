@@ -113,6 +113,9 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		ReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel));
 
+		// The fidelity bonds: coins that are locked until a date.
+		BondCommand = ReactiveCommand.Create(() => Navigate().To().Bonds(walletModel, wallet));
+
 		WalletInfoCommand = ReactiveCommand.CreateFromTask(async () =>
 		{
 			if (await AuthorizeForPasswordAsync())
@@ -160,6 +163,9 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 	public ICommand SendCommand { get; private set; }
 
 	public ICommand ReceiveCommand { get; }
+
+	/// <summary>Opens the fidelity bonds of the wallet.</summary>
+	public ICommand BondCommand { get; }
 
 	public ICommand WalletInfoCommand { get; private set; }
 
