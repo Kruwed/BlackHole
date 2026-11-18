@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Draws the Black Hole icons: a spiral galaxy seen from above, in shades of grey. A bright core with two arms of light.
+"""Draws the Black Hole icons: a spiral galaxy seen from above, in shades of grey. Its core is a bright ring around a
+black centre, and it has two arms of light.
 
 The arms trail clockwise, so the galaxy looks as if it turned counterclockwise.
 
@@ -37,8 +38,9 @@ STEP = 4.0                    # An edge is drawn with a straight piece for every
 class Galaxy:
     """The measures of the core and of an arm. An arm starts inside the core, which covers its start, and ends in a tip."""
 
-    def __init__(self, core, sweep):
-        self.core = core                  # The radius of the core.
+    def __init__(self, core, hole, sweep):
+        self.core = core                  # The radius of the core: a bright ring ...
+        self.hole = hole                  # ... around the black centre, which has this radius.
         self.sweep = sweep                # How far an arm goes around the core, in degrees.
 
     def point(self, arm, turned, radius):
@@ -84,8 +86,8 @@ class Galaxy:
 class Crescents(Galaxy):
     """Arms between two logarithmic spirals that meet in the tip: they are the widest half way and narrow down slowly."""
 
-    def __init__(self, core, sweep, outer_start, inner_start, tip):
-        super().__init__(core, sweep)
+    def __init__(self, core, hole, sweep, outer_start, inner_start, tip):
+        super().__init__(core, hole, sweep)
         self.outer_start = outer_start    # The distance from the centre at which the outer edge of an arm starts ...
         self.inner_start = inner_start    # ... and the one at which its inner edge starts.
         self.tip = tip                    # The distance of the tip of an arm from the centre.
@@ -101,8 +103,8 @@ class Bands(Galaxy):
     So the arms and the gaps between them are about as wide all the way, which is what a picture of a few pixels needs.
     """
 
-    def __init__(self, core, sweep, start, tip, width, taper, ease):
-        super().__init__(core, sweep)
+    def __init__(self, core, hole, sweep, start, tip, width, taper, ease):
+        super().__init__(core, hole, sweep)
         self.start = start                # The distance from the centre at which the middle of an arm starts ...
         self.tip = tip                    # ... and the distance of its tip.
         self.width = width
@@ -124,11 +126,11 @@ class Bands(Galaxy):
 # then the shade depends on the distance from the centre of the galaxy.
 # ---------------------------------------------------------------------------------------------------------------------
 
-DETAILED = Crescents(core=150.0, sweep=340.0, outer_start=140.0, inner_start=42.0, tip=510.0)
+DETAILED = Crescents(core=150.0, hole=105.0, sweep=340.0, outer_start=140.0, inner_start=42.0, tip=510.0)
 
 # In a picture of a few pixels thin arms turn grey and their tips disappear, so the plain galaxy has wide arms of an even
 # width, which turn a little less far.
-PLAIN = Bands(core=140.0, sweep=305.0, start=80.0, tip=505.0, width=120.0, taper=0.55, ease=0.25)
+PLAIN = Bands(core=140.0, hole=90.0, sweep=305.0, start=80.0, tip=505.0, width=120.0, taper=0.55, ease=0.25)
 
 # The stars around the galaxy: (x, y, radius, grey).
 STARS = (
@@ -165,7 +167,7 @@ def detailed():
     layers.append(([(0.0, 255, 0.16), (250.0, 255, 0.06), (500.0, 255, 0.0)], [(*CENTRE, 500.0)]))
 
     # The faint outskirts of the arms. They reach further than the arms and fade away outwards.
-    outskirts = Crescents(core=g.core, sweep=g.sweep + 62.0, outer_start=g.outer_start * 1.42, inner_start=g.inner_start * 0.9, tip=540.0)
+    outskirts = Crescents(core=g.core, hole=g.hole, sweep=g.sweep + 62.0, outer_start=g.outer_start * 1.42, inner_start=g.inner_start * 0.9, tip=540.0)
     layers.append(([(g.core, 255, 0.30), (367.0, 255, 0.17), (545.0, 255, 0.0)], [outskirts.arm(arm) for arm in range(ARM_COUNT)]))
 
     # An arm is a bundle of strands with lanes of dust between them. From the outside to the inside:
@@ -191,9 +193,10 @@ def detailed():
 
     layers.append(((235, 1.0), [sparkle(*star) for star in SPARKLES]))
 
-    # The core and its glow.
+    # The core: a bright ring that glows, around the black centre.
     layers.append(([(g.core - 12.0, 255, 0.34), (g.core + 80.0, 255, 0.0)], [(*CENTRE, g.core + 80.0)]))
-    layers.append(([(0.0, 255, 1.0), (g.core * 0.62, 255, 1.0), (g.core, 222, 1.0)], [(*CENTRE, g.core)]))
+    layers.append(((255, 1.0), [(*CENTRE, g.core)]))
+    layers.append(((0, 1.0), [(*CENTRE, g.hole)]))
 
     return layers
 
@@ -203,6 +206,7 @@ def plain():
     return [
         ([(g.core, 255, 1.0), (g.tip, 190, 1.0)], [g.arm(arm) for arm in range(ARM_COUNT)]),
         ((255, 1.0), [(*CENTRE, g.core)]),
+        ((0, 1.0), [(*CENTRE, g.hole)]),
     ]
 
 
