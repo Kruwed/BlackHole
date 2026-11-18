@@ -40,7 +40,7 @@ A Bitcoin Core on the same computer that uses its default data folder and its de
 - **the RPC endpoint**: the address of the RPC interface of the node. The defaults are the ones of Bitcoin Core, `http://localhost:8332` on mainnet.
 - **the RPC credentials**: `rpcuser:rpcpassword`, or `cookiefile=` followed by the path of the cookie file of the node. Left empty, the cookie file in the default data folder of Bitcoin Core (`~/.bitcoin`) is used.
 
-Before there is a wallet, *Connect to a full node* on the first screen asks for the two. It checks them with the node and, if the node answers and is on the right network, works with it right away. Later they are in *Settings → Connections*, where a change takes effect after a restart. The gear in the top right corner of the window opens the settings.
+Before there is a wallet, *Connect to a full node* on the first screen asks for the two. It checks them with the node and, if the node answers and is on the right network, works with it right away. They are in *Settings → Connections* too, where a change takes effect after a restart. The gear in the top right corner of the window opens the settings, also before there is a wallet.
 
 The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `Config.json`.
 

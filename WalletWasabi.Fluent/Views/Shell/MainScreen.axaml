@@ -5,43 +5,40 @@
              x:Class="WalletWasabi.Fluent.Views.Shell.MainScreen"
              x:DataType="viewModels:MainViewModel"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:shell="clr-namespace:WalletWasabi.Fluent.Views.Shell"
              d:DesignWidth="1000" d:DesignHeight="1000"
              x:CompileBindings="True">
-  <DockPanel IsEnabled="True">
-    <shell:TitleBar DockPanel.Dock="Top" />
-    <Border x:Name="ContentPart" ClipToBounds="True" Background="{DynamicResource RegionColor}">
-      <Border.Effect>
-        <DynamicResource ResourceKey="MainAreaDropShadowEffect" />
-      </Border.Effect>
-      <Panel>
-        <DockPanel>
-          <DockPanel.Styles>
-            <Style Selector="ContentControl ContentArea /template/ Panel#PART_ButtonArea">
+  <!-- What the window shows below the title bar. -->
+  <Border x:Name="ContentPart" ClipToBounds="True" Background="{DynamicResource RegionColor}">
+    <Border.Effect>
+      <DynamicResource ResourceKey="MainAreaDropShadowEffect" />
+    </Border.Effect>
+    <Panel>
+      <DockPanel>
+        <DockPanel.Styles>
+          <Style Selector="ContentControl ContentArea /template/ Panel#PART_ButtonArea">
+            <Setter Property="IsVisible" Value="False" />
+          </Style>
+
+          <Style Selector="ContentArea /template/ StackPanel#PART_Header">
+            <Setter Property="Margin" Value="31 26 31 0" />
+          </Style>
+        </DockPanel.Styles>
+        <wallets:MusicControlsView DockPanel.Dock="Bottom" DataContext="{Binding CurrentWallet^}"
+                                   HorizontalAlignment="Center" Height="66" />
+
+        <!-- Main content -->
+        <ContentControl ClipToBounds="False" Content="{Binding MainScreen.CurrentPage}">
+          <ContentControl.Styles>
+            <Style Selector="ContentArea /template/ Panel#PART_ButtonArea">
               <Setter Property="IsVisible" Value="False" />
             </Style>
 
             <Style Selector="ContentArea /template/ StackPanel#PART_Header">
               <Setter Property="Margin" Value="31 26 31 0" />
             </Style>
-          </DockPanel.Styles>
-          <wallets:MusicControlsView DockPanel.Dock="Bottom" DataContext="{Binding CurrentWallet^}"
-                                     HorizontalAlignment="Center" Height="66" />
-
-          <!-- Main content -->
-          <ContentControl ClipToBounds="False" Content="{Binding MainScreen.CurrentPage}">
-            <ContentControl.Styles>
-              <Style Selector="ContentArea /template/ Panel#PART_ButtonArea">
-                <Setter Property="IsVisible" Value="False" />
-              </Style>
-
-              <Style Selector="ContentArea /template/ StackPanel#PART_Header">
-                <Setter Property="Margin" Value="31 26 31 0" />
-              </Style>
-            </ContentControl.Styles>
-          </ContentControl>
-        </DockPanel>
-      </Panel>
-    </Border>
-  </DockPanel>
+          </ContentControl.Styles>
+        </ContentControl>
+      </DockPanel>
+    </Panel>
+  </Border>
 </UserControl>

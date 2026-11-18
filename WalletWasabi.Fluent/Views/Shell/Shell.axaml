@@ -12,17 +12,26 @@
     <RegisterNotificationHostBehavior />
   </Interaction.Behaviors>
   <Panel>
-    <shell:MainScreen x:CompileBindings="False"
-                      IsHitTestVisible="{Binding $parent.DataContext.IsMainContentEnabled^, FallbackValue=True}">
-      <shell:MainScreen.Transitions>
-        <Transitions>
-          <EffectTransition Property="Effect"
-                            Delay="0:0:0.25"
-                            Duration="0:0:0.25"
-                            Easing="{StaticResource FluentEasing}" />
-        </Transitions>
-      </shell:MainScreen.Transitions>
-    </shell:MainScreen>
-    <shell:Dialogs />
+    <DockPanel>
+      <shell:TitleBar x:Name="TitleBar" DockPanel.Dock="Top"
+                      IsHitTestVisible="{Binding IsTitleBarEnabled^, FallbackValue=True}" />
+      <shell:MainScreen IsHitTestVisible="{Binding IsMainContentEnabled^, FallbackValue=True}">
+        <shell:MainScreen.Transitions>
+          <Transitions>
+            <EffectTransition Property="Effect"
+                              Delay="0:0:0.25"
+                              Duration="0:0:0.25"
+                              Easing="{StaticResource FluentEasing}" />
+          </Transitions>
+        </shell:MainScreen.Transitions>
+      </shell:MainScreen>
+    </DockPanel>
+
+    <!-- The dialogs lie over everything, the title bar included. Only the welcome and what follows it until there is a wallet
+         start below the title bar: the data folder and the settings can be reached from there. -->
+    <DockPanel>
+      <Panel DockPanel.Dock="Top" Height="{Binding #TitleBar.Bounds.Height}" IsVisible="{Binding IsOobeBackgroundVisible}" />
+      <shell:Dialogs />
+    </DockPanel>
   </Panel>
 </UserControl>

@@ -27,6 +27,8 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>What the title bar tells in place of a block count while the node does not answer.</summary>
 	private const string WaitingForNode = "Waiting for Bitcoin node";
 
+	private bool _isClosing;
+
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
 	[AutoNotify] private bool _isOobeBackgroundVisible;
@@ -71,6 +73,22 @@ public partial class MainViewModel : ViewModelBase
 					(dialogIsOpen, fullScreenIsOpen, compactIsOpen) => !(dialogIsOpen || fullScreenIsOpen || compactIsOpen))
 				.ObserveOn(RxApp.MainThreadScheduler);
 
+		// The title bar is not to be used either while the page of a dialog is busy, creating the wallet for example.
+		var isDialogPageBusy =
+			this.WhenAnyValue(x => x.DialogScreen.CurrentPage)
+				.Select(page => page?.WhenAnyValue(x => x.IsBusy) ?? Observable.Return(false))
+				.Switch();
+
+		IsTitleBarEnabled =
+			this.WhenAnyValue(
+					x => x.DialogScreen.IsDialogOpen,
+					x => x.FullScreen.IsDialogOpen,
+					x => x.CompactDialogScreen.IsDialogOpen,
+					x => x.IsOobeBackgroundVisible,
+					IsTitleBarFree)
+				.CombineLatest(isDialogPageBusy, (isFree, isBusy) => isFree && !isBusy)
+				.ObserveOn(RxApp.MainThreadScheduler);
+
 		CurrentWallet =
 			this.WhenAnyValue(x => x.MainScreen.CurrentPage)
 				.WhereNotNull()
@@ -85,7 +103,19 @@ public partial class MainViewModel : ViewModelBase
 			{
 				IsOobeBackgroundVisible = true;
 
-				await UiContext.Navigate().To().WelcomePage().GetResultAsync();
+				while (true)
+				{
+					await UiContext.Navigate().To().WelcomePage().GetResultAsync();
+
+					if (UiContext.WalletRepository.HasWallet || _isClosing)
+					{
+						break;
+					}
+
+					// The welcome was closed without a wallet: a dialog on top of it was dismissed, the settings for example, and that closes every page.
+					// It comes back, as there would be no way to a wallet otherwise. The pages are still being closed at this point, so it waits a moment.
+					await Task.Yield();
+				}
 
 				if (UiContext.WalletRepository.HasWallet)
 				{
@@ -113,6 +143,9 @@ public partial class MainViewModel : ViewModelBase
 
 	public IObservable<bool> IsMainContentEnabled { get; }
 
+	/// <summary>Whether the title bar reacts to the pointer: it does not under a dialog. See <see cref="IsTitleBarFree"/>.</summary>
+	public IObservable<bool> IsTitleBarEnabled { get; }
+
 	public string NetworkBadgeName { get; }
 
 	public IObservable<WalletViewModel> CurrentWallet { get; }
@@ -132,6 +165,15 @@ public partial class MainViewModel : ViewModelBase
 	public ICommand OpenDataFolderCommand { get; }
 
 	public WalletNotificationsViewModel Notifications { get; }
+
+	/// <summary>
+	/// Whether no dialog lies over the title bar. Every dialog does, except for the welcome and the pages that follow it until there is a wallet:
+	/// they start below the title bar, so that the data folder and the settings can be reached from there.
+	/// A small dialog on top of such a page takes the title bar out of use like any other dialog.
+	/// </summary>
+	/// <param name="isWelcome">Whether the welcome shows, which it does as long as there is no wallet. Its pages are those of the dialog screen.</param>
+	public static bool IsTitleBarFree(bool isDialogOpen, bool isFullScreenOpen, bool isCompactDialogOpen, bool isWelcome) =>
+		!(isFullScreenOpen || isCompactDialogOpen || (isDialogOpen && !isWelcome));
 
 	public bool IsDialogOpen()
 	{
@@ -163,8 +205,12 @@ public partial class MainViewModel : ViewModelBase
 		}
 	}
 
+	/// <summary>Closes every page. The application does that when it exits.</summary>
 	public void ClearStacks()
 	{
+		// Nothing is to be shown any more, the welcome neither.
+		_isClosing = true;
+
 		MainScreen.Clear();
 		DialogScreen.Clear();
 		FullScreen.Clear();
