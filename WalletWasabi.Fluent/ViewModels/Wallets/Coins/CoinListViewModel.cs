@@ -174,7 +174,8 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 				return new CoinGroupViewModel(UiContext, group, availableCoins, _allowCoinjoiningCoinSelection);
 			});
 
-		source.EditDiff(newItems, new LambdaComparer<CoinListItem>((a, b) => Equals(a?.Key, b?.Key)));
+		// A group whose coins changed is another row: the one in the list would go on showing the coins that it was made of.
+		source.EditDiff(newItems, new LambdaComparer<CoinListItem>((a, b) => Equals(a?.Key, b?.Key) && Equals(a?.Content, b?.Content)));
 	}
 
 	private void RestoreExpandedRows(IEnumerable<string> oldItemKeys)

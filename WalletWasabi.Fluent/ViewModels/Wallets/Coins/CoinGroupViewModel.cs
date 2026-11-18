@@ -18,6 +18,8 @@ public class CoinGroupViewModel : CoinListItem
 	{
 		var groupCoins = group.Coins.ToList();
 
+		Content = DescribeContent(groupCoins);
+
 		var unconfirmedCount = groupCoins.Count(x => !x.Confirmed);
 		IsConfirmed = unconfirmedCount == 0;
 		ConfirmationStatus = IsConfirmed ? "All coins are confirmed" : $"{unconfirmedCount} coins are waiting for confirmation";
@@ -126,4 +128,17 @@ public class CoinGroupViewModel : CoinListItem
 	}
 
 	public override string Key => PrivacyLevel.ToString();
+
+	public override string Content { get; }
+
+	/// <summary>
+	/// Tells which coins a group has and what its row shows of them. The row is made once: when a coin joined or left the
+	/// group, was confirmed or banned or got another anonymity score, the group needs a new row.
+	/// </summary>
+	public static string DescribeContent(IEnumerable<SmartCoin> coins) =>
+		string.Join(
+			" ",
+			coins
+				.Select(coin => FormattableString.Invariant($"{coin.Outpoint}:{coin.Amount.Satoshi}:{coin.Confirmed}:{coin.AnonymitySet}:{coin.IsBanned}"))
+				.Order(StringComparer.Ordinal));
 }

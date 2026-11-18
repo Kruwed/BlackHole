@@ -119,4 +119,10 @@ public abstract partial class CoinListItem : ViewModelBase, ITreeDataGridExpande
 	public void Dispose() => _disposables.Dispose();
 
 	public abstract string Key { get; }
+
+	/// <summary>
+	/// What the row was made of, where its key does not tell that. The list keeps a row for as long as the coins of
+	/// the wallet give the same key and the same content, and puts a new row in its place otherwise.
+	/// </summary>
+	public virtual string Content => "";
 }
