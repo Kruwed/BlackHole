@@ -185,8 +185,12 @@
                 <DockPanel Margin="0 0 0 8">
                   <TextBlock DockPanel.Dock="Left" Text="{Binding Index, Converter={x:Static converters:IntConverter.ToRecipientNumber}}"
                              Classes="h8" Opacity="0.6" VerticalAlignment="Center" MinWidth="80" />
-                  <Button DockPanel.Dock="Right" Classes="plain" Command="{Binding Value.RemoveCommand}"
-                          ToolTip.Tip="Remove recipient" VerticalAlignment="Center" Margin="5 0 0 0" Cursor="Hand">
+                  <!-- The button is as wide as what it shows, not as the row. A button shrinks a little while it is pressed:
+                       one that fills the row would pull its cross, which is at its left end, away from under the pointer,
+                       and the click would be lost. -->
+                  <Button Classes="plain" Command="{Binding Value.RemoveCommand}"
+                          ToolTip.Tip="Remove recipient" HorizontalAlignment="Left" VerticalAlignment="Center"
+                          Padding="4 0" Margin="1 0 0 0" Cursor="Hand">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <PathIcon Data="{StaticResource dismiss_light}" Width="12" Height="12" />
                       <TextBlock Text="Remove" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
