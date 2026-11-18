@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Reactive;
@@ -68,6 +69,7 @@ public partial class SendTabViewModel : WalletTabViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount _selectedAmount = Amount.Zero;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _selectionHint = DescribeSelectionHint(hasCoins: false);
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isFeeSubtractionNoteVisible;
 
 	public SendTabViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
 	{
@@ -96,6 +98,18 @@ public partial class SendTabViewModel : WalletTabViewModel
 			.Skip(1)
 			.Where(_ => IsPrimarySubtractFee && !_isRecalculating)
 			.Subscribe(_ => IsPrimarySubtractFee = false);
+
+		// The note that the fee comes out of the payment stands where a message about the amount would stand.
+		this.WhenAnyValue(x => x.IsPrimarySubtractFee, x => x.AmountBtc)
+			.Subscribe(_ => UpdateFeeSubtractionNote());
+
+		ErrorsChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(AmountBtc))
+			{
+				UpdateFeeSubtractionNote();
+			}
+		};
 
 		// What can be sent is what the picked coins hold.
 		var selection = CoinList.Selection
@@ -203,6 +217,14 @@ public partial class SendTabViewModel : WalletTabViewModel
 	public static FeeRate? GetSuggestedFeeRate(FeeRateEstimations? estimations) =>
 		estimations?.Estimations.FirstOrDefault(x => x.Key == SuggestedFeeRateTarget).Value;
 
+	/// <summary>
+	/// Whether the form says that the fee is taken from the payment. It says so for a payment that takes all that the picked
+	/// coins hold, as long as that is something: with the last coin unticked there is no payment to take a fee from.
+	/// A message about the amount goes first, as the two would stand in the same place.
+	/// </summary>
+	public static bool ShowsFeeSubtractionNote(bool takesAll, decimal? amountBtc, bool hasAmountMessage) =>
+		takesAll && amountBtc > 0 && !hasAmountMessage;
+
 	/// <summary>What stands next to the amount while no coin is picked: what is to be done first.</summary>
 	public static string DescribeSelectionHint(bool hasCoins) =>
 		hasCoins ? "Select the coins to spend below" : "The wallet has no coins to spend";
@@ -215,7 +237,9 @@ public partial class SendTabViewModel : WalletTabViewModel
 
 	/// <summary>
 	/// Tells what is wrong with the amounts of the payments, if anything is. Without picked coins nothing is: the form may be
-	/// filled in before the coins are picked, and it cannot be continued without them anyway.
+	/// filled in before the coins are picked, and it cannot be continued without them anyway. An amount of nothing is not
+	/// an error either: that is the amount before one was typed, while a number that starts with a zero is being typed,
+	/// and what "Max" leaves once the last coin was unticked. The form cannot be continued with it, and that is all.
 	/// </summary>
 	/// <param name="amountBtc">The amount of the first payment.</param>
 	/// <param name="totalBtc">The amounts of all the payments together.</param>
@@ -229,7 +253,7 @@ public partial class SendTabViewModel : WalletTabViewModel
 
 		if (amountBtc <= 0)
 		{
-			return "Amount must be more than 0 BTC";
+			return null;
 		}
 
 		if (selectedBtc > 0 && totalBtc > selectedBtc)
@@ -268,6 +292,13 @@ public partial class SendTabViewModel : WalletTabViewModel
 		{
 			FeeRateText = _suggestedFeeRateText;
 		}
+	}
+
+	private void UpdateFeeSubtractionNote()
+	{
+		var hasAmountMessage = ((INotifyDataErrorInfo)this).GetErrors(nameof(AmountBtc)).Cast<object>().Any();
+
+		IsFeeSubtractionNoteVisible = ShowsFeeSubtractionNote(IsPrimarySubtractFee, AmountBtc, hasAmountMessage);
 	}
 
 	private void OnSelectionChanged(Amount selectedAmount)
@@ -552,7 +583,8 @@ public partial class SendTabViewModel : WalletTabViewModel
 			errors.Add(ErrorSeverity.Error, error);
 		}
 
-		if (_parsedAddress is Address.SilentPayment && amountBtc < 0.00001m)
+		// An amount of nothing is not an amount yet, so there is nothing to warn about either.
+		if (_parsedAddress is Address.SilentPayment && amountBtc is > 0 and < 0.00001m)
 		{
 			errors.Add(ErrorSeverity.Warning, "Most wallets don't recognize Silent Payments lower than 1000 sats.");
 		}

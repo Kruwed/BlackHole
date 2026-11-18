@@ -107,11 +107,37 @@ public class WalletTabsTests
 	}
 
 	[Fact]
-	public void AmountHasToBeAnAmount()
+	public void AmountOfNothingIsNotAnError()
 	{
-		Assert.Equal("Amount must be more than 0 BTC", SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 1m));
-		Assert.Equal("Amount must be more than 0 BTC", SendTabViewModel.DescribeAmountError(amountBtc: -1m, totalBtc: -1m, selectedBtc: 1m));
+		// Nothing typed yet, a number that starts with a zero being typed, or what "Max" leaves once the last coin was
+		// unticked: no message. The form cannot be continued with it.
+		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 1m));
+		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 0m));
+
+		// The other payments take more than the coins hold, and "Max" leaves nothing for this one: their rows say so, this one does not.
+		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0.5m, selectedBtc: 0.1m));
+	}
+
+	[Fact]
+	public void AmountCannotBeMoreThanThereIs()
+	{
 		Assert.Equal("Amount must be less than the total supply of BTC.", SendTabViewModel.DescribeAmountError(amountBtc: 21_000_001m, totalBtc: 21_000_001m, selectedBtc: 1m));
+	}
+
+	[Fact]
+	public void FeeIsSaidToComeOutOfAPaymentThatTakesAll()
+	{
+		Assert.True(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: false));
+
+		// The amount was typed: the fee is paid on top of it.
+		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: false, amountBtc: 0.1m, hasAmountMessage: false));
+
+		// "Max" with the last coin unticked: there is no payment to take a fee from.
+		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0m, hasAmountMessage: false));
+		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: null, hasAmountMessage: false));
+
+		// A message about the amount stands in the same place and goes first.
+		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: true));
 	}
 
 	[Fact]

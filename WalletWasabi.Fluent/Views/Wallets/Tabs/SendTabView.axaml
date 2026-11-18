@@ -33,9 +33,11 @@
     <Style Selector="FlyoutPresenter PathIcon">
       <Setter Property="Foreground" Value="{DynamicResource AcrylicTrimForeground}" />
     </Style>
-    <!-- A field has room for its error message below it, so that a message that comes or goes does not move the coins further down. -->
+    <!-- A field has room for a message of one line below it, so that a message that comes or goes does not move the
+         coins further down. A message of two lines makes the field higher: squeezed into the same room, it would
+         squeeze the box above it. -->
     <Style Selector="DockPanel.field">
-      <Setter Property="Height" Value="62" />
+      <Setter Property="MinHeight" Value="62" />
     </Style>
     <Style Selector="DockPanel.field > Label">
       <Setter Property="MinWidth" Value="80" />
@@ -168,11 +170,12 @@
         </AmountEntryBox>
       </DockPanel>
 
-      <!-- Fee subtraction indicator for primary recipient. It takes the room that the field keeps for its error message: a payment that takes all has none. -->
+      <!-- Fee subtraction indicator for primary recipient. It takes the room that the field keeps for its message,
+           and it shows only while there is no message and the payment takes something. -->
       <TextBlock Opacity="0.6" FontSize="12" Margin="80 0 0 6" VerticalAlignment="Bottom" HorizontalAlignment="Left"
                  Text="The transaction fee will be subtracted from this payment"
                  ToolTip.Tip="Since the total of all payments equals what the selected coins hold, the fee will be deducted from this payment."
-                 IsVisible="{Binding IsPrimarySubtractFee}" />
+                 IsVisible="{Binding IsFeeSubtractionNoteVisible}" />
       </Panel>
 
       <!-- Additional Recipients -->
