@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
-using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Views.Wallets.Receive.Columns;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
@@ -10,7 +9,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 public static class ReceiveAddressesDataGridSource
 {
 	// [Column]		[View]				  [Header]  	  [Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
-	// Address		AddressColumnView	  Address		  1*		    -				-			true
+	// Address		AddressColumnView	  Address		  1*		    -				-			false
 	// Actions		ActionsColumnView	  -			      Auto		    -				-			false
 	public static FlatTreeDataGridSource<AddressViewModel> Create(IEnumerable<AddressViewModel> addresses)
 	{
@@ -47,9 +46,7 @@ public static class ReceiveAddressesDataGridSource
 			options: new TemplateColumnOptions<AddressViewModel>
 			{
 				CanUserResizeColumn = false,
-				CanUserSortColumn = true,
-				CompareAscending = Sort<AddressViewModel>.Ascending(x => x.AddressText),
-				CompareDescending = Sort<AddressViewModel>.Descending(x => x.AddressText)
+				CanUserSortColumn = false
 			},
 			width: new GridLength(1, GridUnitType.Star));
 	}

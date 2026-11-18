@@ -1,34 +1,37 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
-             xmlns:sorting="clr-namespace:WalletWasabi.Fluent.Controls.Sorting"
+             xmlns:receive="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Receive"
              x:DataType="tabs:ReceiveTabViewModel"
              x:CompileBindings="True"
              ClipToBounds="False"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.ReceiveTabView">
+
+  <UserControl.Resources>
+    <!-- What a right click on an address of the list offers. -->
+    <ContextMenu x:Key="AddressContextMenu" x:DataType="receive:AddressViewModel">
+      <MenuItem Header="Copy Bitcoin Address" Command="{Binding CopyAddressCommand}">
+        <MenuItem.Icon>
+          <PathIcon Data="{StaticResource btc_logo}" />
+        </MenuItem.Icon>
+      </MenuItem>
+    </ContextMenu>
+  </UserControl.Resources>
+
   <DockPanel>
 
-    <!-- A new address -->
-    <Button DockPanel.Dock="Top" Classes="function" Command="{Binding GenerateCommand}"
-            HorizontalAlignment="Left" Margin="0 10 0 0"
-            ToolTip.Tip="Generates an address that was not given out before and shows it.">
-      <StackPanel Orientation="Horizontal">
-        <PathIcon Data="{StaticResource wallet_action_receive}" />
-        <TextBlock Text="New Address" />
-      </StackPanel>
-    </Button>
-
-    <!-- The addresses that were generated and have not been paid to yet -->
-    <StackPanel DockPanel.Dock="Top" Margin="0 20 0 20" HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
-      <TextBlock VerticalAlignment="Center" Text="Addresses Awaiting Payment" FontSize="{StaticResource FontSizeH5}" />
-      <Button IsVisible="{Binding HasAddresses}" Theme="{StaticResource HistorySortButton}" ToolTip.Tip="Sorting">
-        <Button.Flyout>
-          <Flyout Placement="BottomEdgeAlignedLeft">
-            <sorting:SortControl Sortables="{Binding Sortables}" />
-          </Flyout>
-        </Button.Flyout>
+    <!-- The addresses that were generated and have not been paid to yet, and at the right end the button for a new one -->
+    <DockPanel DockPanel.Dock="Top" Margin="0 10 0 20">
+      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding GenerateCommand}"
+              VerticalAlignment="Center"
+              ToolTip.Tip="Generates an address that was not given out before and shows it.">
+        <StackPanel Orientation="Horizontal">
+          <PathIcon Data="{StaticResource wallet_action_receive}" />
+          <TextBlock Text="New Address" />
+        </StackPanel>
       </Button>
-    </StackPanel>
+      <TextBlock VerticalAlignment="Center" Text="Addresses Awaiting Payment" FontSize="{StaticResource FontSizeH5}" />
+    </DockPanel>
 
     <Panel>
       <TreeDataGrid Source="{Binding Source}" VerticalAlignment="Stretch" IsVisible="{Binding HasAddresses}">
@@ -38,6 +41,7 @@
         <TreeDataGrid.Styles>
           <Style Selector="TreeDataGridRow">
             <Setter Property="Theme" Value="{StaticResource ReceiveAddressesViewTreeDataGridRow}" />
+            <Setter Property="ContextMenu" Value="{StaticResource AddressContextMenu}" />
           </Style>
         </TreeDataGrid.Styles>
       </TreeDataGrid>

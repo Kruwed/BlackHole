@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
@@ -7,7 +5,6 @@ using System.Reactive.Linq;
 using System.Windows.Input;
 using Avalonia.Controls;
 using DynamicData.Aggregation;
-using WalletWasabi.Fluent.Controls.Sorting;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Receive;
@@ -39,8 +36,6 @@ public partial class ReceiveTabViewModel : WalletTabViewModel
 	/// <summary>Generates a new address and shows it.</summary>
 	public ICommand GenerateCommand { get; }
 
-	public IEnumerable<SortableItem> Sortables { get; private set; } = [];
-
 	protected override void OnActivated(CompositeDisposable disposables)
 	{
 		base.OnActivated(disposables);
@@ -66,15 +61,6 @@ public partial class ReceiveTabViewModel : WalletTabViewModel
 		source.DisposeWith(disposables);
 
 		Source = source;
-
-		Sortables =
-		[
-			new SortableItem("Address")
-			{
-				SortByAscendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[0], ListSortDirection.Ascending)),
-				SortByDescendingCommand = ReactiveCommand.Create(() => ((ITreeDataGridSource) Source).SortBy(Source.Columns[0], ListSortDirection.Descending))
-			}
-		];
 	}
 
 	private void ShowAddress(IAddress address)
