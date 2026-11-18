@@ -25,10 +25,6 @@
       <TextBlock Text="{Binding FeeRate}"
                  IsVisible="{Binding FeeRate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                  VerticalAlignment="Center" Margin="0 0 12 0" Opacity="0.8" />
-      <!-- What the wallet owns, once it is opened: all of it in one amount. -->
-      <TextBlock Text="{Binding Balance}"
-                 IsVisible="{Binding Balance, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                 VerticalAlignment="Center" Margin="0 0 12 0" Opacity="0.8" />
       <!-- The height of the chain, until a wallet is opened. -->
       <TextBlock Text="{Binding ChainHeight}"
                  IsVisible="{Binding IsChainHeightVisible}"
@@ -38,6 +34,10 @@
                  IsVisible="{Binding IsSyncProgressVisible}"
                  ToolTip.Tip="{Binding SyncStatus}"
                  Background="Transparent"
+                 VerticalAlignment="Center" Margin="0 0 12 0" Opacity="0.8" />
+      <!-- What the wallet owns, once it is opened: all of it in one amount. It is the last of the texts to give way. -->
+      <TextBlock Text="{Binding Balance}"
+                 IsVisible="{Binding Balance, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                  VerticalAlignment="Center" Margin="0 0 6 0" Opacity="0.8" />
       <shell:NetworkBadge VerticalAlignment="Center" />
       <Button Classes="transparentFunction" Padding="7" VerticalAlignment="Center"

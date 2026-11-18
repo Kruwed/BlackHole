@@ -25,7 +25,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
 - **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far.
 - **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
 
-To the right of the tabs the title bar tells the fee rate, the balance and how many blocks the wallet has processed. In a window that is too narrow for all of it these give way, the fee rate first, so that the tabs and the buttons stay. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Connections*.
+To the right of the tabs the title bar tells the fee rate, how many blocks the wallet has processed and the balance. In a window that is too narrow for all of it these give way, the fee rate first and the balance last, so that the tabs and the buttons stay. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Connections*.
 
 ## What was removed from Wasabi Wallet
 
