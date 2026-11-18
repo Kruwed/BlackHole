@@ -11,16 +11,16 @@ public static class BondRedemption
 	/// </summary>
 	private static readonly Sequence InputSequence = new(0xFFFFFFFE);
 
-	/// <summary>The signature in the transaction that the fee is calculated with: as large as a signature can get.</summary>
-	private static readonly byte[] LargestSignature = new byte[73];
+	/// <summary>The signature in the transaction that the fee is calculated with. A signature of a Taproot script has 64 bytes.</summary>
+	private static readonly byte[] SignaturePlaceholder = new byte[64];
 
 	/// <summary>
 	/// Builds and signs the transaction that pays the whole bond, less the mining fee, to the destination.
 	/// </summary>
 	/// <param name="key">The private key of the bond.</param>
-	/// <param name="medianTimePast">The median time of the last eleven blocks of the chain. It decides whether the timelock is over.</param>
+	/// <param name="chainHeight">The height of the last block of the chain. It decides whether the timelock is over.</param>
 	/// <exception cref="InvalidOperationException">The bond cannot be redeemed, at least not now or not at this fee rate.</exception>
-	public static Transaction Create(FidelityBond bond, Key key, Script destination, FeeRate feeRate, DateTimeOffset medianTimePast, Network network)
+	public static Transaction Create(FidelityBond bond, Key key, Script destination, FeeRate feeRate, uint chainHeight, Network network)
 	{
 		if (bond.IsSpent)
 		{
@@ -32,28 +32,31 @@ public static class BondRedemption
 			throw new InvalidOperationException("The fidelity bond is not confirmed yet.");
 		}
 
-		if (!bond.IsUnlocked(medianTimePast))
+		if (!bond.IsUnlocked(chainHeight))
 		{
-			throw new InvalidOperationException($"The fidelity bond is locked until {bond.Locktime}.");
+			throw new InvalidOperationException($"The fidelity bond is locked until block {bond.UnlockHeight}.");
 		}
 
-		var bondScript = BondScript.Create(key.PubKey, bond.Locktime);
+		var leaf = BondScript.CreateLeaf(key.PubKey, bond.UnlockHeight);
 
-		if (BondScript.GetScriptPubKey(bondScript) != bond.TxOut.ScriptPubKey)
+		if (BondScript.GetScriptPubKey(leaf) != bond.TxOut.ScriptPubKey)
 		{
 			throw new ArgumentException("This is not the key of the fidelity bond.", nameof(key));
 		}
 
+		var tapScript = BondScript.ToTapScript(leaf);
+		var controlBlock = BondScript.GetSpendInfo(leaf).GetControlBlock(tapScript);
+
 		var transaction = network.CreateTransaction();
 		transaction.Version = 2;
 
-		// The script demands a locktime that is not before its own. With it the chain accepts the transaction only once
-		// its median time is past the locktime.
-		transaction.LockTime = bond.Locktime.LockTime;
+		// The script demands a locktime that is not below its own. With it the transaction is valid in the blocks above
+		// the unlock height, and the node takes it once the chain has reached that height.
+		transaction.LockTime = new LockTime(bond.UnlockHeight);
 		transaction.Inputs.Add(new TxIn(bond.OutPoint) { Sequence = InputSequence });
 		transaction.Outputs.Add(new TxOut(bond.Amount, destination));
 
-		transaction.Inputs[0].WitScript = new WitScript(Op.GetPushOp(LargestSignature), Op.GetPushOp(bondScript.ToBytes()));
+		transaction.Inputs[0].WitScript = CreateWitness(SignaturePlaceholder, leaf, controlBlock);
 		var fee = feeRate.GetFee(transaction.GetVirtualSize());
 		var output = transaction.Outputs[0];
 		output.Value = bond.Amount - fee;
@@ -69,15 +72,21 @@ public static class BondRedemption
 			throw new InvalidOperationException($"The mining fee of {fee} BTC is more than the {output.Value} BTC that it leaves of the fidelity bond.");
 		}
 
-		var hash = transaction.GetSignatureHash(bondScript, 0, SigHash.All, bond.TxOut, HashVersion.WitnessV0);
-		var signature = new TransactionSignature(key.Sign(hash), SigHash.All);
-		transaction.Inputs[0].WitScript = new WitScript(Op.GetPushOp(signature.ToBytes()), Op.GetPushOp(bondScript.ToBytes()));
+		TxOut[] spentOutputs = [bond.TxOut];
+		var executionData = new TaprootExecutionData(0, tapScript.LeafHash) { SigHash = TaprootSigHash.Default };
+		var hash = transaction.GetSignatureHashTaproot(spentOutputs, executionData);
+		var signature = key.SignTaprootScriptSpend(hash, TaprootSigHash.Default);
+		transaction.Inputs[0].WitScript = CreateWitness(signature.ToBytes(), leaf, controlBlock);
 
-		if (!transaction.Inputs.AsIndexedInputs().Single().VerifyScript(bond.Coin, ScriptVerify.Standard, out var error))
+		if (!transaction.Inputs.AsIndexedInputs().Single().VerifyScript(bond.Coin, ScriptVerify.Standard, transaction.PrecomputeTransactionData(spentOutputs), out var error))
 		{
 			throw new InvalidOperationException($"The transaction that redeems the fidelity bond does not satisfy the script of the bond: {error}.");
 		}
 
 		return transaction;
 	}
+
+	/// <summary>What spends a Taproot output by a script: the signature that the script asks for, the script, and the proof that the output commits to it.</summary>
+	private static WitScript CreateWitness(byte[] signature, Script leaf, ControlBlock controlBlock) =>
+		new(Op.GetPushOp(signature), Op.GetPushOp(leaf.ToBytes()), Op.GetPushOp(controlBlock.ToBytes()));
 }

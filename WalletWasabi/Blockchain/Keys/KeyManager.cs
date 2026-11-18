@@ -77,6 +77,9 @@ public class KeyManager
 
 		TaprootAccountKeyPath = taprootAccountKeyPath ?? GetAccountKeyPath(_blockchainState.Network);
 		FidelityBonds = new FidelityBondKeys(TaprootExtPubKey, TaprootAccountKeyPath);
+
+		// The wallet file remembers the unlock heights whose addresses the wallet watches.
+		FidelityBonds.HeightRegistered += _ => ToFile();
 		TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
 		_taprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
 
@@ -153,6 +156,9 @@ public class KeyManager
 	/// bond pays to a script with a timelock.
 	/// </summary>
 	public FidelityBondKeys FidelityBonds { get; }
+
+	/// <summary>See <see cref="GetFidelityBondSearchStart"/>.</summary>
+	private uint? _fidelityBondSearchStart;
 
 	public ExtPubKey? SilentPaymentScanExtPubKey { get; private set; }
 
@@ -272,6 +278,10 @@ public class KeyManager
 		blockchainState.ScanFrom(birthHeight);
 		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, taprootAccountKeyPath);
 		km.AssertCleanKeysIndexedNoLock();
+
+		// The backup does not tell the unlock heights of the bonds of the wallet.
+		km.SearchFidelityBondsFromNoLock(birthHeight);
+		km.ToFile();
 		return km;
 	}
 
@@ -437,18 +447,73 @@ public class KeyManager
 		}
 	}
 
-	/// <summary>The private key that redeems the bond of the given month.</summary>
-	/// <exception cref="SecurityException">The password is wrong.</exception>
-	public Key GetFidelityBondSecret(string password, BondLocktime locktime)
+	/// <summary>
+	/// The address to pay to in order to lock coins until the chain reaches the height. The wallet watches the address
+	/// from now on, and the wallet file remembers that before anyone gets to see the address.
+	/// </summary>
+	public BitcoinAddress GetFidelityBondAddress(uint unlockHeight)
 	{
-		var key = GetMasterExtKey(password).Derive(FidelityBonds.GetKeyPath(locktime)).PrivateKey;
+		FidelityBonds.Register(unlockHeight);
+		return FidelityBonds.GetAddress(unlockHeight, GetNetwork());
+	}
 
-		if (key.PubKey != FidelityBonds.GetPubKey(locktime))
+	/// <summary>The private key that redeems the bonds that unlock at the given height.</summary>
+	/// <exception cref="SecurityException">The password is wrong.</exception>
+	public Key GetFidelityBondSecret(string password, uint unlockHeight)
+	{
+		var key = GetMasterExtKey(password).Derive(FidelityBonds.GetKeyPath(unlockHeight)).PrivateKey;
+
+		if (key.PubKey != FidelityBonds.GetPubKey(unlockHeight))
 		{
-			throw new InvalidOperationException($"The key of the fidelity bond of {locktime} does not belong to the account of the wallet.");
+			throw new InvalidOperationException($"The key of the fidelity bonds that unlock at block {unlockHeight} does not belong to the account of the wallet.");
 		}
 
 		return key;
+	}
+
+	/// <summary>
+	/// The lowest unlock height that the wallet looks for bonds at without remembering their addresses, or null if it only
+	/// watches the addresses that it remembers.
+	/// </summary>
+	/// <remarks>
+	/// The backup of a wallet does not tell which unlock heights its bonds have. So a wallet that goes through the chain
+	/// again, because it was recovered or told to resync, looks for a bond at every height that it could have chosen, from
+	/// the first block that it goes through on. See <see cref="FidelityBondKeys.PrepareSearch"/>.
+	/// </remarks>
+	public uint? GetFidelityBondSearchStart()
+	{
+		lock (_criticalStateLock)
+		{
+			return _fidelityBondSearchStart;
+		}
+	}
+
+	/// <summary>
+	/// The wallet went through the chain: the bonds that were to be found are found, and their addresses are watched like
+	/// the others from now on.
+	/// </summary>
+	public void EndFidelityBondSearch()
+	{
+		lock (_criticalStateLock)
+		{
+			if (_fidelityBondSearchStart is null)
+			{
+				return;
+			}
+
+			_fidelityBondSearchStart = null;
+			ToFileNoLock();
+		}
+
+		FidelityBonds.EndSearch();
+	}
+
+	/// <summary>Makes the wallet look for bonds that it does not remember, in the blocks from the given one on.</summary>
+	private void SearchFidelityBondsFromNoLock(ChainHeight firstBlockHeight)
+	{
+		// A bond is locked until a block that was still to come when its address was made.
+		var start = Math.Max(1, firstBlockHeight.Height);
+		_fidelityBondSearchStart = Math.Min(_fidelityBondSearchStart ?? uint.MaxValue, start);
 	}
 
 	private (byte[] PasswordHash, ExtKey MasterKey)? MasterKeyAndPasswordHash { get; set; }
@@ -688,6 +753,9 @@ public class KeyManager
 		{
 			_blockchainState.ScanFrom(newStartingHeight);
 			MinGapLimit = newMinGapLimit;
+
+			// A bond that this wallet file does not remember may come up too: one of another copy of the wallet, for example.
+			SearchFidelityBondsFromNoLock(newStartingHeight);
 			ToFileNoLock();
 		}
 	}
@@ -755,6 +823,8 @@ public class KeyManager
 			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
+			("FidelityBondHeights", Encode.Array(keyManager.FidelityBonds.KnownHeights.Select(Encode.UInt))),
+			("FidelityBondSearchStart", keyManager._fidelityBondSearchStart is { } searchStart ? Encode.UInt(searchStart) : null),
 			("HdPubKeys", Encode.Array(keyManager._hdPubKeyCache.HdPubKeys.Select(Encode.HdPubKey)))
 		]);
 
@@ -790,6 +860,10 @@ public class KeyManager
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? []
 			};
 			km._hdPubKeyCache.AddRangeKeys(km.AssertKeysBelongToWallet(get.Required("HdPubKeys", Decode.Array(Decode.HdPubKey))));
+			km.FidelityBonds.Load(get.Optional("FidelityBondHeights", Decode.Array(Decode.UInt)) ?? []);
+
+			// The field is missing unless a search is on. A search never starts below the first block.
+			km._fidelityBondSearchStart = get.Optional("FidelityBondSearchStart", Decode.UInt, 0u) is var searchStart and > 0 ? searchStart : null;
 			return km;
 		});
 

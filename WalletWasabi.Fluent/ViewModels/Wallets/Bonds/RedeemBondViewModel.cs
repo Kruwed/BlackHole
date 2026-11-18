@@ -22,8 +22,8 @@ using WalletWasabi.Services;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 
 /// <summary>
-/// Redeems a fidelity bond whose locktime is over: its coins go back to the wallet, to a new address of it. The bond pays
-/// the mining fee, and the user chooses how much that is.
+/// Redeems a fidelity bond whose unlock height the chain has reached: its coins go back to the wallet, to a new address
+/// of it. The bond pays the mining fee, and the user chooses how much that is.
 /// </summary>
 [NavigationMetaData(Title = "Redeem Fidelity Bond", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class RedeemBondViewModel : RoutableViewModel
@@ -44,7 +44,7 @@ public partial class RedeemBondViewModel : RoutableViewModel
 		_bond = bond;
 
 		BondAmount = new Amount(bond.Bond.Amount);
-		UnlockDate = BondItemViewModel.FormatDate(bond.Bond.Locktime.Date);
+		UnlockHeight = BlockHeightText.Format(bond.Bond.UnlockHeight);
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
 		EnableBack = true;
@@ -72,7 +72,8 @@ public partial class RedeemBondViewModel : RoutableViewModel
 
 	public Amount BondAmount { get; }
 
-	public string UnlockDate { get; }
+	/// <summary>The block height that the chain had to reach, written out.</summary>
+	public string UnlockHeight { get; }
 
 	/// <summary>
 	/// The estimation to start with: the one that the user had picked, by its number of blocks, or else the one nearest to

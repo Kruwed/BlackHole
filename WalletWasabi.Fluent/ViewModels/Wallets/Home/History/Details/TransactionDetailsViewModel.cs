@@ -68,17 +68,25 @@ public partial class TransactionDetailsViewModel : RoutableViewModel
 		FeeRate = model.FeeRate;
 		IsFeeRateVisible = FeeRate is not null && FeeRate != FeeRate.Zero;
 
-		if (model.Amount < Money.Zero)
-		{
-			Amount = new Amount(-model.Amount - (model.Fee ?? Money.Zero));
-			AmountText = "Amount sent";
-		}
-		else
-		{
-			Amount = new Amount(model.Amount);
-			AmountText = "Amount received";
-		}
+		var (amount, amountText) = DescribeAmount(model.Type, model.Amount, model.Fee, model.LockedInBonds, model.UnlockedFromBonds);
+		Amount = new Amount(amount);
+		AmountText = amountText;
 	}
+
+	/// <summary>
+	/// Tells the amount that the transaction is about and what to call it: what was sent or received, or what went into a
+	/// fidelity bond or came out of one.
+	/// </summary>
+	/// <param name="amount">How the transaction changed what the wallet owns.</param>
+	public static (Money Amount, string Text) DescribeAmount(TransactionType type, Money amount, Money? fee, Money lockedInBonds, Money unlockedFromBonds) =>
+		type switch
+		{
+			// Locking and unlocking change what the wallet owns by the mining fee at most. What they are about is the bond.
+			TransactionType.Lock => (lockedInBonds, "Amount locked"),
+			TransactionType.Unlock => (unlockedFromBonds, "Amount unlocked"),
+			_ when amount < Money.Zero => (-amount - (fee ?? Money.Zero), "Amount sent"),
+			_ => (amount, "Amount received")
+		};
 
 	/// <summary>
 	/// Tells in one sentence whether the transaction is confirmed, in which block, and when.

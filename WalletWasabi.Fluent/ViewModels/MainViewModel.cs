@@ -264,16 +264,23 @@ public partial class MainViewModel : ViewModelBase
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(progress =>
 			{
-				// Until the node told how long the chain is, there is nothing to count towards.
-				SyncProgress = progress.Blocks.Target switch
-				{
-					null => WaitingForNode,
-					{ } target when progress.Blocks.Current >= target => $"{progress.Blocks.Current:N0} blocks synced",
-					{ } target => $"{progress.Blocks.Current:N0}/{target:N0} blocks synced"
-				};
+				SyncProgress = DescribeSyncProgress(progress);
 				SyncStatus = progress.Status.ToUserFriendlyString();
 			});
 	}
+
+	/// <summary>Tells in a few words how far the wallet is with the blocks of the node.</summary>
+	public static string DescribeSyncProgress(WalletLoadProgress progress) =>
+		progress switch
+		{
+			// For about a minute no block is processed, and the wallet would look stuck.
+			{ Status: WalletWasabi.Wallets.WalletSyncStatus.PreparingBondSearch } => "Preparing the search for bonds",
+
+			// Until the node told how long the chain is, there is nothing to count towards.
+			{ Blocks.Target: null } => WaitingForNode,
+			{ Blocks: { Target: { } target, Current: var current } } when current >= target => $"{current:N0} blocks synced",
+			{ Blocks: { Target: { } target, Current: var current } } => $"{current:N0}/{target:N0} blocks synced"
+		};
 
 	/// <summary>
 	/// Until a wallet is opened, the title bar tells how many blocks the chain has according to the node. Then the progress of the wallet takes its place.

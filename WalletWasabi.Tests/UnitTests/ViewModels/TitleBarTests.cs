@@ -1,4 +1,6 @@
+using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels;
+using WalletWasabi.Wallets;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
@@ -38,5 +40,29 @@ public class TitleBarTests
 	public void DialogOnTopOfAPageOfTheWelcomeTakesTheTitleBarOutOfUse(bool isFullScreenOpen, bool isCompactDialogOpen)
 	{
 		Assert.False(MainViewModel.IsTitleBarFree(isDialogOpen: true, isFullScreenOpen, isCompactDialogOpen, isWelcome: true));
+	}
+
+	[Fact]
+	public void SyncProgressTellsTheBlocksAndTheSearchForFidelityBonds()
+	{
+		var node = new SyncProgressCardModel(0, 976_172, 976_172);
+
+		Assert.Equal(
+			"120/976,172 blocks synced",
+			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(new WalletSyncStatus.Scanning(120, 976_172), node, new SyncProgressCardModel(0, 120, 976_172))));
+		Assert.Equal(
+			"976,172 blocks synced",
+			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(new WalletSyncStatus.Synchronized(976_172), node, new SyncProgressCardModel(0, 976_172, 976_172))));
+		Assert.Equal(
+			"Waiting for Bitcoin node",
+			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(new WalletSyncStatus.NotStarted(), node, new SyncProgressCardModel(0, 0, null))));
+
+		// A wallet that goes through the chain again calculates the addresses that its bonds can have first. No block is
+		// processed for about a minute, and the title bar says why.
+		var preparing = new WalletSyncStatus.PreparingBondSearch(792_141);
+		Assert.Equal(
+			"Preparing the search for bonds",
+			MainViewModel.DescribeSyncProgress(new WalletLoadProgress(preparing, node, new SyncProgressCardModel(0, 0, 976_172))));
+		Assert.Contains("792,141 unlock heights", preparing.ToUserFriendlyString());
 	}
 }

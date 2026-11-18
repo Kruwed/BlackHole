@@ -888,6 +888,109 @@ public class WalletSynchronizerTests
 		}
 	}
 
+	[Fact]
+	public async Task RecoveredWalletFindsItsFidelityBondsAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		node.MineBlocks(10);
+
+		// The wallet of before the recovery locked coins until three block heights. Its backup does not tell which.
+		var shares = WalletGenerator.GenerateShares().Take(WalletGenerator.DefaultShamirThreshold).ToArray();
+		var lost = KeyManager.Recover(shares, "", Network);
+		var near = CreatePayment(lost.GetFidelityBondAddress(40).ScriptPubKey, Money.Coins(0.2m));
+		var far = CreatePayment(lost.GetFidelityBondAddress(12 + TestWallet.BondSearchBlocks).ScriptPubKey, Money.Coins(0.3m));
+		var past = CreatePayment(lost.GetFidelityBondAddress(5).ScriptPubKey, Money.Coins(0.1m));
+		node.MineBlock(near, past);
+		node.MineBlock(far);
+
+		var keyManager = KeyManager.Recover(shares, "", Network);
+		Assert.Empty(keyManager.FidelityBonds.KnownHeights);
+		Assert.Equal(1u, keyManager.GetFidelityBondSearchStart());
+
+		using var wallet = await TestWallet.CreateAsync(node, keyManager);
+		await SynchronizeFullyAsync(wallet);
+
+		// It looked at every height that a bond could unlock at, from its first block to as far above the chain as it goes.
+		Assert.Contains(new WalletSyncStatus.PreparingBondSearch(12 + TestWallet.BondSearchBlocks), wallet.AnnouncedStatuses);
+		Assert.Equal([5u, 40u, 12 + TestWallet.BondSearchBlocks], keyManager.FidelityBonds.KnownHeights);
+
+		var bonds = wallet.Processor.GetFidelityBonds();
+		Assert.Equal([Money.Coins(0.1m), Money.Coins(0.2m), Money.Coins(0.3m)], bonds.Select(x => x.Amount).Order());
+		Assert.All(bonds, bond => Assert.True(bond.IsConfirmed));
+		Assert.Empty(wallet.Coins);
+
+		// Once it went through the chain the search is over, and the wallet file knows what was found.
+		Assert.Null(keyManager.GetFidelityBondSearchStart());
+		Assert.False(keyManager.FidelityBonds.IsSearching);
+		var loaded = KeyManager.FromFile(keyManager.FilePath!);
+		Assert.Null(loaded.GetFidelityBondSearchStart());
+		Assert.Equal(keyManager.FidelityBonds.KnownHeights, loaded.FidelityBonds.KnownHeights);
+
+		// What is paid to a found address later is seen like any payment to an address that the wallet watches.
+		node.MineBlock(CreatePayment(keyManager.FidelityBonds.GetScriptPubKey(40), Money.Coins(0.05m)));
+		await SynchronizeFullyAsync(wallet);
+		Assert.Equal(4, wallet.Processor.GetFidelityBonds().Count);
+		Assert.DoesNotContain(wallet.AnnouncedStatuses.Skip(wallet.AnnouncedStatuses.IndexOf(new WalletSyncStatus.Synchronized(12)) + 1), status => status is WalletSyncStatus.PreparingBondSearch);
+	}
+
+	[Fact]
+	public async Task WalletThatWasNotRecoveredDoesNotSearchForFidelityBondsAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		node.MineBlocks(10);
+
+		// It knows every bond address that it gave out, and it gave out none that it does not watch.
+		var keyManager = KeyManager.CreateNew(out _, "", Network);
+		using var wallet = await TestWallet.CreateAsync(node, keyManager);
+		await SynchronizeFullyAsync(wallet);
+
+		var unknown = CreatePayment(keyManager.FidelityBonds.GetScriptPubKey(40), Money.Coins(0.2m));
+		var known = CreatePayment(keyManager.GetFidelityBondAddress(50).ScriptPubKey, Money.Coins(0.3m));
+		node.MineBlock(unknown, known);
+		await SynchronizeFullyAsync(wallet);
+
+		Assert.DoesNotContain(wallet.AnnouncedStatuses, status => status is WalletSyncStatus.PreparingBondSearch);
+		Assert.Equal(50u, Assert.Single(wallet.Processor.GetFidelityBonds()).UnlockHeight);
+	}
+
+	[Fact]
+	public async Task ResyncFindsTheFidelityBondsOfAnotherCopyOfTheWalletAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		node.MineBlocks(10);
+
+		var shares = WalletGenerator.GenerateShares().Take(WalletGenerator.DefaultShamirThreshold).ToArray();
+		var keyManager = KeyManager.Recover(shares, "", Network);
+		using (var wallet = await TestWallet.CreateAsync(node, keyManager))
+		{
+			await SynchronizeFullyAsync(wallet);
+		}
+
+		// The same backup on another computer locks coins. This wallet file does not know the height.
+		var copy = KeyManager.Recover(shares, "", Network);
+		node.MineBlock(CreatePayment(copy.GetFidelityBondAddress(200).ScriptPubKey, Money.Coins(0.2m)));
+
+		using (var wallet = await TestWallet.CreateAsync(node, KeyManager.FromFile(keyManager.FilePath!)))
+		{
+			await SynchronizeFullyAsync(wallet);
+			Assert.Empty(wallet.Processor.GetFidelityBonds());
+
+			wallet.Synchronizer.RequestResync(1, wallet.KeyManager.MinGapLimit);
+		}
+
+		// The resync starts with the next start of the application.
+		var restarted = KeyManager.FromFile(keyManager.FilePath!);
+		Assert.Equal(1u, restarted.GetFidelityBondSearchStart());
+
+		using (var wallet = await TestWallet.CreateAsync(node, restarted))
+		{
+			await SynchronizeFullyAsync(wallet);
+
+			Assert.Equal(200u, Assert.Single(wallet.Processor.GetFidelityBonds()).UnlockHeight);
+			Assert.Null(restarted.GetFidelityBondSearchStart());
+		}
+	}
+
 	/// <summary>A wallet that looks for its transactions from the first block of the chain on.</summary>
 	private static KeyManager RecoverWallet()
 	{
@@ -895,11 +998,13 @@ public class WalletSynchronizerTests
 		return KeyManager.Recover(shares, "", Network);
 	}
 
-	private static Transaction CreatePayment(HdPubKey key, Money amount)
+	private static Transaction CreatePayment(HdPubKey key, Money amount) => CreatePayment(key.GetAssumedScriptPubKey(), amount);
+
+	private static Transaction CreatePayment(Script destination, Money amount)
 	{
 		var tx = Network.CreateTransaction();
 		tx.Inputs.Add(new OutPoint(RandomUtils.GetUInt256(), 0), Script.Empty, new WitScript(Op.GetPushOp(new byte[64])));
-		tx.Outputs.Add(amount, key.GetAssumedScriptPubKey());
+		tx.Outputs.Add(amount, destination);
 		return tx;
 	}
 
@@ -1044,6 +1149,12 @@ public class WalletSynchronizerTests
 	/// </summary>
 	private sealed class TestWallet : IDisposable
 	{
+		/// <summary>
+		/// How far above the chain the wallets of the tests look for fidelity bonds when they go through the chain again.
+		/// A wallet looks ten years ahead, which takes most of a minute to prepare.
+		/// </summary>
+		public const uint BondSearchBlocks = 300;
+
 		private readonly List<IDisposable> _subscriptions = [];
 
 		private TestWallet(FakeBitcoinNode node, KeyManager keyManager, AllTransactionStore transactionStore, bool watchMempool, Action? onSynchronizedFirst, int? maxParallelBlockDownloads, TimeProvider? timeProvider)
@@ -1061,7 +1172,7 @@ public class WalletSynchronizerTests
 			keyManager.GetKeys();
 			Processor.Process(transactionStore.ConfirmedStore.GetTransactions());
 
-			Synchronizer = new WalletSynchronizer(node.RpcClient, keyManager, transactionStore, Processor, EventBus, onSynchronizedFirst, watchMempool, maxParallelBlockDownloads)
+			Synchronizer = new WalletSynchronizer(node.RpcClient, keyManager, transactionStore, Processor, EventBus, onSynchronizedFirst, watchMempool, maxParallelBlockDownloads, BondSearchBlocks)
 			{
 				// Tests do not wait as long as a wallet does.
 				IdlePeriod = TimeSpan.FromMilliseconds(50),

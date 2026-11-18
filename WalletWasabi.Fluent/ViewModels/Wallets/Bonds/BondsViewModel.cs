@@ -14,8 +14,8 @@ using WalletWasabi.Wallets;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 
 /// <summary>
-/// The fidelity bonds of the wallet: coins that are locked until a date. New ones are created from here, and the ones
-/// whose locktime is over are redeemed from here.
+/// The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height. New ones are created
+/// from here, and the ones whose unlock height the chain has reached are redeemed from here.
 /// </summary>
 [NavigationMetaData(Title = "Fidelity Bonds", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class BondsViewModel : RoutableViewModel
@@ -25,7 +25,7 @@ public partial class BondsViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private IReadOnlyList<BondItemViewModel> _bonds = [];
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasBonds;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount? _lockedAmount;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainTimeKnown = true;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightKnown = true;
 
 	public BondsViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
 	{
@@ -44,7 +44,7 @@ public partial class BondsViewModel : RoutableViewModel
 		_walletModel.Bonds.Changed
 			.StartWith(Unit.Default)
 			.Select(_ => Observable
-				.FromAsync(cancellationToken => Task.Run(() => _walletModel.Bonds.GetBondsAsync(cancellationToken), cancellationToken))
+				.FromAsync(cancellationToken => Task.Run(_walletModel.Bonds.GetBonds, cancellationToken))
 				.Catch((Exception ex) =>
 				{
 					// The list stays as it is and is read again with the next change.
@@ -59,16 +59,18 @@ public partial class BondsViewModel : RoutableViewModel
 
 	private void Update(FidelityBondsModel model)
 	{
+		var now = DateTimeOffset.Now;
+
 		// The bonds that still hold coins come first, the one that unlocks next on top. The redeemed ones follow.
 		Bonds = model.Bonds
 			.OrderBy(x => x.State is FidelityBondState.Redeeming or FidelityBondState.Redeemed)
-			.ThenBy(x => x.Bond.Locktime)
+			.ThenBy(x => x.Bond.UnlockHeight)
 			.ThenByDescending(x => x.Bond.Amount)
-			.Select(x => new BondItemViewModel(x, model.ChainTime, Redeem))
+			.Select(x => new BondItemViewModel(x, model.ChainHeight, now, Redeem))
 			.ToList();
 
 		HasBonds = Bonds.Count > 0;
-		IsChainTimeKnown = model.ChainTime is not null;
+		IsChainHeightKnown = model.ChainHeight is not null;
 
 		var locked = model.Bonds.Where(x => !x.Bond.IsSpent).Sum(x => x.Bond.Amount);
 		LockedAmount = locked > Money.Zero ? new Amount(locked) : null;

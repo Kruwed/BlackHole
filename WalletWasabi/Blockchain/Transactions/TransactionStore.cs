@@ -30,6 +30,14 @@ public class TransactionStore : IDisposable
 	/// <remarks>Guarded by <see cref="_sqliteStorageLock"/>.</remarks>
 	private Dictionary<uint256, SmartTransaction> Transactions { get; } = new();
 
+	private long _version;
+
+	/// <summary>
+	/// Counts the changes of the store: a transaction that was added, updated or removed. What was read from the store is
+	/// still what the store holds as long as this number is the same.
+	/// </summary>
+	public long Version => Interlocked.Read(ref _version);
+
 	public Task InitializeAsync(CancellationToken cancellationToken)
 	{
 		lock (_sqliteStorageLock)
@@ -74,14 +82,17 @@ public class TransactionStore : IDisposable
 	{
 		uint256 hash = tx.GetHash();
 
+		// Counted here, so that the transactions that are read from the database at the start count as a change too.
 		if (Transactions.TryAdd(hash, tx))
 		{
+			Interlocked.Increment(ref _version);
 			return true;
 		}
 		else
 		{
 			if (Transactions[hash].TryUpdate(tx))
 			{
+				Interlocked.Increment(ref _version);
 				return true;
 			}
 		}
@@ -95,6 +106,8 @@ public class TransactionStore : IDisposable
 		{
 			if (Transactions.TryAdd(tx.GetHash(), tx))
 			{
+				Interlocked.Increment(ref _version);
+
 				if (_sqliteStorage.BulkInsert(tx) == 0)
 				{
 					throw new UnreachableException($"Transaction '{tx.GetHash()}' was added in memory but not in database.");
@@ -136,6 +149,7 @@ public class TransactionStore : IDisposable
 				if (foundTx.TryUpdate(tx))
 				{
 					updated = true;
+					Interlocked.Increment(ref _version);
 
 					if (_sqliteStorage.BulkUpdate(tx) == 0)
 					{
@@ -157,6 +171,7 @@ public class TransactionStore : IDisposable
 			if (Transactions.Remove(hash, out tx))
 			{
 				isRemoved = true;
+				Interlocked.Increment(ref _version);
 
 				if (!_sqliteStorage.TryRemove(hash, out _))
 				{

@@ -5,12 +5,12 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.BondsView">
   <ContentArea Title="{Binding Title}"
-               Caption="Coins that are locked until a date. Nothing can spend them before, this wallet included."
+               Caption="Coins that are locked until the chain reaches a block height. Nothing can spend them before, this wallet included."
                EnableCancel="{Binding EnableCancel}" CancelContent="Close"
                EnableNext="True" NextContent="New Bond"
                ScrollViewer.VerticalScrollBarVisibility="Auto">
     <ContentArea.TopContent>
-      <!-- What the bonds hold that are not redeemed yet. It is not part of the balance of the wallet. -->
+      <!-- What the bonds hold that are not redeemed yet. It is part of the balance of the wallet. -->
       <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right" VerticalAlignment="Center" Classes="h8" Opacity="0.6"
                   IsVisible="{Binding LockedAmount, Converter={x:Static ObjectConverters.IsNotNull}}">
         <TextBlock Text="In bonds:" Margin="0 1 0 0" />
@@ -20,7 +20,7 @@
 
     <StackPanel Spacing="10" Margin="0 0 20 0">
       <InfoMessage Foreground="{DynamicResource WarningMessageForeground}"
-                   IsVisible="{Binding !IsChainTimeKnown}">
+                   IsVisible="{Binding !IsChainHeightKnown}">
         <TextBlock Text="The Bitcoin node does not answer. Without it the wallet cannot tell which bonds are unlocked." TextWrapping="Wrap" />
       </InfoMessage>
 
@@ -48,11 +48,11 @@
                     <TextBlock DockPanel.Dock="Right" Text="{Binding StateText}" VerticalAlignment="Center" />
                     <AmountControl Amount="{Binding Amount}" HorizontalAlignment="Left" />
                   </DockPanel>
-                  <TextBlock Text="{Binding DateText}" Opacity="0.6" />
+                  <TextBlock Text="{Binding HeightText}" Opacity="0.6" TextWrapping="Wrap" />
                   <TextBlock Text="{Binding ValueText, StringFormat='Bond value: {0}'}" Opacity="0.6"
                              Background="Transparent"
                              IsVisible="{Binding ValueText, Converter={x:Static ObjectConverters.IsNotNull}}"
-                             ToolTip.Tip="What the bond counts for, by the formula of JoinMarket: the more coins and the longer they were locked for, the more. The number has no unit. It only compares bonds." />
+                             ToolTip.Tip="What the bond counts for, by the formula of JoinMarket with the time counted in blocks: the more coins and the more blocks they were locked for, the more. The number has no unit. It only compares bonds." />
                   <PreviewItem CopyableContent="{Binding Address}">
                     <TextBlock Text="{Binding Address}" Classes="monoSpaced" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
                   </PreviewItem>

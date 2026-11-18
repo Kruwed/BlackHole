@@ -155,12 +155,45 @@ public class TransactionProcessor(
 	/// <summary>
 	/// The fidelity bonds of the wallet, the redeemed ones included. They are read from the transactions that the wallet knows.
 	/// </summary>
+	/// <remarks>
+	/// The balance and the history ask for them all the time. They are read again only after the kept transactions or the
+	/// watched bond addresses changed, and without the lock of the processor: nobody waits here for a block to be processed.
+	/// </remarks>
 	public IReadOnlyList<FidelityBond> GetFidelityBonds()
 	{
-		lock (Lock)
+		// Read before the transactions: a change in the meantime makes the next call read again.
+		var version = (TransactionStore.Version, KeyManager.FidelityBonds.Version);
+
+		if (_fidelityBonds is { } known && known.Version == version)
 		{
-			return FidelityBondFinder.Find(TransactionStore.GetTransactions(), KeyManager.FidelityBonds);
+			return known.Bonds;
 		}
+
+		var bonds = FidelityBondFinder.Find(TransactionStore.GetTransactions(), KeyManager.FidelityBonds);
+		_fidelityBonds = new(version, bonds);
+		return bonds;
+	}
+
+	private volatile FidelityBondsRead? _fidelityBonds;
+
+	private sealed record FidelityBondsRead((long Transactions, int Keys) Version, IReadOnlyList<FidelityBond> Bonds);
+
+	/// <summary>What the bonds of the wallet held that the transaction spends, as far as the wallet kept the transactions that made them.</summary>
+	private Money GetAmountUnlockedFromBonds(Transaction transaction)
+	{
+		var amount = Money.Zero;
+
+		foreach (var input in transaction.Inputs)
+		{
+			if (FidelityBondFinder.SpendsBond(input, KeyManager.FidelityBonds)
+				&& TransactionStore.TryGetTransaction(input.PrevOut.Hash, out var funding)
+				&& input.PrevOut.N < funding.Transaction.Outputs.Count)
+			{
+				amount += funding.Transaction.Outputs[input.PrevOut.N].Value;
+			}
+		}
+
+		return amount;
 	}
 
 	/// <summary>
@@ -351,6 +384,12 @@ public class TransactionProcessor(
 		// transactions. It is kept once it is confirmed. Before that it leaves no coin of the wallet behind that would tell
 		// when it is replaced, and the wallet would show a bond that never comes.
 		result.ConcernsFidelityBonds = (isOfWallet || tx.Confirmed) && FidelityBondFinder.Concerns(tx.Transaction, KeyManager.FidelityBonds);
+
+		if (result.ConcernsFidelityBonds)
+		{
+			result.LockedInBonds = FidelityBondFinder.GetLockedAmount(tx.Transaction, KeyManager.FidelityBonds);
+			result.UnlockedFromBonds = GetAmountUnlockedFromBonds(tx.Transaction);
+		}
 
 		if (isOfWallet || result.ConcernsFidelityBonds)
 		{

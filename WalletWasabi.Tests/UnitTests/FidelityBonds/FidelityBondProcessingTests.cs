@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
@@ -9,6 +10,7 @@ using WalletWasabi.FidelityBonds;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.Storages;
+using WalletWasabi.Tests.Helpers;
 using WalletWasabi.Tests.UnitTests.Mocks;
 using Xunit;
 
@@ -20,8 +22,8 @@ namespace WalletWasabi.Tests.UnitTests.FidelityBonds;
 public class FidelityBondProcessingTests
 {
 	private const string Password = "password";
+	private const uint UnlockHeight = 500;
 	private static readonly Network Network = Network.RegTest;
-	private static readonly BondLocktime Locktime = BondLocktime.FromMonth(2027, 1);
 
 	[Fact]
 	public async Task BondThatTheWalletFundsIsFoundAndIsNoCoinAsync()
@@ -37,14 +39,18 @@ public class FidelityBondProcessingTests
 			fixture.KeyManager,
 			received,
 			0,
-			(Money.Coins(0.5m), fixture.BondScriptPubKey(Locktime)),
+			(Money.Coins(0.5m), fixture.WatchBond(UnlockHeight)),
 			(Money.Coins(0.4999m), fixture.KeyManager.GetNextChangeKey().GetAssumedScriptPubKey()));
-		fixture.Processor.Process(new SmartTransaction(funding, Height.Mempool));
+		var result = fixture.Processor.Process(new SmartTransaction(funding, Height.Mempool));
+
+		Assert.True(result.ConcernsFidelityBonds);
+		Assert.Equal(Money.Coins(0.5m), result.LockedInBonds);
+		Assert.Equal(Money.Zero, result.UnlockedFromBonds);
 
 		var bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.Equal(new OutPoint(funding, 0), bond.OutPoint);
 		Assert.Equal(Money.Coins(0.5m), bond.Amount);
-		Assert.Equal(Locktime, bond.Locktime);
+		Assert.Equal(UnlockHeight, bond.UnlockHeight);
 		Assert.False(bond.IsConfirmed);
 		Assert.False(bond.IsSpent);
 
@@ -59,8 +65,8 @@ public class FidelityBondProcessingTests
 		bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.True(bond.IsConfirmed);
 		Assert.Equal(new Height.ChainHeight(2), bond.Transaction.Height);
-		Assert.False(bond.IsRedeemable(Locktime.Date));
-		Assert.True(bond.IsRedeemable(Locktime.Date.AddSeconds(1)));
+		Assert.False(bond.IsRedeemable(UnlockHeight - 1));
+		Assert.True(bond.IsRedeemable(UnlockHeight));
 	}
 
 	[Fact]
@@ -69,13 +75,14 @@ public class FidelityBondProcessingTests
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
 
-		var funding = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
 		var foreign = CreatePayment(CreateForeignScript(), Money.Coins(1));
 
 		Assert.True(fixture.Processor.ConcernsWallet(funding));
 		Assert.False(fixture.Processor.ConcernsWallet(foreign));
 
-		fixture.Processor.ProcessBlock(node.MineBlock([foreign, funding]), new Height.ChainHeight(1));
+		var results = fixture.Processor.ProcessBlock(node.MineBlock([foreign, funding]), new Height.ChainHeight(1));
+		Assert.Equal(Money.Coins(0.2m), Assert.Single(results).LockedInBonds);
 
 		var bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.Equal(Money.Coins(0.2m), bond.Amount);
@@ -96,8 +103,8 @@ public class FidelityBondProcessingTests
 
 		// Someone pays to the bond address and bumps the fee: two transactions that spend the same coin, one of which
 		// will never confirm. Neither leaves a coin of the wallet behind that would tell which one that is.
-		var funding = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
-		var replacement = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.199m));
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
+		var replacement = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.199m));
 		replacement.Inputs[0].PrevOut = funding.Inputs[0].PrevOut;
 
 		Assert.True(fixture.Processor.ConcernsWallet(funding));
@@ -119,22 +126,74 @@ public class FidelityBondProcessingTests
 	}
 
 	[Fact]
+	public async Task PaymentToAnAddressThatTheWalletDoesNotWatchIsNotSeenAsync()
+	{
+		using var fixture = await Fixture.CreateAsync();
+		var node = new FakeBitcoinNode(Network);
+
+		// The address of a height that the wallet never gave out. There are too many heights to watch them all.
+		var funding = CreatePayment(fixture.KeyManager.FidelityBonds.GetScriptPubKey(UnlockHeight), Money.Coins(0.2m));
+		var block = node.MineBlock([funding]);
+
+		Assert.False(fixture.Processor.ConcernsWallet(funding));
+		Assert.Empty(fixture.Processor.ProcessBlock(block, new Height.ChainHeight(1)));
+		Assert.Empty(fixture.Processor.GetFidelityBonds());
+
+		// Watching the address later does not bring the block back. Going through the chain again does.
+		fixture.WatchBond(UnlockHeight);
+		Assert.Empty(fixture.Processor.GetFidelityBonds());
+
+		fixture.Processor.ProcessBlock(block, new Height.ChainHeight(1));
+		Assert.Equal(Money.Coins(0.2m), Assert.Single(fixture.Processor.GetFidelityBonds()).Amount);
+	}
+
+	[Fact]
+	public async Task WalletThatSearchesFindsBondsAtHeightsThatItDoesNotRememberAsync()
+	{
+		using var fixture = await Fixture.CreateAsync();
+		var node = new FakeBitcoinNode(Network);
+		var keys = fixture.KeyManager.FidelityBonds;
+
+		// The wallet was recovered: it knows its keys, but not which unlock heights its bonds have.
+		var funding = CreatePayment(keys.GetScriptPubKey(UnlockHeight), Money.Coins(0.2m));
+		var later = CreatePayment(keys.GetScriptPubKey(UnlockHeight + 300), Money.Coins(0.1m));
+		var beyond = CreatePayment(keys.GetScriptPubKey(5_000), Money.Coins(0.3m));
+
+		keys.PrepareSearch(1, 1_000, CancellationToken.None);
+
+		Assert.True(fixture.Processor.ConcernsWallet(funding));
+		fixture.Processor.ProcessBlock(node.MineBlock([funding, later, beyond]), new Height.ChainHeight(1));
+
+		// It finds the bonds of the heights that it searches, and it watches their addresses from then on.
+		var bonds = fixture.Processor.GetFidelityBonds();
+		Assert.Equal([UnlockHeight, UnlockHeight + 300], bonds.Select(x => x.UnlockHeight).Order());
+		Assert.Equal([UnlockHeight, UnlockHeight + 300], keys.KnownHeights);
+
+		keys.EndSearch();
+		Assert.Equal(2, fixture.Processor.GetFidelityBonds().Count);
+
+		// A payment that comes after the search is seen like any other to a watched address.
+		var second = CreatePayment(keys.GetScriptPubKey(UnlockHeight), Money.Coins(0.05m));
+		fixture.Processor.ProcessBlock(node.MineBlock([second]), new Height.ChainHeight(2));
+		Assert.Equal(3, fixture.Processor.GetFidelityBonds().Count);
+	}
+
+	[Fact]
 	public async Task EveryPaymentToABondAddressIsABondOfItsOwnAsync()
 	{
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
-		var february = BondLocktime.FromMonth(2027, 2);
 
-		var first = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
-		var second = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.3m));
-		var third = CreatePayment(fixture.BondScriptPubKey(february), Money.Coins(0.1m));
+		var first = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
+		var second = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.3m));
+		var third = CreatePayment(fixture.WatchBond(UnlockHeight + 1), Money.Coins(0.1m));
 
 		fixture.Processor.ProcessBlock(node.MineBlock([first, second, third]), new Height.ChainHeight(1));
 
 		var bonds = fixture.Processor.GetFidelityBonds();
 		Assert.Equal(3, bonds.Count);
-		Assert.Equal([Money.Coins(0.2m), Money.Coins(0.3m)], bonds.Where(x => x.Locktime == Locktime).Select(x => x.Amount).Order());
-		Assert.Equal(Money.Coins(0.1m), Assert.Single(bonds, x => x.Locktime == february).Amount);
+		Assert.Equal([Money.Coins(0.2m), Money.Coins(0.3m)], bonds.Where(x => x.UnlockHeight == UnlockHeight).Select(x => x.Amount).Order());
+		Assert.Equal(Money.Coins(0.1m), Assert.Single(bonds, x => x.UnlockHeight == UnlockHeight + 1).Amount);
 	}
 
 	[Fact]
@@ -143,21 +202,24 @@ public class FidelityBondProcessingTests
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
 
-		var funding = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
 		fixture.Processor.ProcessBlock(node.MineBlock([funding]), new Height.ChainHeight(1));
 		var bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 
 		// The wallet pays the bond back to itself.
 		var destination = fixture.KeyManager.GetNextChangeKey().GetAssumedScriptPubKey();
-		using var key = fixture.KeyManager.GetFidelityBondSecret(Password, Locktime);
-		var redemption = BondRedemption.Create(bond, key, destination, new FeeRate(5m), Locktime.Date.AddDays(1), Network);
+		using var key = fixture.KeyManager.GetFidelityBondSecret(Password, UnlockHeight);
+		var redemption = BondRedemption.Create(bond, key, destination, new FeeRate(5m), chainHeight: UnlockHeight, Network);
 
-		fixture.Processor.Process(new SmartTransaction(redemption, Height.Mempool));
+		var result = fixture.Processor.Process(new SmartTransaction(redemption, Height.Mempool));
+		Assert.True(result.ConcernsFidelityBonds);
+		Assert.Equal(Money.Coins(0.2m), result.UnlockedFromBonds);
+		Assert.Equal(Money.Zero, result.LockedInBonds);
 
 		bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.True(bond.IsSpent);
 		Assert.Equal(redemption.GetHash(), bond.SpenderTransaction!.GetHash());
-		Assert.False(bond.IsRedeemable(Locktime.Date.AddDays(1)));
+		Assert.False(bond.IsRedeemable(UnlockHeight));
 
 		// What was in the bond is a coin of the wallet now.
 		var coin = Assert.Single(fixture.Processor.Coins);
@@ -171,16 +233,20 @@ public class FidelityBondProcessingTests
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
 
-		var funding = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
 		fixture.Processor.ProcessBlock(node.MineBlock([funding]), new Height.ChainHeight(1));
 		var bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 
-		// The same seed in another installation redeems the bond to an address that this wallet does not watch.
-		using var key = fixture.KeyManager.GetFidelityBondSecret(Password, Locktime);
-		var redemption = BondRedemption.Create(bond, key, CreateForeignScript(), new FeeRate(5m), Locktime.Date.AddDays(1), Network);
+		// Another copy of the wallet redeems the bond to an address that this wallet does not watch. The input shows
+		// the script of the bond, and that is how the wallet tells.
+		using var key = fixture.KeyManager.GetFidelityBondSecret(Password, UnlockHeight);
+		var redemption = BondRedemption.Create(bond, key, CreateForeignScript(), new FeeRate(5m), UnlockHeight, Network);
 
+		Assert.True(FidelityBondFinder.SpendsBond(redemption.Inputs[0], fixture.KeyManager.FidelityBonds));
 		Assert.True(fixture.Processor.ConcernsWallet(redemption));
-		fixture.Processor.ProcessBlock(node.MineBlock([redemption]), new Height.ChainHeight(2));
+
+		var result = Assert.Single(fixture.Processor.ProcessBlock(node.MineBlock([redemption]), new Height.ChainHeight(2)));
+		Assert.Equal(Money.Coins(0.2m), result.UnlockedFromBonds);
 
 		bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.True(bond.IsSpent);
@@ -192,17 +258,32 @@ public class FidelityBondProcessingTests
 	public async Task BondOfAnotherWalletDoesNotConcernTheWalletAsync()
 	{
 		using var fixture = await Fixture.CreateAsync();
+		var node = new FakeBitcoinNode(Network);
+		fixture.WatchBond(UnlockHeight);
+
+		// The same unlock height in another wallet: another key, another address.
 		var otherWallet = KeyManager.CreateNew(out _, Password, Network);
+		var funding = CreatePayment(otherWallet.GetFidelityBondAddress(UnlockHeight).ScriptPubKey, Money.Coins(0.2m));
+		var block = node.MineBlock([funding]);
 
-		var funding = CreatePayment(BondScript.GetScriptPubKey(otherWallet.FidelityBonds.GetScript(Locktime)), Money.Coins(0.2m));
 		Assert.False(fixture.Processor.ConcernsWallet(funding));
-
-		var otherBond = new FidelityBond(new OutPoint(funding, 0), Money.Coins(0.2m), Locktime, new SmartTransaction(funding, new Height.ChainHeight(1)), null);
-		using var key = otherWallet.GetFidelityBondSecret(Password, Locktime);
-		var redemption = BondRedemption.Create(otherBond, key, CreateForeignScript(), new FeeRate(5m), Locktime.Date.AddDays(1), Network);
-		Assert.False(fixture.Processor.ConcernsWallet(redemption));
-
+		Assert.Empty(fixture.Processor.ProcessBlock(block, new Height.ChainHeight(1)));
 		Assert.Empty(fixture.Processor.GetFidelityBonds());
+
+		// And when the other wallet redeems its bond, that is none of this wallet's business either.
+		var otherStore = new AllTransactionStore(SqliteStorageHelper.InMemoryDatabase, Network);
+		await otherStore.InitializeAsync(TestContext.Current.CancellationToken);
+		using (otherStore)
+		{
+			var otherProcessor = new TransactionProcessor(otherStore, otherWallet, new EventBus());
+			otherProcessor.ProcessBlock(block, new Height.ChainHeight(1));
+			using var otherKey = otherWallet.GetFidelityBondSecret(Password, UnlockHeight);
+			var redemption = BondRedemption.Create(Assert.Single(otherProcessor.GetFidelityBonds()), otherKey, CreateForeignScript(), new FeeRate(5m), UnlockHeight, Network);
+
+			Assert.True(otherProcessor.ConcernsWallet(redemption));
+			Assert.False(FidelityBondFinder.SpendsBond(redemption.Inputs[0], fixture.KeyManager.FidelityBonds));
+			Assert.False(fixture.Processor.ConcernsWallet(redemption));
+		}
 	}
 
 	[Fact]
@@ -214,11 +295,11 @@ public class FidelityBondProcessingTests
 		var received = CreatePayment(fixture.KeyManager.GetNextReceiveKey().GetAssumedScriptPubKey(), Money.Coins(1));
 		fixture.Processor.ProcessBlock(node.MineBlock([received]), new Height.ChainHeight(1));
 
-		var funding = CreateSpending(fixture.KeyManager, received, 0, (Money.Coins(0.9m), fixture.BondScriptPubKey(Locktime)));
+		var funding = CreateSpending(fixture.KeyManager, received, 0, (Money.Coins(0.9m), fixture.WatchBond(UnlockHeight)));
 		fixture.Processor.Process(new SmartTransaction(funding, Height.Mempool));
 		Assert.Single(fixture.Processor.GetFidelityBonds());
 
-		// The user cancels the transaction: another one spends the coin back to the wallet.
+		// The user cancels the transaction before it confirms: the same coin goes back to the wallet instead.
 		var cancellation = CreateSpending(fixture.KeyManager, received, 0, (Money.Coins(0.99m), fixture.KeyManager.GetNextChangeKey().GetAssumedScriptPubKey()));
 		fixture.Processor.Process(new SmartTransaction(cancellation, Height.Mempool));
 
@@ -232,24 +313,24 @@ public class FidelityBondProcessingTests
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
 
-		var external = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
+		var external = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
 		fixture.Processor.ProcessBlock(node.MineBlock([external]), new Height.ChainHeight(1));
 
 		// The wallet locks a coin of its own, and the transaction is not confirmed yet.
 		var received = CreatePayment(fixture.KeyManager.GetNextReceiveKey().GetAssumedScriptPubKey(), Money.Coins(0.06m));
 		fixture.Processor.ProcessBlock(node.MineBlock([received]), new Height.ChainHeight(2));
-		var pending = CreateSpending(fixture.KeyManager, received, 0, (Money.Coins(0.05m), fixture.BondScriptPubKey(BondLocktime.FromMonth(2030, 6))));
+		var pending = CreateSpending(fixture.KeyManager, received, 0, (Money.Coins(0.05m), fixture.WatchBond(900)));
 		fixture.Processor.Process(new SmartTransaction(pending, Height.Mempool));
 
-		// The application starts again: the wallet has nothing but its keys and the transactions that it kept.
+		// The application starts again: the wallet has its keys, the heights that it watches and the transactions that it kept.
 		var restarted = new TransactionProcessor(fixture.TransactionStore, fixture.KeyManager, new EventBus());
 		restarted.Process(fixture.TransactionStore.ConfirmedStore.GetTransactions());
 		restarted.Process(fixture.TransactionStore.MempoolStore.GetTransactions());
 
 		var bonds = restarted.GetFidelityBonds();
 		Assert.Equal(2, bonds.Count);
-		Assert.True(Assert.Single(bonds, x => x.Locktime == Locktime).IsConfirmed);
-		Assert.False(Assert.Single(bonds, x => x.Locktime == BondLocktime.FromMonth(2030, 6)).IsConfirmed);
+		Assert.True(Assert.Single(bonds, x => x.UnlockHeight == UnlockHeight).IsConfirmed);
+		Assert.False(Assert.Single(bonds, x => x.UnlockHeight == 900).IsConfirmed);
 	}
 
 	[Fact]
@@ -258,7 +339,7 @@ public class FidelityBondProcessingTests
 		using var fixture = await Fixture.CreateAsync();
 		var node = new FakeBitcoinNode(Network);
 
-		var funding = CreatePayment(fixture.BondScriptPubKey(Locktime), Money.Coins(0.2m));
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
 		var block = node.MineBlock([funding]);
 		fixture.Processor.ProcessBlock(block, new Height.ChainHeight(1));
 		Assert.True(Assert.Single(fixture.Processor.GetFidelityBonds()).IsConfirmed);
@@ -269,14 +350,63 @@ public class FidelityBondProcessingTests
 
 		var bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.False(bond.IsConfirmed);
-		Assert.False(bond.IsRedeemable(Locktime.Date.AddDays(1)));
+		Assert.False(bond.IsRedeemable(UnlockHeight));
 
 		// The other chain confirms the transaction too.
 		fixture.Processor.ProcessBlock(node.MineBlock([funding]), new Height.ChainHeight(1));
 
 		bond = Assert.Single(fixture.Processor.GetFidelityBonds());
 		Assert.True(bond.IsConfirmed);
-		Assert.True(bond.IsRedeemable(Locktime.Date.AddDays(1)));
+		Assert.True(bond.IsRedeemable(UnlockHeight));
+	}
+
+	[Fact]
+	public async Task BondsAreReadAgainOnlyWhenSomethingChangedAsync()
+	{
+		using var fixture = await Fixture.CreateAsync();
+		var node = new FakeBitcoinNode(Network);
+
+		var funding = CreatePayment(fixture.WatchBond(UnlockHeight), Money.Coins(0.2m));
+		fixture.Processor.ProcessBlock(node.MineBlock([funding]), new Height.ChainHeight(1));
+
+		// The balance and the history ask all the time. As long as nothing changed, they get what was read before.
+		var bonds = fixture.Processor.GetFidelityBonds();
+		Assert.Same(bonds, fixture.Processor.GetFidelityBonds());
+
+		// Another kept transaction, or another watched address, and the bonds are read again.
+		var second = CreatePayment(fixture.KeyManager.FidelityBonds.GetScriptPubKey(UnlockHeight), Money.Coins(0.1m));
+		fixture.Processor.ProcessBlock(node.MineBlock([second]), new Height.ChainHeight(2));
+		Assert.Equal(2, fixture.Processor.GetFidelityBonds().Count);
+
+		bonds = fixture.Processor.GetFidelityBonds();
+		fixture.WatchBond(900);
+		Assert.NotSame(bonds, fixture.Processor.GetFidelityBonds());
+		Assert.Equal(2, fixture.Processor.GetFidelityBonds().Count);
+	}
+
+	[Fact]
+	public async Task BondsThatWereAskedForBeforeTheTransactionsWereLoadedAreReadAgainAsync()
+	{
+		var node = new FakeBitcoinNode(Network);
+		var workDir = await Common.GetEmptyWorkDirAsync();
+		var keyManager = KeyManager.CreateNew(out _, Password, Network);
+		var funding = CreatePayment(keyManager.GetFidelityBondAddress(UnlockHeight).ScriptPubKey, Money.Coins(0.2m));
+
+		// The wallet kept the transaction of a bond when the application ran the last time.
+		using (var store = new AllTransactionStore(workDir, Network))
+		{
+			await store.InitializeAsync(TestContext.Current.CancellationToken);
+			new TransactionProcessor(store, keyManager, new EventBus()).ProcessBlock(node.MineBlock([funding]), new Height.ChainHeight(1));
+		}
+
+		// At the next start the balance is asked for while the kept transactions are still on their way from the disk.
+		using var restarted = new AllTransactionStore(workDir, Network);
+		var processor = new TransactionProcessor(restarted, keyManager, new EventBus());
+		Assert.Empty(processor.GetFidelityBonds());
+
+		await restarted.InitializeAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(Money.Coins(0.2m), Assert.Single(processor.GetFidelityBonds()).Amount);
 	}
 
 	private static Transaction CreatePayment(Script destination, Money amount)
@@ -339,7 +469,8 @@ public class FidelityBondProcessingTests
 		/// <summary>The transactions that the wallet was told to concern its bonds.</summary>
 		public List<uint256> BondTransactions { get; } = [];
 
-		public Script BondScriptPubKey(BondLocktime locktime) => BondScript.GetScriptPubKey(KeyManager.FidelityBonds.GetScript(locktime));
+		/// <summary>Gives out the address of the bonds of the height, as the wallet does it: it watches the address from then on.</summary>
+		public Script WatchBond(uint unlockHeight) => KeyManager.GetFidelityBondAddress(unlockHeight).ScriptPubKey;
 
 		public static async Task<Fixture> CreateAsync()
 		{

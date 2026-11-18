@@ -47,9 +47,16 @@ public class Wallet : BackgroundService
 		DestinationProvider = new InternalDestinationProvider(KeyManager);
 		TransactionStore = transactionStore;
 
-		_rpcClient = rpcClient;
 		TransactionProcessor = new TransactionProcessor(TransactionStore, keyManager, eventBus);
-		Synchronizer = new WalletSynchronizer(rpcClient, keyManager, TransactionStore, TransactionProcessor, eventBus, onSynchronizedFirst: LoadDummyMempool, watchMempool: watchMempool);
+		Synchronizer = new WalletSynchronizer(
+			rpcClient,
+			keyManager,
+			TransactionStore,
+			TransactionProcessor,
+			eventBus,
+			onSynchronizedFirst: LoadDummyMempool,
+			watchMempool: watchMempool,
+			fidelityBondSearchBlocks: serviceConfiguration.FidelityBondSearchBlocks);
 		Coins = TransactionProcessor.Coins;
 		BatchedPayments = new PaymentBatch(Coins);
 		OutputProvider = new PaymentAwareOutputProvider(DestinationProvider, BatchedPayments, RandomnessProviders.Secure, () => KeyManager.MaxCoinjoinLeftover);
@@ -67,8 +74,6 @@ public class Wallet : BackgroundService
 	}
 
 	private readonly EventBus _eventBus;
-	private readonly IRPCClient _rpcClient;
-	private readonly System.Collections.Concurrent.ConcurrentDictionary<uint256, DateTimeOffset> _blockTimes = new();
 	public AllTransactionStore TransactionStore { get; }
 
 	public WalletId WalletId { get; }
@@ -141,41 +146,42 @@ public class Wallet : BackgroundService
 
 		Dictionary<uint256, TransactionSummary> mapByTxid = new();
 
+		TransactionSummary GetSummary(SmartTransaction transaction, SmartTransaction cpfpSource)
+		{
+			var txid = transaction.GetHash();
+
+			if (!mapByTxid.TryGetValue(txid, out var summary))
+			{
+				var effectiveFeeRate = cpfpInfos.FirstOrDefault(x => x.Transaction == cpfpSource) is { } cachedCpfpInfo
+					? cachedCpfpInfo.CpfpInfo.EffectiveFeeRate
+					: null;
+
+				summary = new TransactionSummary(transaction, Money.Zero, effectiveFeeRate);
+				mapByTxid.Add(txid, summary);
+			}
+
+			return summary;
+		}
+
 		foreach (SmartCoin coin in GetAllCoins())
 		{
-			if (mapByTxid.TryGetValue(coin.TransactionId, out TransactionSummary? found)) // If found then update.
-			{
-				found.Amount += coin.Amount;
-			}
-			else
-			{
-				FeeRate? effectiveFeeRate = null;
-				if (cpfpInfos.FirstOrDefault(x => x.Transaction == coin.Transaction) is { } cachedCpfpInfo)
-				{
-					effectiveFeeRate = cachedCpfpInfo.CpfpInfo.EffectiveFeeRate;
-				}
-
-				mapByTxid.Add(coin.TransactionId, new TransactionSummary(coin.Transaction, coin.Amount, effectiveFeeRate));
-			}
+			GetSummary(coin.Transaction, coin.Transaction).Amount += coin.Amount;
 
 			if (coin.SpenderTransaction is { } spenderTransaction)
 			{
-				var spenderTxId = spenderTransaction.GetHash();
+				GetSummary(spenderTransaction, coin.Transaction).Amount -= coin.Amount;
+			}
+		}
 
-				if (mapByTxid.TryGetValue(spenderTxId, out TransactionSummary? foundSpenderCoin)) // If found then update.
-				{
-					foundSpenderCoin.Amount -= coin.Amount;
-				}
-				else
-				{
-					FeeRate? effectiveFeeRate = null;
-					if (cpfpInfos.FirstOrDefault(x => x.Transaction == coin.Transaction) is { } cachedCpfpInfo)
-					{
-						effectiveFeeRate = cachedCpfpInfo.CpfpInfo.EffectiveFeeRate;
-					}
+		// The coins of a fidelity bond belong to the wallet too. Locking coins of the wallet and getting them back costs
+		// it nothing but the mining fees, and a bond that is paid from elsewhere is money that came in.
+		foreach (var bond in GetFidelityBonds())
+		{
+			GetSummary(bond.Transaction, bond.Transaction).AddLockedBond(bond);
 
-					mapByTxid.Add(spenderTxId, new TransactionSummary(spenderTransaction, Money.Zero - coin.Amount, effectiveFeeRate));
-				}
+			if (bond.SpenderTransaction is { } spenderTransaction)
+			{
+				GetSummary(spenderTransaction, bond.Transaction).AddUnlockedBond(bond);
 			}
 		}
 
@@ -190,38 +196,25 @@ public class Wallet : BackgroundService
 	}
 
 	/// <summary>
-	/// The fidelity bonds of the wallet, the redeemed ones included. A bond is not a coin of the wallet: it is not part of
-	/// the balance and nothing spends it but the transaction that redeems it.
+	/// The fidelity bonds of the wallet, the redeemed ones included. The coins of a bond belong to the wallet, but a bond
+	/// is not one of its coins: nothing spends it but the transaction that redeems it.
 	/// </summary>
 	public IReadOnlyList<FidelityBond> GetFidelityBonds() => TransactionProcessor.GetFidelityBonds();
 
-	/// <summary>
-	/// The time that the header of a block states, as the node tells it. The value of a bond is counted from the time of
-	/// the block that confirmed it.
-	/// </summary>
-	public async Task<DateTimeOffset> GetBlockTimeAsync(uint256 blockHash, CancellationToken cancellationToken)
-	{
-		if (_blockTimes.TryGetValue(blockHash, out var known))
-		{
-			return known;
-		}
-
-		var header = await _rpcClient.GetBlockHeaderAsync(blockHash, cancellationToken).ConfigureAwait(false);
-		_blockTimes[blockHash] = header.BlockTime;
-		return header.BlockTime;
-	}
+	/// <summary>What the bonds of the wallet hold that were not redeemed yet. It is part of what the wallet owns.</summary>
+	public Money GetFidelityBondBalance() => GetFidelityBonds().Where(bond => !bond.IsSpent).Sum(bond => bond.Amount);
 
 	/// <summary>
 	/// Builds the transaction that pays a bond whose timelock is over back to the wallet, to an address of its own.
 	/// </summary>
-	/// <param name="medianTimePast">The median time of the last eleven blocks of the chain, which decides whether the timelock is over.</param>
+	/// <param name="chainHeight">The height of the last block of the chain, which decides whether the timelock is over.</param>
 	/// <exception cref="InvalidOperationException">The bond cannot be redeemed, at least not now or not at this fee rate.</exception>
 	/// <exception cref="System.Security.SecurityException">The password is wrong.</exception>
-	public SmartTransaction BuildFidelityBondRedemption(FidelityBond bond, string password, FeeRate feeRate, DateTimeOffset medianTimePast)
+	public SmartTransaction BuildFidelityBondRedemption(FidelityBond bond, string password, FeeRate feeRate, uint chainHeight)
 	{
-		using var key = KeyManager.GetFidelityBondSecret(password, bond.Locktime);
+		using var key = KeyManager.GetFidelityBondSecret(password, bond.UnlockHeight);
 		var destination = KeyManager.GetNextChangeKey().GetAssumedScriptPubKey();
-		var transaction = BondRedemption.Create(bond, key, destination, feeRate, medianTimePast, Network);
+		var transaction = BondRedemption.Create(bond, key, destination, feeRate, chainHeight, Network);
 
 		return new SmartTransaction(transaction, Height.Unknown);
 	}

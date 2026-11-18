@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 
@@ -34,6 +35,12 @@ public abstract record WalletSyncStatus
 	/// <summary>The wallet is processing the blocks that it did not see yet.</summary>
 	public record Scanning(uint Height, uint TipHeight) : WalletSyncStatus;
 
+	/// <summary>
+	/// The wallet is about to go through the chain again and does not know the unlock heights of its fidelity bonds. It is
+	/// calculating the address of every height that a bond can have, to recognize them in the blocks.
+	/// </summary>
+	public record PreparingBondSearch(uint Heights) : WalletSyncStatus;
+
 	/// <summary>The wallet processed every block that the node has.</summary>
 	public record Synchronized(uint Height) : WalletSyncStatus;
 
@@ -53,6 +60,7 @@ public abstract record WalletSyncStatus
 			BlockPruned(var missingHeight) =>
 				$"The Bitcoin node is pruned and does not have block {missingHeight:N0} any more, which the wallet did not process yet. Blocks that old are only available from a node that keeps the whole chain.",
 			Scanning(var height, var tipHeight) => $"Processing blocks: {height:N0} of {tipHeight:N0}.",
+			PreparingBondSearch(var heights) => $"Preparing the search for fidelity bonds: the addresses of {heights:N0} unlock heights are calculated. This takes about a minute.",
 			Synchronized => "Synchronized with the Bitcoin node.",
 			ResyncPending => "The wallet looks for its transactions again after a restart.",
 			_ => ToString()
@@ -106,6 +114,7 @@ public class WalletSynchronizer : BackgroundService
 	private readonly Action? _onSynchronizedFirst;
 	private readonly bool _watchMempool;
 	private readonly int _maxParallelBlockDownloads;
+	private readonly uint _fidelityBondSearchBlocks;
 
 	/// <summary>How many blocks are asked for at the same time at the moment. It starts with one and follows how fast the blocks arrive.</summary>
 	private int _parallelBlockDownloads = 1;
@@ -134,6 +143,10 @@ public class WalletSynchronizer : BackgroundService
 	/// Called once, when every block of the node is processed for the first time and before the mempool of the node is looked at.
 	/// </param>
 	/// <param name="watchMempool">Whether to look at the mempool of the node at all. Without it the wallet learns about transactions when they are confirmed.</param>
+	/// <param name="fidelityBondSearchBlocks">
+	/// How far above the chain a wallet that goes through the chain again looks for the unlock heights of its fidelity bonds.
+	/// It is as far as a bond can be locked for, unless a test has no time for that.
+	/// </param>
 	public WalletSynchronizer(
 		IRPCClient rpcClient,
 		KeyManager keyManager,
@@ -142,8 +155,10 @@ public class WalletSynchronizer : BackgroundService
 		EventBus eventBus,
 		Action? onSynchronizedFirst = null,
 		bool watchMempool = true,
-		int? maxParallelBlockDownloads = null)
+		int? maxParallelBlockDownloads = null,
+		uint fidelityBondSearchBlocks = FidelityBondKeys.MaxLockBlocks)
 	{
+		_fidelityBondSearchBlocks = fidelityBondSearchBlocks;
 		_rpcClient = rpcClient;
 		_keyManager = keyManager;
 		_transactionStore = transactionStore;
@@ -317,6 +332,8 @@ public class WalletSynchronizer : BackgroundService
 
 		if (walletHeight < nodeHeight)
 		{
+			await PrepareFidelityBondSearchAsync(nodeHeight, cancellationToken).ConfigureAwait(false);
+
 			try
 			{
 				await ProcessBlocksAsync(walletHeight, nodeHeight, info.Pruned, cancellationToken).ConfigureAwait(false);
@@ -348,12 +365,49 @@ public class WalletSynchronizer : BackgroundService
 			_onSynchronizedFirst?.Invoke();
 		}
 
+		// The wallet went through the chain: what there was to find of its fidelity bonds is found.
+		if (_keyManager.GetFidelityBondSearchStart() is not null && TryChangeProgress(_keyManager.EndFidelityBondSearch))
+		{
+			Logger.LogInfo($"Wallet: the search for fidelity bonds is over. The wallet watches the bond addresses of {_keyManager.FidelityBonds.KnownHeights.Count} unlock heights.");
+		}
+
 		SetStatus(new WalletSyncStatus.Synchronized(walletHeight));
 		AnnounceWalletHeight(walletHeight);
 		_initialSynchronizationFinished.TrySetResult();
 
 		var isMempoolBacklogLeft = _watchMempool && await ProcessMempoolAsync(cancellationToken).ConfigureAwait(false);
 		return isMempoolBacklogLeft ? TimeSpan.Zero : IdlePeriod;
+	}
+
+	/// <summary>
+	/// A wallet that goes through the chain again, after a recovery or for a resync, does not know the unlock heights of its
+	/// fidelity bonds. Before it processes blocks, it gets ready to recognize a bond of any height that it could have chosen:
+	/// from the first block that it goes through to as far above the chain as a bond can be locked for.
+	/// </summary>
+	private async Task PrepareFidelityBondSearchAsync(uint nodeHeight, CancellationToken cancellationToken)
+	{
+		if (_keyManager.GetFidelityBondSearchStart() is not { } start)
+		{
+			return;
+		}
+
+		var end = (uint)Math.Min((ulong)nodeHeight + _fidelityBondSearchBlocks, BondScript.MaxUnlockHeight);
+		var bonds = _keyManager.FidelityBonds;
+
+		// After the first time there are only the heights of the new blocks to add, which nobody notices.
+		if (bonds.IsSearching)
+		{
+			bonds.PrepareSearch(start, end, cancellationToken);
+			return;
+		}
+
+		var heights = end >= start ? end - start + 1 : 0;
+		Logger.LogInfo($"Wallet: preparing the search for fidelity bonds at the {heights} unlock heights from {start} to {end}.");
+		SetStatus(new WalletSyncStatus.PreparingBondSearch(heights));
+
+		var stopwatch = Stopwatch.StartNew();
+		await Task.Run(() => bonds.PrepareSearch(start, end, cancellationToken), cancellationToken).ConfigureAwait(false);
+		Logger.LogInfo($"Wallet: the search for fidelity bonds was prepared in {stopwatch.Elapsed.TotalSeconds:0.0} seconds.");
 	}
 
 	/// <summary>

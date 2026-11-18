@@ -46,7 +46,7 @@
       </PreviewItem>
 
       <TextBlock TextWrapping="Wrap" Opacity="0.8"
-                 Text="What you lock here cannot be spent before that date. If you lock all of the picked coins, the mining fee is taken from the bond." />
+                 Text="What you lock here cannot be spent before that block. If you lock all of the picked coins, the mining fee is taken from the bond." />
     </StackPanel>
   </ContentArea>
 </UserControl>

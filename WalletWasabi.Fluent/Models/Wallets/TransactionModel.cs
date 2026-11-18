@@ -23,9 +23,16 @@ public abstract partial class TransactionModel : ReactiveObject
 
 	public bool IsChild { get; set; }
 
+	/// <summary>How the transaction changed what the wallet owns, its coins and the coins in its fidelity bonds together.</summary>
 	public required Money Amount { get; init; }
 
 	public Amount AmountAmount => new (Amount);
+
+	/// <summary>The coins that the transaction puts into fidelity bonds of the wallet.</summary>
+	public Money LockedInBonds { get; init; } = Money.Zero;
+
+	/// <summary>What the fidelity bonds of the wallet held that the transaction redeems.</summary>
+	public Money UnlockedFromBonds { get; init; } = Money.Zero;
 
 	public bool IsConfirmed => Status == TransactionStatus.Confirmed;
 

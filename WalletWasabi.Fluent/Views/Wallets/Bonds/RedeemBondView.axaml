@@ -6,7 +6,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.RedeemBondView">
   <ContentArea Title="{Binding Title}"
-               Caption="The timelock of the bond is over. Its coins go back to the wallet, to a new address of it."
+               Caption="The chain has reached the unlock height of the bond. Its coins go back to the wallet, to a new address of it."
                EnableBack="{Binding EnableBack}"
                EnableCancel="{Binding EnableCancel}"
                EnableNext="True" NextContent="Redeem"
@@ -20,8 +20,8 @@
 
       <Separator />
 
-      <PreviewItem Icon="{StaticResource timer_regular}" Label="Unlocked since">
-        <TextBlock Text="{Binding UnlockDate}" />
+      <PreviewItem Icon="{StaticResource timer_regular}" Label="Unlocked since block">
+        <TextBlock Text="{Binding UnlockHeight}" />
       </PreviewItem>
 
       <Separator />

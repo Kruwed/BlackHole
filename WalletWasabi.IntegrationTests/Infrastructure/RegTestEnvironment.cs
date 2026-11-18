@@ -37,7 +37,10 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 		EventBus = eventBus;
 		TransactionStore = transactionStore;
 		CpfpInfoProvider = cpfpInfoProvider;
-		ServiceConfiguration = new ServiceConfiguration();
+
+		// A wallet that goes through the chain again looks for fidelity bonds ten years ahead, which takes most of a minute
+		// to prepare. The tests look this far.
+		ServiceConfiguration = new ServiceConfiguration { FidelityBondSearchBlocks = FidelityBondSearchBlocks };
 		_tipHeightAtCreation = tipHeightAtCreation;
 	}
 
@@ -56,6 +59,9 @@ public sealed class RegTestEnvironment : IAsyncDisposable
 	public CoreNode BitcoinCoreNode => Fixture.BitcoinCoreNode;
 
 	public const string DefaultPassword = "password";
+
+	/// <summary>How far above the chain a recovered wallet of the tests looks for the unlock heights of its fidelity bonds.</summary>
+	public const uint FidelityBondSearchBlocks = 1_000;
 
 	/// <summary>
 	/// Creates and initializes a new test environment.

@@ -113,7 +113,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 		ReceiveCommand = ReactiveCommand.Create(() => Navigate().To().Receive(WalletModel));
 
-		// The fidelity bonds: coins that are locked until a date.
+		// The fidelity bonds: coins that are locked until the chain reaches a block height.
 		BondCommand = ReactiveCommand.Create(() => Navigate().To().Bonds(walletModel, wallet));
 
 		WalletInfoCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -204,7 +204,7 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	private IEnumerable<ActivatableViewModel> GetTiles()
 	{
-		yield return new WalletBalanceTileViewModel(UiContext, WalletModel.Balances);
+		yield return new WalletBalanceTileViewModel(UiContext, WalletModel.Balances, WalletModel.BondBalances);
 
 		yield return new PrivacyControlTileViewModel(UiContext, WalletModel);
 

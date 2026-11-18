@@ -34,8 +34,13 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletTransactionsModel Transactions { get; }
 
+	/// <summary>What the wallet owns: its coins and the coins that are locked in its fidelity bonds.</summary>
 	IObservable<Amount> Balances { get; }
 
+	/// <summary>The part of <see cref="Balances"/> that is locked in fidelity bonds.</summary>
+	IObservable<Amount> BondBalances { get; }
+
+	/// <summary>Whether the wallet has coins to spend. What is locked in fidelity bonds does not count.</summary>
 	IObservable<bool> HasBalance { get; }
 
 	WalletCoinsModel Coins { get; }
@@ -50,7 +55,7 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletCoinjoinModel? Coinjoin { get; }
 
-	/// <summary>The fidelity bonds of the wallet: coins that are locked until a date.</summary>
+	/// <summary>The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height.</summary>
 	WalletBondsModel Bonds { get; }
 
 	IObservable<bool> Loaded { get; }
@@ -116,11 +121,13 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 
 		Privacy = new WalletPrivacyModel(this, Wallet);
 
-		Balances = Transactions.TransactionProcessed
-			.Select(_ => Wallet.Coins.TotalAmount())
-			.Select(x => new Amount(x));
+		// The coins in the fidelity bonds of the wallet are the wallet's too, though it cannot spend them for the time being.
+		var owned = Transactions.TransactionProcessed
+			.Select(_ => (Coins: Wallet.Coins.TotalAmount(), Bonds: Wallet.GetFidelityBondBalance()));
 
-		HasBalance = Balances.Select(x => x.HasBalance);
+		Balances = owned.Select(x => new Amount(x.Coins + x.Bonds));
+		BondBalances = owned.Select(x => new Amount(x.Bonds));
+		HasBalance = owned.Select(x => x.Coins != Money.Zero);
 
 		// Start the Loader after wallet is logged in
 		this.WhenAnyValue(x => x.Auth.IsLoggedIn)
@@ -155,6 +162,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletTransactionsModel Transactions { get; }
 
 	public IObservable<Amount> Balances { get; }
+
+	public IObservable<Amount> BondBalances { get; }
 
 	public IObservable<bool> HasBalance { get; }
 

@@ -37,6 +37,9 @@ public class AllTransactionStore : ITransactionStore, IDisposable
 	public TransactionStore ConfirmedStore { get; }
 	private readonly Lock _lock = new();
 
+	/// <summary>Counts the changes of the two stores, see <see cref="TransactionStore.Version"/>.</summary>
+	public long Version => MempoolStore.Version + ConfirmedStore.Version;
+
 	public async Task InitializeAsync(CancellationToken cancellationToken = default)
 	{
 		var initTasks = new[]

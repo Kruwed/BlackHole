@@ -125,6 +125,8 @@ public class TransactionTreeBuilder
 		{
 			Id = transactionSummary.GetHash(),
 			Amount = transactionSummary.Amount,
+			LockedInBonds = transactionSummary.LockedInBonds,
+			UnlockedFromBonds = transactionSummary.UnlockedFromBonds,
 			HasBeenSpedUp = transactionSummary.IsSpeedup,
 			OrderIndex = index,
 			Date = date,
@@ -154,6 +156,8 @@ public class TransactionTreeBuilder
 		{
 			Id = transactionSummary.GetHash(),
 			Amount = parent.Amount,
+			LockedInBonds = parent.LockedInBonds,
+			UnlockedFromBonds = parent.UnlockedFromBonds,
 			OrderIndex = parent.OrderIndex,
 			Date = parent.Date.ToLocalTime(),
 			DateString = parent.DateString,
@@ -263,30 +267,60 @@ public class TransactionTreeBuilder
 		};
 	}
 
-	private TransactionType GetItemType(TransactionSummary transactionSummary)
+	private TransactionType GetItemType(TransactionSummary transactionSummary) =>
+		GetItemType(
+			transactionSummary.Amount,
+			transactionSummary.GetFee(),
+			transactionSummary.IsCancellation,
+			transactionSummary.IsCPFP,
+			transactionSummary.LockedInBonds,
+			transactionSummary.UnlockedFromBonds);
+
+	/// <summary>Tells what kind of transaction it is to the wallet, by what it did to it.</summary>
+	/// <param name="amount">How the transaction changed what the wallet owns.</param>
+	/// <param name="lockedInBonds">The coins that the transaction puts into fidelity bonds of the wallet.</param>
+	/// <param name="unlockedFromBonds">What the fidelity bonds of the wallet held that the transaction redeems.</param>
+	public static TransactionType GetItemType(Money amount, Money? fee, bool isCancellation, bool isCpfp, Money lockedInBonds, Money unlockedFromBonds)
 	{
-		var isSelfSpend = transactionSummary.Amount == -(transactionSummary.GetFee() ?? Money.Zero);
-		if (!transactionSummary.IsCancellation && !transactionSummary.IsCPFP && isSelfSpend)
+		// Coins that go into a bond of the wallet or come out of one are the wallet's before and after. That is neither
+		// a payment nor a transfer from the wallet to itself, wherever the coins came from or went to.
+		if (lockedInBonds > Money.Zero)
+		{
+			return TransactionType.Lock;
+		}
+
+		if (unlockedFromBonds > Money.Zero)
+		{
+			return TransactionType.Unlock;
+		}
+
+		return GetItemType(amount, fee, isCancellation, isCpfp);
+	}
+
+	private static TransactionType GetItemType(Money amount, Money? fee, bool isCancellation, bool isCpfp)
+	{
+		var isSelfSpend = amount == -(fee ?? Money.Zero);
+		if (!isCancellation && !isCpfp && isSelfSpend)
 		{
 			return TransactionType.SelfTransferTransaction;
 		}
 
-		if (!transactionSummary.IsCPFP && transactionSummary.Amount > Money.Zero)
+		if (!isCpfp && amount > Money.Zero)
 		{
 			return TransactionType.IncomingTransaction;
 		}
 
-		if (!transactionSummary.IsCPFP && !transactionSummary.IsCancellation && transactionSummary.Amount < Money.Zero)
+		if (!isCpfp && !isCancellation && amount < Money.Zero)
 		{
 			return TransactionType.OutgoingTransaction;
 		}
 
-		if (transactionSummary.IsCancellation)
+		if (isCancellation)
 		{
 			return TransactionType.Cancellation;
 		}
 
-		if (transactionSummary.IsCPFP)
+		if (isCpfp)
 		{
 			return TransactionType.CPFP;
 		}

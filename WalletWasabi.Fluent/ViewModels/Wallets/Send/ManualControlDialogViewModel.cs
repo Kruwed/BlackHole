@@ -5,7 +5,6 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Windows.Input;
 using WalletWasabi.Blockchain.TransactionOutputs;
-using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
@@ -21,12 +20,12 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 
 	private readonly IWalletModel _walletModel;
 	private readonly Wallet _wallet;
-	private readonly BondLocktime? _bondLocktime;
+	private readonly uint? _bondUnlockHeight;
 
-	/// <param name="bondLocktime">The month that the coins are locked until, if they are picked for a fidelity bond and not for a payment.</param>
-	public ManualControlDialogViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, BondLocktime? bondLocktime = null) : base(uiContext)
+	/// <param name="bondUnlockHeight">The block height that the coins are locked until, if they are picked for a fidelity bond and not for a payment.</param>
+	public ManualControlDialogViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, uint? bondUnlockHeight = null) : base(uiContext)
 	{
-		_bondLocktime = bondLocktime;
+		_bondUnlockHeight = bondUnlockHeight;
 
 		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, allowSelection: true);
 
@@ -48,8 +47,8 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 
 		SetupCancel(true, true, true);
 
-		// The coins of a payment are the first thing to pick. The coins of a bond come after its month, and the way back there is open.
-		EnableBack = bondLocktime is not null;
+		// The coins of a payment are the first thing to pick. The coins of a bond come after its unlock height, and the way back there is open.
+		EnableBack = bondUnlockHeight is not null;
 
 		_walletModel = walletModel;
 		_wallet = wallet;
@@ -57,7 +56,7 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 
 	public CoinListViewModel CoinList { get; }
 
-	public string Caption => _bondLocktime is null
+	public string Caption => _bondUnlockHeight is null
 		? "Select the coins that the transaction may spend"
 		: "Select the coins to lock in the fidelity bond";
 
@@ -87,9 +86,9 @@ public partial class ManualControlDialogViewModel : DialogViewModelBase<IEnumera
 	{
 		var coins = CoinList.Selection.GetSmartCoins().ToList();
 
-		var sendParameters = new SendFlowModel(_wallet, _walletModel, coins, UiContext.Services) { BondLocktime = _bondLocktime };
+		var sendParameters = new SendFlowModel(_wallet, _walletModel, coins, UiContext.Services) { BondUnlockHeight = _bondUnlockHeight };
 
-		if (_bondLocktime is not null)
+		if (_bondUnlockHeight is not null)
 		{
 			Navigate().To().BondAmount(_walletModel, sendParameters);
 		}

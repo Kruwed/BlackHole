@@ -3,15 +3,16 @@ using WalletWasabi.Blockchain.Transactions;
 namespace WalletWasabi.FidelityBonds;
 
 /// <summary>
-/// An output that pays to a bond script of the wallet: coins that are locked until a date.
+/// An output that pays to a bond script of the wallet: coins that are locked until the chain reaches a block height.
 /// </summary>
 /// <remarks>
-/// A bond is not a coin of the wallet. It is not part of the balance and no transaction or coinjoin of the wallet spends
-/// it, except the one that redeems it after its locktime.
+/// The coins of a bond belong to the wallet and count for its balance, but a bond is not one of its coins: no payment
+/// and no coinjoin spends it. Only the transaction that redeems it does, once the chain has reached the unlock height.
 /// </remarks>
+/// <param name="UnlockHeight">The height that the chain must have reached before the bond can be spent.</param>
 /// <param name="Transaction">The transaction that created the bond.</param>
 /// <param name="SpenderTransaction">The transaction that redeemed the bond, if there is one.</param>
-public record FidelityBond(OutPoint OutPoint, Money Amount, BondLocktime Locktime, SmartTransaction Transaction, SmartTransaction? SpenderTransaction)
+public record FidelityBond(OutPoint OutPoint, Money Amount, uint UnlockHeight, SmartTransaction Transaction, SmartTransaction? SpenderTransaction)
 {
 	public TxOut TxOut => Transaction.Transaction.Outputs[OutPoint.N];
 
@@ -22,11 +23,12 @@ public record FidelityBond(OutPoint OutPoint, Money Amount, BondLocktime Locktim
 	public bool IsSpent => SpenderTransaction is not null;
 
 	/// <summary>
-	/// Tells if the timelock of the bond is over. The chain decides that by the median time of its last eleven blocks, which
-	/// is about an hour behind the clock: a transaction that spends the bond is valid once that time is past the locktime.
+	/// Tells if the timelock of the bond is over: the chain has reached the unlock height. The transaction that spends the
+	/// bond is valid in the next block then, so the node takes it.
 	/// </summary>
-	public bool IsUnlocked(DateTimeOffset medianTimePast) => Locktime.Date < medianTimePast;
+	/// <param name="chainHeight">The height of the last block of the chain.</param>
+	public bool IsUnlocked(uint chainHeight) => chainHeight >= UnlockHeight;
 
 	/// <summary>Tells if the bond can be redeemed now.</summary>
-	public bool IsRedeemable(DateTimeOffset medianTimePast) => IsConfirmed && !IsSpent && IsUnlocked(medianTimePast);
+	public bool IsRedeemable(uint chainHeight) => IsConfirmed && !IsSpent && IsUnlocked(chainHeight);
 }

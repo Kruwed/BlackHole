@@ -65,7 +65,11 @@ public static class NotificationHelpers
 			Money miningFee = result.Transaction.Transaction.GetFee(result.SpentCoins.Select(x => (ICoin)x.Coin).ToArray()) ?? Money.Zero;
 			bool isAccelerator = result.Transaction.IsCPFP;
 
-			if (isReceived || isSpent)
+			if (DescribeBondTransaction(result.LockedInBonds, result.UnlockedFromBonds, isNew: isReceived || isSpent, isConfirmation: isConfirmedReceive || isConfirmedSpent) is { } bondMessage)
+			{
+				message = bondMessage;
+			}
+			else if (isReceived || isSpent)
 			{
 				Money receivedSum = result.NewlyReceivedCoins.Sum(x => x.Amount);
 				Money spentSum = result.NewlySpentCoins.Sum(x => x.Amount);
@@ -120,5 +124,34 @@ public static class NotificationHelpers
 		}
 
 		return message is { };
+	}
+
+	/// <summary>
+	/// What to tell about a transaction that puts coins into a fidelity bond of the wallet or takes them out of one. Those
+	/// coins are neither sent nor received: they are the wallet's before and after. Null for any other transaction.
+	/// </summary>
+	/// <param name="isNew">The wallet sees the transaction for the first time.</param>
+	/// <param name="isConfirmation">The wallet knew the transaction, and now it is confirmed.</param>
+	public static string? DescribeBondTransaction(Money lockedInBonds, Money unlockedFromBonds, bool isNew, bool isConfirmation)
+	{
+		var isLock = lockedInBonds > Money.Zero;
+
+		if (!isLock && unlockedFromBonds <= Money.Zero)
+		{
+			return null;
+		}
+
+		var amount = (isLock ? lockedInBonds : unlockedFromBonds).ToFormattedString();
+
+		return (isLock, isNew, isConfirmation) switch
+		{
+			(true, true, _) => $"{amount} BTC locked in a fidelity bond",
+			(false, true, _) => $"{amount} BTC unlocked from a fidelity bond",
+			(true, false, true) => $"Locking {amount} BTC in a fidelity bond has been confirmed",
+			(false, false, true) => $"Unlocking {amount} BTC from a fidelity bond has been confirmed",
+
+			// Nothing new about the coins of the wallet: nothing to tell.
+			_ => null
+		};
 	}
 }

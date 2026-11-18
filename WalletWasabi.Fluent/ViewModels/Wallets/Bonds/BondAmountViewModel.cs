@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
 using WalletWasabi.Blockchain.TransactionBuilding;
-using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
@@ -24,22 +23,22 @@ public partial class BondAmountViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _walletModel;
 	private readonly SendFlowModel _parameters;
-	private readonly BondLocktime _locktime;
+	private readonly uint _unlockHeight;
 	private readonly CoinJoinManager? _coinJoinManager;
 
 	[AutoNotify] private decimal? _amountBtc;
 
-	/// <param name="parameters">The coins that the user picked, and the month that they are locked until.</param>
+	/// <param name="parameters">The coins that the user picked, and the block height that they are locked until.</param>
 	public BondAmountViewModel(UiContext uiContext, IWalletModel walletModel, SendFlowModel parameters) : base(uiContext)
 	{
 		_walletModel = walletModel;
 		_parameters = parameters;
-		_locktime = parameters.BondLocktime ?? throw new ArgumentException("The month that the coins are locked until is missing.", nameof(parameters));
+		_unlockHeight = parameters.BondUnlockHeight ?? throw new ArgumentException("The block height that the coins are locked until is missing.", nameof(parameters));
 		_coinJoinManager = UiContext.Services.GetHostedService<CoinJoinManager>();
 
 		Balance = new Amount(parameters.AvailableAmount);
-		Address = walletModel.Bonds.GetAddress(_locktime).ToString();
-		UnlockText = CreateBondViewModel.DescribeLock(_locktime, DateTimeOffset.UtcNow);
+		Address = walletModel.Bonds.GetAddress(_unlockHeight).ToString();
+		UnlockText = CreateBondViewModel.DescribeLock(walletModel, _unlockHeight);
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
 		EnableBack = true;
@@ -90,7 +89,7 @@ public partial class BondAmountViewModel : RoutableViewModel
 		}
 
 		var amount = new Money(amountBtc, MoneyUnit.BTC);
-		var destination = new Destination.Loudly(_walletModel.Bonds.GetAddress(_locktime).ScriptPubKey);
+		var destination = new Destination.Loudly(_walletModel.Bonds.GetAddress(_unlockHeight).ScriptPubKey);
 
 		var transactionInfo = new TransactionInfo(destination, _walletModel.Settings.AnonScoreTarget)
 		{

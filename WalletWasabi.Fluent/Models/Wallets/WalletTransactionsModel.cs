@@ -39,6 +39,8 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 		// signal: while the wallet is processing blocks, what changes during the first reading must not be missed.
 		TransactionProcessed =
 			services.EventBus.AsObservable<WalletRelevantTransactionProcessed>().ToSignal()
+				// A transaction that pays to a fidelity bond of the wallet from elsewhere is no news about its coins, but it is one of its history and of its balance.
+				.Merge(services.EventBus.AsObservable<FidelityBondTransactionProcessed>().ToSignal())
 				// A new block changes the confirmations of the transactions.
 				.Merge(services.EventBus.AsObservable<ClientTipHeightChanged>().ToSignal())
 				.Sample(TimeSpan.FromSeconds(1))

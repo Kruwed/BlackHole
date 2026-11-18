@@ -37,7 +37,9 @@
                 Classes.Cancellation="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Cancellation}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
                 Classes.CoinjoinGroup="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CoinjoinGroup}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
                 Classes.CPFP="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.CPFP}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                Classes.SelfTransfer="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.SelfTransferTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+                Classes.SelfTransfer="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.SelfTransferTransaction}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.Lock="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Lock}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
+                Classes.Unlock="{Binding Transaction.Type, ConverterParameter={x:Static model:TransactionType.Unlock}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
         <PathIcon.Styles>
           <Style Selector="PathIcon.IncomingTransaction">
             <Setter Property="Data" Value="{StaticResource wallet_action_receive}" />
@@ -72,6 +74,17 @@
             <Setter Property="Data" Value="{StaticResource rocket_bolt}" />
             <Setter Property="Height" Value="14" />
             <Setter Property="ToolTip.Tip" Value="Accelerator" />
+          </Style>
+          <!-- Coins that went into a fidelity bond, and coins that came out of one. The two padlocks are drawn at the same scale. -->
+          <Style Selector="PathIcon.Lock">
+            <Setter Property="Data" Value="{StaticResource wallet_action_bond}" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="ToolTip.Tip" Value="Lock" />
+          </Style>
+          <Style Selector="PathIcon.Unlock">
+            <Setter Property="Data" Value="{StaticResource wallet_action_unbond}" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="ToolTip.Tip" Value="Unlock" />
           </Style>
         </PathIcon.Styles>
       </PathIcon>

@@ -29,6 +29,12 @@ public class ProcessedResult
 	/// </summary>
 	public bool ConcernsFidelityBonds { get; set; }
 
+	/// <summary>The coins that the transaction puts into fidelity bonds of the wallet.</summary>
+	public Money LockedInBonds { get; set; } = Money.Zero;
+
+	/// <summary>What the fidelity bonds of the wallet held that the transaction spends.</summary>
+	public Money UnlockedFromBonds { get; set; } = Money.Zero;
+
 	/// <summary>Gets the coins we received in this transaction.</summary>
 	public List<SmartCoin> ReceivedCoins { get; } = new();
 

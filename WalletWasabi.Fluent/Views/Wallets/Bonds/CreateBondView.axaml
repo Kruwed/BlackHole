@@ -5,28 +5,29 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.CreateBondView">
   <ContentArea Title="{Binding Title}"
-               Caption="Choose the month that the coins are locked until. Then pick the coins."
+               Caption="Name the block height that the coins are locked until. Then pick the coins."
                EnableBack="{Binding EnableBack}"
                EnableCancel="{Binding EnableCancel}"
                EnableNext="True" NextContent="Continue"
                ScrollViewer.VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="18" Margin="0 0 20 0">
 
-      <!-- The bond unlocks at the start of a month, so a year and a month are all there is to choose. The year comes
-           first: it decides which months are left. -->
+      <!-- The bond unlocks when the chain has reached this height, whenever that is. -->
       <DockPanel>
-        <TextBlock Text="Locked until the start of" VerticalAlignment="Center" />
-        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-          <ComboBox Name="YearBox" Width="110" PlaceholderText="Year"
-                    ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear}" />
-          <ComboBox Name="MonthBox" Width="170" PlaceholderText="Month"
-                    IsEnabled="{Binding SelectedYear, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    ItemsSource="{Binding Months}" SelectedItem="{Binding SelectedMonth}" />
+        <Label DockPanel.Dock="Left" Content="_Unlock height:" Target="HeightBox" MinWidth="120" VerticalAlignment="Top" Margin="0 8 0 0" />
+        <StackPanel Spacing="6">
+          <TextBox Name="HeightBox" Text="{Binding UnlockHeightText}" Watermark="Block height" MaxLength="12" Width="380" HorizontalAlignment="Left">
+            <Interaction.Behaviors>
+              <FocusOnAttachedBehavior />
+            </Interaction.Behaviors>
+          </TextBox>
+          <TextBlock Text="{Binding ChainText}" Opacity="0.6" TextWrapping="Wrap" />
         </StackPanel>
       </DockPanel>
 
-      <TextBlock Text="{Binding UnlockText}" TextWrapping="Wrap"
-                 IsVisible="{Binding UnlockText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <!-- The day that the chain is expected to get there. -->
+      <TextBlock Text="{Binding LockText}" TextWrapping="Wrap"
+                 IsVisible="{Binding LockText, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <PreviewItem Icon="{StaticResource transceive_regular}"
                    Label="Address of the bond"
@@ -38,7 +39,8 @@
       <Separator />
 
       <StackPanel Spacing="8" Opacity="0.8">
-        <TextBlock TextWrapping="Wrap" Text="• Coins in a bond cannot be spent before that date. There is no way to undo it." />
+        <TextBlock TextWrapping="Wrap" Text="• Coins in a bond cannot be spent before the chain has reached that height. There is no way to undo it." />
+        <TextBlock TextWrapping="Wrap" Text="• The date is an estimation. Blocks come every ten minutes on average, sometimes faster and sometimes slower." />
         <TextBlock TextWrapping="Wrap" Text="• Every payment to the address is a bond of its own. Pay to it once: several small bonds count for less than one." />
         <TextBlock TextWrapping="Wrap" Text="• The recovery words of the wallet restore its bonds too." />
         <TextBlock TextWrapping="Wrap" Text="• A bond that is shown to others is public, and with it the history of the coins that it holds." />

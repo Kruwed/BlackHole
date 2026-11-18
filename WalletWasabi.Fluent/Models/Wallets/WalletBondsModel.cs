@@ -3,15 +3,14 @@ using System.Linq;
 using System.Numerics;
 using System.Reactive;
 using System.Reactive.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Extensions;
+using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
-using WalletWasabi.Logging;
+using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.Wallets;
 
@@ -23,10 +22,10 @@ public enum FidelityBondState
 	/// <summary>The transaction that pays to the bond is not confirmed yet.</summary>
 	Unconfirmed,
 
-	/// <summary>The coins are locked: the locktime is not over, or the node does not tell the time of the chain.</summary>
+	/// <summary>The coins are locked: the chain did not reach the unlock height, or the node does not tell how far the chain is.</summary>
 	Locked,
 
-	/// <summary>The locktime is over. The bond can be redeemed.</summary>
+	/// <summary>The chain reached the unlock height. The bond can be redeemed.</summary>
 	Unlocked,
 
 	/// <summary>The transaction that redeems the bond is not confirmed yet.</summary>
@@ -39,20 +38,17 @@ public enum FidelityBondState
 public record FidelityBondModel(FidelityBond Bond, BitcoinAddress Address, FidelityBondState State, BigInteger? Value);
 
 /// <summary>The bonds of the wallet at one moment.</summary>
-/// <param name="ChainTime">The time of the chain that the states of the bonds were told by, if the node told it.</param>
-public record FidelityBondsModel(IReadOnlyList<FidelityBondModel> Bonds, DateTimeOffset? ChainTime);
+/// <param name="ChainHeight">The height of the chain that the states of the bonds were told by, if the node told it.</param>
+public record FidelityBondsModel(IReadOnlyList<FidelityBondModel> Bonds, uint? ChainHeight);
 
 /// <summary>
-/// The fidelity bonds of the wallet: coins that are locked until a date.
+/// The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height.
 /// </summary>
 [AppLifetime]
 public class WalletBondsModel
 {
-	/// <summary>
-	/// The longest that the wallet offers to lock coins for, ten years. A bond cannot be undone, so the wallet does not
-	/// offer every date that the scheme of the bonds knows: that goes to the end of 2099.
-	/// </summary>
-	public const int MaxLockMonths = 120;
+	/// <summary>The furthest ahead that coins can be locked: the blocks of ten years.</summary>
+	public const uint MaxLockBlocks = FidelityBondKeys.MaxLockBlocks;
 
 	private readonly IServices _services;
 	private readonly Wallet _wallet;
@@ -62,12 +58,12 @@ public class WalletBondsModel
 		_services = services;
 		_wallet = wallet;
 
-		// A transaction that concerns a bond, and every new block: it confirms and it moves the time of the chain. The node
-		// is asked about itself far more often than it has anything new to tell.
+		// A transaction that concerns a bond, and every new block: it confirms and it brings the unlock heights nearer.
+		// The node is asked about itself far more often than it has anything new to tell.
 		Changed = Observable.Merge(
 			services.EventBus.AsObservable<FidelityBondTransactionProcessed>().ToSignal(),
 			services.EventBus.AsObservable<RpcStatusChanged>()
-				.Select(e => e.Status.Match(node => (BestBlock: (uint256?)node.BestBlockHash, Time: (DateTimeOffset?)node.MedianTimePast), _ => (null, null)))
+				.Select(e => e.Status.Match(node => ((ulong?)node.Blocks, (ulong?)node.Headers), _ => (null, null)))
 				.DistinctUntilChanged()
 				.ToSignal());
 	}
@@ -76,94 +72,92 @@ public class WalletBondsModel
 	public IObservable<Unit> Changed { get; }
 
 	/// <summary>
-	/// The time of the chain: the median time of its last blocks, as the node tells it. A timelock is over when this time
-	/// is past it, which is about an hour later than by the clock. Null as long as the node did not answer.
+	/// The height of the last block that the node has. A bond can be redeemed when it is not below the unlock height: the
+	/// node takes the transaction then. Null as long as the node did not answer.
 	/// </summary>
-	public DateTimeOffset? ChainTime => _services.GetNodeStatus()?.MedianTimePast;
+	public uint? NodeHeight => _services.GetNodeStatus() is { } node ? (uint)node.Blocks : null;
+
+	/// <summary>
+	/// The height of the chain as far as the node knows of it, which is further than <see cref="NodeHeight"/> while the node
+	/// is still downloading blocks. A new bond unlocks above it. Null as long as the node did not answer.
+	/// </summary>
+	public uint? ChainHeight => _services.GetNodeStatus() is { } node ? (uint)Math.Max(node.Blocks, node.Headers) : null;
 
 	/// <summary>What the node estimated the last time for the fee rates that confirm a transaction within so many blocks, if it did.</summary>
 	public FeeRateEstimations? FeeRateEstimations => _wallet.FeeRateEstimations;
 
-	/// <summary>The months that coins can be locked until, the nearest one first.</summary>
-	public IReadOnlyList<BondLocktime> GetSelectableLocktimes() => GetSelectableLocktimes(DateTimeOffset.UtcNow, ChainTime);
-
-	/// <summary>Tells if coins can be locked until the month now: it is ahead, and not further than the wallet offers.</summary>
-	public bool IsSelectable(BondLocktime locktime) => GetSelectableLocktimes().Contains(locktime);
-
-	/// <summary>The months that coins can be locked until, the nearest one first.</summary>
-	/// <param name="clock">The time by the clock of the computer.</param>
-	/// <param name="chainTime">The time of the chain, if the node told it.</param>
-	public static IReadOnlyList<BondLocktime> GetSelectableLocktimes(DateTimeOffset clock, DateTimeOffset? chainTime)
+	/// <summary>Tells why coins cannot be locked until the height, or null if they can.</summary>
+	/// <param name="chainHeight">The height of the last block of the chain.</param>
+	public static string? ValidateUnlockHeight(uint unlockHeight, uint chainHeight)
 	{
-		// A clock that is behind the chain does not make a date selectable that the chain is past already.
-		var now = chainTime is { } time && time > clock ? time : clock;
+		if (unlockHeight <= chainHeight)
+		{
+			return $"The chain is at block {BlockHeightText.Format(chainHeight)} already. Name a block that is still to come.";
+		}
 
-		return BondLocktime.FirstAfter(now) is { } first
-			? Enumerable.Range(first.Index, MaxLockMonths).TakeWhile(index => index < BondLocktime.Count).Select(BondLocktime.FromIndex).ToList()
-			: [];
+		if (unlockHeight - chainHeight > MaxLockBlocks)
+		{
+			return $"The furthest is block {BlockHeightText.Format(chainHeight + MaxLockBlocks)}, about ten years from now.";
+		}
+
+		return null;
 	}
 
+	/// <summary>Tells if coins can be locked until the height now: it is ahead of the chain, and not further than the wallet allows.</summary>
+	public bool CanLockUntil(uint unlockHeight) => ChainHeight is { } chainHeight && ValidateUnlockHeight(unlockHeight, chainHeight) is null;
+
+	/// <summary>
+	/// The address that locks what is paid to it until the chain reaches the height. The wallet watches the address from
+	/// now on, and the wallet file remembers it: this is to be called before the address is shown to anyone.
+	/// </summary>
+	public BitcoinAddress GetAddress(uint unlockHeight) => _wallet.KeyManager.GetFidelityBondAddress(unlockHeight);
+
 	/// <summary>Tells where a bond stands.</summary>
-	/// <param name="chainTime">The time of the chain, if the node told it. Without it a bond counts as locked.</param>
-	public static FidelityBondState GetState(FidelityBond bond, DateTimeOffset? chainTime) =>
+	/// <param name="nodeHeight">The height of the last block that the node has, if it told. Without it a bond counts as locked.</param>
+	public static FidelityBondState GetState(FidelityBond bond, uint? nodeHeight) =>
 		bond switch
 		{
 			{ SpenderTransaction.Confirmed: true } => FidelityBondState.Redeemed,
 			{ IsSpent: true } => FidelityBondState.Redeeming,
 			{ IsConfirmed: false } => FidelityBondState.Unconfirmed,
-			_ when chainTime is { } time && bond.IsUnlocked(time) => FidelityBondState.Unlocked,
+			_ when nodeHeight is { } height && bond.IsUnlocked(height) => FidelityBondState.Unlocked,
 			_ => FidelityBondState.Locked
 		};
 
-	/// <summary>The address that locks what is paid to it until the given month.</summary>
-	public BitcoinAddress GetAddress(BondLocktime locktime) => _wallet.KeyManager.FidelityBonds.GetAddress(locktime, _wallet.Network);
+	/// <summary>
+	/// What a bond counts for at the given height of the chain, if it is confirmed and not spent. Null otherwise.
+	/// </summary>
+	public static BigInteger? GetValue(FidelityBond bond, uint? nodeHeight) =>
+		!bond.IsSpent && nodeHeight is { } currentHeight && bond.Transaction.Height is Height.ChainHeight(var confirmationHeight)
+			? BondValue.Calculate(bond.Amount, confirmationHeight, bond.UnlockHeight, currentHeight)
+			: null;
 
 	/// <summary>The bonds of the wallet, the redeemed ones included.</summary>
-	public async Task<FidelityBondsModel> GetBondsAsync(CancellationToken cancellationToken)
+	public FidelityBondsModel GetBonds()
 	{
-		var chainTime = ChainTime;
-		var bonds = new List<FidelityBondModel>();
+		var nodeHeight = NodeHeight;
+		var network = _wallet.Network;
 
-		foreach (var bond in _wallet.GetFidelityBonds())
-		{
-			bonds.Add(new FidelityBondModel(bond, GetAddress(bond.Locktime), GetState(bond, chainTime), await GetValueAsync(bond, cancellationToken)));
-		}
+		var bonds = _wallet.GetFidelityBonds()
+			.Select(bond => new FidelityBondModel(
+				bond,
+				_wallet.KeyManager.FidelityBonds.GetAddress(bond.UnlockHeight, network),
+				GetState(bond, nodeHeight),
+				GetValue(bond, nodeHeight)))
+			.ToList();
 
-		return new FidelityBondsModel(bonds, chainTime);
+		return new FidelityBondsModel(bonds, nodeHeight);
 	}
 
 	/// <summary>
-	/// Builds the transaction that pays a bond whose locktime is over back to the wallet.
+	/// Builds the transaction that pays a bond whose timelock is over back to the wallet.
 	/// </summary>
 	/// <exception cref="InvalidOperationException">The bond cannot be redeemed, at least not now or not at this fee rate.</exception>
 	public SmartTransaction BuildRedemption(FidelityBond bond, FeeRate feeRate)
 	{
-		var chainTime = ChainTime
-			?? throw new InvalidOperationException("The Bitcoin node does not answer. Without it there is no telling whether the timelock of the bond is over.");
+		var nodeHeight = NodeHeight
+			?? throw new InvalidOperationException("The Bitcoin node does not answer. Without it there is no telling whether the chain has reached the unlock height of the bond.");
 
-		return _wallet.BuildFidelityBondRedemption(bond, _wallet.Password, feeRate, chainTime);
-	}
-
-	/// <summary>
-	/// The value of a bond that is confirmed and not spent. It needs the time of the block that confirmed the bond, which
-	/// the node tells. The other end is the clock, as it is for everyone who compares bonds.
-	/// </summary>
-	private async Task<BigInteger?> GetValueAsync(FidelityBond bond, CancellationToken cancellationToken)
-	{
-		if (bond.IsSpent || bond.Transaction.BlockHash is not { } blockHash)
-		{
-			return null;
-		}
-
-		try
-		{
-			var confirmationTime = await _wallet.GetBlockTimeAsync(blockHash, cancellationToken);
-			return BondValue.Calculate(bond.Amount, confirmationTime, bond.Locktime, DateTimeOffset.UtcNow);
-		}
-		catch (Exception ex) when (ex is not OperationCanceledException)
-		{
-			Logger.LogDebug(ex);
-			return null;
-		}
+		return _wallet.BuildFidelityBondRedemption(bond, _wallet.Password, feeRate, nodeHeight);
 	}
 }

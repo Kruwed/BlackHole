@@ -9,5 +9,11 @@ public enum TransactionType
 	Coinjoin,
 	CoinjoinGroup,
 	Cancellation,
-	CPFP
+	CPFP,
+
+	/// <summary>The transaction puts coins into a fidelity bond of the wallet.</summary>
+	Lock,
+
+	/// <summary>The transaction takes the coins of a fidelity bond of the wallet out again.</summary>
+	Unlock
 }

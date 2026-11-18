@@ -185,9 +185,13 @@ public class WasabiJsonRpcService : IJsonRpcService
 		if (activeWallet.Loaded)
 		{
 			// The following elements are valid only after the wallet is fully synchronized
+
+			// What the wallet owns: its coins, and the coins that are locked in its fidelity bonds until their block heights.
+			var lockedInFidelityBonds = activeWallet.GetFidelityBondBalance().Satoshi;
 			info["balance"] = activeWallet.Coins
 				.Where(c => !c.IsSpent())
-				.Sum(c => c.Amount.Satoshi);
+				.Sum(c => c.Amount.Satoshi) + lockedInFidelityBonds;
+			info["lockedInFidelityBonds"] = lockedInFidelityBonds;
 			info["coinjoinStatus"] = GetCoinjoinStatus(activeWallet);
 		}
 

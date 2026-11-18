@@ -6,7 +6,11 @@ namespace WalletWasabi.Fluent.Helpers;
 public static class DurationText
 {
 	/// <summary>The time from one moment to a later one, in its two largest units. Less than a day is "less than a day".</summary>
-	public static string Between(DateTimeOffset from, DateTimeOffset to)
+	/// <param name="withHours">
+	/// Whether a short time is told more exactly: less than a day in hours and minutes ("3 hours and 40 minutes"), and
+	/// less than three days with the hours ("1 day and 14 hours").
+	/// </param>
+	public static string Between(DateTimeOffset from, DateTimeOffset to, bool withHours = false)
 	{
 		from = from.ToUniversalTime();
 		to = to.ToUniversalTime();
@@ -14,6 +18,29 @@ public static class DurationText
 		if (to <= from)
 		{
 			return "no time";
+		}
+
+		if (withHours && to - from < TimeSpan.FromDays(1))
+		{
+			var totalMinutes = Math.Max(1, (int)Math.Round((to - from).TotalMinutes));
+
+			return (totalMinutes / 60, totalMinutes % 60) switch
+			{
+				(0, var minutes) => Count(minutes, "minute"),
+				(var hours, 0) => Count(hours, "hour"),
+				var (hours, minutes) => $"{Count(hours, "hour")} and {Count(minutes, "minute")}"
+			};
+		}
+
+		if (withHours && to - from < TimeSpan.FromDays(3))
+		{
+			var totalHours = (int)Math.Round((to - from).TotalHours);
+
+			return (totalHours / 24, totalHours % 24) switch
+			{
+				(var wholeDays, 0) => Count(wholeDays, "day"),
+				var (wholeDays, hours) => $"{Count(wholeDays, "day")} and {Count(hours, "hour")}"
+			};
 		}
 
 		// Whole months by the calendar, then the days that are left.
