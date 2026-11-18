@@ -509,14 +509,14 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	[JsonRpcMethod("startcoinjoin")]
-	public void StartCoinJoining(string? password = null, bool stopWhenAllMixed = true, bool overridePlebStop = true)
+	public void StartCoinJoining(string? password = null, bool stopWhenAllMixed = true)
 	{
 		var coinJoinManager = GetCoinJoinManager();
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		AssertWalletIsLoaded();
 		AssertWalletIsLoggedIn(activeWallet, password ?? "");
-		coinJoinManager.RequestCoinJoinStart(activeWallet, stopWhenAllMixed, overridePlebStop);
+		coinJoinManager.RequestCoinJoinStart(activeWallet, stopWhenAllMixed);
 	}
 
 	[JsonRpcMethod("stopcoinjoin")]

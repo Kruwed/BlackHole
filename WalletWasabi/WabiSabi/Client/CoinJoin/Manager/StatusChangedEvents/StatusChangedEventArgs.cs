@@ -18,7 +18,6 @@ public enum CoinjoinError
 	NoCoinsEligibleToMix,
 	AutoConjoinDisabled,
 	UserInSendWorkflow,
-	NotEnoughUnprivateBalance,
 	AllCoinsPrivate,
 	UserWasntInRound,
 	NoConfirmedCoinsEligibleToMix,
@@ -27,8 +26,7 @@ public enum CoinjoinError
 	OnlyExcludedCoinsAvailable,
 	MiningFeeRateTooHigh,
 	MinInputCountTooLow,
-	CoordinatorLiedAboutInputs,
-	NotEnoughConfirmedUnprivateBalance
+	CoordinatorLiedAboutInputs
 }
 
 public class StatusChangedEventArgs : EventArgs

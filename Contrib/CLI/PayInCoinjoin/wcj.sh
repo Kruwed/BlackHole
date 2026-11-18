@@ -79,7 +79,7 @@ fi
 
 # Start coinjoin
 echo ""
-curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"startcoinjoin","params":["",false,true]}' "$RPC_ENDPOINT" > /dev/null
+curl -s $BASIC_AUTH -d '{"jsonrpc":"2.0","id":"1","method":"startcoinjoin","params":["",false]}' "$RPC_ENDPOINT" > /dev/null
 echo "=== CoinJoin started ==="
 echo ""
 

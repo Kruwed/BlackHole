@@ -108,8 +108,6 @@ public class Wallet : BackgroundService
 
 	public int AnonScoreTarget => KeyManager.AnonScoreTarget;
 
-	public Money PlebStopThreshold => KeyManager.PlebStopThreshold;
-
 	public ICoinsView GetAllCoins() => Coins.AsAllCoinsView();
 
 	public bool IsWalletPrivate() => GetPrivacyPercentage() >= 100;

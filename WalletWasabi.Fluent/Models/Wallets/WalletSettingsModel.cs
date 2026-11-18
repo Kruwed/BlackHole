@@ -19,7 +19,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	[AutoNotify] private bool _isNewWallet;
 	[AutoNotify] private bool _autoCoinjoin;
-	[AutoNotify] private Money _plebStopThreshold;
 	[AutoNotify] private Money _maxCoinjoinLeftover;
 	[AutoNotify] private int _anonScoreTarget;
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
@@ -35,7 +34,6 @@ public partial class WalletSettingsModel : ReactiveObject
 		IsCoinJoinPaused = isCoinJoinPaused;
 
 		_autoCoinjoin = _keyManager.AutoCoinJoin;
-		_plebStopThreshold = _keyManager.PlebStopThreshold ?? KeyManager.DefaultPlebStopThreshold;
 		_maxCoinjoinLeftover = _keyManager.MaxCoinjoinLeftover;
 		_anonScoreTarget = _keyManager.AnonScoreTarget;
 		_nonPrivateCoinIsolation = _keyManager.NonPrivateCoinIsolation;
@@ -43,7 +41,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 		this.WhenAnyValue(
 				x => x.AutoCoinjoin,
-				x => x.PlebStopThreshold,
 				x => x.MaxCoinjoinLeftover,
 				x => x.AnonScoreTarget,
 				x => x.NonPrivateCoinIsolation,
@@ -87,7 +84,6 @@ public partial class WalletSettingsModel : ReactiveObject
 	private void SetValues()
 	{
 		_keyManager.AutoCoinJoin = AutoCoinjoin;
-		_keyManager.PlebStopThreshold = PlebStopThreshold;
 		_keyManager.MaxCoinjoinLeftover = MaxCoinjoinLeftover;
 		_keyManager.AnonScoreTarget = AnonScoreTarget;
 		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;

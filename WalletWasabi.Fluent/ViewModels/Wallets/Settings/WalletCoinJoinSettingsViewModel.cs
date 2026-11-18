@@ -29,14 +29,12 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 
 	[AutoNotify] private bool _autoCoinJoin;
-	[AutoNotify] private string _plebStopThreshold;
 	[AutoNotify] private string _maxCoinjoinLeftover;
 
 	public WalletCoinJoinSettingsViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
 	{
 		_wallet = walletModel;
 		_autoCoinJoin = _wallet.Settings.AutoCoinjoin;
-		_plebStopThreshold = _wallet.Settings.PlebStopThreshold.ToString();
 		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.ToString();
 		_anonScoreTarget = _wallet.Settings.AnonScoreTarget.ToString();
 		_anonScoreTargetSliderPosition = AnonScoreTargetToSliderPosition(_wallet.Settings.AnonScoreTarget);
@@ -97,20 +95,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 
 		this.ValidateProperty(x => x.AnonScoreTarget, ValidateAnonScoreTarget);
 		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
-
-		this.WhenAnyValue(x => x.PlebStopThreshold)
-			.Skip(1)
-			.Throttle(TimeSpan.FromMilliseconds(1000))
-			.ObserveOn(RxApp.TaskpoolScheduler)
-			.Subscribe(
-				x =>
-				{
-					if (Money.TryParse(x, out var result) && result != _wallet.Settings.PlebStopThreshold)
-					{
-						_wallet.Settings.PlebStopThreshold = result;
-						_wallet.Settings.Save();
-					}
-				});
 	}
 
 	public ICommand SetAutoCoinJoin { get; }

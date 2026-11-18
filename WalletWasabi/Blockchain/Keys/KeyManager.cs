@@ -50,8 +50,6 @@ public class KeyManager
 
 	public const int MaxAnonScoreTarget = 300;
 
-	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.005m);
-
 	/// <summary>What a coinjoin may leave over unless the user decides otherwise.</summary>
 	public static readonly Money DefaultMaxCoinjoinLeftover = Money.Satoshis(5_000);
 
@@ -173,11 +171,6 @@ public class KeyManager
 	private readonly BlockchainState _blockchainState;
 
 	public bool AutoCoinJoin { get; set; } = DefaultAutoCoinjoin;
-
-	/// <summary>
-	/// Won't coinjoin automatically if the confirmed wallet balance is below this.
-	/// </summary>
-	public Money PlebStopThreshold { get; set; } = DefaultPlebStopThreshold;
 
 	/// <summary>
 	/// The most that a coinjoin of this wallet may leave over. What a coinjoin cannot put into an output goes to the
@@ -823,7 +816,6 @@ public class KeyManager
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("AutoCoinJoin", Encode.Bool(keyManager.AutoCoinJoin)),
-			("PlebStopThreshold", Encode.MoneyBitcoins(keyManager.PlebStopThreshold)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
 			("AnonScoreTarget", Encode.Int(keyManager.AnonScoreTarget)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
@@ -858,7 +850,6 @@ public class KeyManager
 			)
 			{
 				AutoCoinJoin = get.Optional("AutoCoinJoin", Decode.Bool, false),
-				PlebStopThreshold = get.Optional("PlebStopThreshold", Decode.MoneyBitcoins) ?? DefaultPlebStopThreshold,
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				AnonScoreTarget = get.Optional("AnonScoreTarget", Decode.Int, 10),
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
