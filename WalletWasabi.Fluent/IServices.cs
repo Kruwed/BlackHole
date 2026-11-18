@@ -8,6 +8,7 @@ using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client.Configuration;
+using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Helpers;
 using WalletWasabi.Services;
@@ -30,6 +31,9 @@ public interface IServices
 
 	/// <summary>What the user's node told about itself the last time, if it answered.</summary>
 	ConnectedRpcStatus? GetNodeStatus();
+
+	/// <summary>The fee rates that the user's node estimated the last time, if it gave any since the application started.</summary>
+	FeeRateEstimations? GetFeeRateEstimations();
 
 	/// <summary>
 	/// Makes the application work with the node at the given RPC interface from now on, without a restart, provided that

@@ -3,73 +3,43 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Windows.Input;
-using DynamicData.Aggregation;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 
 /// <summary>
-/// Shows an address to receive a payment to. This is the receive screen itself, with the address that was generated
-/// when the screen was opened, and it is also the page of an address that was generated earlier and still awaits its payment.
+/// Shows an address to receive a payment to, with its QR code. The Receive tab opens it for the address that it just
+/// generated and for an address of its list, one that was generated earlier and still awaits its payment.
 /// </summary>
+[NavigationMetaData(Title = "Receive Address", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class ReceiveAddressViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _wallet;
 
-	/// <param name="isNew">
-	/// Whether the address was generated for this opening of the receive screen. Otherwise the page was opened from
-	/// the list of the addresses that await their payment.
-	/// </param>
-	public ReceiveAddressViewModel(UiContext uiContext, IWalletModel wallet, IAddress model, bool isNew) : base(uiContext)
+	public ReceiveAddressViewModel(UiContext uiContext, IWalletModel wallet, IAddress model) : base(uiContext)
 	{
 		_wallet = wallet;
 		Model = model;
 		Address = model.Text;
 
-		Title = isNew ? "Receive" : "Address Awaiting Payment";
-		Caption = isNew
-			? "A new address is generated every time this screen is opened. Give each address to one payer only: payments to the same address are linked to each other."
-			: null;
-
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
-		EnableBack = !isNew;
+		EnableBack = false;
 
 		CopyAddressCommand = ReactiveCommand.CreateFromTask(() =>
 			UiContext.Clipboard.SetTextAsync(Address));
 
-		ShowOtherAddressesCommand = ReactiveCommand.Create(() => Navigate().To().ReceiveAddresses(_wallet));
-
 		NextCommand = CancelCommand;
 
 		QrCode = UiContext.QrCodeGenerator.Generate(model.Text.ToUpperInvariant());
-
-		// The list is one step away from the receive screen. A page that was opened from the list goes back to it instead.
-		OtherAddressesAwaitPayment = isNew
-			? _wallet.Addresses.Unused
-				.ToObservableChangeSet()
-				.Filter(address => !Equals(address, Model))
-				.Count()
-				.Select(count => count > 0)
-				.ObserveOn(RxApp.MainThreadScheduler)
-			: Observable.Return(false);
 	}
 
-	public override string Title { get; protected set; }
-
-	public string? Caption { get; }
-
 	public ICommand CopyAddressCommand { get; }
-
-	public ICommand ShowOtherAddressesCommand { get; }
 
 	public string Address { get; }
 
 	public IObservable<bool[,]> QrCode { get; }
-
-	/// <summary>Whether addresses other than the one of this page await their payment.</summary>
-	public IObservable<bool> OtherAddressesAwaitPayment { get; }
 
 	private IAddress Model { get; }
 

@@ -3,105 +3,27 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:wallets="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets"
-             xmlns:home="using:WalletWasabi.Fluent.Views.Wallets.Home"
-             xmlns:history="using:WalletWasabi.Fluent.Views.Wallets.Home.History"
-             xmlns:shell="clr-namespace:WalletWasabi.Fluent.Views.Shell"
+             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="850"
              x:DataType="wallets:WalletViewModel"
              x:CompileBindings="True"
              ClipToBounds="False"
              x:Class="WalletWasabi.Fluent.Views.Wallets.WalletView">
-  <Interaction.Behaviors>
-    <ShowWalletCoinsOnKeyCombinationBehavior Wallet="{Binding}" Key1="LeftCtrl" Key2="D" Key3="C" />
-  </Interaction.Behaviors>
-  <UserControl.Styles>
-    <!-- The buttons are to the right of the tile. A window that is too narrow for both side by side shows them above the tile. -->
-    <Style Selector="DockPanel#TopPanel > StackPanel#Buttons">
-      <Setter Property="DockPanel.Dock" Value="Right" />
-    </Style>
-    <Style Selector="DockPanel#TopPanel.narrow > StackPanel#Buttons">
-      <Setter Property="DockPanel.Dock" Value="Top" />
-      <Setter Property="Margin" Value="0 0 0 14" />
-    </Style>
-  </UserControl.Styles>
+  <!-- The page has no title: the title bar names the tab that it shows. -->
   <ContentArea ScrollViewer.VerticalScrollBarVisibility="Disabled" ClipToBounds="False" Classes="NoHeader">
-    <DockPanel Name="Panel" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-
-      <!-- The page has no title. Its first row is the privacy progress on the left and the buttons on the right. The balance is in the title bar. -->
-      <DockPanel Name="TopPanel" DockPanel.Dock="Top" Margin="0 10 0 0">
-        <Interaction.Behaviors>
-          <AdaptiveBehavior>
-            <AdaptiveClassSetter MinWidth="0" MaxWidth="681" ClassName="narrow" TargetControl="{Binding #TopPanel}" />
-          </AdaptiveBehavior>
-        </Interaction.Behaviors>
-
-        <!-- Buttons -->
-        <StackPanel Name="Buttons" HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Spacing="10">
-          <!-- Send button -->
-          <Button
-            Classes="function"
-            Command="{Binding SendCommand}"
-            IsVisible="{Binding IsSendButtonVisible}">
-            <StackPanel Orientation="Horizontal">
-              <PathIcon Data="{StaticResource wallet_action_send}" />
-              <TextBlock Text="Send" />
-            </StackPanel>
-          </Button>
-
-          <!-- Receive button -->
-          <Button
-            Classes="function"
-            Command="{Binding ReceiveCommand}">
-            <StackPanel Orientation="Horizontal">
-              <PathIcon Data="{StaticResource wallet_action_receive}" />
-              <TextBlock Text="Receive" />
-            </StackPanel>
-          </Button>
-
-          <!-- Bond button. The bonds are read from the transactions of the wallet, so it waits for the wallet to know them all. -->
-          <Button
-            Classes="function"
-            Command="{Binding BondCommand}"
-            IsVisible="{Binding Loaded}">
-            <StackPanel Orientation="Horizontal">
-              <PathIcon Data="{StaticResource wallet_action_bond}" />
-              <TextBlock Text="Bond" />
-            </StackPanel>
-          </Button>
-
-          <!-- Three-dot button -->
-          <Button Classes="transparentFunction">
-            <Button.Flyout>
-              <MenuFlyout Placement="Bottom">
-                <MenuItem Header="Coinjoin Settings" Command="{Binding CoinJoinSettingsCommand}">
-                  <MenuItem.Icon>
-                    <PathIcon Data="{StaticResource settings_general_regular}" />
-                  </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem Header="Coins (UTXOs)" Command="{Binding WalletCoinsCommand}">
-                  <MenuItem.Icon>
-                    <PathIcon Data="{StaticResource wallet_coins}" />
-                  </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem Header="Wallet Keys" Command="{Binding WalletInfoCommand}">
-                  <MenuItem.Icon>
-                    <PathIcon Data="{StaticResource info_regular}" />
-                  </MenuItem.Icon>
-                </MenuItem>
-              </MenuFlyout>
-            </Button.Flyout>
-            <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
-          </Button>
-        </StackPanel>
-
-        <!-- Privacy progress -->
-        <home:WalletTiles DataContext="{Binding Tiles}" Margin="-6 -6 0 0" />
-      </DockPanel>
-
-      <!-- Transaction history -->
-      <history:HistoryTable Name="HistoryTable"
-                            DataContext="{Binding History}"
-                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-    </DockPanel>
+    <!-- Every tab has its page all the time, and the one of the selected tab shows. A page that is left keeps what
+         was typed into it and where it was scrolled to. -->
+    <ItemsControl ItemsSource="{Binding Tabs}" ClipToBounds="False">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <Panel />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.Styles>
+        <Style Selector="ItemsControl > ContentPresenter" x:DataType="tabs:WalletTabViewModel">
+          <Setter Property="IsVisible" Value="{Binding IsSelected}" />
+        </Style>
+      </ItemsControl.Styles>
+    </ItemsControl>
   </ContentArea>
 </UserControl>

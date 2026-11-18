@@ -14,11 +14,14 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 {
 	private const string ResyncWalletHint = "If your wallet is missing some confirmed transaction, try to resync.";
 	private const string ResyncLockedWalletHint = "Decrypt the wallet to resync it.";
+	private const string WalletKeysHint = "The extended public keys of the wallet and the paths that its keys are derived by. The password is asked for first.";
+	private const string LockedWalletKeysHint = "Decrypt the wallet to see its keys.";
 
 	[AutoNotify] private bool _isModified;
 	[AutoNotify] private int _selectedTab;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasWallet;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _resyncWalletToolTip = ResyncLockedWalletHint;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _walletKeysToolTip = LockedWalletKeysHint;
 
 	public SettingsPageViewModel(UiContext uiContext) : base(uiContext)
 	{
@@ -52,6 +55,12 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 
 		ResyncWalletCommand = ReactiveCommand.CreateFromTask(ResyncWalletAsync, isWalletDecrypted);
 
+		isWalletDecrypted
+			.Select(isDecrypted => isDecrypted ? WalletKeysHint : LockedWalletKeysHint)
+			.BindTo(this, x => x.WalletKeysToolTip);
+
+		WalletKeysCommand = ReactiveCommand.CreateFromTask(ShowWalletKeysAsync, isWalletDecrypted);
+
 		// Show restart message when needed
 		UiContext.ApplicationSettings.IsRestartNeeded
 									 .BindTo(this, x => x.IsModified);
@@ -73,6 +82,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	/// <summary>Asks from where to resynchronize the wallet and restarts the application to do it.</summary>
 	public ICommand ResyncWalletCommand { get; }
 
+	/// <summary>Shows the keys of the wallet, after its password was given.</summary>
+	public ICommand WalletKeysCommand { get; }
+
 	public ConnectionsSettingsTabViewModel ConnectionsSettingsTab { get; }
 	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
 
@@ -85,6 +97,21 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	{
 		SelectedTab = 1;
 		await NavigateDialogAsync(this);
+	}
+
+	private async Task ShowWalletKeysAsync()
+	{
+		if (UiContext.WalletRepository.Wallet is not { } wallet)
+		{
+			return;
+		}
+
+		if (wallet.Auth.HasPassword && !await UiContext.Navigate().To().PasswordAuthDialog(wallet).GetResultAsync())
+		{
+			return;
+		}
+
+		UiContext.Navigate().To().WalletInfo(wallet);
 	}
 
 	private async Task ResyncWalletAsync()

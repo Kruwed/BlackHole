@@ -86,11 +86,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new WalletInfoViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public void WalletCoins(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new WalletCoinsViewModel(UiContext, wallet), navigationMode);
-	}
-
 	public FluentDialog<System.Reactive.Unit> AddWalletPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new AddWalletPageViewModel(UiContext);
@@ -136,16 +131,6 @@ public partial class FluentNavigate
 		target.To(dialog, navigationMode);
 
 		return new FluentDialog<string?>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
-	/// <summary>
-	/// Opens the receive screen. Every time it is opened, it shows an address that was not given out before.
-	/// </summary>
-	public void Receive(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var address = wallet.Addresses.NextReceiveAddress();
-
-		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, address, isNew: true), navigationMode);
 	}
 
 	public FluentDialog<System.Reactive.Unit> ReleaseHighlightsDialog(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -218,7 +203,7 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConfirmMultiShareViewModel(UiContext, options, wordsDictionary), navigationMode);
 	}
 
-	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, uint? bondUnlockHeight = null, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, uint bondUnlockHeight, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet, bondUnlockHeight);
 		var target = UiContext.Navigate(navigationTarget);
@@ -248,11 +233,11 @@ public partial class FluentNavigate
 	}
 
 	/// <summary>
-	/// Shows an address that was generated earlier and still awaits its payment.
+	/// Shows an address that awaits its payment: one that was just generated, or one that was generated earlier.
 	/// </summary>
 	public void ReceiveAddress(IWalletModel wallet, IAddress model, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model, isNew: false), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model), navigationMode);
 	}
 
 	public void ShuttingDown(ApplicationViewModel applicationViewModel, bool restart, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -294,12 +279,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new RedeemBondViewModel(UiContext, walletModel, bond), navigationMode);
 	}
 
-	public void Send(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var viewModel = new SendViewModel(UiContext, walletModel, parameters, ShowQrCodeCameraDialogAsync);
-		UiContext.Navigate(navigationTarget).To(viewModel, navigationMode);
-	}
-
 	public FluentDialog<System.Reactive.Unit> ExcludedCoins(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new ExcludedCoinsViewModel(UiContext, wallet);
@@ -312,11 +291,6 @@ public partial class FluentNavigate
 	public void AddedWalletPage(WalletSettingsModel walletSettings, WalletCreationOptions options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new AddedWalletPageViewModel(UiContext, walletSettings, options), navigationMode);
-	}
-
-	public void ReceiveAddresses(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new ReceiveAddressesViewModel(UiContext, wallet), navigationMode);
 	}
 
 	public void MultiShareOptions(WalletCreationOptions.AddNewWallet options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

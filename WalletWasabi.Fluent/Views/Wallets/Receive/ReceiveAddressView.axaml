@@ -8,7 +8,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Receive.ReceiveAddressView">
   <ContentArea Title="{Binding Title}"
-                 Caption="{Binding Caption}"
+                 Caption="Give each address to one payer only: payments to the same address are linked to each other."
                  EnableCancel="{Binding EnableCancel}"
                  EnableBack="{Binding EnableBack}"
                  EnableNext="True" NextContent="OK"
@@ -32,10 +32,6 @@
                      TextAlignment="Center"
                      Text="{Binding Address}" />
         </DockPanel>
-        <Button Focusable="False" Content="Addresses Awaiting Payment"
-                IsVisible="{Binding OtherAddressesAwaitPayment^, FallbackValue=False}"
-                Classes="h8 plain activeHyperLink" Command="{Binding ShowOtherAddressesCommand}" Cursor="Hand"
-                HorizontalAlignment="Center" />
       </StackPanel>
 
       <AdorningContentControl HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">

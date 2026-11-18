@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:wallets="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets"
+             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="42"
+             x:DataType="wallets:WalletViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Shell.WalletTabs">
+  <!-- The pages of the wallet, as tabs in the title bar. Without a decrypted wallet there is none. -->
+  <UserControl.Styles>
+    <Style Selector="Button.tab">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="11 0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <!-- The line under the title marks the tab that is open. -->
+          <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <Panel>
+              <!-- Not the name that the theme gives the presenter of a button: its styles would put a box behind the title. -->
+              <ContentPresenter Name="PART_Title"
+                                Content="{TemplateBinding Content}"
+                                VerticalAlignment="Center" HorizontalAlignment="Center" />
+              <Border Name="PART_SelectedLine" Height="2" CornerRadius="1" VerticalAlignment="Bottom" Margin="0 0 0 5" />
+            </Panel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.tab TextBlock">
+      <Setter Property="Opacity" Value="0.6" />
+    </Style>
+    <Style Selector="Button.tab:pointerover TextBlock">
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
+    <Style Selector="Button.tab.selected TextBlock">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.tab.selected /template/ Border#PART_SelectedLine">
+      <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+    </Style>
+  </UserControl.Styles>
+
+  <ItemsControl ItemsSource="{Binding Tabs}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="tabs:WalletTabViewModel">
+        <Button Classes="tab" Classes.selected="{Binding IsSelected}" Command="{Binding SelectCommand}">
+          <TextBlock Text="{Binding Title}" />
+        </Button>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

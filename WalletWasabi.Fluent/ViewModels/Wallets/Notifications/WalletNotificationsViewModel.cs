@@ -43,7 +43,7 @@ public partial class WalletNotificationsViewModel : ViewModelBase
 					return;
 				}
 
-				_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash());
+				_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash(), showHistory: true);
 			}
 
 			NotificationHelpers.Show(e, OnClick);
@@ -51,8 +51,9 @@ public partial class WalletNotificationsViewModel : ViewModelBase
 
 		if (e.NewlyReceivedCoins.Count != 0 || e.NewlyConfirmedReceivedCoins.Count != 0)
 		{
+			// The transaction is marked for when the history is looked at. The tab that is open stays: nobody asked for another one.
 			await Task.Delay(200);
-			_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash());
+			_getWalletViewModel()?.SelectTransaction(e.Transaction.GetHash(), showHistory: false);
 		}
 	}
 }

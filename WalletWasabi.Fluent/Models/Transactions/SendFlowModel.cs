@@ -38,6 +38,9 @@ public record SendFlowModel
 	/// </summary>
 	public uint? BondUnlockHeight { get; init; } = null;
 
+	/// <summary>What is to happen once the transaction of the flow was sent, if anything. The form that started the flow empties itself with it.</summary>
+	public Action? Sent { get; init; } = null;
+
 	public decimal AvailableAmountBtc => AvailableAmount.ToDecimal(MoneyUnit.BTC);
 
 	public Money AvailableAmount => AvailableCoins.TotalAmount();

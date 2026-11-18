@@ -1,6 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:wallets="clr-namespace:WalletWasabi.Fluent.Views.Wallets"
              xmlns:viewModels="clr-namespace:WalletWasabi.Fluent.ViewModels"
              x:Class="WalletWasabi.Fluent.Views.Shell.MainScreen"
              x:DataType="viewModels:MainViewModel"
@@ -23,9 +22,6 @@
             <Setter Property="Margin" Value="31 26 31 0" />
           </Style>
         </DockPanel.Styles>
-        <wallets:MusicControlsView DockPanel.Dock="Bottom" DataContext="{Binding CurrentWallet^}"
-                                   HorizontalAlignment="Center" Height="66" />
-
         <!-- Main content -->
         <ContentControl ClipToBounds="False" Content="{Binding MainScreen.CurrentPage}">
           <ContentControl.Styles>

@@ -1,0 +1,291 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
+             xmlns:converters="clr-namespace:WalletWasabi.Fluent.Converters"
+             xmlns:models="clr-namespace:WalletWasabi.Fluent.Models"
+             xmlns:helpers="clr-namespace:WalletWasabi.Fluent.Helpers"
+             xmlns:sorting="clr-namespace:WalletWasabi.Fluent.Controls.Sorting"
+             xmlns:coins="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Coins"
+             x:DataType="tabs:SendTabViewModel"
+             x:CompileBindings="True"
+             ClipToBounds="False"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.SendTabView">
+
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="models:Suggestion">
+      <Button Classes="invisible" HorizontalAlignment="Center" DockPanel.Dock="Right" Command="{Binding AcceptCommand}" Focusable="False" Cursor="Hand">
+        <DockPanel HorizontalAlignment="Center">
+          <PathIcon Data="{StaticResource paste_regular}" Width="20" DockPanel.Dock="Left" />
+          <TextBlock Margin="4 0 0 0" Text="{Binding Text}" VerticalAlignment="Center" />
+        </DockPanel>
+      </Button>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <UserControl.Styles>
+    <Style Selector="FlyoutPresenter">
+      <Setter Property="Padding" Value="4" />
+      <Setter Property="MinWidth" Value="0" />
+    </Style>
+    <Style Selector="FlyoutPresenter TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource AcrylicTrimForeground}" />
+    </Style>
+    <Style Selector="FlyoutPresenter PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource AcrylicTrimForeground}" />
+    </Style>
+    <!-- A field has room for its error message below it, so that a message that comes or goes does not move the coins further down. -->
+    <Style Selector="DockPanel.field">
+      <Setter Property="Height" Value="62" />
+    </Style>
+    <Style Selector="DockPanel.field > Label">
+      <Setter Property="MinWidth" Value="80" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0 6 0 0" />
+    </Style>
+    <Style Selector="DockPanel.field > TextBox">
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="DockPanel.field > AmountEntryBox">
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="AnimatedButton.flash">
+      <Setter Property="InitialOpacity" Value="0.8" />
+    </Style>
+    <Style Selector="AnimatedButton.flash /template/ PathIcon#PART_IconNormal">
+      <Setter Property="Foreground" Value="{DynamicResource SystemAccentColor}" />
+      <Style.Animations>
+        <Animation Duration="0.25" IterationCount="6"
+                   PlaybackDirection="AlternateReverse"
+                   Easing="{StaticResource FluentEasing}">
+          <KeyFrame KeyTime="0:0:0.0">
+            <Setter Property="Opacity" Value="0.1" />
+          </KeyFrame>
+          <KeyFrame KeyTime="0:0:0.25">
+            <Setter Property="Opacity" Value="1" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel Name="Layout">
+
+    <!-- What the wallet knows about its coins is not complete yet. -->
+    <InfoMessage DockPanel.Dock="Top" Margin="0 10 0 0" IsVisible="{Binding !IsWalletLoaded}">
+      <TextBlock Text="The wallet is still processing the blocks of the node. Payments can be made once it is done." TextWrapping="Wrap" />
+    </InfoMessage>
+
+    <!-- The payment: where to, how much, and at what fee rate. With many payments it scrolls, so that the coins keep their room below. -->
+    <ScrollViewer DockPanel.Dock="Top" Margin="0 10 0 0"
+                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  MaxHeight="{Binding #Layout.Bounds.Height, Converter={x:Static converters:DoubleConverters.Minus}, ConverterParameter=200}">
+    <StackPanel IsEnabled="{Binding IsWalletLoaded}">
+      <Interaction.Behaviors>
+        <KeyDownTrigger Key="Enter" EventRoutingStrategy="Bubble" MarkAsHandled="False">
+          <InvokeCommandAction Command="{Binding ContinueCommand}" />
+        </KeyDownTrigger>
+      </Interaction.Behaviors>
+
+      <!-- Recipient 1 header (only visible in pay-to-many) -->
+      <TextBlock Text="Recipient 1" Classes="h8" Opacity="0.6" Margin="0 0 0 8" IsVisible="{Binding IsPayToMany}" />
+
+      <!-- To -->
+      <DockPanel Classes="field">
+        <Label DockPanel.Dock="Left" Content="_To:" Target="toTb" />
+        <TextBox x:Name="toTb" MaxLength="250" Text="{Binding To}" Classes="monoSpaced"
+                 Watermark="(e.g. Bitcoin address or Silent Payment address)"
+                 ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                 AcceptsReturn="False">
+          <Interaction.Behaviors>
+            <FocusNextWhenValidBehavior />
+            <WhitespacePasteRemovalBehavior />
+            <WhitespaceInputRemovalBehavior />
+            <KeyDownTrigger Key="Enter" EventRoutingStrategy="Tunnel" MarkAsHandled="False">
+              <InvokeCommandAction Command="{Binding #amountTb.FocusCommand}" />
+            </KeyDownTrigger>
+            <ShowWhenClipboardNotEmptyBehavior TargetControl="{Binding ElementName=PasteButtonForTo}" />
+          </Interaction.Behaviors>
+          <TextBox.InnerRightContent>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Margin="10 0">
+              <!-- Paste button. -->
+              <AnimatedButton x:Name="PasteButtonForTo"
+                              KeyboardNavigation.IsTabStop="False"
+                              Focusable="False"
+                              Command="{Binding PasteCommand}"
+                              ToolTip.Tip="Paste"
+                              NormalIcon="{StaticResource paste_regular}"
+                              ClickIcon="{StaticResource copy_confirmed}">
+                <Interaction.Behaviors>
+                  <PasteButtonFlashBehavior FlashAnimation="flash" CurrentAddress="{Binding To}" />
+                </Interaction.Behaviors>
+              </AnimatedButton>
+              <!-- Scan QR code button. -->
+              <AnimatedButton IsVisible="{Binding IsQrButtonVisible}"
+                              KeyboardNavigation.IsTabStop="False"
+                              Focusable="False"
+                              Command="{Binding QrCommand}"
+                              ToolTip.Tip="Scan QR Code"
+                              NormalIcon="{StaticResource qr_code_regular}" />
+            </StackPanel>
+          </TextBox.InnerRightContent>
+        </TextBox>
+      </DockPanel>
+
+      <!-- Amount. What the ticked coins hold is the most that can be sent, and a click on it sends all of it. -->
+      <Panel>
+      <DockPanel Classes="field">
+        <Label DockPanel.Dock="Left" Content="_Amount:" Target="amountTb" />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5" Margin="12 9 0 0" VerticalAlignment="Top" Opacity="0.6">
+          <TextBlock Text="Max:" VerticalAlignment="Center" IsVisible="{Binding HasSelection}" />
+          <Button Focusable="False" Classes="plainHyperlink" Command="{Binding InsertMaxCommand}" IsVisible="{Binding HasSelection}"
+                  ToolTip.Tip="Send all that the selected coins hold. The fee is taken from the payment.">
+            <Interaction.Behaviors>
+              <EventTriggerBehavior EventName="Click">
+                <InvokeCommandAction Command="{Binding #amountTb.FocusCommand}" />
+              </EventTriggerBehavior>
+            </Interaction.Behaviors>
+            <AmountControl Amount="{Binding SelectedAmount}" />
+          </Button>
+          <TextBlock Text="{Binding SelectionHint}" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
+        </StackPanel>
+        <AmountEntryBox x:Name="amountTb"
+                        Width="300" HorizontalAlignment="Left"
+                        KeyboardNavigation.IsTabStop="{Binding !IsFixedAmount}"
+                        IsReadOnly="{Binding IsFixedAmount}"
+                        AmountBtc="{Binding AmountBtc}"
+                        CurrencyCode="BTC"
+                        BalanceBtc="{Binding SelectedAmount.Btc}"
+                        ValidatePasteBalance="False">
+          <Interaction.Behaviors>
+            <EventTriggerBehavior EventName="GotFocus">
+              <InvokeCommandAction Command="{Binding PasteFromClipboardCommand}" CommandParameter="{Binding #amountTb}" />
+            </EventTriggerBehavior>
+            <FlyoutSuggestionBehavior Target="{Binding #amountTb.EntryBox}" Content="{Binding BitcoinContent}"
+                                      EqualityComparer="{x:Static helpers:AmountStringComparer.Instance}"
+                                      PlacementMode="BottomEdgeAlignedLeft" />
+          </Interaction.Behaviors>
+        </AmountEntryBox>
+      </DockPanel>
+
+      <!-- Fee subtraction indicator for primary recipient. It takes the room that the field keeps for its error message: a payment that takes all has none. -->
+      <TextBlock Opacity="0.6" FontSize="12" Margin="80 0 0 6" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                 Text="The transaction fee will be subtracted from this payment"
+                 ToolTip.Tip="Since the total of all payments equals what the selected coins hold, the fee will be deducted from this payment."
+                 IsVisible="{Binding IsPrimarySubtractFee}" />
+      </Panel>
+
+      <!-- Additional Recipients -->
+      <ItemsControl ItemsSource="{Binding AdditionalRecipients}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Margin="0 5 0 10" Padding="0 0 0 10" BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="0 0 0 1">
+              <StackPanel>
+                <!-- Recipient header with number and remove button -->
+                <DockPanel Margin="0 0 0 8">
+                  <TextBlock DockPanel.Dock="Left" Text="{Binding Index, Converter={x:Static converters:IntConverter.ToRecipientNumber}}"
+                             Classes="h8" Opacity="0.6" VerticalAlignment="Center" MinWidth="80" />
+                  <Button DockPanel.Dock="Right" Classes="plain" Command="{Binding Value.RemoveCommand}"
+                          ToolTip.Tip="Remove recipient" VerticalAlignment="Center" Margin="5 0 0 0" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <PathIcon Data="{StaticResource dismiss_light}" Width="12" Height="12" />
+                      <TextBlock Text="Remove" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </DockPanel>
+                <!-- To -->
+                <DockPanel Margin="0 0 0 10">
+                  <Label DockPanel.Dock="Left" Content="To:" MinWidth="80" />
+                  <TextBox Text="{Binding Value.To}" Classes="monoSpaced" MaxLength="250"
+                           Watermark="(e.g. Bitcoin address or Silent Payment address)">
+                    <TextBox.InnerRightContent>
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Margin="10 0">
+                        <AnimatedButton KeyboardNavigation.IsTabStop="False"
+                                        Focusable="False"
+                                        Command="{Binding Value.PasteCommand}"
+                                        ToolTip.Tip="Paste"
+                                        NormalIcon="{StaticResource paste_regular}"
+                                        ClickIcon="{StaticResource copy_confirmed}" />
+                        <AnimatedButton IsVisible="{Binding Value.IsQrButtonVisible}"
+                                        KeyboardNavigation.IsTabStop="False"
+                                        Focusable="False"
+                                        Command="{Binding Value.QrCommand}"
+                                        ToolTip.Tip="Scan QR Code"
+                                        NormalIcon="{StaticResource qr_code_regular}" />
+                      </StackPanel>
+                    </TextBox.InnerRightContent>
+                  </TextBox>
+                </DockPanel>
+                <TextBlock Text="{Binding Value.AddressError}" IsVisible="{Binding Value.AddressError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{DynamicResource SystemErrorTextColor}" Margin="80 0 0 4" />
+                <!-- Amount -->
+                <DockPanel Margin="0 0 0 10">
+                  <Label DockPanel.Dock="Left" Content="Amount:" MinWidth="80" />
+                  <StackPanel Orientation="Horizontal">
+                    <AmountEntryBox AmountBtc="{Binding Value.AmountBtc}"
+                                    Width="300"
+                                    CurrencyCode="BTC"
+                                    ValidatePasteBalance="False" />
+                    <Button Classes="activeHyperLink" Command="{Binding Value.InsertMaxCommand}"
+                            Content="Max" Margin="12 8 0 0" VerticalAlignment="Top" Focusable="False" />
+                  </StackPanel>
+                </DockPanel>
+                <TextBlock Text="{Binding Value.AmountError}" IsVisible="{Binding Value.AmountError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{DynamicResource SystemErrorTextColor}" Margin="80 0 0 4" />
+                <!-- Fee subtraction indicator -->
+                <TextBlock Opacity="0.6" FontSize="12" Margin="80 0 0 4"
+                           Text="The transaction fee will be subtracted from this payment"
+                           ToolTip.Tip="Since the total of all payments equals what the selected coins hold, the fee will be deducted from this payment."
+                           IsVisible="{Binding Value.IsSubtractFee}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Fee rate, and the way on. The fee rate starts as the estimate of the node, the one of the title bar. -->
+      <DockPanel Classes="field">
+        <Label DockPanel.Dock="Left" Content="_Fee rate:" Target="feeRateTb" />
+        <Button DockPanel.Dock="Right" Classes="action" Content="Continue" Command="{Binding ContinueCommand}"
+                VerticalAlignment="Top" Margin="12 0 0 0"
+                ToolTip.Tip="Shows the transaction. Nothing is sent before you confirm it there." />
+        <Button DockPanel.Dock="Right" Command="{Binding AddRecipientCommand}"
+                Content="+ Add another payment" Classes="activeHyperLink plain" Margin="12 8 0 0" VerticalAlignment="Top"
+                Cursor="Hand" Focusable="False"
+                ToolTip.ShowOnDisabled="True">
+          <Button.Styles>
+            <Style Selector="Button:disabled">
+              <Setter Property="ToolTip.Tip" Value="Pay to many is not available when using a BIP21 payment URI." />
+            </Style>
+          </Button.Styles>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBox x:Name="feeRateTb" Text="{Binding FeeRateText}" Width="210" MaxLength="12" VerticalAlignment="Top" />
+          <TextBlock Text="sat/vB" VerticalAlignment="Top" Margin="0 9 0 0" Opacity="0.6" />
+        </StackPanel>
+      </DockPanel>
+    </StackPanel>
+    </ScrollViewer>
+
+    <!-- The coins of the wallet. The ticked ones are those that the transaction may spend. -->
+    <DockPanel DockPanel.Dock="Top" Margin="0 16 0 10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5" IsEnabled="{Binding IsWalletLoaded}">
+        <Button Theme="{StaticResource DialogSortButton}" ToolTip.Tip="Sorting">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <sorting:SortControl Sortables="{Binding CoinList.Sortables}" />
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <ToggleButton Theme="{StaticResource DialogSelectAllButton}"
+                      Command="{Binding ToggleSelectionCommand}"
+                      IsChecked="{Binding HasSelection}" />
+      </StackPanel>
+      <TextBlock VerticalAlignment="Center" Text="Coins" FontSize="{StaticResource FontSizeH5}" />
+    </DockPanel>
+
+    <Panel IsEnabled="{Binding IsWalletLoaded}">
+      <coins:CoinListView DataContext="{Binding CoinList}" />
+    </Panel>
+  </DockPanel>
+</UserControl>

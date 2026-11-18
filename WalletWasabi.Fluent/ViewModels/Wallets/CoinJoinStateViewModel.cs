@@ -73,7 +73,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	private CoinjoinError? _lastPlebStopActivatedEvent;
 
-	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, WalletCoinJoinSettingsViewModel settings) : base(uiContext)
+	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel) : base(uiContext)
 	{
 		_wallet = wallet;
 		_walletInstance = walletInstance;
@@ -156,18 +156,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 		_stateMachine.Start();
 
-		var coinJoinSettingsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To(settings));
-
-		NavigateToSettingsCommand = coinJoinSettingsCommand;
-		CanNavigateToCoinjoinSettings = coinJoinSettingsCommand.CanExecute;
 		NavigateToExcludedCoinsCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().ExcludedCoins(_wallet));
-		NavigateToCoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
-		{
-			if (UiContext.MainViewModel is { } mainViewModel)
-			{
-				await mainViewModel.SettingsPage.ActivateCoordinatorTabAsync();
-			}
-		});
 		CoinJoinPaymentsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To().CoinJoinPayments(_wallet, _walletInstance));
 
 		IsCoinjoinSupported = _wallet.Coinjoin is not null;
@@ -197,10 +186,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		PendingPaymentsChanged
 	}
 
-	public IObservable<bool> CanNavigateToCoinjoinSettings { get; }
-
-	public ICommand NavigateToSettingsCommand { get; }
-
 	public ICommand NavigateToExcludedCoinsCommand { get; }
 
 	public bool IsAutoCoinJoinEnabled => _wallet.Settings.AutoCoinjoin;
@@ -214,7 +199,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	public ICommand PlayCommand { get; }
 
 	public ICommand StopPauseCommand { get; }
-	public ICommand NavigateToCoordinatorSettingsCommand { get; }
+
 	public ICommand CoinJoinPaymentsCommand { get; }
 
 	private void ConfigureStateMachine()

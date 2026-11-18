@@ -415,6 +415,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 				var finalTransaction = transaction.Transaction;
 				await SendTransactionAsync(finalTransaction);
 				_cancellationTokenSource.Cancel();
+				_sendFlow.Sent?.Invoke();
 
 				if (_sendFlow.BondUnlockHeight is not null)
 				{

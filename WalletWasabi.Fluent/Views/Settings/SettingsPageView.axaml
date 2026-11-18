@@ -48,6 +48,10 @@
                   <TextBlock Text="Resync Wallet" />
                   <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />
                 </DockPanel>
+                <DockPanel ToolTip.Tip="{Binding WalletKeysToolTip}">
+                  <TextBlock Text="Wallet Keys" />
+                  <Button Theme="{StaticResource FunctionButton}" Command="{Binding WalletKeysCommand}" Content="Open" DockPanel.Dock="Right" />
+                </DockPanel>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>

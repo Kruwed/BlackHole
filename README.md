@@ -8,11 +8,24 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 
 - **One wallet.** Its backup is SLIP39: 20 recovery words by default, or several shares with a threshold if you choose to split it. The password encrypts the wallet file on the computer only; the backup alone recovers the wallet.
 - **Taproot only.** Every address of the wallet is a Taproot (P2TR) address.
-- **A new address for every payment.** The receive screen shows an address that was not given out before, a new one every time it is opened.
+- **A new address for every payment.** *New Address* on the *Receive* tab generates an address that was not given out before.
 - **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions are broadcast through it. The wallet scans the blocks of the node, starting with the block the wallet was created at.
 - **Coinjoins** with the WabiSabi coordinator that you choose, over Tor.
 - **Manual coin control** when sending.
 - **Fidelity bonds**: coins that are locked until a block height that you name. See [Fidelity bonds](#fidelity-bonds).
+
+## The window
+
+The title bar lists the pages of the wallet as tabs, once the wallet is decrypted:
+
+- **History**: the transactions of the wallet. The wallet opens with it.
+- **Send**: the coins of the wallet, and above them the address, the amount and the fee rate of a payment. Tick the coins that the transaction may spend, fill in the rest, and *Continue* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one.
+- **Receive**: *New Address* generates an address and shows it. The list below it has the addresses that were generated and have not been paid to yet.
+- **WabiSabi**: the privacy progress of the wallet and its WabiSabi coinjoins, with their controls and settings.
+- **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far.
+- **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
+
+To the right of the tabs the title bar tells the fee rate, the balance and how many blocks the wallet has processed. In a window that is too narrow for all of it these give way, the fee rate first, so that the tabs and the buttons stay. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Connections*.
 
 ## What was removed from Wasabi Wallet
 
@@ -59,11 +72,11 @@ Started with `--loglevel=debug`, Black Hole writes into `Logs.txt` what the wall
 
 Set the coordinator in *Settings → Coordinator*. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
 
-A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Dust forfeit limit* in the *Coinjoin Settings* of the wallet limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. The limit is 0.00005 BTC unless you change it, and it cannot be set above 0.0001 BTC. Because of this limit the wallet also joins rounds whose smallest output is large ("whale rounds"), which Wasabi Wallet refuses from 0.0001 BTC on: what such a round cannot put into an output is kept the same way. If a round cannot keep the limit at all, the wallet gives up that round instead of signing it.
+A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Dust forfeit limit* in the *Coinjoin Settings* on the *WabiSabi* tab limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. The limit is 0.00005 BTC unless you change it, and it cannot be set above 0.0001 BTC. Because of this limit the wallet also joins rounds whose smallest output is large ("whale rounds"), which Wasabi Wallet refuses from 0.0001 BTC on: what such a round cannot put into an output is kept the same way. If a round cannot keep the limit at all, the wallet gives up that round instead of signing it.
 
 ## Fidelity bonds
 
-A fidelity bond is coins that are locked until the chain reaches a block height. A maker of JoinMarket-style coinjoins shows one to prove that it has something to lose, which makes it costly to pose as many makers. *Bond* on the wallet screen creates, lists and redeems such bonds. Black Hole does not use them for anything yet: it has no coinjoin of that kind so far, and it makes no proof of a bond and shows none to anyone. The bonds are not the ones of JoinMarket, which does not understand them: they are Taproot outputs, and they unlock at a block height instead of a date.
+A fidelity bond is coins that are locked until the chain reaches a block height. A maker of JoinMarket-style coinjoins shows one to prove that it has something to lose, which makes it costly to pose as many makers. *Bond* on the *JoinMarket* tab creates, lists and redeems such bonds. Black Hole does not use them for anything yet: it has no coinjoin of that kind so far, and it makes no proof of a bond and shows none to anyone. The bonds are not the ones of JoinMarket, which does not understand them: they are Taproot outputs, and they unlock at a block height instead of a date.
 
 - **Format.** A bond is a Taproot output that can be spent by one script only: `<unlock height> OP_CHECKLOCKTIMEVERIFY OP_DROP <public key> OP_CHECKSIG`. Its internal key is the point that BIP341 names for outputs without a key path (`50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0`). Nobody has the private key of that point, so whoever is shown the script can check that there is no way around the timelock. On the chain a bond looks like any other Taproot output until it is redeemed.
 - **Unlock height.** You name the exact block height. The wallet tells the day that the chain is expected to get there, at a block every ten minutes; it is the blocks that decide, not the calendar. A bond can be redeemed once the chain has reached the height: the transaction that redeems it is valid from the next block on. The height has to be ahead of the chain, and no more than 525,600 blocks ahead, which is about ten years. Locked coins cannot be spent before that by anyone, and there is no way to undo it.

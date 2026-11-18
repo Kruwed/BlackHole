@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
+             xmlns:tiles="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Home.Tiles"
+             x:DataType="tabs:WabiSabiTabViewModel"
+             x:CompileBindings="True"
+             ClipToBounds="False"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.WabiSabiTabView">
+  <UserControl.Styles>
+    <Style Selector="Border#CoinjoinBox :is(TextBlock)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#CoinjoinBox Button:disabled PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForegroundDisabled}" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel HorizontalAlignment="Left">
+
+    <!-- How private the coins of the wallet are. The tile has a margin of its own, which the offsets take back. -->
+    <tiles:PrivacyControlTileView DataContext="{Binding PrivacyProgress}" Width="310" Height="132"
+                                  HorizontalAlignment="Left" Margin="-6 4 0 0" />
+
+    <TextBlock Text="Coinjoin" FontSize="{StaticResource FontSizeH5}" Margin="0 20 0 20" />
+
+    <!-- The coinjoin that is running or waiting, and its controls -->
+    <Border Name="CoinjoinBox" HorizontalAlignment="Left" ClipToBounds="True"
+            TextElement.FontFamily="{StaticResource MonospacedFont}"
+            CornerRadius="4"
+            BorderBrush="{DynamicResource GlassEdgeColor}"
+            BorderThickness="1">
+      <Panel>
+        <Panel Background="{DynamicResource TileRegionColor}" Opacity="0.35" />
+        <StackPanel Margin="10 8" Orientation="Horizontal" Spacing="20">
+          <Image Height="35" Width="35" VerticalAlignment="Center" HorizontalAlignment="Center"
+                 Source="{DynamicResource app_logo_dynamic}" />
+
+          <!-- With a coordinator -->
+          <StackPanel Orientation="Horizontal" Spacing="20" IsVisible="{Binding IsCoinJoinEnabled}">
+
+            <!-- The wallet is loaded: what the coinjoin is doing -->
+            <StackPanel Spacing="5" Width="350" VerticalAlignment="Center"
+                        IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <TransitioningContentControl MinHeight="18" Content="{Binding CoinJoinState.CurrentStatus}">
+                <TransitioningContentControl.PageTransition>
+                  <PageSlide Duration="0:0:0.125" Orientation="Vertical" SlideInEasing="0.4,0,0.6,1" SlideOutEasing="0.4,0,0.6,1" />
+                </TransitioningContentControl.PageTransition>
+                <TransitioningContentControl.DataTemplates>
+                  <DataTemplate DataType="x:String">
+                    <TextBlock Text="{Binding .}" />
+                  </DataTemplate>
+                </TransitioningContentControl.DataTemplates>
+              </TransitioningContentControl>
+
+              <ProgressBar Minimum="0" Maximum="100" IsIndeterminate="{Binding CoinJoinState.IsCountDownDelayHappening, FallbackValue=False}" Value="{Binding CoinJoinState.ProgressValue, FallbackValue=0}">
+                <ProgressBar.Foreground>
+                  <SolidColorBrush Color="{DynamicResource SystemAccentColor}" Opacity="0.4" />
+                </ProgressBar.Foreground>
+                <ProgressBar.Background>
+                  <SolidColorBrush Color="{DynamicResource SystemBaseMediumColor}" Opacity="0.5" />
+                </ProgressBar.Background>
+              </ProgressBar>
+
+              <DockPanel LastChildFill="False">
+                <TextBlock Text="{Binding CoinJoinState.LeftText}" DockPanel.Dock="Left" />
+                <TextBlock Text="{Binding CoinJoinState.RightText}" DockPanel.Dock="Right" />
+              </DockPanel>
+            </StackPanel>
+
+            <!-- The wallet is not loaded yet: the controls come with it -->
+            <StackPanel Spacing="4" Width="350" VerticalAlignment="Center"
+                        IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNull}}">
+              <TextBlock Text="Coinjoin waits for the wallet" />
+              <TextBlock Text="It is processing the blocks" />
+            </StackPanel>
+
+            <Separator Classes="vertical" />
+
+            <Button Classes="plain"
+                    IsVisible="{Binding CoinJoinState.PlayVisible, FallbackValue=False}"
+                    IsEnabled="{Binding CoinJoinState.PlayEnabled, FallbackValue=False}"
+                    Command="{Binding CoinJoinState.PlayCommand}"
+                    ToolTip.Tip="Start coinjoin">
+              <PathIcon Data="{StaticResource play_regular}" />
+            </Button>
+
+            <Button Classes="plain"
+                    IsVisible="{Binding CoinJoinState.PauseVisible, FallbackValue=False}"
+                    Command="{Binding CoinJoinState.StopPauseCommand}"
+                    ToolTip.Tip="Pause coinjoin">
+              <PathIcon Data="{StaticResource pause_regular}" />
+            </Button>
+
+            <Button Classes="plain"
+                    IsVisible="{Binding CoinJoinState.StopVisible, FallbackValue=False}"
+                    Command="{Binding CoinJoinState.StopPauseCommand}"
+                    ToolTip.Tip="Stop coinjoin">
+              <PathIcon Data="{StaticResource stop_regular}" />
+            </Button>
+
+            <Button Classes="plain" ToolTip.Tip="Settings and more">
+              <Button.Flyout>
+                <MenuFlyout Placement="Bottom">
+                  <MenuItem Header="Coinjoin Settings" Command="{Binding CoinJoinSettingsCommand}">
+                    <MenuItem.Icon>
+                      <PathIcon Data="{StaticResource settings_general_regular}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
+                    <MenuItem.Icon>
+                      <PathIcon Data="{StaticResource coordinator}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem Header="Exclude Coins" Command="{Binding CoinJoinState.NavigateToExcludedCoinsCommand}"
+                            IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <MenuItem.Icon>
+                      <PathIcon Data="{StaticResource exclude_coins}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem Header="Coinjoin Payments" Command="{Binding CoinJoinState.CoinJoinPaymentsCommand}"
+                            IsVisible="{Binding CoinJoinState, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <MenuItem.Icon>
+                      <PathIcon Data="{StaticResource embedded_payment}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
+              <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
+            </Button>
+          </StackPanel>
+
+          <!-- Without a coordinator there is no coinjoin -->
+          <StackPanel Orientation="Horizontal" Spacing="20" IsVisible="{Binding !IsCoinJoinEnabled}">
+            <StackPanel Spacing="4" Width="350" VerticalAlignment="Center">
+              <TextBlock Text="Coordinator not configured" />
+              <TextBlock Text="Coinjoin not available" />
+            </StackPanel>
+
+            <Separator Classes="vertical" />
+
+            <Button Classes="plain" ToolTip.Tip="Settings">
+              <Button.Flyout>
+                <MenuFlyout Placement="Bottom">
+                  <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
+                    <MenuItem.Icon>
+                      <PathIcon Data="{StaticResource coordinator}" />
+                    </MenuItem.Icon>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
+              <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Panel>
+    </Border>
+  </StackPanel>
+</UserControl>

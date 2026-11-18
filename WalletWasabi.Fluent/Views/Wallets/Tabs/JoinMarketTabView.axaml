@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
+             x:DataType="tabs:JoinMarketTabViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.JoinMarketTabView">
+  <!-- The fidelity bonds are all that there is of this protocol so far. The button waits for the wallet to know its transactions. -->
+  <Button Classes="function" Command="{Binding BondCommand}"
+          HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0 10 0 0">
+    <StackPanel Orientation="Horizontal">
+      <PathIcon Data="{StaticResource wallet_action_bond}" />
+      <TextBlock Text="Bond" />
+    </StackPanel>
+  </Button>
+</UserControl>
