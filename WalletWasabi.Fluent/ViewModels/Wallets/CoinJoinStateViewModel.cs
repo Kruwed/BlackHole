@@ -37,8 +37,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private const string NoRoundMessage = "No round was found";
 	private const string NoCoinsEligibleToMixMessage = "Insufficient funds eligible for coinjoin";
 	private const string UserInSendWorkflowMessage = "The send dialog is open";
-	private const string AllPrivateMessage = "Hurray! All your funds are private!";
-	private const string AllCoinsArePrivate = "All coins are private";
 	private const string GeneralErrorMessage = "Coinjoin did not take place";
 	private const string NoConfirmedCoinsMessage = "The funds are not confirmed yet";
 	private const string CoinsRejectedMessage = "Some funds are rejected from coinjoining";
@@ -52,7 +50,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private readonly DispatcherTimer _countdownTimer;
 
 	[AutoNotify] private bool _playVisible;
-	[AutoNotify] private bool _playEnabled = true;
 	[AutoNotify] private bool _isStopping;
 	[AutoNotify] private bool _stopVisible;
 	[AutoNotify] private string _currentStatus = "";
@@ -62,7 +59,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	[AutoNotify] private string _rightText = "";
 	[AutoNotify] private bool _isInCriticalPhase;
 	[AutoNotify] private bool _isCountDownDelayHappening;
-	[AutoNotify] private bool _areAllCoinsPrivate;
 	[AutoNotify] private bool _isCoinjoinSupported;
 
 	private DateTimeOffset _countDownStartTime;
@@ -83,23 +79,10 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 					   .Do(ProcessStatusChange)
 					   .Subscribe();
 
-		wallet.Privacy.IsWalletPrivate
-					  .BindTo(this, x => x.AreAllCoinsPrivate);
-
 		// Nothing starts a coinjoin but the user.
 		_stateMachine = new StateMachine<State, Trigger>(State.Stopped);
 
 		ConfigureStateMachine();
-
-		this.WhenAnyValue(x => x.AreAllCoinsPrivate)
-			.Do(_ => _stateMachine.Fire(Trigger.AreAllCoinsPrivateChanged))
-			.Subscribe();
-
-		// A pending payment lets a wallet coinjoin whose coins are all private, so the Play button follows the payments.
-		UiContext.Services.EventBus.AsObservable<PaymentBatchChanged>()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Do(_ => _stateMachine.Fire(Trigger.PendingPaymentsChanged))
-			.Subscribe();
 
 		PlayCommand = ReactiveCommand.CreateFromTask(walletCoinjoinModel.StartAsync);
 
@@ -135,9 +118,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 		StartError,
 		Tick,
 		WalletStartedCoinJoin,
-		WalletStoppedCoinJoin,
-		AreAllCoinsPrivateChanged,
-		PendingPaymentsChanged
+		WalletStoppedCoinJoin
 	}
 
 	private bool IsCountDownFinished => GetRemainingTime() <= TimeSpan.Zero;
@@ -166,7 +147,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			CoinjoinError.NoCoinsEligibleToMix => NoCoinsEligibleToMixMessage,
 			CoinjoinError.NoConfirmedCoinsEligibleToMix => NoConfirmedCoinsMessage,
 			CoinjoinError.UserInSendWorkflow => UserInSendWorkflowMessage,
-			CoinjoinError.AllCoinsPrivate => AllPrivateMessage,
 			CoinjoinError.UserWasntInRound => RoundFinishedMessage,
 			CoinjoinError.CoinsRejected => CoinsRejectedMessage,
 			CoinjoinError.OnlyImmatureCoinsAvailable => OnlyImmatureCoinsAvailableMessage,
@@ -192,8 +172,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 				RefreshStopped();
 			})
 			.OnTrigger(Trigger.StartError, RefreshStopped)
-			.OnTrigger(Trigger.AreAllCoinsPrivateChanged, RefreshStopped)
-			.OnTrigger(Trigger.PendingPaymentsChanged, RefreshStopped)
 			.OnExit(() => LeftText = "");
 
 		_stateMachine.Configure(State.Playing)
@@ -209,23 +187,13 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	}
 
 	/// <summary>
-	/// What the controls say and offer while no coinjoin is under way: how the last one ended, if it was not stopped, and
-	/// that Play starts a round. A wallet whose coins are all private has nothing to coinjoin, unless a payment is pending.
+	/// What the controls say while no coinjoin is under way: how the last one ended, if it was not stopped, and that Play
+	/// starts a round.
 	/// </summary>
 	private void RefreshStopped()
 	{
-		if (AreAllCoinsPrivate && !_walletInstance.BatchedPayments.AreTherePendingPayments)
-		{
-			PlayEnabled = false;
-			CurrentStatus = _outcome ?? AllCoinsArePrivate;
-			LeftText = "";
-		}
-		else
-		{
-			PlayEnabled = true;
-			CurrentStatus = _outcome ?? StoppedMessage;
-			LeftText = PressPlayToStartMessage;
-		}
+		CurrentStatus = _outcome ?? StoppedMessage;
+		LeftText = PressPlayToStartMessage;
 	}
 
 	private void UpdateCountDown()

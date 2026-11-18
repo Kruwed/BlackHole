@@ -1,7 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
-             xmlns:tiles="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Home.Tiles"
              xmlns:coins="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Coins"
              xmlns:sorting="clr-namespace:WalletWasabi.Fluent.Controls.Sorting"
              x:DataType="tabs:WabiSabiTabViewModel"
@@ -19,15 +18,8 @@
 
   <DockPanel>
 
-    <!-- The privacy progress, and to its right the coinjoin. In a window that is too narrow for both the coinjoin goes below. -->
-    <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal">
-
-    <!-- How private the coins of the wallet are. The tile has a margin of its own, which the offsets take back. -->
-    <tiles:PrivacyControlTileView DataContext="{Binding PrivacyProgress}" Width="310" Height="132"
-                                  Margin="-6 4 14 0" />
-
-    <!-- The coinjoin that is running or waiting, and its controls -->
-    <Border Name="CoinjoinBox" VerticalAlignment="Center" ClipToBounds="True" Margin="0 4 0 4"
+    <!-- The coinjoin: what it is doing, and its controls -->
+    <Border Name="CoinjoinBox" DockPanel.Dock="Top" HorizontalAlignment="Left" ClipToBounds="True" Margin="0 4 0 4"
             TextElement.FontFamily="{StaticResource MonospacedFont}"
             CornerRadius="4"
             BorderBrush="{DynamicResource GlassEdgeColor}"
@@ -81,7 +73,6 @@
 
             <Button Classes="plain"
                     IsVisible="{Binding CoinJoinState.PlayVisible, FallbackValue=False}"
-                    IsEnabled="{Binding CoinJoinState.PlayEnabled, FallbackValue=False}"
                     Command="{Binding CoinJoinState.PlayCommand}"
                     ToolTip.Tip="Start a coinjoin round">
               <PathIcon Data="{StaticResource play_regular}" />
@@ -144,7 +135,6 @@
         </StackPanel>
       </Panel>
     </Border>
-    </WrapPanel>
 
     <!-- The coins of the wallet. The ticked ones may be submitted into rounds. -->
     <DockPanel DockPanel.Dock="Top" Margin="0 16 0 4">

@@ -19,7 +19,6 @@ using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Features;
-using WalletWasabi.Fluent.ViewModels.Wallets.Home.Tiles.PrivacyRing;
 using WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
@@ -98,11 +97,6 @@ public partial class FluentNavigate
 	public void ConnectToFullNode(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ConnectToFullNodeViewModel(UiContext), navigationMode);
-	}
-
-	public void PrivacyRing(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new PrivacyRingViewModel(UiContext, wallet), navigationMode);
 	}
 
 	public FluentDialog<IEnumerable<SmartCoin>> SelectCoinsDialog(IWalletModel wallet, IList<CoinModel> selectedCoins, SendFlowModel sendFlow, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

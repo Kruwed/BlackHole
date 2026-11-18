@@ -110,8 +110,6 @@ public class Wallet : BackgroundService
 
 	public ICoinsView GetAllCoins() => Coins.AsAllCoinsView();
 
-	public bool IsWalletPrivate() => GetPrivacyPercentage() >= 100;
-
 	public IEnumerable<SmartCoin> GetCoinjoinCoinCandidates() => Coins;
 
 	/// <summary>
@@ -215,15 +213,6 @@ public class Wallet : BackgroundService
 		var transaction = BondRedemption.Create(bond, key, destination, feeRate, chainHeight, Network);
 
 		return new SmartTransaction(transaction, Height.Unknown);
-	}
-
-	public int GetPrivacyPercentage()
-	{
-		var currentPrivacyScore = Coins.Sum(x => x.Amount.Satoshi * Math.Min(x.AnonymitySet - 1, x.IsPrivate(AnonScoreTarget) ? AnonScoreTarget - 1 : AnonScoreTarget - 2));
-		var maxPrivacyScore = Coins.TotalAmount().Satoshi * (AnonScoreTarget - 1);
-		int pcPrivate = maxPrivacyScore == 0M ? 0 : (int)(currentPrivacyScore * 100 / maxPrivacyScore);
-
-		return pcPrivate;
 	}
 
 	public bool TryLogin(string password)

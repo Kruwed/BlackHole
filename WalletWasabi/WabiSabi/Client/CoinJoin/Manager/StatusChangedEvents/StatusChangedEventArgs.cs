@@ -17,7 +17,6 @@ public enum CoinjoinError
 {
 	NoCoinsEligibleToMix,
 	UserInSendWorkflow,
-	AllCoinsPrivate,
 	UserWasntInRound,
 	NoConfirmedCoinsEligibleToMix,
 	CoinsRejected,

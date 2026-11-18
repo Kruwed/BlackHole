@@ -9,7 +9,6 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
-using WalletWasabi.Fluent.ViewModels.Wallets.Home.Tiles;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
@@ -44,7 +43,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	{
 		WalletModel = walletModel;
 
-		PrivacyProgress = new PrivacyControlTileViewModel(uiContext, walletModel);
 		CoinJoinSettings = new WalletCoinJoinSettingsViewModel(uiContext, walletModel);
 		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, allowSelection: true);
 
@@ -86,9 +84,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// <summary>Whether a coordinator is set. Without one there is no coinjoin, and the tab says so.</summary>
 	public bool IsCoinJoinEnabled => WalletModel.IsCoinJoinEnabled;
 
-	/// <summary>The share of the coins that reached the anonymity score target.</summary>
-	public PrivacyControlTileViewModel PrivacyProgress { get; }
-
 	public WalletCoinJoinSettingsViewModel CoinJoinSettings { get; }
 
 	/// <summary>
@@ -113,13 +108,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// <returns>Whether the coin is to be kept out from now on, or null if nothing changes.</returns>
 	public static bool? GetExclusionChange(bool isTicked, bool isExcluded) =>
 		isTicked == isExcluded ? !isTicked : null;
-
-	protected override void OnActivated(CompositeDisposable disposables)
-	{
-		base.OnActivated(disposables);
-
-		PrivacyProgress.Activate(disposables);
-	}
 
 	/// <summary>
 	/// A coin is shown ticked for as long as the wallet does not keep it out of coinjoins: when its row appears, and

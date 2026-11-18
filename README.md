@@ -21,7 +21,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
 - **History**: the transactions of the wallet. The wallet opens with it.
 - **Send**: the coins of the wallet, and above them the address, the amount and the fee rate of a payment. Tick the coins that the transaction may spend, fill in the rest, and *Continue* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one.
 - **Receive**: *New Address* generates an address and shows it. The list has the addresses that were generated and have not been paid to yet; a right click on one copies it.
-- **WabiSabi**: the privacy progress of the wallet, its WabiSabi coinjoins with their controls and settings, and the coins of the wallet. The ticked coins may be submitted into rounds; untick a coin to keep it out of coinjoins. A coin is ticked until you untick it, so a coin that arrives may be submitted. Nothing coinjoins by itself: *Play* starts one round, and when that round is over, however it ended, the coinjoin is stopped until you press *Play* again.
+- **WabiSabi**: the WabiSabi coinjoins of the wallet with their controls and settings, and the coins of the wallet. The ticked coins may be submitted into rounds; untick a coin to keep it out of coinjoins. A coin is ticked until you untick it, so a coin that arrives may be submitted. Nothing coinjoins by itself: *Play* starts one round, and when that round is over, however it ended, the coinjoin is stopped until you press *Play* again.
 - **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far, and a list of market makers that is a placeholder: it has its columns and no rows yet.
 - **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
 
@@ -29,7 +29,7 @@ To the right of the tabs the title bar tells the fee rate, how many blocks the w
 
 ## What was removed from Wasabi Wallet
 
-Windows and macOS support, SegWit v0 addresses, hardware wallets, passphrases, BIP39 seed phrases, fiat exchange rates, the Branch and Bound search for changeless transactions, the dust attack limit, the Scheme scripting language, multiple wallets, confirmation time estimations, labels, the "ready to sign" signalling of coinjoins, the coinjoin strategies, the stop coinjoin threshold, the automatic start of coinjoins and their going on from round to round, compact block filter synchronization together with the peer to peer network stack, and every third party service (fee and exchange rate providers, block explorers, update checks).
+Windows and macOS support, SegWit v0 addresses, hardware wallets, passphrases, BIP39 seed phrases, fiat exchange rates, the Branch and Bound search for changeless transactions, the dust attack limit, the Scheme scripting language, multiple wallets, confirmation time estimations, labels, the "ready to sign" signalling of coinjoins, the coinjoin strategies, the stop coinjoin threshold, the automatic start of coinjoins and their going on from round to round, the privacy progress with its ring, compact block filter synchronization together with the peer to peer network stack, and every third party service (fee and exchange rate providers, block explorers, update checks).
 
 ## Requirements
 

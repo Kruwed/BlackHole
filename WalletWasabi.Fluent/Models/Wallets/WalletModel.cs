@@ -48,8 +48,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletSettingsModel Settings { get; }
 
-	WalletPrivacyModel Privacy { get; }
-
 	WalletCoinjoinModel? Coinjoin { get; }
 
 	/// <summary>The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height.</summary>
@@ -116,8 +114,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Select(_ => Wallet.Loaded);
 
-		Privacy = new WalletPrivacyModel(this, Wallet);
-
 		// The coins in the fidelity bonds of the wallet are the wallet's too, though it cannot spend them for the time being.
 		var owned = Transactions.TransactionProcessed
 			.Select(_ => (Coins: Wallet.Coins.TotalAmount(), Bonds: Wallet.GetFidelityBondBalance()));
@@ -168,8 +164,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletLoadWorkflow Loader { get; }
 
 	public WalletSettingsModel Settings { get; }
-
-	public WalletPrivacyModel Privacy { get; }
 
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 

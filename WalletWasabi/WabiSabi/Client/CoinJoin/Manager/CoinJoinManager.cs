@@ -184,13 +184,6 @@ public class CoinJoinManager : BackgroundService
 			// If there are pending payments, ignore already achieved privacy.
 			if (!walletToStart.BatchedPayments.AreTherePendingPayments)
 			{
-				// If all coins are already private, then don't mix.
-				if (walletToStart.IsWalletPrivate())
-				{
-					Logger.LogTrace(FormatLog("All mixed!", walletToStart));
-					throw new CoinJoinClientException(CoinjoinError.AllCoinsPrivate);
-				}
-
 				// If all coin candidates are private it makes no sense to mix them.
 				if (coinCandidates.All(x => x.IsPrivate(walletToStart.AnonScoreTarget)))
 				{
@@ -487,15 +480,6 @@ public class CoinJoinManager : BackgroundService
 		if (cjClientException is not null && (forceStop || !finishedCoinJoin.IsStopped))
 		{
 			NotifyCoinJoinStartError(wallet, cjClientException.CoinjoinError);
-		}
-		else if (cjClientException is null
-			&& !finishedCoinJoin.IsStopped
-			&& !cancellationToken.IsCancellationRequested
-			&& wallet.IsWalletPrivate()
-			&& !wallet.BatchedPayments.AreTherePendingPayments)
-		{
-			// A fully private wallet is done mixing, unless it is allowed to fund a pending payment with private coins.
-			NotifyCoinJoinStartError(wallet, CoinjoinError.AllCoinsPrivate);
 		}
 
 		// The send workflow and the shutdown start a coinjoin again that they stopped. This one may have come to its end
