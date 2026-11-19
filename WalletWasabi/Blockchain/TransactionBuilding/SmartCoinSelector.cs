@@ -75,7 +75,6 @@ public class SmartCoinSelector : ICoinSelector
 			.Select(coins => (
 				Coins: coins,
 				Unconfirmed: coins.Any(x => !x.Confirmed),    // If group has an unconfirmed, then the whole group is unconfirmed.
-				AnonymitySet: coins.Min(x => x.AnonymitySet), // The group is as anonymous as its weakest member.
 				ClusterCount: coins.Select(x => x.HdPubKey.Cluster).Distinct().Count(), // Spending clusters together links them.
 				Amount: coins.Sum(x => x.Amount)
 			));
@@ -84,7 +83,6 @@ public class SmartCoinSelector : ICoinSelector
 		IEnumerable<SmartCoin> bestCoinCluster = sayajinCoinClusters
 			.Where(group => group.Amount >= targetMoney)
 			.OrderBy(group => group.Unconfirmed)
-			.ThenByDescending(group => group.AnonymitySet)     // Always try to spend/merge the largest anonset coins first.
 			.ThenBy(group => group.ClusterCount)     // Link as few clusters to each other as possible.
 			.ThenBy(group => group.Amount)           // Once we order them by cluster count, we want to be as close to the target as we can.
 			.First()

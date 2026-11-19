@@ -655,19 +655,11 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 		Assert.NotEqual(Guid.Empty, response.Value);
 	}
 
-	private ImmutableList<SmartCoin> GenerateSmartCoins(KeyManager keyManager, long[] amounts, int inputCount)
-	{
-		var anonscore = 0;
-
-		return keyManager.GetKeys()
+	private ImmutableList<SmartCoin> GenerateSmartCoins(KeyManager keyManager, long[] amounts, int inputCount) =>
+		keyManager.GetKeys()
 			.Take(inputCount)
-			.Select((x, i) =>
-			{
-				anonscore++;
-				return BitcoinFactory.CreateSmartCoin(x, Money.Satoshis(amounts[i]), true, anonscore);
-			})
+			.Select((x, i) => BitcoinFactory.CreateSmartCoin(x, Money.Satoshis(amounts[i])))
 			.ToImmutableList();
-	}
 
 	public class TestableRpcClient : RpcClientBase
 	{

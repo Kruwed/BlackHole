@@ -27,8 +27,8 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: true, anonymitySet: 1),
-				(1, 0.02m, confirmed: true, anonymitySet: 1)
+				(0, 0.01m, confirmed: true),
+				(1, 0.02m, confirmed: true)
 			});
 
 		// We try to spend 100btc but we only have 0.03
@@ -49,7 +49,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.0001m, confirmed: true, anonymitySet: 1)
+				(0, 0.0001m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -73,88 +73,59 @@ public class TransactionFactoryTests
 		Assert.Throws<TransactionFeeOverpaymentException>(() => transactionFactory.BuildTransaction(txParameters));
 	}
 
+	/// <summary>
+	/// The wallet prefers no coin for what it is. Of the coins that are enough for the payment, it takes the one that
+	/// is closest to the amount.
+	/// </summary>
 	[Fact]
-	public void SelectMostPrivateIndependentlyOfCluster()
+	public void SelectTheCoinClosestToTheAmount()
 	{
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.08m, confirmed: true, anonymitySet: 50),
-				(1, 0.16m, confirmed: true, anonymitySet: 200)
+				(0, 0.08m, confirmed: true),
+				(1, 0.16m, confirmed: true)
 			});
 
-		// There is a 0.08 coin with AS=50. However it selects the most private one with AS= 200
-		using Key key = new();
-		var destination = key;
-		var payment = new PaymentIntent(destination, Money.Coins(0.07m));
-		var txParameters = CreateBuilder().SetPayment(payment).Build();
-		var result = transactionFactory.BuildTransaction(txParameters);
-
-		var spentCoin = Assert.Single(result.SpentCoins);
-		Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
-		Assert.Equal(200, spentCoin.AnonymitySet);
-		Assert.False(result.SpendsUnconfirmed);
-		var tx = result.Transaction.Transaction;
-		Assert.Equal(2, tx.Outputs.Count);
-
-		var changeCoin = Assert.Single(result.InnerWalletOutputs);
-		Assert.True(changeCoin.HdPubKey.IsInternal);
-
-	}
-
-	[Fact]
-	public void SelectMostPrivateCoin()
-	{
-		var transactionFactory = ServiceFactory.CreateTransactionFactory(
-			new[]
-			{
-				(0, 0.08m, confirmed: true, anonymitySet: 50),
-				(1, 0.16m, confirmed: true, anonymitySet: 200)
-			});
-
-		// There is a 0.8 coin with AS=50. However it selects the most private one with AS= 200
 		using Key key = new();
 		var payment = new PaymentIntent(key, Money.Coins(0.07m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
 		var spentCoin = Assert.Single(result.SpentCoins);
-		Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
-		Assert.Equal(200, spentCoin.AnonymitySet);
+		Assert.Equal(Money.Coins(0.08m), spentCoin.Amount);
 		Assert.False(result.SpendsUnconfirmed);
 		var tx = result.Transaction.Transaction;
 		Assert.Equal(2, tx.Outputs.Count);
 
 		var changeCoin = Assert.Single(result.InnerWalletOutputs);
 		Assert.True(changeCoin.HdPubKey.IsInternal);
-
 	}
 
+	/// <summary>
+	/// Coins that nothing links to each other are spent together only as far as the payment needs it: as few of them as
+	/// possible, and of those the ones closest to the amount.
+	/// </summary>
 	[Fact]
-	public void SelectMostPrivateCoins()
+	public void SelectAsFewUnlinkedCoinsAsThePaymentNeeds()
 	{
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: true, anonymitySet: 1),
-				(1, 0.02m, confirmed: true, anonymitySet: 1),
-				(2, 0.04m, confirmed: true, anonymitySet: 100),
-				(3, 0.08m, confirmed: true, anonymitySet: 50),
-				(4, 0.16m, confirmed: true, anonymitySet: 200)
+				(0, 0.01m, confirmed: true),
+				(1, 0.02m, confirmed: true),
+				(2, 0.04m, confirmed: true),
+				(3, 0.08m, confirmed: true),
+				(4, 0.16m, confirmed: true)
 			});
 
-		// It has to select the most private coins regardless of the amounts
 		using Key key = new();
 		var payment = new PaymentIntent(key, Money.Coins(0.17m));
 		var txParameters = CreateBuilder().SetPayment(payment).Build();
 		var result = transactionFactory.BuildTransaction(txParameters);
 
-		Assert.Equal(2, result.SpentCoins.Count());
-		var spentCoin200 = Assert.Single(result.SpentCoins, x => x.AnonymitySet == 200);
-		var spentCoin100 = Assert.Single(result.SpentCoins, x => x.AnonymitySet == 100);
-
-		Assert.Equal(Money.Coins(0.16m), spentCoin200.Amount);
-		Assert.Equal(Money.Coins(0.04m), spentCoin100.Amount);
+		// 0.16 and 0.01 would not pay for the fee as well.
+		Assert.Equal([Money.Coins(0.02m), Money.Coins(0.16m)], result.SpentCoins.Select(x => x.Amount).Order());
 		Assert.Single(result.OuterWalletOutputs);
 		Assert.False(result.SpendsUnconfirmed);
 
@@ -168,10 +139,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: false, anonymitySet: 10),
-				(1, 0.02m, confirmed: false, anonymitySet: 1),
-				(1, 0.04m, confirmed: true, anonymitySet: 1),
-				(2, 0.08m, confirmed: true, anonymitySet: 20)
+				(0, 0.01m, confirmed: false),
+				(1, 0.02m, confirmed: false),
+				(1, 0.04m, confirmed: true),
+				(2, 0.08m, confirmed: true)
 			});
 
 		// Selecting 0.08 + 0.04 should be enough but it has to select 0.02 too because it is the same address
@@ -188,7 +159,7 @@ public class TransactionFactoryTests
 
 		var tx = result.Transaction.Transaction;
 
-		// it must select the unconfirm coin even when the anonymity set is lower
+		// It must select the unconfirmed coin of the same address too.
 		Assert.True(result.SpendsUnconfirmed);
 		Assert.Equal(2, tx.Outputs.Count);
 	}
@@ -276,7 +247,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -307,7 +278,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true)
 			});
 
 		using Key key1 = new();
@@ -342,7 +313,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true)
 			});
 
 		using Key key1 = new();
@@ -368,7 +339,7 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 1m, confirmed: true, anonymitySet: 100)
+				(0, 1m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -402,10 +373,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.5m, confirmed: false, anonymitySet: 1),
-				(1, 0.4m, confirmed: true, anonymitySet: 10),
-				(2, 0.3m, confirmed: false, anonymitySet: 40),
-				(3, 0.2m, confirmed: true, anonymitySet: 100)
+				(0, 0.5m, confirmed: false),
+				(1, 0.4m, confirmed: true),
+				(2, 0.3m, confirmed: false),
+				(3, 0.2m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -429,10 +400,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: false, anonymitySet: 50),
-				(1, 0.02m, confirmed: false, anonymitySet: 1),
-				(2, 0.04m, confirmed: true, anonymitySet: 1),
-				(3, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false),
+				(1, 0.02m, confirmed: false),
+				(2, 0.04m, confirmed: true),
+				(3, 0.08m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -462,10 +433,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: false, anonymitySet: 50),
-				(1, 0.02m, confirmed: false, anonymitySet: 1),
-				(2, 0.04m, confirmed: true, anonymitySet: 1),
-				(3, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false),
+				(1, 0.02m, confirmed: false),
+				(2, 0.04m, confirmed: true),
+				(3, 0.08m, confirmed: true)
 			});
 
 		using Key key = new();
@@ -503,8 +474,8 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: true, anonymitySet: 1),
-				(1, 0.08m, confirmed: true, anonymitySet: 1)
+				(0, 0.01m, confirmed: true),
+				(1, 0.08m, confirmed: true)
 			});
 
 		var allowedCoins = new[]
@@ -533,10 +504,10 @@ public class TransactionFactoryTests
 		var transactionFactory = ServiceFactory.CreateTransactionFactory(
 			new[]
 			{
-				(0, 0.01m, confirmed: false, anonymitySet: 50),
-				(1, 0.02m, confirmed: false, anonymitySet: 1),
-				(1, 0.04m, confirmed: true, anonymitySet: 1),
-				(2, 0.08m, confirmed: true, anonymitySet: 100)
+				(0, 0.01m, confirmed: false),
+				(1, 0.02m, confirmed: false),
+				(1, 0.04m, confirmed: true),
+				(2, 0.08m, confirmed: true)
 			});
 
 		// Selecting 0.08 + 0.02 should be enough but it has to select 0.02 too because it is the same address
@@ -597,88 +568,88 @@ public class TransactionFactoryTests
 
 		var coins = new[]
 		{
-			(0, 0.00118098m, true, 1),
-			(1, 0.02000000m, true, 1),
-			(2, 0.00008192m, true, 1),
-			(3, 0.00005000m, true, 2),
-			(4, 0.02000000m, true, 1),
-			(5, 0.02000000m, true, 1),
-			(6, 0.00531441m, true, 1),
-			(7, 0.02000000m, true, 1),
-			(8, 0.02000000m, true, 1),
-			(9, 0.02000000m, true, 1),
-			(10, 0.00531441m, true, 1),
-			(11, 0.02000000m, true, 1),
-			(12, 0.00006561m, true, 1),
-			(13, 0.00354294m, true, 1),
-			(14, 0.00020000m, true, 1),
-			(15, 0.00354294m, true, 1),
-			(16, 0.02097152m, true, 2),
-			(17, 0.00006561m, true, 1),
-			(18, 0.02097152m, true, 3),
-			(19, 0.00006561m, true, 1),
-			(20, 0.00006561m, true, 1),
-			(21, 0.04782969m, true, 5),
-			(22, 0.00005000m, true, 6),
-			(23, 0.00006561m, true, 1),
-			(24, 0.02097152m, true, 4),
-			(25, 0.02097152m, true, 5),
-			(26, 0.04782847m, true, 1),
-			(27, 0.00158637m, true, 1),
-			(28, 0.00100000m, true, 4),
-			(29, 0.00008192m, true, 1),
-			(30, 0.00006561m, true, 1),
-			(31, 0.02097152m, true, 1),
-			(32, 0.00006561m, true, 5),
-			(33, 0.00005000m, true, 2),
-			(34, 0.00354294m, true, 1),
-			(35, 0.00006561m, true, 4),
-			(36, 0.00065536m, true, 3),
-			(37, 0.00005000m, true, 2),
-			(38, 0.02000000m, true, 1),
-			(39, 0.00006561m, true, 1),
-			(40, 0.00006561m, true, 1),
-			(41, 0.00005000m, true, 1),
-			(42, 0.02097152m, true, 5),
-			(43, 0.02097152m, true, 3),
-			(44, 0.00065536m, true, 1),
-			(45, 0.02097152m, true, 1),
-			(46, 0.00006561m, true, 1),
-			(47, 0.00531441m, true, 1),
-			(48, 0.00006561m, true, 1),
-			(49, 0.02097152m, true, 5),
-			(50, 0.00013122m, true, 1),
-			(51, 0.00006561m, true, 1),
-			(52, 0.02000000m, true, 1),
-			(53, 0.02000000m, true, 1),
-			(54, 0.00050000m, true, 1),
-			(55, 0.00005648m, true, 1),
-			(56, 0.00020000m, true, 4),
-			(57, 0.00006561m, true, 1),
-			(58, 0.02097152m, true, 1),
-			(59, 0.02000000m, true, 1),
-			(60, 0.00006561m, true, 1),
-			(61, 0.02097152m, true, 5),
-			(62, 0.02000000m, true, 5),
-			(63, 0.00008192m, true, 1),
-			(64, 0.02097152m, true, 4),
-			(65, 0.00006561m, true, 1),
-			(66, 0.00005000m, true, 2),
-			(67, 0.04782969m, true, 5),
-			(68, 0.02000000m, true, 1),
-			(69, 0.00006019m, true, 2),
-			(70, 0.00006561m, true, 5),
-			(71, 0.02000000m, true, 5),
-			(72, 0.02097152m, true, 5),
-			(73, 0.02000000m, true, 1),
-			(74, 0.00006561m, true, 1),
-			(75, 0.00354294m, true, 1),
-			(76, 0.15804864m, true, 1),
-			(77, 0.02097152m, true, 2),
-			(78, 0.00006561m, true, 5),
-			(79, 0.00200000m, true, 2),
-			(80, 0.00005892m, true, 1),
-			(81, 0.00006292m, true, 1)
+			(0, 0.00118098m, true),
+			(1, 0.02000000m, true),
+			(2, 0.00008192m, true),
+			(3, 0.00005000m, true),
+			(4, 0.02000000m, true),
+			(5, 0.02000000m, true),
+			(6, 0.00531441m, true),
+			(7, 0.02000000m, true),
+			(8, 0.02000000m, true),
+			(9, 0.02000000m, true),
+			(10, 0.00531441m, true),
+			(11, 0.02000000m, true),
+			(12, 0.00006561m, true),
+			(13, 0.00354294m, true),
+			(14, 0.00020000m, true),
+			(15, 0.00354294m, true),
+			(16, 0.02097152m, true),
+			(17, 0.00006561m, true),
+			(18, 0.02097152m, true),
+			(19, 0.00006561m, true),
+			(20, 0.00006561m, true),
+			(21, 0.04782969m, true),
+			(22, 0.00005000m, true),
+			(23, 0.00006561m, true),
+			(24, 0.02097152m, true),
+			(25, 0.02097152m, true),
+			(26, 0.04782847m, true),
+			(27, 0.00158637m, true),
+			(28, 0.00100000m, true),
+			(29, 0.00008192m, true),
+			(30, 0.00006561m, true),
+			(31, 0.02097152m, true),
+			(32, 0.00006561m, true),
+			(33, 0.00005000m, true),
+			(34, 0.00354294m, true),
+			(35, 0.00006561m, true),
+			(36, 0.00065536m, true),
+			(37, 0.00005000m, true),
+			(38, 0.02000000m, true),
+			(39, 0.00006561m, true),
+			(40, 0.00006561m, true),
+			(41, 0.00005000m, true),
+			(42, 0.02097152m, true),
+			(43, 0.02097152m, true),
+			(44, 0.00065536m, true),
+			(45, 0.02097152m, true),
+			(46, 0.00006561m, true),
+			(47, 0.00531441m, true),
+			(48, 0.00006561m, true),
+			(49, 0.02097152m, true),
+			(50, 0.00013122m, true),
+			(51, 0.00006561m, true),
+			(52, 0.02000000m, true),
+			(53, 0.02000000m, true),
+			(54, 0.00050000m, true),
+			(55, 0.00005648m, true),
+			(56, 0.00020000m, true),
+			(57, 0.00006561m, true),
+			(58, 0.02097152m, true),
+			(59, 0.02000000m, true),
+			(60, 0.00006561m, true),
+			(61, 0.02097152m, true),
+			(62, 0.02000000m, true),
+			(63, 0.00008192m, true),
+			(64, 0.02097152m, true),
+			(65, 0.00006561m, true),
+			(66, 0.00005000m, true),
+			(67, 0.04782969m, true),
+			(68, 0.02000000m, true),
+			(69, 0.00006019m, true),
+			(70, 0.00006561m, true),
+			(71, 0.02000000m, true),
+			(72, 0.02097152m, true),
+			(73, 0.02000000m, true),
+			(74, 0.00006561m, true),
+			(75, 0.00354294m, true),
+			(76, 0.15804864m, true),
+			(77, 0.02097152m, true),
+			(78, 0.00006561m, true),
+			(79, 0.00200000m, true),
+			(80, 0.00005892m, true),
+			(81, 0.00006292m, true)
 		};
 
 		TransactionFactory transactionFactory = ServiceFactory.CreateTransactionFactory(coins);
@@ -773,7 +744,7 @@ public class TransactionFactoryTests
 			TransactionFactory transactionFactory = ServiceFactory.CreateTransactionFactory(
 				new[]
 				{
-					(KeyIndex: 0, Amount: 0.00011409m, Confirmed: true, AnonymitySet: 1)
+					(KeyIndex: 0, Amount: 0.00011409m, Confirmed: true)
 				});
 
 			using Key key = new();

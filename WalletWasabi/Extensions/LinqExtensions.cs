@@ -171,19 +171,8 @@ public static class LinqExtensions
 	public static IEnumerable<T> DropNulls<T>(this IEnumerable<T?> source) where T: struct =>
 		source.Where(x => x.HasValue).Select(x => x!.Value);
 
-	public static double WeightedAverage<T>(this IEnumerable<T> source, Func<T, double> value, Func<T, double> weight)
-	{
-		return source.Sum(x => value(x) * weight(x)) / source.Select(weight).DefaultIfEmpty(1).Sum();
-	}
-
 	public static int MaxOrDefault(this IEnumerable<int> me, int defaultValue) =>
 		me.DefaultIfEmpty(defaultValue).Max();
-
-	public static T MinOrDefault<T>(this IEnumerable<T> me) where T: struct =>
-		me.DefaultIfEmpty(default).Min();
-
-	public static T? MinOrDefault<T>(this IEnumerable<T> me, T? defaultValue = default) where T: class, IComparable<T> =>
-		me.DefaultIfEmpty(defaultValue).Min();
 
 	public static double Median(this IEnumerable<double> me)
 	{

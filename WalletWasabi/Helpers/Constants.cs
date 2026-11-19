@@ -38,8 +38,6 @@ public static class Constants
 
 	public const decimal MaximumNumberOfBitcoins = 20999999.9769m;
 
-	public const int SemiPrivateThreshold = 2;
-
 	public const int TwentyMinutesConfirmationTarget = 2;
 	public const int OneDayConfirmationTarget = 144;
 	public const int SevenDaysConfirmationTarget = 1008;

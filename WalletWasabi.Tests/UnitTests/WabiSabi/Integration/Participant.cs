@@ -81,12 +81,8 @@ internal class Participant
 		var outputProvider = new OutputProvider(Wallet, RandomnessProviders.Insecure);
 		var coinJoinClient = WabiSabiFactory.CreateTestCoinJoinClient(HttpClientFactory, Wallet, outputProvider, roundStateProvider);
 
-		static HdPubKey CreateHdPubKey(ExtPubKey extPubKey)
-		{
-			var hdPubKey = new HdPubKey(extPubKey.PubKey, KeyPath.Parse($"m/84'/0/0/0/{extPubKey.Child}"), KeyState.Clean);
-			hdPubKey.SetAnonymitySet(1); // bug if not settled
-			return hdPubKey;
-		}
+		static HdPubKey CreateHdPubKey(ExtPubKey extPubKey) =>
+			new(extPubKey.PubKey, KeyPath.Parse($"m/84'/0/0/0/{extPubKey.Child}"), KeyState.Clean);
 
 		var smartCoins = SplitTransaction.Transaction.Outputs.AsIndexedOutputs()
 			.Select(x => (IndexedTxOut: x, HdPubKey: Wallet.GetExtPubKey(x.TxOut.ScriptPubKey)))

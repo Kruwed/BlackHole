@@ -8,14 +8,14 @@ namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
 /// What the preview of a transaction warns about. The warnings do not ask how private a coin is: they tell what the
-/// transaction gives away, whatever the anonymity scores of the coins are.
+/// transaction gives away.
 /// </summary>
 public class SendWarningsTests
 {
 	[Fact]
 	public void TransactionThatSpendsCoinsOfOneClusterLinksNothingNew()
 	{
-		var (first, second) = CreateTwoCoins(firstScore: 1, secondScore: 1);
+		var (first, second) = CreateTwoCoins();
 
 		Assert.False(PrivacyWarningsModel.LinksCoins([]));
 		Assert.False(PrivacyWarningsModel.LinksCoins([first]));
@@ -25,14 +25,10 @@ public class SendWarningsTests
 		Assert.False(PrivacyWarningsModel.LinksCoins([first, second]));
 	}
 
-	[Theory]
-	[InlineData(1, 1)]
-	[InlineData(1, 5)]
-	[InlineData(5, 50)]
-	[InlineData(50, 50)]
-	public void TransactionLinksCoinsThatNothingLinkedBeforeWhateverTheirAnonymityScores(int firstScore, int secondScore)
+	[Fact]
+	public void TransactionLinksCoinsThatNothingLinkedBefore()
 	{
-		var (first, second) = CreateTwoCoins(firstScore, secondScore);
+		var (first, second) = CreateTwoCoins();
 
 		Assert.True(PrivacyWarningsModel.LinksCoins([first, second]));
 	}
@@ -59,12 +55,12 @@ public class SendWarningsTests
 		Assert.Null(PrivacyWarningsModel.GetLargePercentSpent(Money.Satoshis(spentSatoshis), Money.Satoshis(balanceSatoshis)));
 	}
 
-	private static (SmartCoin First, SmartCoin Second) CreateTwoCoins(int firstScore, int secondScore)
+	private static (SmartCoin First, SmartCoin Second) CreateTwoCoins()
 	{
 		var keyManager = ServiceFactory.CreateKeyManager();
 
 		return (
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(keyManager), 0.1m, anonymitySet: firstScore),
-			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(keyManager), 0.2m, anonymitySet: secondScore));
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(keyManager), 0.1m),
+			BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(keyManager), 0.2m));
 	}
 }

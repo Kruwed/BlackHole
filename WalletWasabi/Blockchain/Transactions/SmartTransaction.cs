@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using WalletWasabi.Blockchain.Analysis;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Models;
 
@@ -10,7 +9,6 @@ namespace WalletWasabi.Blockchain.Transactions;
 public class SmartTransaction : IEquatable<SmartTransaction>
 {
 	private Lazy<long[]> _outputValues;
-	private Lazy<bool> _isWasabi2Cj;
 
 	/// <summary>The anonymity points of the transaction, or a negative number while they are not known.</summary>
 	private volatile int _anonymityPoints = -1;
@@ -43,18 +41,11 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		_walletOutputsInternal = new HashSet<SmartCoin>(Transaction.Outputs.Count);
 
 		_outputValues = new Lazy<long[]>(() => Transaction.Outputs.Select(x => x.Value.Satoshi).ToArray(), true);
-		_isWasabi2Cj = new Lazy<bool>(
-			() => Transaction.Outputs.Count >= 2 // Sanity check.
-			&& Transaction.Inputs.Count >= 21 // 21 is the absolute minimum input count
-			&& OutputValues.Count(x => Anonymity.StdDenoms.Contains(x)) > OutputValues.Length * 0.8 // Most of the outputs contains the denomination.
-			&& OutputValues.Zip(OutputValues.Skip(1)).All(p => p.First >= p.Second), // Outputs are ordered descending.
-			isThreadSafe: true);
 	}
 
 	#region Members
 
 	public long[] OutputValues => _outputValues.Value;
-	public bool IsWasabi2Cj => _isWasabi2Cj.Value;
 
 	/// <summary>
 	/// The anonymity points of the transaction, see <see cref="Analysis.AnonymityPoints"/>. They are null until the
@@ -78,15 +69,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 
 	/// <summary>Cached computation of <see cref="ForeignOutputs"/> or <c>null</c> when re-computation is needed.</summary>
 	private HashSet<IndexedTxOut>? ForeignOutputsCache { get; set; } = null;
-
-	/// <summary>Cached computation of <see cref="WalletVirtualInputs"/> or <c>null</c> when re-computation is needed.</summary>
-	private HashSet<WalletVirtualInput>? WalletVirtualInputsCache { get; set; } = null;
-
-	/// <summary>Cached computation of <see cref="WalletVirtualOutputs"/> or <c>null</c> when re-computation is needed.</summary>
-	private HashSet<WalletVirtualOutput>? WalletVirtualOutputsCache { get; set; } = null;
-
-	/// <summary>Cached computation of <see cref="ForeignVirtualOutputs"/> or <c>null</c> when re-computation is needed.</summary>
-	private HashSet<ForeignVirtualOutput>? ForeignVirtualOutputsCache { get; set; } = null;
 
 	public IReadOnlyCollection<SmartCoin> WalletInputs => _walletInputsInternal;
 
@@ -115,45 +97,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 				ForeignOutputsCache = Transaction.Outputs.AsIndexedOutputs().Where(o => !walletOutputIndices.Contains(o.N)).ToHashSet();
 			}
 			return ForeignOutputsCache;
-		}
-	}
-
-	/// <summary>Wallet inputs with the same script are virtually considered to be the same by blockchain analysis.</summary>
-	public IReadOnlyCollection<WalletVirtualInput> WalletVirtualInputs
-	{
-		get
-		{
-			WalletVirtualInputsCache ??= WalletInputs
-				.GroupBy(i => i.HdPubKey.PubKey)
-				.Select(g => new WalletVirtualInput(g.ToHashSet()))
-				.ToHashSet();
-			return WalletVirtualInputsCache;
-		}
-	}
-
-	/// <summary>Wallet outputs with the same script are virtually considered to be the same by blockchain analysis.</summary>
-	public IReadOnlyCollection<WalletVirtualOutput> WalletVirtualOutputs
-	{
-		get
-		{
-			WalletVirtualOutputsCache ??= WalletOutputs
-				.GroupBy(o => o.HdPubKey.PubKey)
-				.Select(g => new WalletVirtualOutput(g.ToHashSet()))
-				.ToHashSet();
-			return WalletVirtualOutputsCache;
-		}
-	}
-
-	/// <summary>Foreign outputs with the same script are virtually considered to be the same by blockchain analysis.</summary>
-	public IReadOnlyCollection<ForeignVirtualOutput> ForeignVirtualOutputs
-	{
-		get
-		{
-			ForeignVirtualOutputsCache ??= ForeignOutputs
-				.GroupBy(o => o.TxOut.ScriptPubKey.ExtractKeyId(), new ByteArrayEqualityComparer())
-				.Select(g => new ForeignVirtualOutput(g.Sum(o => o.TxOut.Value), g.Select(o => new OutPoint(GetHash(), o.N)).ToHashSet()))
-				.ToHashSet();
-			return ForeignVirtualOutputsCache;
 		}
 	}
 
@@ -277,7 +220,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		if (_walletInputsInternal.Add(input))
 		{
 			ForeignInputsCache = null;
-			WalletVirtualInputsCache = null;
 			return true;
 		}
 		return false;
@@ -288,8 +230,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		if (_walletOutputsInternal.Add(output))
 		{
 			ForeignOutputsCache = null;
-			WalletVirtualOutputsCache = null;
-			ForeignVirtualOutputsCache = null;
 			return true;
 		}
 		return false;
@@ -300,8 +240,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 		if (_walletOutputsInternal.Remove(output))
 		{
 			ForeignOutputsCache = null;
-			WalletVirtualOutputsCache = null;
-			ForeignVirtualOutputsCache = null;
 			return true;
 		}
 		return false;

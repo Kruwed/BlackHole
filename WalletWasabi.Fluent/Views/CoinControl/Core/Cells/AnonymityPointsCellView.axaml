@@ -8,7 +8,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.CoinControl.Core.Cells.AnonymityPointsCellView">
   <InvalidatingStackPanel Orientation="Horizontal" Margin="20 0" Spacing="2" HorizontalAlignment="Left" ToolTip.Tip="Anonymity Points">
-    <PathIcon Data="{StaticResource anonscore}" VerticalAlignment="Center" Opacity="0.6" Height="15" />
+    <PathIcon Data="{StaticResource anonymity_points}" VerticalAlignment="Center" Opacity="0.6" Height="15" />
     <TextBlock Text="{Binding AnonymityPointsText}" VerticalAlignment="Center" FontWeight="Bold" />
   </InvalidatingStackPanel>
 </UserControl>

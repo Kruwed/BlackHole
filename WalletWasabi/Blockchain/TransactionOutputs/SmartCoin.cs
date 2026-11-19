@@ -42,7 +42,6 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 	public Script ScriptPubKey => TxOut.ScriptPubKey;
 	public ScriptType ScriptType => ScriptPubKey.GetScriptType();
 	public Money Amount => TxOut.Value;
-	public double AnonymitySet => HdPubKey.AnonymitySet;
 
 	/// <summary>Whether another output of the transaction that created the coin has the same amount as the coin.</summary>
 	public bool IsMatchedOutput => _isMatchedOutput.Value;
@@ -52,12 +51,6 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 	/// that transaction, and none otherwise. They are null while the points of the transaction are not known.
 	/// </summary>
 	public int? AnonymityPoints => IsMatchedOutput ? Transaction.AnonymityPoints : 0;
-	public Dictionary<uint256, double> HistoricalAnonSet => HdPubKey.HistoricalAnonSet;
-
-	public void SetAnonymitySet(double anonset, uint256? outputAnonSetReasonTxId = null)
-	{
-		HdPubKey.SetAnonymitySet(anonset, outputAnonSetReasonTxId);
-	}
 
 	public Height Height
 	{

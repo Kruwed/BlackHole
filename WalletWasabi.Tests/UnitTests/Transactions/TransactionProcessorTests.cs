@@ -42,40 +42,6 @@ public class TransactionProcessorTests
 	}
 
 	[Fact]
-	public async Task SameWalletLoadedTwiceDoesNotLeakDefaultAnonScoreAsync()
-	{
-		// Reproduces #7453 / #9843 / #12648. The same wallet loaded twice shares one transaction
-		// store, so it shares each SmartTransaction. WalletOutputs is a set keyed by outpoint
-		// (SmartCoin equality is outpoint-only), so only the first instance's coin is kept there and
-		// gets analyzed. The second instance's HdPubKey for the very same output is never analyzed and
-		// would keep the DefaultHighAnonymitySet sentinel (int.MaxValue), wrongly marking the coin
-		// fully private and excluding it from coinjoins.
-		using var txStore = await CreateTransactionStoreAsync();
-
-		var km1 = KeyManager.CreateNew(out var shares, "pw", Network.Main);
-		var km2 = KeyManager.Recover(shares[..WalletGenerator.DefaultShamirThreshold], "pw", Network.Main);
-
-		var eventBus = new EventBus();
-		var tp1 = new TransactionProcessor(txStore, km1, eventBus);
-		var tp2 = new TransactionProcessor(txStore, km2, eventBus);
-
-		// A receive to a key both instances of the wallet control (identical derivation).
-		var receiveKey = km1.GetNextReceiveKey();
-		var tx = CreateCreditingTransaction(receiveKey.P2Taproot, Money.Coins(1.0m), height: 100);
-
-		// The first instance processes it: its coin becomes the analyzed representative (anonset 1).
-		tp1.Process(tx);
-		// The second instance processes the very same shared transaction.
-		tp2.Process(tx);
-
-		var coin1 = Assert.Single(tp1.Coins);
-		var coin2 = Assert.Single(tp2.Coins);
-		Assert.Equal(1, coin1.AnonymitySet);
-		Assert.NotEqual(HdPubKey.DefaultHighAnonymitySet, coin2.AnonymitySet);
-		Assert.Equal(1, coin2.AnonymitySet);
-	}
-
-	[Fact]
 	public async Task SpendToLegacyScriptsAsync()
 	{
 		using var txStore = await CreateTransactionStoreAsync();
@@ -1049,7 +1015,7 @@ public class TransactionProcessorTests
 		// It is relevant even when all the coins can be dust.
 		Assert.True(relevant.IsNews);
 		var coin = Assert.Single(transactionProcessor.Coins);
-		Assert.Equal(1, coin.AnonymitySet);
+		Assert.True(coin.IsMatchedOutput);
 		Assert.Equal(amount, coin.Amount);
 	}
 
@@ -1079,8 +1045,8 @@ public class TransactionProcessorTests
 
 		// It is relevant even when all the coins can be dust.
 		Assert.True(relevant.IsNews);
-		var coin = Assert.Single(transactionProcessor.Coins, c => c.AnonymitySet > 1);
-		Assert.Equal(5, coin.AnonymitySet);
+		var coin = Assert.Single(transactionProcessor.Coins);
+		Assert.True(coin.IsMatchedOutput);
 		Assert.Equal(amount, coin.Amount);
 	}
 
@@ -1413,7 +1379,7 @@ public class TransactionProcessorTests
 	}
 
 	[Fact]
-	public async Task EnoughAnonymitySetClusteringAsync()
+	public async Task MatchedOutputClusteringAsync()
 	{
 		// --tx0---> (A) --tx1---> (empty)
 		//
@@ -1453,11 +1419,11 @@ public class TransactionProcessorTests
 		var tx1 = new SmartTransaction(coinjoinTransaction, Height.Mempool);
 
 		transactionProcessor.Process(tx1);
-		var anonymousCoin = Assert.Single(transactionProcessor.Coins, c => c.Amount == Money.Coins(0.1m));
+		var matchedCoin = Assert.Single(transactionProcessor.Coins, c => c.Amount == Money.Coins(0.1m));
 		var changeCoin = Assert.Single(transactionProcessor.Coins, c => c.Amount == Money.Coins(0.9m));
 
-		// The anonymous coin is alone in its cluster, the change is still linked to the coin that was spent.
-		AssertCluster(anonymousCoin, anonymousCoin.HdPubKey);
+		// The matched output is alone in its cluster, the change is still linked to the coin that was spent.
+		AssertCluster(matchedCoin, matchedCoin.HdPubKey);
 		AssertCluster(changeCoin, keyA, changeCoin.HdPubKey);
 	}
 

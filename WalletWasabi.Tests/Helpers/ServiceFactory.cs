@@ -11,7 +11,7 @@ namespace WalletWasabi.Tests.Helpers;
 public static class ServiceFactory
 {
 	public static TransactionFactory CreateTransactionFactory(
-		(int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
+		(int KeyIndex, decimal Amount, bool Confirmed)[] coins)
 	{
 		string password = "foo";
 		KeyManager keyManager = CreateKeyManager(password);
@@ -22,7 +22,7 @@ public static class ServiceFactory
 
 	public static SmartCoin[] CreateCoins(
 		KeyManager keyManager,
-		(int KeyIndex, decimal Amount, bool Confirmed, int AnonymitySet)[] coins)
+		(int KeyIndex, decimal Amount, bool Confirmed)[] coins)
 	{
 		var generated = keyManager.GetKeys().Length;
 		var toGenerate = coins.Length - generated;
@@ -36,10 +36,7 @@ public static class ServiceFactory
 
 		foreach (var c in coins)
 		{
-			var sCoin = BitcoinFactory.CreateSmartCoin(keys[c.KeyIndex], c.Amount, c.Confirmed, c.AnonymitySet);
-			sCoin.SetAnonymitySet(c.AnonymitySet);
-
-			sCoins.Add(sCoin);
+			sCoins.Add(BitcoinFactory.CreateSmartCoin(keys[c.KeyIndex], c.Amount, c.Confirmed));
 		}
 
 		var uniqueCoins = sCoins.Distinct().Count();

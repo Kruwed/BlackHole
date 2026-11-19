@@ -16,8 +16,8 @@ public class InvalidTxExceptionTests
 		var crazyInvalidTx = BitcoinFactory.CreateSmartTransaction(
 			9,
 			Enumerable.Repeat(Money.Coins(1m), 9),
-			new[] { (Money.Coins(1.1m), 1) },
-			new[] { (Money.Coins(1m), HdPubKey.DefaultHighAnonymitySet) });
+			[Money.Coins(1.1m)],
+			[Money.Coins(1m)]);
 
 		TransactionPolicyError[] crazyInvalidTxErrors =
 			{
