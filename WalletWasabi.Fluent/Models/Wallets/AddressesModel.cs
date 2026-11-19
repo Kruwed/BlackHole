@@ -25,7 +25,11 @@ public class AddressesModel
 		_source = new SourceList<HdPubKey>();
 		_source.AddRange(GetUnusedKeys());
 
+		// The wallet tells about its transactions on the thread that processes them. The list of the addresses is shown
+		// on the screen, so it must only change on the thread of the user interface: a list that lost an address in the
+		// moment in which the user generated another one brought the application down.
 		services.EventBus.AsObservable<WalletRelevantTransactionProcessed>()
+			.ObserveOn(RxApp.MainThreadScheduler)
 			.Do(_ => UpdateUnusedKeys())
 			.Subscribe();
 
