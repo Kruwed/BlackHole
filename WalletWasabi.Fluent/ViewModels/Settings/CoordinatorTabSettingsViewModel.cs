@@ -1,6 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Reactive.Linq;
+using NBitcoin;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
+using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Helpers;
@@ -14,6 +19,14 @@ public partial class CoordinatorTabSettingsViewModel : RoutableViewModel
 	[AutoNotify] private string _coordinatorUri;
 	[AutoNotify] private string _maxCoinJoinMiningFeeRate;
 	[AutoNotify] private string _absoluteMinInputCount;
+	[AutoNotify] private string _maxCoinjoinLeftover = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasWallet;
+
+	/// <summary>
+	/// The settings of the wallet, once there is one. The dust forfeit limit is kept with the wallet and not with the
+	/// settings of the application, so it applies to the next round without a restart.
+	/// </summary>
+	private WalletSettingsModel? _walletSettings;
 
 	public CoordinatorTabSettingsViewModel(UiContext uiContext, ApplicationSettings settings) : base(uiContext)
 	{
@@ -22,6 +35,7 @@ public partial class CoordinatorTabSettingsViewModel : RoutableViewModel
 		this.ValidateProperty(x => x.CoordinatorUri, ValidateCoordinatorUri);
 		this.ValidateProperty(x => x.MaxCoinJoinMiningFeeRate, ValidateMaxCoinJoinMiningFeeRate);
 		this.ValidateProperty(x => x.AbsoluteMinInputCount, ValidateAbsoluteMinInputCount);
+		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
 
 		_coordinatorUri = settings.CoordinatorUri;
 		_maxCoinJoinMiningFeeRate = settings.MaxCoinJoinMiningFeeRate;
@@ -40,8 +54,24 @@ public partial class CoordinatorTabSettingsViewModel : RoutableViewModel
 		this.WhenAnyValue(x => x.Settings.AbsoluteMinInputCount)
 			.ToSignal()
 			.Subscribe(x => AbsoluteMinInputCount = Settings.AbsoluteMinInputCount);
+
+		// The wallet appears when it is created or recovered, and its limit with it.
+		UiContext.WalletRepository.WhenAnyValue(x => x.Wallet)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(wallet =>
+			{
+				_walletSettings = wallet?.Settings;
+
+				if (_walletSettings is { } walletSettings)
+				{
+					MaxCoinjoinLeftover = walletSettings.MaxCoinjoinLeftover.ToString();
+				}
+
+				HasWallet = _walletSettings is not null;
+			});
 	}
 
+	/// <summary>Whether the settings of the application cannot be changed. The dust forfeit limit is not one of them.</summary>
 	public bool IsReadOnly => Settings.IsOverridden;
 
 	public ApplicationSettings Settings { get; }
@@ -111,5 +141,43 @@ public partial class CoordinatorTabSettingsViewModel : RoutableViewModel
 		}
 
 		Settings.AbsoluteMinInputCount = absoluteMinInputCountInt.ToString(CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>
+	/// Reads a dust forfeit limit: an amount in BTC between nothing and <see cref="KeyManager.HighestMaxCoinjoinLeftover"/>.
+	/// </summary>
+	public static bool TryParseMaxCoinjoinLeftover(string? text, [NotNullWhen(true)] out Money? limit)
+	{
+		if (Money.TryParse(text, out var amount) && amount is not null && amount >= Money.Zero && amount <= KeyManager.HighestMaxCoinjoinLeftover)
+		{
+			limit = amount;
+			return true;
+		}
+
+		limit = null;
+		return false;
+	}
+
+	/// <summary>
+	/// The dust forfeit limit is an amount in BTC, and there always is one. A valid value is written to the wallet file right away.
+	/// </summary>
+	private void ValidateMaxCoinjoinLeftover(IValidationErrors errors)
+	{
+		if (_walletSettings is not { } walletSettings)
+		{
+			return;
+		}
+
+		if (!TryParseMaxCoinjoinLeftover(MaxCoinjoinLeftover, out var limit))
+		{
+			errors.Add(ErrorSeverity.Error, $"Must be between 0 and {KeyManager.HighestMaxCoinjoinLeftover} BTC.");
+			return;
+		}
+
+		if (limit != walletSettings.MaxCoinjoinLeftover)
+		{
+			walletSettings.MaxCoinjoinLeftover = limit;
+			walletSettings.Save();
+		}
 	}
 }

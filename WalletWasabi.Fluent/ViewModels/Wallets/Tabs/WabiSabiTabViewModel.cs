@@ -9,7 +9,6 @@ using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
-using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
 
@@ -42,7 +41,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	{
 		WalletModel = walletModel;
 
-		CoinJoinSettings = new WalletCoinJoinSettingsViewModel(uiContext, walletModel);
 		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, allowSelection: true);
 
 		walletModel.WhenAnyValue(x => x.IsLoaded)
@@ -55,8 +53,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 			.Subscribe(_ => CoinJoinState = new CoinJoinStateViewModel(uiContext, walletModel, wallet, walletModel.Coinjoin!));
 
 		// The settings only decide how the wallet coinjoins later, so they are open while the wallet still processes blocks.
-		CoinJoinSettingsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To(CoinJoinSettings));
-
 		CoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
 		{
 			if (UiContext.MainViewModel is { } mainViewModel)
@@ -83,8 +79,6 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// <summary>Whether a coordinator is set. Without one there is no coinjoin, and the tab says so.</summary>
 	public bool IsCoinJoinEnabled => WalletModel.IsCoinJoinEnabled;
 
-	public WalletCoinJoinSettingsViewModel CoinJoinSettings { get; }
-
 	/// <summary>
 	/// The coins of the wallet. A round gets every ticked coin that it accepts and that can be registered at that time,
 	/// the others are kept out of coinjoins. A coin is ticked unless the user unticked it, so a coin that arrives is
@@ -92,8 +86,7 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// </summary>
 	public CoinListViewModel CoinList { get; }
 
-	public ICommand CoinJoinSettingsCommand { get; }
-
+	/// <summary>Opens the settings of the coinjoins: the coordinator and the limits that the wallet keeps to.</summary>
 	public ICommand CoordinatorSettingsCommand { get; }
 
 	/// <summary>Ticks every coin, or none if some are ticked.</summary>

@@ -88,11 +88,6 @@
             <Button Classes="plain" ToolTip.Tip="Settings and more">
               <Button.Flyout>
                 <MenuFlyout Placement="Bottom">
-                  <MenuItem Header="Coinjoin Settings" Command="{Binding CoinJoinSettingsCommand}">
-                    <MenuItem.Icon>
-                      <PathIcon Data="{StaticResource settings_general_regular}" />
-                    </MenuItem.Icon>
-                  </MenuItem>
                   <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
                     <MenuItem.Icon>
                       <PathIcon Data="{StaticResource coordinator}" />
