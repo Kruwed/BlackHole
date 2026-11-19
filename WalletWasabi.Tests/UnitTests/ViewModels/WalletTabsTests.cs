@@ -156,20 +156,20 @@ public class WalletTabsTests
 	}
 
 	[Fact]
-	public void TickOfACoinDecidesWhetherItMayGoIntoRounds()
+	public void TickOfACoinDecidesWhetherItGoesIntoRounds()
 	{
-		// The user unticked a coin that the wallet lets into coinjoins: it is kept out from now on.
-		Assert.True(WabiSabiTabViewModel.GetExclusionChange(isTicked: false, isExcluded: false));
+		// The user ticked a coin that is not chosen for coinjoins in the wallet: it is chosen from now on.
+		Assert.True(WabiSabiTabViewModel.GetSelectionChange(isTicked: true, isSelected: false));
 
-		// The user ticked a coin that the wallet keeps out: it is let in again.
-		Assert.False(WabiSabiTabViewModel.GetExclusionChange(isTicked: true, isExcluded: true));
+		// The user unticked a coin that is chosen: it is taken out again.
+		Assert.False(WabiSabiTabViewModel.GetSelectionChange(isTicked: false, isSelected: true));
 	}
 
 	[Fact]
 	public void TickThatSaysWhatTheWalletDoesAlreadyChangesNothing()
 	{
-		Assert.Null(WabiSabiTabViewModel.GetExclusionChange(isTicked: true, isExcluded: false));
-		Assert.Null(WabiSabiTabViewModel.GetExclusionChange(isTicked: false, isExcluded: true));
+		Assert.Null(WabiSabiTabViewModel.GetSelectionChange(isTicked: true, isSelected: true));
+		Assert.Null(WabiSabiTabViewModel.GetSelectionChange(isTicked: false, isSelected: false));
 	}
 
 	[Theory]

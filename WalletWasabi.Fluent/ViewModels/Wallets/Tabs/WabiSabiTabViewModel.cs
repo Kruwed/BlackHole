@@ -16,7 +16,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
 /// <summary>
 /// The tab of the WabiSabi coinjoins: the coinjoin that is running or waiting with its controls, and the coins, of
-/// which the ticked ones are submitted into rounds. Nothing of this shows anywhere else.
+/// which the ones that the user ticks are submitted into rounds. Nothing of this shows anywhere else.
 /// </summary>
 [AppLifetime]
 public partial class WabiSabiTabViewModel : WalletTabViewModel
@@ -24,10 +24,10 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	public const string TabTitle = "WabiSabi";
 
 	/// <summary>
-	/// The coins that the user ticked or unticked and that the wallet was not told about yet, with whether each is kept
-	/// out of coinjoins. Ticking all of them changes many coins at once, and the wallet is told about them together.
+	/// The coins that the user ticked or unticked and that the wallet was not told about yet, with whether each is
+	/// chosen for coinjoins. Ticking all of them changes many coins at once, and the wallet is told about them together.
 	/// </summary>
-	private readonly Dictionary<OutPoint, bool> _pendingExclusions = [];
+	private readonly Dictionary<OutPoint, bool> _pendingSelections = [];
 
 	/// <summary>Whether a tick is being set to what the wallet says. Such a change is not the user's.</summary>
 	private bool _isShowingWalletState;
@@ -81,8 +81,8 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 
 	/// <summary>
 	/// The coins of the wallet. A round gets the ticked coins that it accepts and that can be registered at that time,
-	/// ten at most, the others are kept out of coinjoins. A coin is ticked unless the user unticked it, so a coin that
-	/// arrives is submitted too.
+	/// ten at most, the others are kept out of coinjoins. No coin is ticked before the user ticks it: a coin that
+	/// arrives, also out of a coinjoin, stays out of rounds until then.
 	/// </summary>
 	public CoinListViewModel CoinList { get; }
 
@@ -96,21 +96,21 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// Tells what the wallet is to be told after the user changed the tick of a coin: nothing, if the wallet treats the
 	/// coin that way already.
 	/// </summary>
-	/// <param name="isTicked">Whether the coin may be submitted into rounds according to its tick.</param>
-	/// <param name="isExcluded">Whether the wallet keeps the coin out of coinjoins so far.</param>
-	/// <returns>Whether the coin is to be kept out from now on, or null if nothing changes.</returns>
-	public static bool? GetExclusionChange(bool isTicked, bool isExcluded) =>
-		isTicked == isExcluded ? !isTicked : null;
+	/// <param name="isTicked">Whether the coin is to be submitted into rounds according to its tick.</param>
+	/// <param name="isSelected">Whether the coin is chosen for coinjoins in the wallet so far.</param>
+	/// <returns>Whether the coin is chosen from now on, or null if nothing changes.</returns>
+	public static bool? GetSelectionChange(bool isTicked, bool isSelected) =>
+		isTicked != isSelected ? isTicked : null;
 
 	/// <summary>
-	/// A coin is shown ticked for as long as the wallet does not keep it out of coinjoins: when its row appears, and
+	/// A coin is shown ticked for as long as it is chosen for coinjoins in the wallet: when its row appears, and
 	/// whenever the wallet changes its mind about it, which the daemon's interface can make it do as well.
 	/// </summary>
 	private void ShowWhatMayBeSubmitted()
 	{
 		CoinList.CoinItems
 			.ToObservableChangeSet()
-			.MergeMany(item => item.WhenAnyValue(x => x.IsExcludedFromCoinJoin).Select(_ => item))
+			.MergeMany(item => item.WhenAnyValue(x => x.IsSelectedForCoinJoin).Select(_ => item))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(item =>
 			{
@@ -118,7 +118,7 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 
 				try
 				{
-					item.IsSelected = !item.IsExcludedFromCoinJoin;
+					item.IsSelected = item.IsSelectedForCoinJoin;
 				}
 				finally
 				{
@@ -137,7 +137,7 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	/// <summary>
 	/// The wallet is told about the ticks that the user changes, and about nothing else: not about the ticks that show
 	/// what the wallet says, and not about the ones that the list restores when it puts its rows together again. A coin
-	/// that the user did not touch is never kept out by this page.
+	/// that the user did not touch is never chosen by this page.
 	/// </summary>
 	private void TellTheWalletWhatTheUserTicks()
 	{
@@ -148,33 +148,33 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 			.Select(change => change.Sender)
 			.Do(item =>
 			{
-				if (GetExclusionChange(isTicked: item.IsSelected, item.Coin.IsExcludedFromCoinJoin) is { } exclude)
+				if (GetSelectionChange(isTicked: item.IsSelected, item.Coin.IsSelectedForCoinJoin) is { } select)
 				{
-					_pendingExclusions[item.Coin.GetSmartCoin().Outpoint] = exclude;
+					_pendingSelections[item.Coin.GetSmartCoin().Outpoint] = select;
 				}
 				else
 				{
-					_pendingExclusions.Remove(item.Coin.GetSmartCoin().Outpoint);
+					_pendingSelections.Remove(item.Coin.GetSmartCoin().Outpoint);
 				}
 			})
 			.Throttle(TimeSpan.FromMilliseconds(100), RxApp.MainThreadScheduler)
-			.DoAsync(async _ => await ApplyPendingExclusionsAsync())
+			.DoAsync(async _ => await ApplyPendingSelectionsAsync())
 			.Subscribe();
 	}
 
-	private async Task ApplyPendingExclusionsAsync()
+	private async Task ApplyPendingSelectionsAsync()
 	{
-		if (_pendingExclusions.Count == 0)
+		if (_pendingSelections.Count == 0)
 		{
 			return;
 		}
 
-		var exclusions = new Dictionary<OutPoint, bool>(_pendingExclusions);
-		_pendingExclusions.Clear();
+		var selections = new Dictionary<OutPoint, bool>(_pendingSelections);
+		_pendingSelections.Clear();
 
 		try
 		{
-			await WalletModel.Coins.ExcludeFromCoinjoinAsync(exclusions);
+			await WalletModel.Coins.SelectForCoinjoinAsync(selections);
 		}
 		catch (Exception ex)
 		{

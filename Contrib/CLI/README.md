@@ -10,7 +10,9 @@ $ ./wcli.sh command [ARGS,...]
 
 There is a single wallet, so the commands do not take a wallet name. Create it once with `createwallet` or recover it with `recoverwallet`, then open it with `loadwallet`. `createwallet <password>` prints the SLIP-39 backup, 20 words; `createwallet <password> 2 3` splits it into 3 shares, any 2 of which recover the wallet.
 
-The RPC commands are `getstatus`, `createwallet`, `recoverwallet`, `loadwallet`, `getwalletinfo`, `getnewaddress`, `listkeys`, `listcoins`, `listunspentcoins`, `gethistory`, `getfeerates`, `build`, `buildunsafetransaction`, `send`, `broadcast`, `speeduptransaction`, `canceltransaction`, `startcoinjoin`, `stopcoinjoin`, `excludefromcoinjoin`, `payincoinjoin`, `listpaymentsincoinjoin`, `cancelpaymentincoinjoin` and `stop`. They are the methods of [WasabiJsonRpcService.cs](../../WalletWasabi.Client/Rpc/WasabiJsonRpcService.cs).
+The RPC commands are `getstatus`, `createwallet`, `recoverwallet`, `loadwallet`, `getwalletinfo`, `getnewaddress`, `listkeys`, `listcoins`, `listunspentcoins`, `gethistory`, `getfeerates`, `build`, `buildunsafetransaction`, `send`, `broadcast`, `speeduptransaction`, `canceltransaction`, `startcoinjoin`, `stopcoinjoin`, `selectforcoinjoin`, `payincoinjoin`, `listpaymentsincoinjoin`, `cancelpaymentincoinjoin` and `stop`. They are the methods of [WasabiJsonRpcService.cs](../../WalletWasabi.Client/Rpc/WasabiJsonRpcService.cs).
+
+A coinjoin round only gets coins that were chosen for coinjoins, and no coin is chosen at first. `selectforcoinjoin <txid> <index>` chooses a coin, `selectforcoinjoin <txid> <index> false` takes it out again, and `listunspentcoins` tells for every coin whether it is chosen (`selectedForCoinjoin`). `startcoinjoin` then starts one round with the chosen coins, ten of them at most.
 
 ## Examples
 

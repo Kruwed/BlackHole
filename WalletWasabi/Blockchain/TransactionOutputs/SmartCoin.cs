@@ -92,7 +92,11 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 
 	public bool IsBanned => BannedUntilUtc is not null && BannedUntilUtc > DateTimeOffset.UtcNow;
 
-	public bool IsExcludedFromCoinJoin
+	/// <summary>
+	/// Whether the user chose the coin for coinjoins. Only a chosen coin is submitted into rounds, and no coin is chosen
+	/// before the user says so.
+	/// </summary>
+	public bool IsSelectedForCoinJoin
 	{
 		get;
 		set => RaiseAndSetIfChanged(ref field, value);

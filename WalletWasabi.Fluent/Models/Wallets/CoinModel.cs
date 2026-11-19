@@ -14,7 +14,7 @@ public partial class CoinModel : ReactiveObject
 	private readonly IServices _services;
 	private bool _subscribedToCoinChanges;
 
-	[AutoNotify] private bool _isExcludedFromCoinJoin;
+	[AutoNotify] private bool _isSelectedForCoinJoin;
 	[AutoNotify] private bool _isCoinJoinInProgress;
 	[AutoNotify] private bool _isBanned;
 	[AutoNotify] private string? _bannedUntilUtcToolTip;
@@ -32,7 +32,7 @@ public partial class CoinModel : ReactiveObject
 		Key = coin.Outpoint.GetHashCode();
 		BannedUntilUtc = coin.BannedUntilUtc;
 
-		IsExcludedFromCoinJoin = coin.IsExcludedFromCoinJoin;
+		IsSelectedForCoinJoin = coin.IsSelectedForCoinJoin;
 		IsConfirmed = coin.Confirmed;
 		AnonymityPoints = coin.AnonymityPoints;
 		IsCoinJoinInProgress = coin.CoinJoinInProgress;
@@ -68,7 +68,7 @@ public partial class CoinModel : ReactiveObject
 
 		disposable.Add(Disposable.Create(() => _subscribedToCoinChanges = false));
 
-		this.WhenAnyValue(c => c.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(disposable);
+		this.WhenAnyValue(c => c.Coin.IsSelectedForCoinJoin).BindTo(this, x => x.IsSelectedForCoinJoin).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.Confirmed).BindTo(this, x => x.IsConfirmed).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.CoinJoinInProgress).BindTo(this, x => x.IsCoinJoinInProgress).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.BannedUntilUtc).Select(_ => Coin.IsBanned).BindTo(this, x => x.IsBanned).DisposeWith(disposable);

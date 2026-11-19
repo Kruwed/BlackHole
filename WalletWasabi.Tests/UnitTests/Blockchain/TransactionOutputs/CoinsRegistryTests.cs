@@ -409,7 +409,7 @@ public class CoinsRegistryTests
 		Assert.NotSame(coin, sameCoin);
 		Assert.False(Coins.TryAdd(sameCoin));
 
-		// Looking the coin up by outpoint (e.g. to exclude it from coinjoins) must return the coin the registry tracks.
+		// Looking the coin up by outpoint (e.g. to choose it for coinjoins) must return the coin the registry tracks.
 		Assert.Same(coin, Assert.Single(Coins));
 		Assert.True(Coins.TryGetByOutPoint(coin.Outpoint, out SmartCoin? lookedUpCoin));
 		Assert.Same(coin, lookedUpCoin);

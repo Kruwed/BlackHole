@@ -11,7 +11,7 @@ public static class CoinJoinCoinSelector
 	/// <summary>The most coins that a wallet registers in one round.</summary>
 	public const int MaxInputsRegistrableByWallet = 10;
 
-	/// <param name="coins">The coins that may take part: the ones that the user lets into coinjoins and that can be registered now.</param>
+	/// <param name="coins">The coins that may take part: the ones that the user chose for coinjoins and that can be registered now.</param>
 	/// <returns>The coins to register, in random order. None if the round has no use for the coins.</returns>
 	public static ImmutableList<SmartCoin> SelectCoinsForRound(IEnumerable<SmartCoin> coins, UtxoSelectionParameters parameters)
 	{
@@ -25,7 +25,7 @@ public static class CoinJoinCoinSelector
 			return [];
 		}
 
-		// If the user lets more coins in than a round gets, the largest go first and the others wait for a later round.
+		// If the user chose more coins than a round gets, the largest go first and the others wait for a later round.
 		// Nothing but the amount decides: coins of the same amount are taken in no order.
 		var coinsToRegister = allowedCoins
 			.ToShuffled(RandomnessProviders.Secure)

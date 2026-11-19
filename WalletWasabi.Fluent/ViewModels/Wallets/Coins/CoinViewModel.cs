@@ -10,7 +10,7 @@ using WalletWasabi.Fluent.Models.Wallets;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
 /// <summary>
-/// The row of a coin in a list of coins. The row is made once: apart from whether the coin is kept out of coinjoins and
+/// The row of a coin in a list of coins. The row is made once: apart from whether the coin is chosen for coinjoins and
 /// whether it is in one, which it follows, it shows the coin as it was at that moment. <see cref="Content"/> tells the
 /// list when a coin needs a new row.
 /// </summary>
@@ -20,7 +20,7 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 
 	[AutoNotify] private bool _isSelected;
 	[AutoNotify] private bool _isCoinjoining;
-	[AutoNotify] private bool _isExcludedFromCoinJoin;
+	[AutoNotify] private bool _isSelectedForCoinJoin;
 	[AutoNotify] private bool _canBeSelected;
 
 	public CoinViewModel(UiContext uiContext, CoinModel coin, bool canSelectWhenCoinjoining) : base(uiContext)
@@ -43,7 +43,7 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 		BannedUntilUtcToolTip = coin.BannedUntilUtcToolTip;
 		AnonymityPoints = coin.AnonymityPoints;
 		BannedUntilUtc = coin.BannedUntilUtc;
-		this.WhenAnyValue(x => x.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(_disposables);
+		this.WhenAnyValue(x => x.Coin.IsSelectedForCoinJoin).BindTo(this, x => x.IsSelectedForCoinJoin).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress).BindTo(this, x => x.IsCoinjoining).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.CanBeSelected)
 			.Where(b => !b)

@@ -71,12 +71,47 @@ public class CoinJoinManagerTests
 		}
 	}
 
+	/// <summary>
+	/// No coin takes part in a coinjoin before the user chose it: a wallet with a coin that nobody ticked has nothing to
+	/// register, and is told that this is why.
+	/// </summary>
+	[Fact]
+	public async Task CoinThatTheUserDidNotChooseIsNotSubmittedAsync()
+	{
+		var testDeadline = TestContext.Current.CancellationToken;
+
+		using var environment = await TestEnvironment.CreateAsync();
+		var (manager, wallet) = (environment.Manager, environment.Wallet);
+		environment.GiveTheWalletCoin(Money.Coins(1m), selectForCoinJoin: false);
+
+		await manager.StartAsync(testDeadline);
+		try
+		{
+			manager.RequestCoinJoinStart(wallet);
+
+			await environment.WaitForAsync<WalletStoppedCoinJoinEventArgs>(count: 1, testDeadline);
+
+			var seen = environment.GetNotifications();
+
+			Assert.Equal(
+				[typeof(StartedEventArgs), typeof(CompletedEventArgs), typeof(StartErrorEventArgs), typeof(WalletStoppedCoinJoinEventArgs)],
+				seen.Select(e => e.GetType()));
+			Assert.Equal(CoinjoinError.NoCoinsSelected, seen.OfType<StartErrorEventArgs>().Single().Error);
+			Assert.Equal(CoinJoinClientState.Idle, await GetClientStateAsync(manager, wallet, CoinJoinClientState.Idle, testDeadline));
+			Assert.False(wallet.Coins.Single().CoinJoinInProgress);
+		}
+		finally
+		{
+			await manager.StopAsync(CancellationToken.None);
+		}
+	}
+
 	[Fact]
 	public async Task StartThatIsAskedForWhileCoinJoinIsBeingStoppedTakesItsPlaceAsync()
 	{
 		var testDeadline = TestContext.Current.CancellationToken;
 
-		// The wallet has a coin, and the coordinator has no round: a coinjoin that is started waits for one.
+		// The wallet has a coin that the user chose, and the coordinator has no round: a coinjoin that is started waits for one.
 		using var environment = await TestEnvironment.CreateAsync();
 		var (manager, wallet) = (environment.Manager, environment.Wallet);
 		environment.GiveTheWalletCoin(Money.Coins(1m));
@@ -143,19 +178,19 @@ public class CoinJoinManagerTests
 		var km = KeyManager.CreateNew(out _, "", Network.Main);
 		SmartCoin[] Coins(int count) => Enumerable.Range(0, count).Select(_ => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(1m))).ToArray();
 
-		static CoinjoinError Error(SmartCoin[]? banned = null, SmartCoin[]? immature = null, SmartCoin[]? unconfirmed = null, SmartCoin[]? excluded = null) =>
-			CoinJoinManager.GetUnavailableCoinsError(new CoinJoinManager.CoinSelectionResult([], banned ?? [], immature ?? [], unconfirmed ?? [], excluded ?? []));
+		static CoinjoinError Error(SmartCoin[]? banned = null, SmartCoin[]? immature = null, SmartCoin[]? unconfirmed = null, SmartCoin[]? unselected = null) =>
+			CoinJoinManager.GetUnavailableCoinsError(new CoinJoinManager.CoinSelectionResult([], banned ?? [], immature ?? [], unconfirmed ?? [], unselected ?? []));
 
 		// A wallet without coins.
 		Assert.Equal(CoinjoinError.NoCoinsEligibleToMix, Error());
 
-		// The user keeps every coin out.
-		Assert.Equal(CoinjoinError.OnlyExcludedCoinsAvailable, Error(excluded: Coins(2)));
+		// The user chose no coin for coinjoins.
+		Assert.Equal(CoinjoinError.NoCoinsSelected, Error(unselected: Coins(2)));
 
-		// What holds back a coin that the user lets in is told before the coins that the user keeps out: it passes by itself.
-		Assert.Equal(CoinjoinError.NoConfirmedCoinsEligibleToMix, Error(unconfirmed: Coins(1), excluded: Coins(2)));
-		Assert.Equal(CoinjoinError.OnlyImmatureCoinsAvailable, Error(immature: Coins(1), excluded: Coins(2)));
-		Assert.Equal(CoinjoinError.CoinsRejected, Error(banned: Coins(1), excluded: Coins(2)));
+		// What holds back a coin that the user chose is told before the coins that the user did not choose: it passes by itself.
+		Assert.Equal(CoinjoinError.NoConfirmedCoinsEligibleToMix, Error(unconfirmed: Coins(1), unselected: Coins(2)));
+		Assert.Equal(CoinjoinError.OnlyImmatureCoinsAvailable, Error(immature: Coins(1), unselected: Coins(2)));
+		Assert.Equal(CoinjoinError.CoinsRejected, Error(banned: Coins(1), unselected: Coins(2)));
 
 		// Of several reasons, the one that passes soonest.
 		Assert.Equal(CoinjoinError.NoConfirmedCoinsEligibleToMix, Error(banned: Coins(1), immature: Coins(1), unconfirmed: Coins(1)));
@@ -266,8 +301,8 @@ public class CoinJoinManagerTests
 			}
 		}
 
-		/// <summary>A confirmed coin that the wallet may register in a round.</summary>
-		public void GiveTheWalletCoin(Money amount)
+		/// <summary>A confirmed coin. The wallet may register it in a round if the user chose it for coinjoins.</summary>
+		public void GiveTheWalletCoin(Money amount, bool selectForCoinJoin = true)
 		{
 			var tx = Network.Main.CreateTransaction();
 			tx.Version = 1;
@@ -276,7 +311,15 @@ public class CoinJoinManagerTests
 			tx.Outputs.Add(amount, Wallet.KeyManager.GetNextReceiveKey().P2Taproot);
 
 			Wallet.TransactionProcessor.Process(new SmartTransaction(tx, new Height.ChainHeight(100)));
-			Assert.Single(Wallet.Coins);
+			var coin = Assert.Single(Wallet.Coins);
+
+			// A coin that arrives is not chosen.
+			Assert.False(coin.IsSelectedForCoinJoin);
+
+			if (selectForCoinJoin)
+			{
+				Wallet.SelectCoinForCoinJoin(coin.Outpoint);
+			}
 		}
 
 		public void Dispose()

@@ -178,8 +178,8 @@ public class CoinJoinManager : BackgroundService
 				throw new CoinJoinClientException(CoinjoinError.UserInSendWorkflow);
 			}
 
-			// Every coin that the user lets in and that can be registered now is a candidate. The round gets the
-			// candidates that it takes, ten at most.
+			// Every coin that the user chose for coinjoins and that can be registered now is a candidate. The round gets
+			// the candidates that it takes, ten at most.
 			var coinCandidates = SelectCandidateCoins(walletToStart);
 
 			NotifyWalletStartedCoinJoin(walletToStart);
@@ -221,11 +221,11 @@ public class CoinJoinManager : BackgroundService
 	}
 
 	/// <summary>
-	/// The coins of a wallet as a coinjoin sees them. The user decides first: a coin that is kept out of coinjoins is
-	/// nothing but that. Of the coins that are let in, some cannot be registered for the time being, and the rest are the
-	/// candidates.
+	/// The coins of a wallet as a coinjoin sees them. The user decides first: a coin that the user did not choose for
+	/// coinjoins is nothing but that. Of the chosen coins, some cannot be registered for the time being, and the rest are
+	/// the candidates.
 	/// </summary>
-	public record CoinSelectionResult(SmartCoin[] CandidateCoins, SmartCoin[] BannedCoins, SmartCoin[] ImmatureCoins, SmartCoin[] UnconfirmedCoins, SmartCoin[] ExcludedCoins)
+	public record CoinSelectionResult(SmartCoin[] CandidateCoins, SmartCoin[] BannedCoins, SmartCoin[] ImmatureCoins, SmartCoin[] UnconfirmedCoins, SmartCoin[] UnselectedCoins)
 	{
 		public CoinSelectionResult() : this([], [], [], [], []) { }
 	}
@@ -237,8 +237,8 @@ public class CoinJoinManager : BackgroundService
 			.Where(x => !_coinRefrigerator.IsFrozen(x))
 			.ToArray();
 
-		var excludedCoins = coins.Where(x => x.IsExcludedFromCoinJoin).ToArray();
-		var allowedCoins = coins.Except(excludedCoins).ToArray();
+		var allowedCoins = coins.Where(x => x.IsSelectedForCoinJoin).ToArray();
+		var unselectedCoins = coins.Except(allowedCoins).ToArray();
 
 		var bannedCoins = allowedCoins.Where(x => _coinPrison.IsBanned(x.Outpoint)).ToArray();
 		var immatureCoins = _serverTipHeight > 0
@@ -257,7 +257,7 @@ public class CoinJoinManager : BackgroundService
 			bannedCoins,
 			immatureCoins,
 			unconfirmedCoins,
-			excludedCoins);
+			unselectedCoins);
 	}
 
 	private SmartCoin[] SelectCandidateCoins(Wallet wallet)
@@ -273,8 +273,8 @@ public class CoinJoinManager : BackgroundService
 	}
 
 	/// <summary>
-	/// Tells why a wallet has no coin for a coinjoin. The coins that the user lets in come first: what holds them back
-	/// passes by itself. If there is none of those, the coins that the user keeps out are the reason.
+	/// Tells why a wallet has no coin for a coinjoin. The coins that the user chose come first: what holds them back
+	/// passes by itself. If there is none of those, the reason is that the user chose no coin.
 	/// </summary>
 	public static CoinjoinError GetUnavailableCoinsError(CoinSelectionResult result)
 	{
@@ -293,9 +293,9 @@ public class CoinJoinManager : BackgroundService
 			return CoinjoinError.CoinsRejected;
 		}
 
-		if (result.ExcludedCoins.Length > 0)
+		if (result.UnselectedCoins.Length > 0)
 		{
-			return CoinjoinError.OnlyExcludedCoinsAvailable;
+			return CoinjoinError.NoCoinsSelected;
 		}
 
 		return CoinjoinError.NoCoinsEligibleToMix;

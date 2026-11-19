@@ -253,7 +253,7 @@ public class Wallet : BackgroundService
 		Logger.LogTrace(FormatLog("Waiting for the synchronization with the node to finish.", this));
 		await Synchronizer.InitialSynchronizationFinished.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-		LoadExcludedCoins();
+		LoadCoinsSelectedForCoinJoin();
 
 		await base.StartAsync(cancellationToken).ConfigureAwait(false);
 
@@ -261,25 +261,21 @@ public class Wallet : BackgroundService
 		_eventBus.Publish(new WalletLoaded(this));
 	}
 
-	private void LoadExcludedCoins()
+	/// <summary>
+	/// Puts the choices of the user that the wallet file holds on the coins. The wallet has all of its coins now, so a
+	/// choice without a coin is one whose coin was spent: it is forgotten.
+	/// </summary>
+	private void LoadCoinsSelectedForCoinJoin()
 	{
-		bool isUpdateRequired = false;
-		foreach (var excludedCoin in KeyManager.ExcludedCoinsFromCoinJoin)
+		var coins = Coins.ToDictionary(coin => coin.Outpoint);
+		var selected = KeyManager.CoinsSelectedForCoinJoin.Where(coins.ContainsKey).ToArray();
+
+		foreach (var outpoint in selected)
 		{
-			var coin = Coins.SingleOrDefault(c => c.Outpoint == excludedCoin);
-			if (coin != null)
-			{
-				coin.IsExcludedFromCoinJoin = true;
-			}
-			else
-			{
-				isUpdateRequired = true;
-			}
+			coins[outpoint].IsSelectedForCoinJoin = true;
 		}
-		if (isUpdateRequired)
-		{
-			UpdateExcludedCoinFromCoinJoin();
-		}
+
+		KeyManager.SetCoinsSelectedForCoinJoin(selected);
 	}
 
 	/// <inheritdoc />
@@ -546,37 +542,50 @@ public class Wallet : BackgroundService
 		TransactionProcessor.Process(txsToProcess);
 	}
 
-	public void ExcludeCoinFromCoinJoin(OutPoint outpoint, bool exclude = true)
+	/// <summary>Chooses a coin of the wallet for coinjoins, or takes it out of them again.</summary>
+	public void SelectCoinForCoinJoin(OutPoint outpoint, bool select = true)
 	{
-		if (!Coins.TryGetByOutPoint(outpoint, out var coin))
+		if (!Coins.TryGetByOutPoint(outpoint, out _))
 		{
 			throw new InvalidOperationException($"Coin '{outpoint}' doesn't belong to the wallet or is spent.");
 		}
 
-		coin.IsExcludedFromCoinJoin = exclude;
-		UpdateExcludedCoinFromCoinJoin();
+		SelectCoinsForCoinJoin(new Dictionary<OutPoint, bool> { [outpoint] = select });
 	}
 
 	/// <summary>
-	/// Keeps the given coins out of coinjoins or lets them in again, all of them at once. The coins that are not named stay as they are.
+	/// Chooses the given coins for coinjoins or takes them out of them again, all of them at once. The coins that are
+	/// not named stay as they are, and so does a coin that the wallet does not have.
 	/// </summary>
-	/// <param name="exclusions">For every coin that is to change, whether it is kept out.</param>
-	public void ExcludeCoinsFromCoinJoin(IReadOnlyDictionary<OutPoint, bool> exclusions)
+	/// <param name="selections">For every coin that is to change, whether it is chosen.</param>
+	public void SelectCoinsForCoinJoin(IReadOnlyDictionary<OutPoint, bool> selections)
 	{
+		// The wallet file is the memory of the choices. While the wallet still reads the blocks of the node, the file
+		// knows of choices whose coins the wallet does not have yet: the changes are made to what the file holds, so
+		// that none of those is lost.
+		var selected = KeyManager.CoinsSelectedForCoinJoin.ToHashSet();
+
+		// A choice whose coin was spent in the meantime, in a round for example, is of no use any more.
+		var allCoins = Coins.AsAllCoinsView();
+		selected.RemoveWhere(outpoint => allCoins.TryGetByOutPoint(outpoint, out var coin) && coin.IsSpent());
+
 		foreach (var coin in Coins)
 		{
-			if (exclusions.TryGetValue(coin.Outpoint, out var exclude))
+			if (selections.TryGetValue(coin.Outpoint, out var select))
 			{
-				coin.IsExcludedFromCoinJoin = exclude;
+				coin.IsSelectedForCoinJoin = select;
+
+				if (select)
+				{
+					selected.Add(coin.Outpoint);
+				}
+				else
+				{
+					selected.Remove(coin.Outpoint);
+				}
 			}
 		}
 
-		UpdateExcludedCoinFromCoinJoin();
-	}
-
-	private void UpdateExcludedCoinFromCoinJoin()
-	{
-		var excludedOutpoints = Coins.Where(c => c.IsExcludedFromCoinJoin).Select(c => c.Outpoint);
-		KeyManager.SetExcludedCoinsFromCoinJoin(excludedOutpoints);
+		KeyManager.SetCoinsSelectedForCoinJoin(selected);
 	}
 }

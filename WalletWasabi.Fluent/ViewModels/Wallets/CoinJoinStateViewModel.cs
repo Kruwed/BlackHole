@@ -41,7 +41,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private const string NoConfirmedCoinsMessage = "The funds are not confirmed yet";
 	private const string CoinsRejectedMessage = "Some funds are rejected from coinjoining";
 	private const string OnlyImmatureCoinsAvailableMessage = "Only immature funds are available";
-	private const string OnlyExcludedCoinsAvailableMessage = "Only excluded funds are available";
+	private const string NoCoinsSelectedMessage = "No coin is ticked";
 	private const string CoordinatorLiedMessage = "Coordinator lied and might be malicious!";
 
 	private readonly IWalletModel _wallet;
@@ -150,7 +150,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			CoinjoinError.UserWasntInRound => RoundFinishedMessage,
 			CoinjoinError.CoinsRejected => CoinsRejectedMessage,
 			CoinjoinError.OnlyImmatureCoinsAvailable => OnlyImmatureCoinsAvailableMessage,
-			CoinjoinError.OnlyExcludedCoinsAvailable => OnlyExcludedCoinsAvailableMessage,
+			CoinjoinError.NoCoinsSelected => NoCoinsSelectedMessage,
 			CoinjoinError.MiningFeeRateTooHigh => CoinjoinMiningFeeRateTooHighMessage,
 			CoinjoinError.MinInputCountTooLow => MinInputCountTooLowMessage,
 			CoinjoinError.CoordinatorLiedAboutInputs => CoordinatorLiedMessage,

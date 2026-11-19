@@ -21,7 +21,10 @@ public enum CoinjoinError
 	NoConfirmedCoinsEligibleToMix,
 	CoinsRejected,
 	OnlyImmatureCoinsAvailable,
-	OnlyExcludedCoinsAvailable,
+
+	/// <summary>The wallet has coins, but the user chose none of them for coinjoins.</summary>
+	NoCoinsSelected,
+
 	MiningFeeRateTooHigh,
 	MinInputCountTooLow,
 	CoordinatorLiedAboutInputs,

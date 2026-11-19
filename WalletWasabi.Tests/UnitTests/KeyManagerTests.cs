@@ -380,21 +380,26 @@ public class KeyManagerTests
 		manager.ToFile();
 
 		// A wallet file of an older version has the settings of the automatic coinjoin, of the private coins and of
-		// the isolation of the non-private ones.
+		// the isolation of the non-private ones, and the list of the coins that were kept out of coinjoins.
 		var json = File.ReadAllText(filePath);
 		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
 		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 		Assert.DoesNotContain("\"OnlyUsePrivateFundsForPayments\"", json);
 		Assert.DoesNotContain("\"RedCoinIsolation\"", json);
+		Assert.DoesNotContain("\"ExcludedCoinsFromCoinJoin\"", json);
 
+		var keptOut = Convert.ToHexString(new OutPoint(uint256.One, 3).ToBytes()).ToLowerInvariant();
 		var start = json.IndexOf('{') + 1;
-		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\", \"AnonScoreTarget\": 50, \"OnlyUsePrivateFundsForPayments\": true, \"RedCoinIsolation\": true,"));
+		File.WriteAllText(filePath, json.Insert(start, $"\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\", \"AnonScoreTarget\": 50, \"OnlyUsePrivateFundsForPayments\": true, \"RedCoinIsolation\": true, \"ExcludedCoinsFromCoinJoin\": [\"{keptOut}\"],"));
 
 		// The wallet opens as it did, and what it knows is as it was.
 		var sameManager = KeyManager.FromFile(filePath);
 		Assert.Equal(manager.MasterFingerprint, sameManager.MasterFingerprint);
 		Assert.Equal(manager.TaprootExtPubKey, sameManager.TaprootExtPubKey);
+
+		// A coin that was kept out of coinjoins is not a coin that the user chose for them. Nor is any other.
+		Assert.Empty(sameManager.CoinsSelectedForCoinJoin);
 
 		// The next time the file is written, they are not in it any more.
 		sameManager.ToFile();
@@ -404,6 +409,41 @@ public class KeyManagerTests
 		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 		Assert.DoesNotContain("\"OnlyUsePrivateFundsForPayments\"", json);
 		Assert.DoesNotContain("\"RedCoinIsolation\"", json);
+		Assert.DoesNotContain("\"ExcludedCoinsFromCoinJoin\"", json);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
+	public void CoinsChosenForCoinJoinsAreKeptInTheWalletFile()
+	{
+		var filePath = "wallet-coins-chosen-for-coinjoins.json";
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.ToFile();
+
+		// No coin is chosen to begin with.
+		Assert.Empty(manager.CoinsSelectedForCoinJoin);
+		Assert.Empty(KeyManager.FromFile(filePath).CoinsSelectedForCoinJoin);
+
+		var first = new OutPoint(uint256.One, 0);
+		var second = new OutPoint(uint256.One, 1);
+
+		manager.SetCoinsSelectedForCoinJoin([first, second, first]);
+		Assert.Equal([first, second], manager.CoinsSelectedForCoinJoin);
+		Assert.Equal([first, second], KeyManager.FromFile(filePath).CoinsSelectedForCoinJoin);
+
+		// The same coins in another order are the same choice: the file is left as it is.
+		File.WriteAllText(filePath, File.ReadAllText(filePath) + " ");
+		var untouched = File.ReadAllText(filePath);
+		manager.SetCoinsSelectedForCoinJoin([second, first]);
+		Assert.Equal(untouched, File.ReadAllText(filePath));
+
+		manager.SetCoinsSelectedForCoinJoin([second]);
+		Assert.Equal([second], KeyManager.FromFile(filePath).CoinsSelectedForCoinJoin);
+
+		manager.SetCoinsSelectedForCoinJoin([]);
+		Assert.Empty(KeyManager.FromFile(filePath).CoinsSelectedForCoinJoin);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

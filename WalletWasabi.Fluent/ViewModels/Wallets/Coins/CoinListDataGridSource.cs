@@ -51,7 +51,7 @@ public static class CoinListDataGridSource
 			return 3;
 		}
 
-		if (!x.IsExcludedFromCoinJoin)
+		if (x.IsSelectedForCoinJoin)
 		{
 			return 4;
 		}

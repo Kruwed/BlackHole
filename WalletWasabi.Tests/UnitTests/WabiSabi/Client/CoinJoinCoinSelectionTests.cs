@@ -12,7 +12,7 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.WabiSabi.Client;
 
 /// <summary>
-/// Tests for <see cref="CoinJoinCoinSelector"/>: a round gets the coins that the user lets into coinjoins and that it
+/// Tests for <see cref="CoinJoinCoinSelector"/>: a round gets the coins that the user chose for coinjoins and that it
 /// takes, ten of them at most.
 /// </summary>
 public class CoinJoinCoinSelectionTests

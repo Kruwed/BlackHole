@@ -23,8 +23,8 @@ public class CoinListRowTests
 
 		Assert.Equal(content, CoinViewModel.DescribeContent(coin));
 
-		// Whether a coin is kept out of coinjoins is something that its row follows by itself.
-		coin.IsExcludedFromCoinJoin = true;
+		// Whether a coin is chosen for coinjoins is something that its row follows by itself.
+		coin.IsSelectedForCoinJoin = true;
 		Assert.Equal(content, CoinViewModel.DescribeContent(coin));
 	}
 

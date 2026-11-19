@@ -172,7 +172,8 @@ public class KeyManager
 		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
 	} = DefaultMaxCoinjoinLeftover;
 
-	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
+	/// <summary>The coins that the user chose for coinjoins. Every other coin of the wallet is kept out of them.</summary>
+	public List<OutPoint> CoinsSelectedForCoinJoin { get; private set; } = new();
 
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
 
@@ -769,9 +770,17 @@ public class KeyManager
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
 		new(x.ExtPubKey.PubKey, x.KeyPath, KeyState.Clean);
 
-	internal void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
+	/// <summary>Remembers which coins the user chose for coinjoins. The wallet file is only written if something changed.</summary>
+	internal void SetCoinsSelectedForCoinJoin(IEnumerable<OutPoint> selectedOutpoints)
 	{
-		ExcludedCoinsFromCoinJoin = excludedOutpoints.ToList();
+		var selected = selectedOutpoints.Distinct().ToList();
+
+		if (selected.Count == CoinsSelectedForCoinJoin.Count && selected.ToHashSet().SetEquals(CoinsSelectedForCoinJoin))
+		{
+			return;
+		}
+
+		CoinsSelectedForCoinJoin = selected;
 		ToFile();
 	}
 
@@ -838,7 +847,7 @@ public class KeyManager
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
-			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
+			("CoinsSelectedForCoinJoin", Encode.Array(keyManager.CoinsSelectedForCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
 			("AnonymityPoints", Encode.Array(keyManager.AnonymityPoints.Select(Encode.AnonymityPoints))),
 			("FidelityBondHeights", Encode.Array(keyManager.FidelityBonds.KnownHeights.Select(Encode.UInt))),
@@ -869,7 +878,7 @@ public class KeyManager
 			)
 			{
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
-				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
+				CoinsSelectedForCoinJoin = get.Optional("CoinsSelectedForCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? [],
 				AnonymityPoints = get.Optional("AnonymityPoints", Decode.Array(Decode.AnonymityPoints))?.ToDictionary() ?? []
 			};

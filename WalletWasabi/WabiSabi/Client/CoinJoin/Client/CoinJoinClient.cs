@@ -160,7 +160,7 @@ public class CoinJoinClient
 
 			var utxoSelectionParameters = UtxoSelectionParameters.FromRoundParameters(roundParameters, _outputProvider.DestinationProvider.SupportedScriptTypes);
 
-			// The candidates are the coins that the user lets into coinjoins. The round gets the ones that it takes, ten at most.
+			// The candidates are the coins that the user chose for coinjoins. The round gets the ones that it takes, ten at most.
 			myCoins = CoinJoinCoinSelector.SelectCoinsForRound(coinCandidates, utxoSelectionParameters);
 
 			if (myCoins.IsEmpty)

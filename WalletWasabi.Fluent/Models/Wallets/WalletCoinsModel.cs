@@ -15,12 +15,12 @@ public partial class WalletCoinsModel(Wallet wallet, IWalletModel walletModel, I
 	: CoinListModel(wallet, walletModel, services)
 {
 	/// <summary>
-	/// Keeps the given coins out of coinjoins or lets them in again. The coins that are not named stay as they are.
+	/// Chooses the given coins for coinjoins or takes them out of them again. The coins that are not named stay as they are.
 	/// </summary>
-	/// <param name="exclusions">For every coin that is to change, whether it is kept out.</param>
-	public async Task ExcludeFromCoinjoinAsync(IReadOnlyDictionary<OutPoint, bool> exclusions)
+	/// <param name="selections">For every coin that is to change, whether it is chosen.</param>
+	public async Task SelectForCoinjoinAsync(IReadOnlyDictionary<OutPoint, bool> selections)
 	{
-		await Task.Run(() => Wallet.ExcludeCoinsFromCoinJoin(exclusions));
+		await Task.Run(() => Wallet.SelectCoinsForCoinJoin(selections));
 	}
 
 	public List<CoinModel> GetSpentCoins(BuildTransactionResult? transaction)

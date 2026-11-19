@@ -58,7 +58,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["confirmations"] = x.Transaction.GetConfirmations(tipHeight),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
 				["address"] = x.HdPubKey.GetAddress(Global.Network).ToString(),
-				["excludedFromCoinjoin"] = x.IsExcludedFromCoinJoin
+				["selectedForCoinjoin"] = x.IsSelectedForCoinJoin
 			}).ToImmutableArray();
 	}
 
@@ -474,14 +474,18 @@ public class WasabiJsonRpcService : IJsonRpcService
 			}).ToImmutableArray();
 	}
 
-	[JsonRpcMethod("excludefromcoinjoin")]
-	public void ExcludeCoinsFromCoinjoin(uint256 transactionId, int n, bool exclude = true)
+	/// <summary>
+	/// Chooses a coin for coinjoins, or takes it out of them again. A round only gets coins that were chosen, and no
+	/// coin is chosen before this is called for it.
+	/// </summary>
+	[JsonRpcMethod("selectforcoinjoin")]
+	public void SelectCoinForCoinjoin(uint256 transactionId, int n, bool select = true)
 	{
 		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
 
 		AssertWalletIsLoaded();
 
-		activeWallet.ExcludeCoinFromCoinJoin(new OutPoint(transactionId, n), exclude);
+		activeWallet.SelectCoinForCoinJoin(new OutPoint(transactionId, n), select);
 	}
 
 	[JsonRpcMethod("listkeys")]

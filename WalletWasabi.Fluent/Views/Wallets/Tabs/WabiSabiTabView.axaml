@@ -131,7 +131,7 @@
       </Panel>
     </Border>
 
-    <!-- The coins of the wallet. A round gets the ticked ones. -->
+    <!-- The coins of the wallet. A round gets the ones that the user ticked. -->
     <DockPanel DockPanel.Dock="Top" Margin="0 16 0 4">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
         <Button Theme="{StaticResource DialogSortButton}" ToolTip.Tip="Sorting">
@@ -149,7 +149,7 @@
     </DockPanel>
 
     <Panel DockPanel.Dock="Top" Margin="0 0 0 10" Opacity="0.6">
-      <TextBlock Text="A round gets the ticked coins that it accepts, 10 at most: the largest go first. Untick a coin to keep it out."
+      <TextBlock Text="Tick the coins that a round is to get. A round takes 10 at most: the largest go first, the others stay ticked."
                  TextWrapping="Wrap" IsVisible="{Binding !IsCoinjoining}" />
       <TextBlock Text="A round is under way. The ticks can be changed once it is over or the coinjoin is stopped."
                  TextWrapping="Wrap" IsVisible="{Binding IsCoinjoining}" />
