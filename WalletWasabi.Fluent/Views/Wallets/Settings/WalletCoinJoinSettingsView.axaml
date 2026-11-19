@@ -12,7 +12,7 @@
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}">
     <StackPanel Classes="settingsLayout">
-      <DockPanel ToolTip.Tip="Each round can register at most one coin that has an anonymity score of 1.">
+      <DockPanel ToolTip.Tip="Each round can register at most one coin that no coinjoin has made harder to trace yet.">
         <TextBlock Text="Non-private coin isolation" />
         <ToggleSwitch IsChecked="{Binding NonPrivateCoinIsolation}" Command="{Binding SetNonPrivateCoinIsolationCommand}" />
       </DockPanel>

@@ -1,3 +1,6 @@
+using NBitcoin;
+using WalletWasabi.Blockchain.TransactionOutputs;
+using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Models;
 using WalletWasabi.Tests.Helpers;
@@ -47,13 +50,43 @@ public class CoinListRowTests
 		var confirmed = CoinViewModel.DescribeContent(coin);
 		Assert.NotEqual(unconfirmed, confirmed);
 
-		// The coin got another anonymity score.
-		coin.SetAnonymitySet(5);
-		var coinjoined = CoinViewModel.DescribeContent(coin);
-		Assert.NotEqual(confirmed, coinjoined);
-
 		// The coin was banned from coinjoins.
 		coin.BannedUntilUtc = DateTimeOffset.UtcNow.AddDays(1);
-		Assert.NotEqual(coinjoined, CoinViewModel.DescribeContent(coin));
+		Assert.NotEqual(confirmed, CoinViewModel.DescribeContent(coin));
+	}
+
+	/// <summary>
+	/// The anonymity points of a matched output are found out some time after the coin arrived, with the help of the
+	/// node. Until then its row shows a question mark, and then the coin needs a new row.
+	/// </summary>
+	[Fact]
+	public void CoinNeedsANewRowWhenItsAnonymityPointsWereFoundOut()
+	{
+		var keyManager = ServiceFactory.CreateKeyManager();
+		var key = BitcoinFactory.CreateHdPubKey(keyManager);
+		var transaction = Network.Main.CreateTransaction();
+		transaction.Inputs.Add(BitcoinFactory.CreateOutPoint());
+		transaction.Outputs.Add(Money.Coins(0.1m), key.P2Taproot);
+		transaction.Outputs.Add(Money.Coins(0.1m), BitcoinFactory.CreateScript());
+		var smartTransaction = new SmartTransaction(transaction, new Height.ChainHeight(100));
+		var coin = new SmartCoin(smartTransaction, 0, key);
+
+		Assert.Null(coin.AnonymityPoints);
+		var unknown = CoinViewModel.DescribeContent(coin);
+
+		smartTransaction.AnonymityPoints = 0;
+		var none = CoinViewModel.DescribeContent(coin);
+		Assert.NotEqual(unknown, none);
+
+		smartTransaction.AnonymityPoints = 4;
+		Assert.NotEqual(none, CoinViewModel.DescribeContent(coin));
+	}
+
+	[Fact]
+	public void RowShowsAQuestionMarkWhileTheAnonymityPointsAreNotKnown()
+	{
+		Assert.Equal("?", CoinViewModel.DescribeAnonymityPoints(null));
+		Assert.Equal("0", CoinViewModel.DescribeAnonymityPoints(0));
+		Assert.Equal("12", CoinViewModel.DescribeAnonymityPoints(12));
 	}
 }

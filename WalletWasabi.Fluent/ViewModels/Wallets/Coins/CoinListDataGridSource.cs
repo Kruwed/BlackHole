@@ -13,7 +13,7 @@ public static class CoinListDataGridSource
 	{
 		// [Column]			[View]					[Header]	[Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
 		// Indicators		IndicatorsColumnView	-			Auto		-				-			true
-		// AnonymityScore	AnonymityColumnView		<custom>	50			-				-			true
+		// AnonymityPoints	AnonymityPointsCellView	<custom>	50			-				-			true
 		// Amount			AmountColumnView		Amount		*			-				-			true
 		// Selection		SelectionColumnView		-			Auto		-				-			false
 		var result = new FlatTreeDataGridSource<CoinViewModel>(source)
@@ -21,7 +21,7 @@ public static class CoinListDataGridSource
 			Columns =
 			{
 				IndicatorsColumn(),
-				AnonymityScoreColumn(),
+				AnonymityPointsColumn(),
 				AmountColumn(),
 			}
 		};
@@ -98,17 +98,18 @@ public static class CoinListDataGridSource
 			});
 	}
 
-	private static IColumn<CoinViewModel> AnonymityScoreColumn()
+	private static IColumn<CoinViewModel> AnonymityPointsColumn()
 	{
+		// A coin whose points are not known yet counts as one with less than none.
 		return new TemplateColumn<CoinViewModel>(
 			null,
-			new FuncDataTemplate<CoinViewModel>((_, _) => new AnonymityScoreCellView(), true),
+			new FuncDataTemplate<CoinViewModel>((_, _) => new AnonymityPointsCellView(), true),
 			null,
 			GridLength.Auto,
 			new TemplateColumnOptions<CoinViewModel>
 			{
-				CompareAscending = Sort<CoinViewModel>.Ascending(x => x.AnonymityScore),
-				CompareDescending = Sort<CoinViewModel>.Descending(x => x.AnonymityScore)
+				CompareAscending = Sort<CoinViewModel>.Ascending(x => x.AnonymityPoints ?? -1),
+				CompareDescending = Sort<CoinViewModel>.Descending(x => x.AnonymityPoints ?? -1)
 			});
 	}
 }

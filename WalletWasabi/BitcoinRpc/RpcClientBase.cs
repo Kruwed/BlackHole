@@ -213,6 +213,50 @@ public class RpcClientBase : IRPCClient
 		return acquiredTransactions;
 	}
 
+	public virtual async Task<Transaction?> GetRawTransactionFromBlockAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var response = await RpcClient
+				.SendCommandAsync(RPCOperations.getrawtransaction, cancellationToken, txid.ToString(), 0, blockHash.ToString())
+				.ConfigureAwait(false);
+
+			return response.Result?.Value<string>() is { } hex
+				? Transaction.Parse(hex, Network)
+				: null;
+		}
+		catch (RPCException)
+		{
+			// The transaction is not in that block, or the node does not have the block any more.
+			return null;
+		}
+	}
+
+	public virtual async Task<IReadOnlyList<int?>?> GetPrevoutHeightsAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var response = await RpcClient
+				.SendCommandAsync(RPCOperations.getrawtransaction, cancellationToken, txid.ToString(), 2, blockHash.ToString())
+				.ConfigureAwait(false);
+
+			if (response.Result?["vin"] is not JArray inputs)
+			{
+				return null;
+			}
+
+			var heights = inputs
+				.Select(input => input["prevout"]?["height"]?.Value<int>())
+				.ToArray();
+
+			return heights.Any(height => height is not null) ? heights : null;
+		}
+		catch (RPCException)
+		{
+			return null;
+		}
+	}
+
 	public virtual async Task<int> GetBlockCountAsync(CancellationToken cancellationToken = default)
 	{
 		return await RpcClient.GetBlockCountAsync(cancellationToken).ConfigureAwait(false);

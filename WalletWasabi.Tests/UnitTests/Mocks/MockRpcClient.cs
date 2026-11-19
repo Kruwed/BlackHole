@@ -21,6 +21,8 @@ public class MockRpcClient : IRPCClient
 	public Func<uint256, Task<MempoolEntry?>>? OnGetMempoolEntryAsync { get; set; }
 	public Func<Task<uint256[]>>? OnGetRawMempoolAsync { get; set; }
 	public Func<uint256, bool, Task<Transaction>>? OnGetRawTransactionAsync { get; set; }
+	public Func<uint256, uint256, Task<Transaction?>>? OnGetRawTransactionFromBlockAsync { get; set; }
+	public Func<uint256, uint256, Task<IReadOnlyList<int?>?>>? OnGetPrevoutHeightsAsync { get; set; }
 	public Func<int, EstimateSmartFeeMode, Task<EstimateSmartFeeResponse>>? OnEstimateSmartFeeAsync { get; set; }
 	public Func<Task<PeerInfo[]>>? OnGetPeersInfoAsync { get; set; }
 	public Func<int, BitcoinAddress, Task<uint256[]>>? OnGenerateToAddressAsync { get; set; }
@@ -106,6 +108,16 @@ public class MockRpcClient : IRPCClient
 	public Task<IEnumerable<Transaction>> GetRawTransactionsAsync(IEnumerable<uint256> txids, CancellationToken cancellationToken = default)
 	{
 		throw new NotImplementedException();
+	}
+
+	public Task<Transaction?> GetRawTransactionFromBlockAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default)
+	{
+		return OnGetRawTransactionFromBlockAsync?.Invoke(txid, blockHash) ?? NotImplementedTask<Transaction?>(nameof(GetRawTransactionFromBlockAsync));
+	}
+
+	public Task<IReadOnlyList<int?>?> GetPrevoutHeightsAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default)
+	{
+		return OnGetPrevoutHeightsAsync?.Invoke(txid, blockHash) ?? NotImplementedTask<IReadOnlyList<int?>?>(nameof(GetPrevoutHeightsAsync));
 	}
 
 	public Task<GetTxOutResponse?> GetTxOutAsync(uint256 txid, int index, bool includeMempool = true, CancellationToken cancellationToken = default)

@@ -41,7 +41,7 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 		var confirmationCount = coin.Confirmations;
 		ConfirmationStatus = $"{confirmationCount} confirmation{TextHelpers.AddSIfPlural((int)confirmationCount)}";
 		BannedUntilUtcToolTip = coin.BannedUntilUtcToolTip;
-		AnonymityScore = coin.AnonScore;
+		AnonymityPoints = coin.AnonymityPoints;
 		BannedUntilUtc = coin.BannedUntilUtc;
 		this.WhenAnyValue(x => x.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress).BindTo(this, x => x.IsCoinjoining).DisposeWith(_disposables);
@@ -72,7 +72,10 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 
 	public string? BannedUntilUtcToolTip { get; }
 
-	public int AnonymityScore { get; }
+	/// <summary>The anonymity points of the coin, or null if the wallet has not found them out yet.</summary>
+	public int? AnonymityPoints { get; }
+
+	public string AnonymityPointsText => DescribeAnonymityPoints(AnonymityPoints);
 
 	public DateTimeOffset? BannedUntilUtc { get; }
 
@@ -84,10 +87,14 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 
 	/// <summary>
 	/// Tells what a row shows of its coin and does not follow: the amount, whether the coin is confirmed or banned and
-	/// its anonymity score.
+	/// its anonymity points.
 	/// </summary>
 	public static string DescribeContent(SmartCoin coin) =>
-		FormattableString.Invariant($"{coin.Outpoint}:{coin.Amount.Satoshi}:{coin.Confirmed}:{coin.AnonymitySet}:{coin.IsBanned}");
+		FormattableString.Invariant($"{coin.Outpoint}:{coin.Amount.Satoshi}:{coin.Confirmed}:{coin.AnonymityPoints}:{coin.IsBanned}");
+
+	/// <summary>What a row shows as the anonymity points of its coin: the number, or a question mark while the wallet does not know it.</summary>
+	public static string DescribeAnonymityPoints(int? points) =>
+		points?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
 
 	public void Dispose() => _disposables.Dispose();
 }

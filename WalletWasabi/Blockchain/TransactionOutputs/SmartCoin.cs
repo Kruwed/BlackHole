@@ -12,6 +12,7 @@ namespace WalletWasabi.Blockchain.TransactionOutputs;
 [DebuggerDisplay("{Amount}BTC {Confirmed} OutPoint={Coin.Outpoint}")]
 public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDestination
 {
+	private readonly Lazy<bool> _isMatchedOutput;
 	private Height _height;
 	private bool _confirmed;
 
@@ -24,6 +25,9 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 		_confirmed = transaction.Confirmed;
 
 		HdPubKey = pubKey;
+
+		// The outputs of a transaction do not change, so the answer is the same for as long as the coin exists.
+		_isMatchedOutput = new Lazy<bool>(() => Analysis.AnonymityPoints.IsMatchedOutput(Transaction.Transaction, Index), isThreadSafe: true);
 
 		Transaction.TryAddWalletOutput(this);
 	}
@@ -39,6 +43,15 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 	public ScriptType ScriptType => ScriptPubKey.GetScriptType();
 	public Money Amount => TxOut.Value;
 	public double AnonymitySet => HdPubKey.AnonymitySet;
+
+	/// <summary>Whether another output of the transaction that created the coin has the same amount as the coin.</summary>
+	public bool IsMatchedOutput => _isMatchedOutput.Value;
+
+	/// <summary>
+	/// The anonymity points of the coin: those of the transaction that created it if the coin is a matched output of
+	/// that transaction, and none otherwise. They are null while the points of the transaction are not known.
+	/// </summary>
+	public int? AnonymityPoints => IsMatchedOutput ? Transaction.AnonymityPoints : 0;
 	public Dictionary<uint256, double> HistoricalAnonSet => HdPubKey.HistoricalAnonSet;
 
 	public void SetAnonymitySet(double anonset, uint256? outputAnonSetReasonTxId = null)

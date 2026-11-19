@@ -103,7 +103,7 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 		Sortables =
 		[
 			CreateSortable("Status", column: 0),
-			CreateSortable("Anonymity Score", column: 1),
+			CreateSortable("Anonymity Points", column: 1),
 			CreateSortable("Amount", column: 2),
 		];
 
@@ -111,12 +111,13 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 	}
 
 	/// <summary>
-	/// The order of the rows until the user asks for another one: the coins with the highest anonymity score come first
-	/// and, among coins of the same score, the largest. The last step only keeps coins that are alike in both in one order.
+	/// The order of the rows until the user asks for another one: the coins with the most anonymity points come first
+	/// and, among coins of the same points, the largest. Coins whose points are not known yet come after the others.
+	/// The last step only keeps coins that are alike in both in one order.
 	/// </summary>
 	public static IComparer<CoinViewModel> DefaultOrder { get; } =
 		SortExpressionComparer<CoinViewModel>
-			.Descending(x => x.AnonymityScore)
+			.Descending(x => x.AnonymityPoints ?? -1)
 			.ThenByDescending(x => x.Amount.Btc)
 			.ThenByAscending(x => x.Coin.Key);
 

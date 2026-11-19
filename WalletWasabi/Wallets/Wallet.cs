@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using WalletWasabi.BitcoinRpc;
+using WalletWasabi.Blockchain.Analysis;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
@@ -21,6 +22,13 @@ public delegate Wallet WalletFactory(KeyManager keyManager);
 public class Wallet : BackgroundService
 {
 	private readonly ComposedDisposable _disposables = new();
+	private readonly AnonymityPointsCalculator _anonymityPointsCalculator;
+
+	/// <summary>
+	/// Released when the coins of the wallet changed: there may be coins whose anonymity points are not known. It starts
+	/// released, because the coins that the wallet has when it starts were not looked at either.
+	/// </summary>
+	private readonly SemaphoreSlim _coinsChanged = new(initialCount: 1, maxCount: 1);
 
 	/// <param name="rpcClient">The RPC interface of the user's node. The wallet learns everything about the chain from it.</param>
 	/// <param name="watchMempool">Whether the wallet looks at the unconfirmed transactions of the node too, or only at its blocks.</param>
@@ -58,6 +66,7 @@ public class Wallet : BackgroundService
 			watchMempool: watchMempool,
 			fidelityBondSearchBlocks: serviceConfiguration.FidelityBondSearchBlocks);
 		Coins = TransactionProcessor.Coins;
+		_anonymityPointsCalculator = new AnonymityPointsCalculator(rpcClient, TransactionStore);
 		BatchedPayments = new PaymentBatch(Coins);
 		OutputProvider = new PaymentAwareOutputProvider(DestinationProvider, BatchedPayments, RandomnessProviders.Secure, () => KeyManager.MaxCoinjoinLeftover);
 		_eventBus = eventBus;
@@ -103,6 +112,12 @@ public class Wallet : BackgroundService
 
 	public OutputProvider OutputProvider { get; }
 	public PaymentBatch BatchedPayments { get; }
+
+	/// <summary>
+	/// How long the wallet waits before it asks the node again about transactions whose anonymity points it could not
+	/// find out: after the first attempt, after the second one, and after every later one. Tests wait less long.
+	/// </summary>
+	internal IReadOnlyList<TimeSpan> AnonymityPointsRetryDelays { get; set; } = [TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30)];
 
 	public ICoinsView GetAllCoins() => Coins.AsAllCoinsView();
 
@@ -273,6 +288,132 @@ public class Wallet : BackgroundService
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		Logger.LogInfo(FormatLog("is fully synchronized.", this));
+
+		// From here on the wallet has all of its coins, and the node has time for other questions than blocks.
+		await Task.Yield();
+		await KeepAnonymityPointsKnownAsync(stoppingToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Finds out the anonymity points of the coins of the wallet, again whenever its coins changed, until it is stopped.
+	/// What the node cannot tell at once is asked for again later.
+	/// </summary>
+	internal async Task KeepAnonymityPointsKnownAsync(CancellationToken cancellationToken)
+	{
+		// How often the wallet waited and then asked in vain again.
+		var retriesInVain = 0;
+
+		// Nothing is waited for the first time: the semaphore starts released.
+		var retryDelay = Timeout.InfiniteTimeSpan;
+
+		while (!cancellationToken.IsCancellationRequested)
+		{
+			try
+			{
+				var coinsChanged = await _coinsChanged.WaitAsync(retryDelay, cancellationToken).ConfigureAwait(false);
+
+				if (await FindOutAnonymityPointsAsync(cancellationToken).ConfigureAwait(false))
+				{
+					retriesInVain = 0;
+					retryDelay = Timeout.InfiniteTimeSpan;
+					continue;
+				}
+
+				// Only having waited in vain makes the next wait longer. When changed coins made the wallet look,
+				// that tells nothing about how long the node has been failing to answer.
+				if (!coinsChanged)
+				{
+					retriesInVain++;
+				}
+
+				retryDelay = AnonymityPointsRetryDelays[Math.Min(retriesInVain, AnonymityPointsRetryDelays.Count - 1)];
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				return;
+			}
+			catch (Exception ex)
+			{
+				Logger.LogError(FormatLog(ex.ToString(), this));
+				retryDelay = AnonymityPointsRetryDelays[^1];
+			}
+		}
+	}
+
+	/// <summary>
+	/// Finds out the anonymity points of the transactions that created unspent coins of the wallet, as far as they are
+	/// not known yet. Only matched outputs get the points of their transaction, so only their transactions are looked at.
+	/// </summary>
+	/// <returns>Whether the points of all these transactions are known now.</returns>
+	internal async Task<bool> FindOutAnonymityPointsAsync(CancellationToken cancellationToken)
+	{
+		var transactions = Coins
+			.Where(coin => coin.IsMatchedOutput)
+			.Select(coin => coin.Transaction)
+			.Distinct()
+			.ToArray();
+
+		foreach (var transaction in transactions)
+		{
+			if (RestoreAnonymityPoints(transaction))
+			{
+				_eventBus.Publish(new AnonymityPointsChanged());
+			}
+		}
+
+		// The points of a coin are gone once it is spent, so only those of the transactions above are kept.
+		void Remember() =>
+			KeyManager.SetAnonymityPoints(
+				transactions
+					.Where(transaction => transaction.AnonymityPoints is not null)
+					.ToDictionary(transaction => transaction.GetHash(), transaction => transaction.AnonymityPoints!.Value));
+
+		Remember();
+
+		foreach (var transaction in transactions.Where(transaction => transaction.AnonymityPoints is null))
+		{
+			try
+			{
+				if (await _anonymityPointsCalculator.CalculateAsync(transaction, cancellationToken).ConfigureAwait(false) is { } points)
+				{
+					transaction.AnonymityPoints = points;
+					Logger.LogDebug(FormatLog($"Transaction {transaction.GetHash()} is worth {points} anonymity points.", this));
+
+					// The result is kept and shown at once: the node may take long for the next transaction, and the
+					// application may be closed before it answered.
+					Remember();
+					_eventBus.Publish(new AnonymityPointsChanged());
+				}
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+			{
+				if (WalletSynchronizer.IsNodeFailure(ex))
+				{
+					// The node cannot be reached or did not answer in time. Asking it about the next transaction would
+					// end the same way, so everything that is left is tried again later.
+					Logger.LogDebug(FormatLog($"The anonymity points of {transaction.GetHash()} could not be found out: {ex.Message}", this));
+					break;
+				}
+
+				// This transaction is the trouble, not the node: the others are not held up by it.
+				Logger.LogWarning(FormatLog($"The anonymity points of {transaction.GetHash()} could not be worked out: {ex}", this));
+			}
+		}
+
+		return transactions.All(transaction => transaction.AnonymityPoints is not null);
+	}
+
+	/// <summary>Gives a transaction the anonymity points that the wallet found out for it when it ran before.</summary>
+	/// <returns>Whether the transaction got its points by that.</returns>
+	private bool RestoreAnonymityPoints(SmartTransaction transaction)
+	{
+		if (transaction.AnonymityPoints is null && KeyManager.GetAnonymityPoints(transaction.GetHash()) is { } points)
+		{
+			transaction.AnonymityPoints = points;
+			return true;
+		}
+
+		return false;
 	}
 
 	public string AddCoinJoinPayment(IDestination destination, Money amount)
@@ -306,6 +447,25 @@ public class Wallet : BackgroundService
 
 	private void WalletRelevantTransactionProcessed(ProcessedResult e)
 	{
+		try
+		{
+			// What was found out before shows at once. What is not known is found out in the background.
+			RestoreAnonymityPoints(e.Transaction);
+
+			if (_coinsChanged.CurrentCount == 0)
+			{
+				_coinsChanged.Release();
+			}
+		}
+		catch (SemaphoreFullException)
+		{
+			// Somebody else said so in the same moment.
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(FormatLog(ex.ToString(), this));
+		}
+
 		try
 		{
 			if (e.Transaction.CanBeSpeedUpUsingCpfp())

@@ -12,6 +12,9 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	private Lazy<long[]> _outputValues;
 	private Lazy<bool> _isWasabi2Cj;
 
+	/// <summary>The anonymity points of the transaction, or a negative number while they are not known.</summary>
+	private volatile int _anonymityPoints = -1;
+
 	public SmartTransaction(
 		Transaction transaction,
 		Height? height = null,
@@ -52,6 +55,17 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 
 	public long[] OutputValues => _outputValues.Value;
 	public bool IsWasabi2Cj => _isWasabi2Cj.Value;
+
+	/// <summary>
+	/// The anonymity points of the transaction, see <see cref="Analysis.AnonymityPoints"/>. They are null until the
+	/// wallet found them out: they depend on the transactions that created the inputs, and the wallet has to ask the
+	/// node for the ones that are not its own.
+	/// </summary>
+	public int? AnonymityPoints
+	{
+		get => _anonymityPoints is var points and >= 0 ? points : null;
+		set => _anonymityPoints = value ?? -1;
+	}
 
 	/// <summary>Coins those are on the input side of the tx and belong to the wallet.</summary>
 	private readonly HashSet<SmartCoin> _walletInputsInternal;

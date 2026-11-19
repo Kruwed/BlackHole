@@ -904,7 +904,7 @@ public class WalletSynchronizer : BackgroundService
 	/// <summary>
 	/// Tells failures of the node, or of the way to it, from failures of this application.
 	/// </summary>
-	private static bool IsNodeFailure(Exception ex) =>
+	internal static bool IsNodeFailure(Exception ex) =>
 		ex is RPCException or HttpRequestException or HttpIOException or SocketException or TimeoutException or OperationCanceledException or WrongChainException or BlockPrunedException
 		|| (ex is AggregateException aggregate && aggregate.InnerExceptions.All(IsNodeFailure))
 		|| (ex.InnerException is { } inner && IsNodeFailure(inner));

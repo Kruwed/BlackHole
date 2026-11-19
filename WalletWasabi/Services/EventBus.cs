@@ -121,6 +121,9 @@ public record WalletLoaded(Wallet Wallet);
 public record NewTransactionInMempool(SmartTransaction Transaction);
 public record WalletRelevantTransactionProcessed(ProcessedResult Result);
 
+/// <summary>The wallet found out the anonymity points of coins: of coins that it has, not of new ones.</summary>
+public record AnonymityPointsChanged;
+
 /// <summary>The wallet processed a transaction that creates or spends a fidelity bond of it.</summary>
 public record FidelityBondTransactionProcessed(SmartTransaction Transaction);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);

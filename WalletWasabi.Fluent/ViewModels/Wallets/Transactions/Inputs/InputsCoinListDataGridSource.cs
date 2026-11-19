@@ -4,7 +4,6 @@ using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Views.Wallets.Transactions.Inputs.Cells;
-using WalletWasabi.Fluent.Views.Wallets.Transactions.Inputs.Columns;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Transactions.Inputs;
 
@@ -13,13 +12,13 @@ public static class InputsCoinListDataGridSource
 	public static HierarchicalTreeDataGridSource<InputsCoinListItem> Create(IEnumerable<InputsCoinListItem> source)
 	{
 		// [Column]			[View]					[Header]	[Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
-		// AnonymityScore	AnonymityColumnView		<custom>	3 Star		-				-			true
+		// Expander			-						-			3 Star		-				-			false
 		// Amount			AmountColumnView		Amount		10 Star		-				-			true
 		var result = new HierarchicalTreeDataGridSource<InputsCoinListItem>(source)
 		{
 			Columns =
 			{
-				AnonymityScoreColumn(),
+				ExpanderColumn(),
 				AmountColumn(),
 			}
 		};
@@ -40,19 +39,15 @@ public static class InputsCoinListDataGridSource
 			});
 	}
 
-	private static IColumn<InputsCoinListItem> AnonymityScoreColumn()
+	/// <summary>The column that opens and closes the list of the inputs. It shows nothing of an input.</summary>
+	private static IColumn<InputsCoinListItem> ExpanderColumn()
 	{
 		return new HierarchicalExpanderColumn<InputsCoinListItem>(
 			new TemplateColumn<InputsCoinListItem>(
 				null,
-				new FuncDataTemplate<InputsCoinListItem>((_, _) => new AnonymityScoreColumnView(), true),
+				new FuncDataTemplate<InputsCoinListItem>((_, _) => new Panel(), true),
 				null,
-				new GridLength(3, GridUnitType.Star),
-				new TemplateColumnOptions<InputsCoinListItem>
-				{
-					CompareAscending = Sort<InputsCoinListItem>.Ascending(b => b.AnonymityScore),
-					CompareDescending = Sort<InputsCoinListItem>.Descending(b => b.AnonymityScore)
-				}),
+				new GridLength(3, GridUnitType.Star)),
 			group => group.Children,
 			node => true,
 			node => node.IsExpanded);

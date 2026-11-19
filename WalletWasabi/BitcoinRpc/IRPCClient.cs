@@ -51,6 +51,22 @@ public interface IRPCClient
 
 	Task<IEnumerable<Transaction>> GetRawTransactionsAsync(IEnumerable<uint256> txids, CancellationToken cancellationToken);
 
+	/// <summary>
+	/// Asks for a transaction of the given block. A node finds a transaction that way without an index of all transactions.
+	/// </summary>
+	/// <returns>The transaction, or null if the node does not find it in that block.</returns>
+	Task<Transaction?> GetRawTransactionFromBlockAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Tells for a transaction of the given block at which heights the outputs were created that it spends.
+	/// </summary>
+	/// <returns>
+	/// One height for every input, in the order of the inputs, with null where the node does not tell one, as for the
+	/// input of a coinbase transaction. Null if the node does not find the transaction in that block or cannot tell any
+	/// height: an older node does not know the request, and a pruned one may not have the data any more.
+	/// </returns>
+	Task<IReadOnlyList<int?>?> GetPrevoutHeightsAsync(uint256 txid, uint256 blockHash, CancellationToken cancellationToken = default);
+
 	Task<int> GetBlockCountAsync(CancellationToken cancellationToken = default);
 
 	Task<BitcoinAddress> GetNewAddressAsync(CancellationToken cancellationToken = default);

@@ -43,6 +43,8 @@ public class WalletTransactionsModel : ReactiveObject, IDisposable
 				.Merge(services.EventBus.AsObservable<FidelityBondTransactionProcessed>().ToSignal())
 				// A new block changes the confirmations of the transactions.
 				.Merge(services.EventBus.AsObservable<ClientTipHeightChanged>().ToSignal())
+				// The anonymity points of a coin are found out a while after its transaction was processed.
+				.Merge(services.EventBus.AsObservable<AnonymityPointsChanged>().ToSignal())
 				.Sample(TimeSpan.FromSeconds(1))
 				.ObserveOn(RxApp.MainThreadScheduler)
 				.Merge(Observable.Return(Unit.Default));

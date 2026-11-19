@@ -1,4 +1,5 @@
 using NBitcoin;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -400,6 +401,32 @@ public class KeyManagerTests
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
 		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 		Assert.DoesNotContain("\"OnlyUsePrivateFundsForPayments\"", json);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	[Fact]
+	public void AnonymityPointsAreKeptInTheWalletFile()
+	{
+		var filePath = "wallet-anonymity-points.json";
+		var transactionId = new uint256(7);
+		var otherTransactionId = new uint256(8);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		Assert.Null(manager.GetAnonymityPoints(transactionId));
+
+		manager.SetAnonymityPoints(new Dictionary<uint256, int> { [transactionId] = 3, [otherTransactionId] = 0 });
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(3, sameManager.GetAnonymityPoints(transactionId));
+		Assert.Equal(0, sameManager.GetAnonymityPoints(otherTransactionId));
+
+		// Only the transactions that are named the last time are kept: the points of a coin are gone when it is spent.
+		sameManager.SetAnonymityPoints(new Dictionary<uint256, int> { [otherTransactionId] = 0 });
+
+		var thirdManager = KeyManager.FromFile(filePath);
+		Assert.Null(thirdManager.GetAnonymityPoints(transactionId));
+		Assert.Equal(0, thirdManager.GetAnonymityPoints(otherTransactionId));
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

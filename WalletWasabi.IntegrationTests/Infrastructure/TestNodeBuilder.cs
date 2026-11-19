@@ -12,15 +12,16 @@ namespace WalletWasabi.IntegrationTests.Infrastructure;
 
 public static class TestNodeBuilder
 {
-	public static async Task<CoreNode> CreateAsync([CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", string additionalFolder = "")
+	/// <param name="txIndex">Whether the node keeps an index of all transactions (1) or not (0).</param>
+	public static async Task<CoreNode> CreateAsync([CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", string additionalFolder = "", int txIndex = 1)
 	{
 		var dataDir = Path.Combine(GetWorkDir(callerFilePath, callerMemberName), additionalFolder);
-		var nodeParameters = CreateDefaultCoreNodeParams(dataDir);
+		var nodeParameters = CreateDefaultCoreNodeParams(dataDir, txIndex);
 
 		return await CoreNode.CreateAsync(nodeParameters, CancellationToken.None).ConfigureAwait(false);
 	}
 
-	private static CoreNodeParams CreateDefaultCoreNodeParams(string dataDir)
+	private static CoreNodeParams CreateDefaultCoreNodeParams(string dataDir, int txIndex)
 	{
 #pragma warning disable CA2000 // Dispose objects before losing scope - MemoryCache ownership transferred to CoreNodeParams
 		var nodeParameters = new CoreNodeParams(
@@ -30,7 +31,7 @@ public static class TestNodeBuilder
 			tryDeleteDataDir: true,
 			EndPointStrategy.Random,
 			EndPointStrategy.Random,
-			txIndex: 1,
+			txIndex: txIndex,
 			prune: 0,
 			disableWallet: 0,
 			mempoolReplacement: "fee,optin",

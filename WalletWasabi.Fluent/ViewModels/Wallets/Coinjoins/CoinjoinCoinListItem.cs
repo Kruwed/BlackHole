@@ -46,8 +46,6 @@ public abstract partial class CoinjoinCoinListItem : ViewModelBase, ITreeDataGri
 	public Amount Amount { get; protected set; } = new(Money.Zero);
 	public string? BtcAddress { get; protected set; }
 
-	public int? AnonymityScore { get; protected set; }
-
 	public IReadOnlyCollection<CoinjoinCoinViewModel> Children { get; protected set; } = new List<CoinjoinCoinViewModel>();
 	public bool HasChildren => Children.Count > 0;
 

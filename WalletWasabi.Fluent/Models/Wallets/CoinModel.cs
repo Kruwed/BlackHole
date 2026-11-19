@@ -19,7 +19,6 @@ public partial class CoinModel : ReactiveObject
 	[AutoNotify] private bool _isBanned;
 	[AutoNotify] private string? _bannedUntilUtcToolTip;
 	[AutoNotify] private string? _confirmedToolTip;
-	[AutoNotify] private int _anonScore;
 	[AutoNotify] private uint _confirmations;
 	[AutoNotify] private bool _isConfirmed;
 
@@ -35,7 +34,7 @@ public partial class CoinModel : ReactiveObject
 
 		IsExcludedFromCoinJoin = coin.IsExcludedFromCoinJoin;
 		IsConfirmed = coin.Confirmed;
-		AnonScore = (int)coin.AnonymitySet;
+		AnonymityPoints = coin.AnonymityPoints;
 		IsCoinJoinInProgress = coin.CoinJoinInProgress;
 		IsBanned = coin.IsBanned;
 		BannedUntilUtcToolTip = $"Can't participate in coinjoin until: {coin.BannedUntilUtc}";
@@ -55,6 +54,9 @@ public partial class CoinModel : ReactiveObject
 
 	public DateTimeOffset? BannedUntilUtc { get; }
 
+	/// <summary>The anonymity points of the coin when this model of it was made, or null if they were not known then.</summary>
+	public int? AnonymityPoints { get; }
+
 	/// <summary>Subscribes to property changes of underlying SmartCoin.</summary>
 	/// <remarks>This method is not thread safe. Make sure it's not called concurrently.</remarks>
 	public void SubscribeToCoinChanges(CompositeDisposable disposable)
@@ -68,7 +70,6 @@ public partial class CoinModel : ReactiveObject
 
 		this.WhenAnyValue(c => c.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.Confirmed).BindTo(this, x => x.IsConfirmed).DisposeWith(disposable);
-		this.WhenAnyValue(c => c.Coin.AnonymitySet).Select(x => (int)x).BindTo(this, x => x.AnonScore).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.CoinJoinInProgress).BindTo(this, x => x.IsCoinJoinInProgress).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.BannedUntilUtc).Select(_ => Coin.IsBanned).BindTo(this, x => x.IsBanned).DisposeWith(disposable);
 		this.WhenAnyValue(c => c.Coin.BannedUntilUtc).WhereNotNull().Subscribe(x => BannedUntilUtcToolTip = $"Can't participate in coinjoin until: {x:g}").DisposeWith(disposable);

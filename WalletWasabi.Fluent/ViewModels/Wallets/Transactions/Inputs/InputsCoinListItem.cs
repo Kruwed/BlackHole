@@ -46,7 +46,6 @@ public abstract partial class InputsCoinListItem : ViewModelBase, ITreeDataGridE
 
 	public Amount Amount { get; protected set; } = new(Money.Zero);
 	public string? BtcAddress { get; set; }
-	public int? AnonymityScore { get; protected set; }
 	public int? TotalInputs { get; set; }
 	public IReadOnlyCollection<InputsCoinViewModel> Children { get; protected set; } = new List<InputsCoinViewModel>();
 	public bool HasChildren => Children.Count > 0;

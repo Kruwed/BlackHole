@@ -179,6 +179,12 @@ public class KeyManager
 
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
 
+	/// <summary>
+	/// The anonymity points of transactions, as far as the wallet found them out. They are kept so that the node does
+	/// not have to be asked about the inputs of a transaction again whenever the wallet is opened.
+	/// </summary>
+	private Dictionary<uint256, int> AnonymityPoints { get; init; } = new();
+
 	public string? FilePath { get; private set; }
 
 	private readonly HdPubKeyCache _hdPubKeyCache = new();
@@ -789,6 +795,40 @@ public class KeyManager
 		}
 	}
 
+	/// <summary>Tells the anonymity points of a transaction if the wallet found them out before.</summary>
+	public int? GetAnonymityPoints(uint256 transactionId)
+	{
+		lock (_criticalStateLock)
+		{
+			return AnonymityPoints.TryGetValue(transactionId, out var points) ? points : null;
+		}
+	}
+
+	/// <summary>
+	/// Remembers the anonymity points of the given transactions and forgets those of all other transactions. Coins have
+	/// their points for as long as they are unspent, so the wallet only keeps the points of transactions with such coins.
+	/// </summary>
+	public void SetAnonymityPoints(IReadOnlyDictionary<uint256, int> pointsByTransactionId)
+	{
+		lock (_criticalStateLock)
+		{
+			if (AnonymityPoints.Count == pointsByTransactionId.Count
+				&& pointsByTransactionId.All(x => AnonymityPoints.TryGetValue(x.Key, out var points) && points == x.Value))
+			{
+				return;
+			}
+
+			AnonymityPoints.Clear();
+
+			foreach (var (transactionId, points) in pointsByTransactionId)
+			{
+				AnonymityPoints[transactionId] = points;
+			}
+
+			ToFileNoLock();
+		}
+	}
+
 	private static JsonNode EncodeKeyManagerNoLock(KeyManager keyManager) =>
 		Encode.Object([
 			("EncryptedSecret", Encode.BitcoinEncryptedSecretNoEC(keyManager.EncryptedSecret)),
@@ -804,6 +844,7 @@ public class KeyManager
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
+			("AnonymityPoints", Encode.Array(keyManager.AnonymityPoints.Select(Encode.AnonymityPoints))),
 			("FidelityBondHeights", Encode.Array(keyManager.FidelityBonds.KnownHeights.Select(Encode.UInt))),
 			("FidelityBondSearchStart", keyManager._fidelityBondSearchStart is { } searchStart ? Encode.UInt(searchStart) : null),
 			("HdPubKeys", Encode.Array(keyManager._hdPubKeyCache.HdPubKeys.Select(Encode.HdPubKey)))
@@ -834,7 +875,8 @@ public class KeyManager
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
-				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? []
+				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? [],
+				AnonymityPoints = get.Optional("AnonymityPoints", Decode.Array(Decode.AnonymityPoints))?.ToDictionary() ?? []
 			};
 			km._hdPubKeyCache.AddRangeKeys(km.AssertKeysBelongToWallet(get.Required("HdPubKeys", Decode.Array(Decode.HdPubKey))));
 			km.FidelityBonds.Load(get.Optional("FidelityBondHeights", Decode.Array(Decode.UInt)) ?? []);
