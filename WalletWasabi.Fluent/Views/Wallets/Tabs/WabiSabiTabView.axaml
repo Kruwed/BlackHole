@@ -136,7 +136,7 @@
       </Panel>
     </Border>
 
-    <!-- The coins of the wallet. The ticked ones may be submitted into rounds. -->
+    <!-- The coins of the wallet. A round gets the ticked ones. -->
     <DockPanel DockPanel.Dock="Top" Margin="0 16 0 4">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
         <Button Theme="{StaticResource DialogSortButton}" ToolTip.Tip="Sorting">
@@ -154,7 +154,7 @@
     </DockPanel>
 
     <Panel DockPanel.Dock="Top" Margin="0 0 0 10" Opacity="0.6">
-      <TextBlock Text="The ticked coins may be submitted into coinjoin rounds. Untick a coin to keep it out."
+      <TextBlock Text="Every ticked coin that a round accepts is submitted into it. Untick a coin to keep it out."
                  TextWrapping="Wrap" IsVisible="{Binding !IsCoinjoining}" />
       <TextBlock Text="A round is under way. The ticks can be changed once it is over or the coinjoin is stopped."
                  TextWrapping="Wrap" IsVisible="{Binding IsCoinjoining}" />

@@ -172,9 +172,6 @@ public class KeyManager
 		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
 	} = DefaultMaxCoinjoinLeftover;
 
-	/// <summary>A new wallet registers at most one non-private coin in a round.</summary>
-	public bool NonPrivateCoinIsolation { get; set; } = true;
-
 	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
 
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
@@ -841,7 +838,6 @@ public class KeyManager
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
-			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
 			("AnonymityPoints", Encode.Array(keyManager.AnonymityPoints.Select(Encode.AnonymityPoints))),
@@ -873,7 +869,6 @@ public class KeyManager
 			)
 			{
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
-				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? [],
 				AnonymityPoints = get.Optional("AnonymityPoints", Decode.Array(Decode.AnonymityPoints))?.ToDictionary() ?? []

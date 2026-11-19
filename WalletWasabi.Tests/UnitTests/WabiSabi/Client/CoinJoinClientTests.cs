@@ -82,10 +82,8 @@ public class CoinJoinClientTests
 			keyChain,
 			outputProvider: null!,
 			roundStateProvider,
-			WabiSabiFactory.CreateGreedyCoinSelector(semiPrivateThreshold: 0).SelectCoinsForRound,
 			new CoinJoinConfiguration(roundParameters.CoordinationIdentifier, 150m, AbsoluteMinInputCount: 21, AllowSoloCoinjoining: false),
-			InputVerifiers.NoVerification(),
-			new LiquidityClueProvider());
+			InputVerifiers.NoVerification());
 
 		// Create an AliceClient for the victim
 		var aliceClient = CreateAliceClient(roundState, victimCoin, requestHandler);
@@ -298,10 +296,8 @@ public class CoinJoinClientTests
 			keyChain,
 			outputProvider: null!,
 			roundStateProvider,
-			WabiSabiFactory.CreateGreedyCoinSelector(semiPrivateThreshold: 0).SelectCoinsForRound,
 			new CoinJoinConfiguration("CoinJoinCoordinatorIdentifier", 150m, AbsoluteMinInputCount: 2, AllowSoloCoinjoining: false),
-			InputVerifiers.NoVerification(),
-			new LiquidityClueProvider());
+			InputVerifiers.NoVerification());
 }
 
 /// <summary>

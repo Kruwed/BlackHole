@@ -26,20 +26,16 @@ public class CoinJoinClient
 		IKeyChain keyChain,
 		OutputProvider outputProvider,
 		RoundStateProvider roundStatusProvider,
-		CoinSelector coinSelector,
 		CoinJoinConfiguration coinJoinConfiguration,
 		InputVerifier verifyInputsExistence,
-		LiquidityClueProvider liquidityClueProvider,
 		TimeSpan doNotRegisterInLastMinuteTimeLimit = default)
 	{
 		ArenaRequestHandlerFactory = arenaRequestHandlerFactory;
 		_keyChain = keyChain;
 		_outputProvider = outputProvider;
 		_roundStatusProvider = roundStatusProvider;
-		_liquidityClueProvider = liquidityClueProvider;
 		_coinJoinConfiguration = coinJoinConfiguration;
 		_verifyInputsExistence = verifyInputsExistence;
-		_coinSelector = coinSelector;
 		_secureRandom = SecureRandom.Instance;
 		_doNotRegisterInLastMinuteTimeLimit = doNotRegisterInLastMinuteTimeLimit;
 	}
@@ -53,10 +49,8 @@ public class CoinJoinClient
 	private readonly IKeyChain _keyChain;
 	private readonly OutputProvider _outputProvider;
 	private readonly RoundStateProvider _roundStatusProvider;
-	private readonly LiquidityClueProvider _liquidityClueProvider;
 	private readonly CoinJoinConfiguration _coinJoinConfiguration;
 	private readonly InputVerifier _verifyInputsExistence;
-	private readonly CoinSelector _coinSelector;
 	private readonly TimeSpan _doNotRegisterInLastMinuteTimeLimit;
 	private readonly TimeSpan _maxWaitingTimeForRound = TimeSpan.FromMinutes(10);
 
@@ -164,10 +158,10 @@ public class CoinJoinClient
 				continue;
 			}
 
-			var liquidityClue = _liquidityClueProvider.GetLiquidityClue(roundParameters.MaxAmountCredentialValue);
 			var utxoSelectionParameters = UtxoSelectionParameters.FromRoundParameters(roundParameters, _outputProvider.DestinationProvider.SupportedScriptTypes);
 
-			myCoins = _coinSelector(coinCandidates, utxoSelectionParameters, liquidityClue);
+			// The candidates are the coins that the user lets into coinjoins. The round gets all of them that it takes.
+			myCoins = CoinJoinCoinSelector.SelectCoinsForRound(coinCandidates, utxoSelectionParameters);
 
 			if (myCoins.IsEmpty)
 			{
@@ -376,8 +370,6 @@ public class CoinJoinClient
 			var (unsignedCoinJoin, aliceClientsThatSigned) = await ProceedWithSigningStateAsync(roundId, registeredAliceClients, outputTxOuts, cancellationToken).ConfigureAwait(false);
 
 			LogCoinJoinSummary(registeredAliceClients, outputTxOuts, roundState);
-
-			_liquidityClueProvider.UpdateLiquidityClue(roundState.CoinjoinState.Parameters.MaxAmountCredentialValue, unsignedCoinJoin, outputTxOuts);
 
 			return (aliceClientsThatSigned, outputTxOuts, unsignedCoinJoin);
 		}

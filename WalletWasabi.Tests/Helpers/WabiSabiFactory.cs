@@ -320,17 +320,6 @@ public static class WabiSabiFactory
 		return (keyChain, smartCoin1, smartCoin2);
 	}
 
-	/// <summary>
-	/// Creates a coin selector that registers as many coins as a wallet may, so that tests do not depend on a randomly chosen number of inputs.
-	/// </summary>
-	public static CoinJoinCoinSelector CreateGreedyCoinSelector(int semiPrivateThreshold) =>
-		new(
-			semiPrivateThreshold,
-			new CoinJoinCoinSelectorRandomnessGenerator(
-				CoinJoinCoinSelector.MaxInputsRegistrableByWallet,
-				RandomnessProviders.Secure,
-				fixedInputTarget: () => CoinJoinCoinSelector.MaxInputsRegistrableByWallet));
-
 	public static CoinJoinClient CreateTestCoinJoinClient(
 		Func<string, IWabiSabiApiRequestHandler> apiClientFactory,
 		KeyManager keyManager,
@@ -340,28 +329,22 @@ public static class WabiSabiFactory
 			apiClientFactory,
 			new KeyChain(keyManager, ""),
 			new OutputProvider(new InternalDestinationProvider(keyManager), RandomnessProviders.Insecure, () => keyManager.MaxCoinjoinLeftover),
-			roundStateProvider,
-			keyManager.NonPrivateCoinIsolation);
+			roundStateProvider);
 	}
 
 	public static CoinJoinClient CreateTestCoinJoinClient(
 		Func<string, IWabiSabiApiRequestHandler> apiClientFactory,
 		IKeyChain keyChain,
 		OutputProvider outputProvider,
-		RoundStateProvider roundStateProvider,
-		bool redCoinIsolation)
+		RoundStateProvider roundStateProvider)
 	{
-		var semiPrivateThreshold = redCoinIsolation ? Constants.SemiPrivateThreshold : 0;
-		var coinSelector = CreateGreedyCoinSelector(semiPrivateThreshold);
 		var coinjoinClient = new TestableCoinJoinClient(
 			apiClientFactory,
 			keyChain,
 			outputProvider,
 			roundStateProvider,
-			coinSelector.SelectCoinsForRound,
 			new CoinJoinConfiguration("CoinJoinCoordinatorIdentifier", 150.0m, 1, AllowSoloCoinjoining: true),
 			InputVerifiers.NoVerification(),
-			new LiquidityClueProvider(),
 			TimeSpan.Zero);
 
 		return coinjoinClient;
@@ -410,19 +393,15 @@ public class TestableCoinJoinClient(
 	IKeyChain keyChain,
 	OutputProvider outputProvider,
 	RoundStateProvider roundStatusProvider,
-	CoinSelector coinSelector,
 	CoinJoinConfiguration coinJoinConfiguration,
 	InputVerifier inputVerifier,
-	LiquidityClueProvider liquidityClueProvider,
 	TimeSpan doNotRegisterInLastMinuteTimeLimit = default)
 	: CoinJoinClient(arenaRequestHandlerFactory,
 		keyChain,
 		outputProvider,
 		roundStatusProvider,
-		coinSelector,
 		coinJoinConfiguration,
 		inputVerifier,
-		liquidityClueProvider,
 		doNotRegisterInLastMinuteTimeLimit)
 {
 	internal override ImmutableList<DateTimeOffset> GetScheduledDates(int howMany, DateTimeOffset startTime, DateTimeOffset endTime,

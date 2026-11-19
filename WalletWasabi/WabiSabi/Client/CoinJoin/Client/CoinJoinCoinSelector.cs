@@ -1,307 +1,38 @@
-using System.Diagnostics;
 using WalletWasabi.Crypto.Randomness;
-using WalletWasabi.Wallets;
 
 namespace WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 
 /// <summary>
-/// Picks the coins that a wallet registers in a round, out of the coins that may take part. Every such coin can be
-/// picked, whatever its anonymity score: there is no score at which a coin is done with coinjoins. The selection only
-/// keeps a wallet from showing more about itself than it has to.
+/// Tells which coins a wallet registers in a round: every coin that may take part and that the round takes. Which
+/// coins may take part is the choice of the user, and the wallet does not choose among them.
 /// </summary>
-public class CoinJoinCoinSelector
+public static class CoinJoinCoinSelector
 {
-	public const int MaxInputsRegistrableByWallet = 10; // how many
-	public const int MaxWeightedAnonLoss = 3; // Maximum tolerable WeightedAnonLoss.
-
-	/// <param name="semiPrivateThreshold">Minimum anonymity of coins that can be selected together.</param>
-	public CoinJoinCoinSelector(
-		int semiPrivateThreshold,
-		CoinJoinCoinSelectorRandomnessGenerator? generator = null)
+	/// <param name="coins">The coins that may take part: the ones that the user lets into coinjoins and that can be registered now.</param>
+	/// <returns>The coins to register, in random order. None if the round has no use for the coins.</returns>
+	public static ImmutableList<SmartCoin> SelectCoinsForRound(IEnumerable<SmartCoin> coins, UtxoSelectionParameters parameters)
 	{
-		SemiPrivateThreshold = semiPrivateThreshold;
-
-		_generator = generator ?? new(MaxInputsRegistrableByWallet, RandomnessProviders.Secure);
-	}
-
-	public int SemiPrivateThreshold { get; }
-	private RandomnessProvider Rnd => _generator.Rnd;
-	private readonly CoinJoinCoinSelectorRandomnessGenerator _generator;
-
-	public static CoinJoinCoinSelector FromWallet(Wallet wallet) =>
-		new(wallet.NonPrivateCoinIsolation ? Constants.SemiPrivateThreshold : 0);
-
-	/// <param name="liquidityClue">Weakly prefer not to select inputs over this.</param>
-	public ImmutableList<SmartCoin> SelectCoinsForRound(IEnumerable<SmartCoin> coins, UtxoSelectionParameters parameters, Money liquidityClue)
-	{
-		liquidityClue = liquidityClue > Money.Zero
-			? liquidityClue
-			: Constants.MaximumNumberOfBitcoinsMoney;
-
-		var filteredCoins = coins
+		var allowedCoins = coins
 			.Where(parameters.Allows)
 			.ToArray();
 
-		// Sanity check.
-		if (filteredCoins.Length == 0)
+		if (allowedCoins.Length == 0)
 		{
-			Logger.LogDebug("No suitable coins for this round.");
-			return ImmutableList<SmartCoin>.Empty;
+			Logger.LogDebug("The round takes none of the coins.");
+			return [];
 		}
 
-		// redCoins will only fill up if redCoinIsolation is turned on. Otherwise no coin counts as red.
-		var redCoins = filteredCoins
-			.Where(x => x.IsRedCoin(SemiPrivateThreshold))
-			.ToArray();
-
-		Logger.LogDebug($"Coin selection started:");
-		Logger.LogDebug($"{nameof(filteredCoins)}: {filteredCoins.Length} coins, valued at {Money.Satoshis(filteredCoins.Sum(x => x.Amount)).ToString(false, true)} BTC.");
-		Logger.LogDebug($"{nameof(redCoins)}: {redCoins.Length} coins, valued at {Money.Satoshis(redCoins.Sum(x => x.Amount)).ToString(false, true)} BTC.");
-
-		// We want to isolate red coins from each other. We only let a single red coin get into our selection candidates.
-		var allowedCoins = filteredCoins
-			.Where(x => !x.IsRedCoin(SemiPrivateThreshold))
-			.ToList();
-		var red = redCoins.RandomElement(Rnd);
-		if (red is not null)
+		// A round has no output for less than its smallest amount, so coins that do not add up to it would only pay fees.
+		var effectiveSum = Money.Satoshis(allowedCoins.Sum(x => x.EffectiveValue(parameters.MiningFeeRate)));
+		if (effectiveSum < parameters.MinAllowedOutputAmount)
 		{
-			allowedCoins.Add(red);
-			Logger.LogDebug($"One red coin got selected: {red.Amount.ToString(false, true)} BTC. Isolating the rest.");
+			Logger.LogDebug($"The {allowedCoins.Length} coins that the round takes are not worth an output of it: {effectiveSum.ToString(false, true)} BTC after fees.");
+			return [];
 		}
 
-		Logger.LogDebug($"{nameof(allowedCoins)}: {allowedCoins.Count} coins, valued at {Money.Satoshis(allowedCoins.Sum(x => x.Amount)).ToString(false, true)} BTC.");
+		Logger.LogDebug($"{allowedCoins.Length} coins are to be registered, valued at {Money.Satoshis(allowedCoins.Sum(x => x.Amount)).ToString(false, true)} BTC.");
 
-		int inputCount = Math.Min(
-			allowedCoins.Count,
-			_generator.GetInputTarget());
-		Logger.LogDebug($"Targeted {nameof(inputCount)}: {inputCount}.");
-
-		// Shuffle coins, while randomly biasing towards lower AS.
-		var orderedAllowedCoins = AnonScoreTxSourceBiasedShuffle(allowedCoins.ToArray()).ToArray();
-
-		// Always use the largest amounts, so we do not participate with insignificant amounts and fragment wallet needlessly.
-		var largestCoins = allowedCoins
-			.OrderByDescending(x => x.Amount)
-			.Take(3)
-			.ToArray();
-		Logger.LogDebug($"Largest coins: {string.Join(", ", largestCoins.Select(x => x.Amount.ToString(false, true)).ToArray())} BTC.");
-
-		// Select a group of coins those are close to each other by anonymity score.
-		Dictionary<int, IEnumerable<SmartCoin>> groups = new();
-
-		// Create a bunch of combinations.
-		var sw1 = Stopwatch.StartNew();
-		foreach (var coin in largestCoins)
-		{
-			// Create a base combination just in case.
-			var baseGroup = orderedAllowedCoins.Except(new[] { coin }).Take(inputCount - 1).Concat(new[] { coin });
-			TryAddGroup(parameters, groups, baseGroup);
-
-			var sw2 = Stopwatch.StartNew();
-			foreach (var group in orderedAllowedCoins
-				.Except(new[] { coin })
-				.CombinationsWithoutRepetition(inputCount - 1)
-				.Select(x => x.Concat(new[] { coin })))
-			{
-				TryAddGroup(parameters, groups, group);
-
-				if (sw2.Elapsed > TimeSpan.FromSeconds(1))
-				{
-					break;
-				}
-			}
-
-			sw2.Reset();
-
-			if (sw1.Elapsed > TimeSpan.FromSeconds(10))
-			{
-				break;
-			}
-		}
-
-		if (groups.Count == 0)
-		{
-			Logger.LogDebug($"Couldn't create any combinations, ending.");
-			return ImmutableList<SmartCoin>.Empty;
-		}
-		Logger.LogDebug($"Created {groups.Count} combinations within {(int)sw1.Elapsed.TotalSeconds} seconds.");
-
-		// Select the group where the less coins coming from the same tx.
-		var bestRep = groups.Values.Select(x => GetReps(x)).Min(x => x);
-		var bestRepGroups = groups.Values.Where(x => GetReps(x) == bestRep);
-		Logger.LogDebug($"{nameof(bestRep)}: {bestRep}.");
-		Logger.LogDebug($"Filtered combinations down to {nameof(bestRepGroups)}: {bestRepGroups.Count()}.");
-
-		var remainingLargestCoins = largestCoins.Where(x => bestRepGroups.Any(y => y.Contains(x)));
-		Logger.LogDebug($"Remaining largest coins: {string.Join(", ", remainingLargestCoins.Select(x => x.Amount.ToString(false, true)).ToArray())} BTC.");
-
-		// Bias selection towards larger numbers.
-		var selectedLargeCoin = remainingLargestCoins.RandomElement(Rnd); // Select randomly at first just to have a starting value.
-		foreach (var coin in remainingLargestCoins.OrderByDescending(x => x.Amount))
-		{
-			if (Rnd.GetInt(100) < 50)
-			{
-				selectedLargeCoin = coin;
-				break;
-			}
-		}
-		if (selectedLargeCoin is null)
-		{
-			Logger.LogDebug($"Couldn't select largest coin, ending.");
-			return ImmutableList<SmartCoin>.Empty;
-		}
-		Logger.LogDebug($"Randomly selected large coin: {selectedLargeCoin.Amount.ToString(false, true)}.");
-
-		var finalCandidate = bestRepGroups
-			.Where(x => x.Contains(selectedLargeCoin))
-			.RandomElement(Rnd);
-		if (finalCandidate is null)
-		{
-			Logger.LogDebug($"Couldn't select final selection candidate, ending.");
-			return ImmutableList<SmartCoin>.Empty;
-		}
-		Logger.LogDebug($"Selected the final selection candidate: {finalCandidate.Count()} coins, {string.Join(", ", finalCandidate.Select(x => x.Amount.ToString(false, true)).ToArray())} BTC.");
-
-		// Let's remove some coins coming from the same tx in the final candidate, allow 2 on average.
-		int sameTxAllowance = _generator.GetRandomBiasedSameTxAllowance(67);
-
-		List<SmartCoin> winner = new()
-		{
-			selectedLargeCoin
-		};
-
-		foreach (var coin in finalCandidate
-			.Except(new[] { selectedLargeCoin })
-			.OrderBy(x => x.AnonymitySet)
-			.ThenByDescending(x => x.Amount))
-		{
-			// If the coin is coming from same tx, then check our allowance.
-			if (winner.Any(x => x.TransactionId == coin.TransactionId))
-			{
-				var sameTxUsed = winner.Count - winner.Select(x => x.TransactionId).Distinct().Count();
-				if (sameTxUsed < sameTxAllowance)
-				{
-					winner.Add(coin);
-				}
-			}
-			else
-			{
-				winner.Add(coin);
-			}
-		}
-
-		double winnerAnonLoss = GetAnonLoss(winner);
-
-		// Only stay in the while if we are above the liquidityClue (we are a whale) AND the weightedAnonLoss is not tolerable.
-		while (winner.Sum(x => x.Amount) > liquidityClue && winnerAnonLoss > MaxWeightedAnonLoss)
-		{
-			List<SmartCoin> bestReducedWinner = winner;
-			var bestAnonLoss = winnerAnonLoss;
-			bool winnerChanged = false;
-
-			// We always want to keep the large coin that the selection was built around.
-			foreach (SmartCoin coin in winner.Except(new[] { selectedLargeCoin }))
-			{
-				var reducedWinner = winner.Except(new[] { coin });
-				var anonLoss = GetAnonLoss(reducedWinner);
-
-				if (anonLoss <= bestAnonLoss)
-				{
-					bestAnonLoss = anonLoss;
-					bestReducedWinner = reducedWinner.ToList();
-					winnerChanged = true;
-				}
-			}
-
-			if (!winnerChanged)
-			{
-				break;
-			}
-
-			winner = bestReducedWinner;
-			winnerAnonLoss = bestAnonLoss;
-		}
-
-		if (winner.Count != finalCandidate.Count())
-		{
-			Logger.LogDebug($"Optimizing selection, removing coins coming from the same tx.");
-			Logger.LogDebug($"{nameof(sameTxAllowance)}: {sameTxAllowance}.");
-			Logger.LogDebug($"{nameof(winner)}: {winner.Count} coins, {string.Join(", ", winner.Select(x => x.Amount.ToString(false, true)).ToArray())} BTC.");
-		}
-
-		if (winner.Count < MaxInputsRegistrableByWallet)
-		{
-			// If the address of a winner contains other coins (address reuse, same HdPubKey) that are available but not selected,
-			// complete the selection with them until MaxInputsRegistrableByWallet threshold.
-			// Order by most to least reused to try not splitting coins from same address into several rounds.
-			var nonSelectedCoinsOnSameAddresses = filteredCoins
-				.Except(winner)
-				.Where(x => winner.Any(y => y.ScriptPubKey == x.ScriptPubKey))
-				.GroupBy(x => x.ScriptPubKey)
-				.OrderByDescending(g => g.Count())
-				.SelectMany(g => g)
-				.Take(MaxInputsRegistrableByWallet - winner.Count)
-				.ToList();
-
-			winner.AddRange(nonSelectedCoinsOnSameAddresses);
-
-			if (nonSelectedCoinsOnSameAddresses.Count > 0)
-			{
-				Logger.LogInfo($"{nonSelectedCoinsOnSameAddresses.Count} coins were added to the selection because they are on the same addresses of some selected coins.");
-			}
-		}
-
-		return winner.ToShuffled(Rnd).ToImmutableList();
+		// The coins are registered in this order, which is to tell nothing about them.
+		return allowedCoins.ToShuffled(RandomnessProviders.Secure).ToImmutableList();
 	}
-
-	private IEnumerable<SmartCoin> AnonScoreTxSourceBiasedShuffle(SmartCoin[] coins)
-	{
-		var orderedCoins = new List<SmartCoin>();
-		for (int i = 0; i < coins.Length; i++)
-		{
-			// Order by anonscore first.
-			var remaining = coins.Except(orderedCoins).OrderBy(x => x.AnonymitySet);
-
-			// Then manipulate the list so repeating tx sources go to the end.
-			var alternating = new List<SmartCoin>();
-			var skipped = new List<SmartCoin>();
-			foreach (var c in remaining)
-			{
-				if (alternating.Any(x => x.TransactionId == c.TransactionId) || orderedCoins.Any(x => x.TransactionId == c.TransactionId))
-				{
-					skipped.Add(c);
-				}
-				else
-				{
-					alternating.Add(c);
-				}
-			}
-			alternating.AddRange(skipped);
-
-			var coin = alternating.BiasedRandomElement(biasPercent: 50, Rnd)!;
-			orderedCoins.Add(coin);
-			yield return coin;
-		}
-	}
-
-	private static bool TryAddGroup(UtxoSelectionParameters parameters, Dictionary<int, IEnumerable<SmartCoin>> groups, IEnumerable<SmartCoin> group)
-	{
-		var effectiveInputSum = group.Sum(x => x.EffectiveValue(parameters.MiningFeeRate));
-		if (effectiveInputSum >= parameters.MinAllowedOutputAmount)
-		{
-			var k = HashCode.Combine(group.OrderBy(x => x.TransactionId).ThenBy(x => x.Index));
-			return groups.TryAdd(k, group);
-		}
-
-		return false;
-	}
-
-	private static double GetAnonLoss(IEnumerable<SmartCoin> coins)
-	{
-		double minimumAnonScore = coins.Min(x => x.AnonymitySet);
-		return coins.Sum(x => (x.AnonymitySet - minimumAnonScore) * x.Amount.Satoshi) / coins.Sum(x => x.Amount.Satoshi);
-	}
-
-	private static int GetReps(IEnumerable<SmartCoin> group)
-		=> group.GroupBy(x => x.TransactionId).Sum(coinsInTxGroup => coinsInTxGroup.Count() - 1);
 }

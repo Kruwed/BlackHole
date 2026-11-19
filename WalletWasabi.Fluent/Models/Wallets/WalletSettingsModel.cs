@@ -19,7 +19,6 @@ public partial class WalletSettingsModel : ReactiveObject
 
 	[AutoNotify] private bool _isNewWallet;
 	[AutoNotify] private Money _maxCoinjoinLeftover;
-	[AutoNotify] private bool _nonPrivateCoinIsolation;
 
 	public WalletSettingsModel(IServices services, KeyManager keyManager, bool isNewWallet = false)
 	{
@@ -30,11 +29,8 @@ public partial class WalletSettingsModel : ReactiveObject
 		_isDirty = isNewWallet;
 
 		_maxCoinjoinLeftover = _keyManager.MaxCoinjoinLeftover;
-		_nonPrivateCoinIsolation = _keyManager.NonPrivateCoinIsolation;
 
-		this.WhenAnyValue(
-				x => x.MaxCoinjoinLeftover,
-				x => x.NonPrivateCoinIsolation)
+		this.WhenAnyValue(x => x.MaxCoinjoinLeftover)
 			.Skip(1)
 			.Do(_ => SetValues())
 			.Subscribe();
@@ -72,7 +68,6 @@ public partial class WalletSettingsModel : ReactiveObject
 	private void SetValues()
 	{
 		_keyManager.MaxCoinjoinLeftover = MaxCoinjoinLeftover;
-		_keyManager.NonPrivateCoinIsolation = NonPrivateCoinIsolation;
 		_isDirty = true;
 	}
 }

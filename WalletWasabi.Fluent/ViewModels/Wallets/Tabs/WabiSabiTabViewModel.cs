@@ -17,7 +17,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
 /// <summary>
 /// The tab of the WabiSabi coinjoins: the coinjoin that is running or waiting with its controls, and the coins, of
-/// which the ticked ones may be submitted into rounds. Nothing of this shows anywhere else.
+/// which the ticked ones are submitted into rounds. Nothing of this shows anywhere else.
 /// </summary>
 [AppLifetime]
 public partial class WabiSabiTabViewModel : WalletTabViewModel
@@ -86,8 +86,9 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	public WalletCoinJoinSettingsViewModel CoinJoinSettings { get; }
 
 	/// <summary>
-	/// The coins of the wallet. The ticked ones may be submitted into coinjoin rounds, the others are kept out of them.
-	/// A coin is ticked unless the user unticked it, so a coin that arrives may be submitted.
+	/// The coins of the wallet. A round gets every ticked coin that it accepts and that can be registered at that time,
+	/// the others are kept out of coinjoins. A coin is ticked unless the user unticked it, so a coin that arrives is
+	/// submitted too.
 	/// </summary>
 	public CoinListViewModel CoinList { get; }
 

@@ -379,15 +379,17 @@ public class KeyManagerTests
 		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
 		manager.ToFile();
 
-		// A wallet file of an older version has the settings of the automatic coinjoin and of the private coins.
+		// A wallet file of an older version has the settings of the automatic coinjoin, of the private coins and of
+		// the isolation of the non-private ones.
 		var json = File.ReadAllText(filePath);
 		Assert.DoesNotContain("\"AutoCoinJoin\"", json);
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
 		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 		Assert.DoesNotContain("\"OnlyUsePrivateFundsForPayments\"", json);
+		Assert.DoesNotContain("\"RedCoinIsolation\"", json);
 
 		var start = json.IndexOf('{') + 1;
-		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\", \"AnonScoreTarget\": 50, \"OnlyUsePrivateFundsForPayments\": true,"));
+		File.WriteAllText(filePath, json.Insert(start, "\"AutoCoinJoin\": true, \"PlebStopThreshold\": \"0.01\", \"AnonScoreTarget\": 50, \"OnlyUsePrivateFundsForPayments\": true, \"RedCoinIsolation\": true,"));
 
 		// The wallet opens as it did, and what it knows is as it was.
 		var sameManager = KeyManager.FromFile(filePath);
@@ -401,6 +403,7 @@ public class KeyManagerTests
 		Assert.DoesNotContain("\"PlebStopThreshold\"", json);
 		Assert.DoesNotContain("\"AnonScoreTarget\"", json);
 		Assert.DoesNotContain("\"OnlyUsePrivateFundsForPayments\"", json);
+		Assert.DoesNotContain("\"RedCoinIsolation\"", json);
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

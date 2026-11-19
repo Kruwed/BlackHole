@@ -93,8 +93,6 @@ public class Wallet : BackgroundService
 
 	public CoinsRegistry Coins { get; }
 
-	public bool NonPrivateCoinIsolation => KeyManager.NonPrivateCoinIsolation;
-
 	public Network Network { get; }
 	public TransactionProcessor TransactionProcessor { get; }
 

@@ -38,7 +38,6 @@ $ ./wcli.sh getwalletinfo
   "walletFile": "/home/user/.blackhole/client/Wallets/Wallet.json",
   "state": "Started",
   "masterKeyFingerprint": "3442193e",
-  "isRedCoinIsolation": false,
   "accounts": [
     {
       "name": "taproot",
