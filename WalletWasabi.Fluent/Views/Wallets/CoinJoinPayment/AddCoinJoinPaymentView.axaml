@@ -102,7 +102,7 @@
       <InfoMessage DockPanel.Dock="Top" Margin="0,20,0,0" Opacity="0.6">
         <TextBlock TextWrapping="Wrap">
           <Run Text="Note:" FontWeight="SemiBold" />
-          <Run Text="Larger payments will not trigger if they exceed the value of the funds randomly selected for the coinjoin round." />
+          <Run Text="A payment is made in a round only if the ticked coins that the round accepts are enough to pay for it." />
         </TextBlock>
       </InfoMessage>
 
