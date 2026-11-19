@@ -1,19 +1,39 @@
+using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
+using System.Windows.Input;
 using ReactiveUI;
+using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
-public class CoinViewModel : CoinListItem
+/// <summary>
+/// The row of a coin in a list of coins. The row is made once: apart from whether the coin is kept out of coinjoins and
+/// whether it is in one, which it follows, it shows the coin as it was at that moment. <see cref="Content"/> tells the
+/// list when a coin needs a new row.
+/// </summary>
+public partial class CoinViewModel : ViewModelBase, IDisposable
 {
-	/// <param name="title">Title of the row. Empty for a coin that is shown inside its group.</param>
-	public CoinViewModel(UiContext uiContext, string title, CoinModel coin, bool canSelectWhenCoinjoining) : base(uiContext)
+	private readonly CompositeDisposable _disposables = new();
+
+	[AutoNotify] private bool _isSelected;
+	[AutoNotify] private bool _isCoinjoining;
+	[AutoNotify] private bool _isExcludedFromCoinJoin;
+	[AutoNotify] private bool _canBeSelected;
+
+	public CoinViewModel(UiContext uiContext, CoinModel coin, bool canSelectWhenCoinjoining) : base(uiContext)
 	{
-		Title = title;
-		PrivacyLevel = coin.PrivacyLevel;
+		// Temporarily enable the selection no matter what.
+		// Should be again restricted once https://github.com/WalletWasabi/WalletWasabi/issues/9972 is implemented.
+		// CanBeSelected = !IsCoinjoining;
+		CanBeSelected = true;
+
+		ClipboardCopyCommand = ReactiveCommand.CreateFromTask<string>(text => UiContext.Clipboard.SetTextAsync(text));
+
 		Coin = coin;
+		Content = DescribeContent(coin.GetSmartCoin());
 		BtcAddress = coin.BtcAddress;
 		Amount = new Amount(coin.Amount);
 		IsConfirmed = coin.IsConfirmed;
@@ -23,7 +43,6 @@ public class CoinViewModel : CoinListItem
 		BannedUntilUtcToolTip = coin.BannedUntilUtcToolTip;
 		AnonymityScore = coin.AnonScore;
 		BannedUntilUtc = coin.BannedUntilUtc;
-		IsSelected = false;
 		this.WhenAnyValue(x => x.Coin.IsExcludedFromCoinJoin).BindTo(this, x => x.IsExcludedFromCoinJoin).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress).BindTo(this, x => x.IsCoinjoining).DisposeWith(_disposables);
 		this.WhenAnyValue(x => x.CanBeSelected)
@@ -31,12 +50,44 @@ public class CoinViewModel : CoinListItem
 			.Do(_ => IsSelected = false)
 			.Subscribe();
 
-        if (!canSelectWhenCoinjoining)
-        {
-            this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress, b => !b).BindTo(this, x => x.CanBeSelected).DisposeWith(_disposables);
-        }
+		if (!canSelectWhenCoinjoining)
+		{
+			this.WhenAnyValue(x => x.Coin.IsCoinJoinInProgress, b => !b).BindTo(this, x => x.CanBeSelected).DisposeWith(_disposables);
+		}
 	}
 
 	public CoinModel Coin { get; }
-	public override string Key => Coin.Key.ToString();
+
+	public ICommand ClipboardCopyCommand { get; }
+
+	public string? BtcAddress { get; }
+
+	public bool IsConfirmed { get; }
+
+	public bool IsBanned { get; }
+
+	public string ConfirmationStatus { get; }
+
+	public Amount Amount { get; }
+
+	public string? BannedUntilUtcToolTip { get; }
+
+	public int AnonymityScore { get; }
+
+	public DateTimeOffset? BannedUntilUtc { get; }
+
+	/// <summary>
+	/// What the row was made of. The list keeps the row of a coin for as long as the coin gives the same content, and
+	/// puts a new row in its place otherwise.
+	/// </summary>
+	public string Content { get; }
+
+	/// <summary>
+	/// Tells what a row shows of its coin and does not follow: the amount, whether the coin is confirmed or banned and
+	/// its anonymity score.
+	/// </summary>
+	public static string DescribeContent(SmartCoin coin) =>
+		FormattableString.Invariant($"{coin.Outpoint}:{coin.Amount.Satoshi}:{coin.Confirmed}:{coin.AnonymitySet}:{coin.IsBanned}");
+
+	public void Dispose() => _disposables.Dispose();
 }

@@ -175,8 +175,6 @@ public class KeyManager
 	/// <summary>A new wallet registers at most one non-private coin in a round.</summary>
 	public bool NonPrivateCoinIsolation { get; set; } = true;
 
-	public bool OnlyUsePrivateFundsForPayments { get; set; }
-
 	public List<OutPoint> ExcludedCoinsFromCoinJoin { get; private set; } = new();
 
 	private Dictionary<uint256, CoinjoinCosts> CoinjoinCosts { get; init; } = new();
@@ -804,7 +802,6 @@ public class KeyManager
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
 			("RedCoinIsolation", Encode.Bool(keyManager.NonPrivateCoinIsolation)),
-			("OnlyUsePrivateFundsForPayments", Encode.Bool(keyManager.OnlyUsePrivateFundsForPayments)),
 			("ExcludedCoinsFromCoinJoin", Encode.Array(keyManager.ExcludedCoinsFromCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
 			("FidelityBondHeights", Encode.Array(keyManager.FidelityBonds.KnownHeights.Select(Encode.UInt))),
@@ -836,7 +833,6 @@ public class KeyManager
 			{
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				NonPrivateCoinIsolation = get.Optional("RedCoinIsolation", Decode.Bool, false),
-				OnlyUsePrivateFundsForPayments = get.Optional("OnlyUsePrivateFundsForPayments", Decode.Bool, false),
 				ExcludedCoinsFromCoinJoin = get.Optional("ExcludedCoinsFromCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? []
 			};

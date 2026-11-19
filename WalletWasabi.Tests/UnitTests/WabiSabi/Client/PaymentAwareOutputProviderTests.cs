@@ -41,8 +41,7 @@ public class PaymentAwareOutputProviderTests
 			registeredInputs: [],
 			registeredCoinsEffectiveValues,
 			theirCoinEffectiveValues,
-			availableVsize,
-			arePaymentsAllowed: true).ToArray();
+			availableVsize).ToArray();
 
 		var nonAwaredOutputProvider = new OutputProvider(wallet, RandomnessProviders.Insecure);
 		var decomposedOutputs = nonAwaredOutputProvider.GetOutputs(
@@ -51,8 +50,7 @@ public class PaymentAwareOutputProviderTests
 			registeredInputs: [],
 			registeredCoinsEffectiveValues,
 			theirCoinEffectiveValues,
-			availableVsize,
-			arePaymentsAllowed: true).ToArray();
+			availableVsize).ToArray();
 
 		static decimal ToDecimal(TxOut o) => o.Value.ToDecimal(MoneyUnit.BTC);
 		Assert.Equal(outputs.Sum(ToDecimal), decomposedOutputs.Sum(ToDecimal));
@@ -64,12 +62,13 @@ public class PaymentAwareOutputProviderTests
 
 	/// <summary>
 	/// The limit of the wallet reaches the outputs that are registered in a round: with a limit of zero the outputs and
-	/// their fees take all that the inputs are worth, and the round can still issue the credentials for them.
+	/// their fees take all that the inputs are worth, and the round can still issue the credentials for them. That holds
+	/// for the provider that knows about payments as for the one that does not.
 	/// </summary>
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public void OutputsLeaveNoMoreThanTheWalletAllows(bool arePaymentsAllowed)
+	public void OutputsLeaveNoMoreThanTheWalletAllows(bool isPaymentAware)
 	{
 		var rpc = new MockRpcClient();
 		var wallet = new TestWallet("random-wallet", rpc);
@@ -78,14 +77,16 @@ public class PaymentAwareOutputProviderTests
 		var availableVsize = roundParameters.MaxVsizeAllocationPerAlice - Constants.P2wpkhInputVirtualSize;
 		var feeRate = roundParameters.MiningFeeRate;
 		Money? maxLeftover = null;
-		var outputProvider = new PaymentAwareOutputProvider(wallet, new PaymentBatch(new CoinsRegistry()), RandomnessProviders.Insecure, () => maxLeftover);
+		var outputProvider = isPaymentAware
+			? new PaymentAwareOutputProvider(wallet, new PaymentBatch(new CoinsRegistry()), RandomnessProviders.Insecure, () => maxLeftover)
+			: new OutputProvider(wallet, RandomnessProviders.Insecure, () => maxLeftover);
 		var roundsWithLeftover = 0;
 
 		foreach (var satoshis in new long[] { 12_345_678, 1_003_333, 777_777, 250_001, 99_999, 61_234, 5_000_123, 33_333_333 })
 		{
 			var registeredCoinsEffectiveValues = new[] { Money.Satoshis(satoshis) };
 
-			TxOut[] GetOutputs() => outputProvider.GetOutputs(uint256.Zero, roundParameters, registeredInputs: [], registeredCoinsEffectiveValues, theirCoinEffectiveValues, availableVsize, arePaymentsAllowed).ToArray();
+			TxOut[] GetOutputs() => outputProvider.GetOutputs(uint256.Zero, roundParameters, registeredInputs: [], registeredCoinsEffectiveValues, theirCoinEffectiveValues, availableVsize).ToArray();
 			Money Leftover(TxOut[] outputs) => Money.Satoshis(satoshis) - outputs.Sum(x => x.Value + feeRate.GetFee(x.ScriptPubKey.EstimateOutputVsize()));
 
 			maxLeftover = null;
@@ -139,8 +140,7 @@ public class PaymentAwareOutputProviderTests
 			registeredInputs: [],
 			registeredCoinsEffectiveValues,
 			new[] { Money.Coins(0.2m), Money.Coins(0.1m), Money.Coins(0.05m), Money.Coins(0.0025m), Money.Coins(0.0001m) },
-			int.MaxValue,
-			arePaymentsAllowed: true).ToArray();
+			int.MaxValue).ToArray();
 
 		Assert.All(payments.Take(4).Zip(scriptPubKeys, outputs, (x, y, z) => (Payment: x, Destination: y, Output: z)), x =>
 		{
@@ -152,50 +152,6 @@ public class PaymentAwareOutputProviderTests
 		Assert.InRange(outputs.Sum(x => x.Value.ToDecimal(MoneyUnit.BTC)),
 			totalRegisteredEffectiveValue - 0.00025m,
 			totalRegisteredEffectiveValue); // no money was lost
-	}
-
-	[Fact]
-	public void DoNotCreateOutputsForPaymentsWhenPaymentsAreNotAllowedTest()
-	{
-		var rpc = new MockRpcClient();
-		var wallet = new TestWallet("random-wallet", rpc);
-		var paymentBatch = new PaymentBatch(new CoinsRegistry());
-
-		using Key key = new();
-		var destination = key.PubKey.GetAddress(ScriptPubKeyType.Segwit, rpc.Network);
-		paymentBatch.AddPayment(destination, Money.Coins(0.1m));
-
-		var roundParameters = WabiSabiFactory.CreateRoundParameters(new WabiSabiConfig());
-		var registeredCoinsEffectiveValues = new[] { Money.Coins(0.5m) };
-		var theirCoinEffectiveValues = new[] { Money.Coins(0.2m), Money.Coins(0.1m), Money.Coins(0.05m) };
-
-		var outputProvider = new PaymentAwareOutputProvider(wallet, paymentBatch, RandomnessProviders.Insecure);
-		var outputs = outputProvider.GetOutputs(
-			roundId: uint256.Zero,
-			roundParameters,
-			registeredInputs: [],
-			registeredCoinsEffectiveValues,
-			theirCoinEffectiveValues,
-			availableVsize: 1_000,
-			arePaymentsAllowed: false).ToArray();
-
-		// The payment was not registered and it is still waiting for a round where it can be funded.
-		Assert.DoesNotContain(outputs, x => x.ScriptPubKey == destination.ScriptPubKey);
-		Assert.True(paymentBatch.AreTherePendingPayments);
-
-		// Everything that was registered got decomposed, exactly like a payment-unaware provider does.
-		var nonAwaredOutputProvider = new OutputProvider(wallet, RandomnessProviders.Insecure);
-		var decomposedOutputs = nonAwaredOutputProvider.GetOutputs(
-			uint256.Zero,
-			roundParameters,
-			registeredInputs: [],
-			registeredCoinsEffectiveValues,
-			theirCoinEffectiveValues,
-			availableVsize: 1_000,
-			arePaymentsAllowed: false).ToArray();
-
-		static decimal ToDecimal(TxOut o) => o.Value.ToDecimal(MoneyUnit.BTC);
-		Assert.Equal(outputs.Sum(ToDecimal), decomposedOutputs.Sum(ToDecimal));
 	}
 
 	[Theory]

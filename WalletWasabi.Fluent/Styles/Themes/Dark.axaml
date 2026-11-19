@@ -117,7 +117,6 @@
 
   <!-- Privacy colors -->
   <SolidColorBrush x:Key="PrivacyLevelStrongBrush" Color="#F7931A" />
-  <SolidColorBrush x:Key="PrivacyLevelMediumBrush" Color="#986629" />
 
   <!-- TreeDataGrid -->
   <SolidColorBrush x:Key="TreeDataGridChildRowBackground" Color="{StaticResource Layer1BackgroundBrushLight1}" />

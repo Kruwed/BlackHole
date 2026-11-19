@@ -5,7 +5,7 @@
              xmlns:coins="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Coins"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="WalletWasabi.Fluent.Views.CoinControl.Core.Cells.AmountCellView"
-             x:DataType="coins:CoinListItem"
+             x:DataType="coins:CoinViewModel"
              x:CompileBindings="True">
 
   <AmountControl VerticalAlignment="Center"

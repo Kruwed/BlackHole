@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:behaviors="clr-namespace:WalletWasabi.Fluent.Behaviors"
              xmlns:coins="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Coins"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Coins.CoinListView"
@@ -10,7 +9,7 @@
              x:CompileBindings="True">
 
   <UserControl.Resources>
-    <ContextMenu IsVisible="{Binding BtcAddress, Converter={x:Static ObjectConverters.IsNotNull}}" x:Key="AddressContextMenu" x:DataType="coins:CoinListItem">
+    <ContextMenu IsVisible="{Binding BtcAddress, Converter={x:Static ObjectConverters.IsNotNull}}" x:Key="AddressContextMenu" x:DataType="coins:CoinViewModel">
       <MenuItem Header="Copy Bitcoin Address"
                 Command="{Binding ClipboardCopyCommand}"
                 CommandParameter="{Binding BtcAddress, StringFormat={}{0}}">
@@ -24,18 +23,12 @@
   <Panel>
     <TreeDataGrid x:Name="TreeDataGrid" Source="{Binding TreeDataGridSource}" IsVisible="{Binding !!CoinItems.Count}">
       <TreeDataGrid.Styles>
-        <Style Selector="TreeDataGridExpanderCell">
-          <Setter Property="Theme" Value="{StaticResource SelectCoinsDialogViewTreeDataGridExpanderCell}" />
-        </Style>
-        <Style Selector="TreeDataGridRow" x:DataType="coins:CoinListItem">
-          <Setter Property="Theme" Value="{StaticResource SelectCoinsDialogViewTreeDataGridRow}" />
-          <Setter Property="IsPointerOver" Value="{Binding IsPointerOverProxy, Mode=OneWayToSource}" />
-          <Setter Property="IsSelected" Value="{Binding IsSelectedProxy, Mode=OneWayToSource}" />
+        <Style Selector="TreeDataGridRow">
+          <Setter Property="Theme" Value="{StaticResource GenericTreeDataGridRow}" />
           <Setter Property="ContextMenu" Value="{StaticResource AddressContextMenu}" />
         </Style>
       </TreeDataGrid.Styles>
       <Interaction.Behaviors>
-        <behaviors:SetLastChildBehavior />
         <TreeDataGridMissingCellsWorkaroundBehavior />
       </Interaction.Behaviors>
     </TreeDataGrid>

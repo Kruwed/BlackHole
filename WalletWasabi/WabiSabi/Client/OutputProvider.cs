@@ -28,8 +28,7 @@ public class OutputProvider
 		ImmutableArray<OutPoint> registeredInputs,
 		IEnumerable<Money> registeredCoinEffectiveValues,
 		IEnumerable<Money> theirCoinEffectiveValues,
-		int availableVsize,
-		bool arePaymentsAllowed)
+		int availableVsize)
 	{
 		AmountDecomposer amountDecomposer = new(
 			roundParameters.MiningFeeRate,

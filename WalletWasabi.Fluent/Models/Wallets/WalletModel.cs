@@ -72,7 +72,7 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletInfoModel GetWalletInfo();
 
-	PrivacySuggestionsModel GetPrivacySuggestionsModel(SendFlowModel sendFlow);
+	PrivacyWarningsModel GetPrivacyWarningsModel();
 }
 
 [AppLifetime]
@@ -185,8 +185,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 		return new WalletInfoModel(Wallet);
 	}
 
-	public PrivacySuggestionsModel GetPrivacySuggestionsModel(SendFlowModel sendFlow)
+	public PrivacyWarningsModel GetPrivacyWarningsModel()
 	{
-		return new PrivacySuggestionsModel(_services, sendFlow);
+		return new PrivacyWarningsModel(Wallet);
 	}
 }

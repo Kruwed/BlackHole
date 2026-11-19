@@ -39,10 +39,9 @@ public class CoinJoinTrackerFactory
 			throw new NotSupportedException("Wallet has no key chain.");
 		}
 
-		var minAnonScoreForPayments = wallet.OnlyUsePrivateFundsForPayments ? Constants.PrivateThreshold : 0;
 		var coinJoinCoinSelector = CoinJoinCoinSelector.FromWallet(wallet);
 		var coinSelector = CoinSelectors.ComposedCoinSelector([
-			CoinSelectors.PrivatePaymentCoinSelector(wallet.BatchedPayments, minAnonScoreForPayments, coinJoinCoinSelector.SemiPrivateThreshold),
+			CoinSelectors.PrivatePaymentCoinSelector(wallet.BatchedPayments, coinJoinCoinSelector.SemiPrivateThreshold),
 			coinJoinCoinSelector.SelectCoinsForRound]);
 		var coinJoinClient = new CoinJoinClient(
 			ArenaRequestHandlerFactory,
@@ -53,8 +52,7 @@ public class CoinJoinTrackerFactory
 			_coinJoinConfiguration,
 			_inputVerifier,
 			_liquidityClueProvider,
-			doNotRegisterInLastMinuteTimeLimit: TimeSpan.FromMinutes(1),
-			minAnonScoreForPayments: minAnonScoreForPayments);
+			doNotRegisterInLastMinuteTimeLimit: TimeSpan.FromMinutes(1));
 
 		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, _cancellationToken);
 	}

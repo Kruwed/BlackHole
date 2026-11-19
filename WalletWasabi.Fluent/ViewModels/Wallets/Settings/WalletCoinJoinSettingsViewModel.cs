@@ -24,7 +24,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 	private readonly IWalletModel _wallet;
 
 	[AutoNotify] private bool _nonPrivateCoinIsolation;
-	[AutoNotify] private bool _onlyUsePrivateFundsForPayments;
 
 	[AutoNotify] private string _maxCoinjoinLeftover;
 
@@ -33,7 +32,6 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 		_wallet = walletModel;
 		_maxCoinjoinLeftover = _wallet.Settings.MaxCoinjoinLeftover.ToString();
 		_nonPrivateCoinIsolation = _wallet.Settings.NonPrivateCoinIsolation;
-		_onlyUsePrivateFundsForPayments = _wallet.Settings.OnlyUsePrivateFundsForPayments;
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
@@ -50,18 +48,10 @@ public partial class WalletCoinJoinSettingsViewModel : RoutableViewModel
 			return Task.CompletedTask;
 		});
 
-		SetOnlyUsePrivateFundsForPaymentsCommand = ReactiveCommand.CreateFromTask(() =>
-		{
-			_wallet.Settings.OnlyUsePrivateFundsForPayments = OnlyUsePrivateFundsForPayments;
-			_wallet.Settings.Save();
-			return Task.CompletedTask;
-		});
-
 		this.ValidateProperty(x => x.MaxCoinjoinLeftover, ValidateMaxCoinjoinLeftover);
 	}
 
 	public ICommand SetNonPrivateCoinIsolationCommand { get; }
-	public ICommand SetOnlyUsePrivateFundsForPaymentsCommand { get; }
 
 	/// <summary>
 	/// The dust forfeit limit is an amount in BTC, and there always is one. A valid value is stored right away.

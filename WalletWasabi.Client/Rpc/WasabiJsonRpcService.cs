@@ -168,7 +168,6 @@ public class WasabiJsonRpcService : IJsonRpcService
 			["loaded"] = activeWallet.Loaded,
 			["masterKeyFingerprint"] = km.MasterFingerprint?.ToString() ?? "",
 			["isNonPrivateCoinIsolation"] = activeWallet.KeyManager.NonPrivateCoinIsolation,
-			["onlyUsePrivateFundsForPayments"] = activeWallet.KeyManager.OnlyUsePrivateFundsForPayments,
 			["accounts"] = new[]
 			{
 				new JsonRpcResult

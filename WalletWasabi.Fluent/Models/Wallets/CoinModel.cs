@@ -27,7 +27,6 @@ public partial class CoinModel : ReactiveObject
 	{
 		_services = services;
 		Coin = coin;
-		PrivacyLevel = coin.GetPrivacyLevel();
 		Amount = coin.Amount;
 		BtcAddress = coin.ScriptPubKey.GetDestinationAddress(network)?.ToString();
 
@@ -54,15 +53,7 @@ public partial class CoinModel : ReactiveObject
 
 	public int Key { get; }
 
-	public PrivacyLevel PrivacyLevel { get; }
-
 	public DateTimeOffset? BannedUntilUtc { get; }
-
-	public bool IsPrivate => PrivacyLevel == PrivacyLevel.Private;
-
-	public bool IsSemiPrivate => PrivacyLevel == PrivacyLevel.SemiPrivate;
-
-	public bool IsNonPrivate => PrivacyLevel == PrivacyLevel.NonPrivate;
 
 	/// <summary>Subscribes to property changes of underlying SmartCoin.</summary>
 	/// <remarks>This method is not thread safe. Make sure it's not called concurrently.</remarks>

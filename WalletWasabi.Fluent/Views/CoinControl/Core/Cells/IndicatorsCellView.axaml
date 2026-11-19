@@ -4,11 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:coins="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Coins"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:DataType="coins:CoinListItem"
+             x:DataType="coins:CoinViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.CoinControl.Core.Cells.IndicatorsCellView">
 
-  <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="3" Margin="0 0 20 0">
+  <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="3" Margin="20 0 20 0">
 
     <Panel>
       <!-- Confirmed -->

@@ -13,13 +13,12 @@ public static class CoinSelectors
 			.FirstOrDefault(selection => !selection.IsEmpty, ImmutableList<SmartCoin>.Empty);
 
 	// Pays as many pending payments as possible, cheapest first, spending an input of each failed attempt. Red coins stay isolated.
-	public static CoinSelector PrivatePaymentCoinSelector(PaymentBatch paymentBatch, int minAnonScoreForPayments, int semiPrivateThreshold) =>
+	public static CoinSelector PrivatePaymentCoinSelector(PaymentBatch paymentBatch, int semiPrivateThreshold) =>
 		(coins, parameters, _) =>
 		{
 			var feeRate = parameters.MiningFeeRate;
 			var candidates = coins
 				.Where(parameters.Allows)
-				.Where(x => x.IsPrivate(minAnonScoreForPayments))
 				.ToArray();
 
 			Money ValueOf(ImmutableList<SmartCoin> selection) =>

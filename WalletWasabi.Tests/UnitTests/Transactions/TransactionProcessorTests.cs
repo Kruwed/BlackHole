@@ -10,8 +10,6 @@ using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Extensions;
-using WalletWasabi.Fluent.Helpers;
-using WalletWasabi.Fluent.Models;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
@@ -1461,58 +1459,6 @@ public class TransactionProcessorTests
 		// The anonymous coin is alone in its cluster, the change is still linked to the coin that was spent.
 		AssertCluster(anonymousCoin, anonymousCoin.HdPubKey);
 		AssertCluster(changeCoin, keyA, changeCoin.HdPubKey);
-	}
-
-	[Fact]
-	public async Task GetCoinGroupsAsync()
-	{
-		// A coin is private from this anonymity score on. It is not a setting.
-		int targetAnonSet = Constants.PrivateThreshold;
-		Assert.Equal(10, targetAnonSet);
-		using var txStore = await CreateTransactionStoreAsync();
-		var transactionProcessor = CreateTransactionProcessor(txStore);
-
-		for (var i = 0; i < 3; i++)
-		{
-			transactionProcessor.Process(CreateCreditingTransaction(transactionProcessor.NewKey().P2Taproot, Money.Coins(1.0m)));
-		}
-
-		var notYetPrivateCoin = transactionProcessor.NewKey();
-		transactionProcessor.Process(CreateCreditingTransaction(notYetPrivateCoin.P2Taproot, Money.Coins(1.0m)));
-		notYetPrivateCoin.SetAnonymitySet(targetAnonSet - 1, 0);
-
-		var privateCoin1 = transactionProcessor.NewKey();
-		transactionProcessor.Process(CreateCreditingTransaction(privateCoin1.P2Taproot, Money.Coins(1.0m)));
-		privateCoin1.SetAnonymitySet(targetAnonSet, 0);
-
-		var privateCoin2 = transactionProcessor.NewKey();
-		transactionProcessor.Process(CreateCreditingTransaction(privateCoin2.P2Taproot, Money.Coins(1.0m)));
-		privateCoin2.SetAnonymitySet(targetAnonSet, 0);
-
-		var groups = transactionProcessor.Coins.GetCoinGroups().ToArray();
-
-		// The most private coins come first.
-		Assert.Equal([PrivacyLevel.Private, PrivacyLevel.SemiPrivate, PrivacyLevel.NonPrivate], groups.Select(x => x.PrivacyLevel));
-
-		Assert.Equal(2, groups[0].Coins.Count());
-		Assert.Equal(Money.Coins(2.0m), groups[0].Amount);
-		Assert.Equal(notYetPrivateCoin, Assert.Single(groups[1].Coins).HdPubKey);
-		Assert.Equal(3, groups[2].Coins.Count());
-		Assert.Equal(Money.Coins(3.0m), groups[2].Amount);
-	}
-
-	[Fact]
-	public async Task GetCoinGroupsLeavesOutEmptyGroupsAsync()
-	{
-		using var txStore = await CreateTransactionStoreAsync();
-		var transactionProcessor = CreateTransactionProcessor(txStore);
-		transactionProcessor.Process(CreateCreditingTransaction(transactionProcessor.NewKey().P2Taproot, Money.Coins(0.0000_1000m)));
-		transactionProcessor.Process(CreateCreditingTransaction(transactionProcessor.NewKey().P2Taproot, Money.Coins(0.0000_0670m)));
-
-		var group = Assert.Single(transactionProcessor.Coins.GetCoinGroups());
-
-		Assert.Equal(PrivacyLevel.NonPrivate, group.PrivacyLevel);
-		Assert.Equal(2, group.Coins.Count());
 	}
 
 	/// <summary>Asserts that the cluster of the coin consists of exactly the given keys.</summary>

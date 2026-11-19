@@ -16,9 +16,8 @@ using WalletWasabi.Wallets;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
 /// <summary>
-/// The tab of the WabiSabi coinjoins: how private the coins of the wallet are by now, the coinjoin that is running or
-/// waiting with its controls, and the coins, of which the ticked ones may be submitted into rounds. Nothing of this
-/// shows anywhere else.
+/// The tab of the WabiSabi coinjoins: the coinjoin that is running or waiting with its controls, and the coins, of
+/// which the ticked ones may be submitted into rounds. Nothing of this shows anywhere else.
 /// </summary>
 [AppLifetime]
 public partial class WabiSabiTabViewModel : WalletTabViewModel
@@ -27,7 +26,7 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 
 	/// <summary>
 	/// The coins that the user ticked or unticked and that the wallet was not told about yet, with whether each is kept
-	/// out of coinjoins. A tick on a group changes many coins at once, and the wallet is told about them together.
+	/// out of coinjoins. Ticking all of them changes many coins at once, and the wallet is told about them together.
 	/// </summary>
 	private readonly Dictionary<OutPoint, bool> _pendingExclusions = [];
 
@@ -155,7 +154,7 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 			.Select(change => change.Sender)
 			.Do(item =>
 			{
-				if (GetExclusionChange(isTicked: item.IsSelected == true, item.Coin.IsExcludedFromCoinJoin) is { } exclude)
+				if (GetExclusionChange(isTicked: item.IsSelected, item.Coin.IsExcludedFromCoinJoin) is { } exclude)
 				{
 					_pendingExclusions[item.Coin.GetSmartCoin().Outpoint] = exclude;
 				}

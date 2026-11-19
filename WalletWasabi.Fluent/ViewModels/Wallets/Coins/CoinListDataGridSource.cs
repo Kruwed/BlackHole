@@ -1,32 +1,28 @@
 using System.Collections.Generic;
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Templates;
 using WalletWasabi.Fluent.Helpers;
-using WalletWasabi.Fluent.TreeDataGrid;
 using WalletWasabi.Fluent.Views.CoinControl.Core.Cells;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
 public static class CoinListDataGridSource
 {
-	public static HierarchicalTreeDataGridSource<CoinListItem> Create(IEnumerable<CoinListItem> source, bool allowSelection)
+	public static FlatTreeDataGridSource<CoinViewModel> Create(IEnumerable<CoinViewModel> source, bool allowSelection)
 	{
 		// [Column]			[View]					[Header]	[Width]		[MinWidth]		[MaxWidth]	[CanUserSort]
 		// Indicators		IndicatorsColumnView	-			Auto		-				-			true
 		// AnonymityScore	AnonymityColumnView		<custom>	50			-				-			true
-		// Amount			AmountColumnView		Amount		Auto		-				-			true
-		// Privacy			PrivacyLevelCellView	-			*			-				-			true
+		// Amount			AmountColumnView		Amount		*			-				-			true
 		// Selection		SelectionColumnView		-			Auto		-				-			false
-		var result = new HierarchicalTreeDataGridSource<CoinListItem>(source)
+		var result = new FlatTreeDataGridSource<CoinViewModel>(source)
 		{
 			Columns =
 			{
 				IndicatorsColumn(),
 				AnonymityScoreColumn(),
 				AmountColumn(),
-				PrivacyLevelColumn(),
 			}
 		};
 
@@ -38,7 +34,7 @@ public static class CoinListDataGridSource
 		return result;
 	}
 
-	private static int GetIndicatorPriority(CoinListItem x)
+	private static int GetIndicatorPriority(CoinViewModel x)
 	{
 		if (x.IsCoinjoining)
 		{
@@ -63,75 +59,56 @@ public static class CoinListDataGridSource
 		return 0;
 	}
 
-	private static IColumn<CoinListItem> IndicatorsColumn()
+	private static IColumn<CoinViewModel> IndicatorsColumn()
 	{
-		return new HierarchicalExpanderColumn<CoinListItem>(
-			new TemplateColumn<CoinListItem>(
-				null,
-				new FuncDataTemplate<CoinListItem>((_, _) => new IndicatorsCellView(), true),
-				null,
-				GridLength.Auto,
-				new TemplateColumnOptions<CoinListItem>
-				{
-					CompareAscending = Sort<CoinListItem>.Ascending(GetIndicatorPriority),
-					CompareDescending = Sort<CoinListItem>.Descending(GetIndicatorPriority)
-				}),
-			group => group.Children,
-			node => node.HasChildren(),
-			node => node.IsExpanded);
+		return new TemplateColumn<CoinViewModel>(
+			null,
+			new FuncDataTemplate<CoinViewModel>((_, _) => new IndicatorsCellView(), true),
+			null,
+			GridLength.Auto,
+			new TemplateColumnOptions<CoinViewModel>
+			{
+				CompareAscending = Sort<CoinViewModel>.Ascending(GetIndicatorPriority),
+				CompareDescending = Sort<CoinViewModel>.Descending(GetIndicatorPriority)
+			});
 	}
 
-	private static TemplateColumn<CoinListItem> SelectionColumn()
+	private static TemplateColumn<CoinViewModel> SelectionColumn()
 	{
-		return new TemplateColumn<CoinListItem>(
+		return new TemplateColumn<CoinViewModel>(
 			null,
-			new FuncDataTemplate<CoinListItem>(
+			new FuncDataTemplate<CoinViewModel>(
 				(_, _) => new SelectionCellView(),
 				true),
 			null,
 			GridLength.Auto);
 	}
 
-	private static IColumn<CoinListItem> AmountColumn()
+	private static IColumn<CoinViewModel> AmountColumn()
 	{
-		return new TemplateColumn<CoinListItem>(
+		return new TemplateColumn<CoinViewModel>(
 			null,
-			new FuncDataTemplate<CoinListItem>((_, _) => new AmountCellView(), true),
+			new FuncDataTemplate<CoinViewModel>((_, _) => new AmountCellView(), true),
 			null,
 			GridLength.Star,
-			new TemplateColumnOptions<CoinListItem>
+			new TemplateColumnOptions<CoinViewModel>
 			{
-				CompareAscending = Sort<CoinListItem>.Ascending(x => x.Amount.Btc),
-				CompareDescending = Sort<CoinListItem>.Descending(x => x.Amount.Btc)
+				CompareAscending = Sort<CoinViewModel>.Ascending(x => x.Amount.Btc),
+				CompareDescending = Sort<CoinViewModel>.Descending(x => x.Amount.Btc)
 			});
 	}
 
-	private static IColumn<CoinListItem> AnonymityScoreColumn()
+	private static IColumn<CoinViewModel> AnonymityScoreColumn()
 	{
-		return new TemplateColumn<CoinListItem>(
+		return new TemplateColumn<CoinViewModel>(
 			null,
-			new FuncDataTemplate<CoinListItem>((_, _) => new AnonymityScoreCellView(), true),
+			new FuncDataTemplate<CoinViewModel>((_, _) => new AnonymityScoreCellView(), true),
 			null,
 			GridLength.Auto,
-			new TemplateColumnOptions<CoinListItem>
+			new TemplateColumnOptions<CoinViewModel>
 			{
-				CompareAscending = Sort<CoinListItem>.Ascending(b => b.AnonymityScore ?? b.Children.Min(x => x.AnonymityScore)),
-				CompareDescending = Sort<CoinListItem>.Descending(b => b.AnonymityScore ?? b.Children.Min(x => x.AnonymityScore))
-			});
-	}
-
-	private static IColumn<CoinListItem> PrivacyLevelColumn()
-	{
-		// Most private first when ascending.
-		return new TemplateColumn<CoinListItem>(
-			null,
-			new FuncDataTemplate<CoinListItem>((_, _) => new PrivacyLevelCellView(), true),
-			null,
-			GridLength.Star,
-			new TemplateColumnOptions<CoinListItem>
-			{
-				CompareAscending = Sort<CoinListItem>.Ascending(x => x.PrivacyLevel),
-				CompareDescending = Sort<CoinListItem>.Descending(x => x.PrivacyLevel)
+				CompareAscending = Sort<CoinViewModel>.Ascending(x => x.AnonymityScore),
+				CompareDescending = Sort<CoinViewModel>.Descending(x => x.AnonymityScore)
 			});
 	}
 }

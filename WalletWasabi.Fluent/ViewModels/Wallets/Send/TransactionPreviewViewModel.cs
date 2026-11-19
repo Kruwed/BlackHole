@@ -4,7 +4,6 @@ using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NBitcoin;
@@ -35,9 +34,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	private readonly SendFlowModel _sendFlow;
 	private TransactionInfo _info;
 	private TransactionInfo _currentTransactionInfo;
-	private CancellationTokenSource _cancellationTokenSource;
 	[AutoNotify] private BuildTransactionResult? _transaction;
-	[AutoNotify] private TransactionSummaryViewModel? _displayedTransactionSummary;
 	[AutoNotify] private bool _canUndo;
 	[AutoNotify] private bool _isFeeAdjustable = true;
 	[AutoNotify] private string _feeAdjustToolTip = "Change the transaction fee rate";
@@ -55,19 +52,9 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			? $"This transaction creates a fidelity bond. {CreateBondViewModel.DescribeLock(_walletModel, unlockHeight)} Nothing can spend the coins before."
 			: "";
 		_currentTransactionInfo = _info.Clone();
-		_cancellationTokenSource = new CancellationTokenSource();
 
-		PrivacySuggestions = new PrivacySuggestionsFlyoutViewModel(uiContext, walletModel, _sendFlow);
+		PrivacyWarnings = new PrivacyWarningsFlyoutViewModel(uiContext, walletModel);
 		CurrentTransactionSummary = new TransactionSummaryViewModel(uiContext, this, walletModel, _info);
-		PreviewTransactionSummary = new TransactionSummaryViewModel(uiContext, this, walletModel, _info, true);
-
-		TransactionSummaries =
-		[
-			CurrentTransactionSummary,
-			PreviewTransactionSummary
-		];
-
-		DisplayedTransactionSummary = CurrentTransactionSummary;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
 		EnableBack = true;
@@ -82,7 +69,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 					if (_undoHistory.TryPop(out var previous))
 					{
 						_info = previous.Item2;
-						UpdateTransaction(CurrentTransactionSummary, previous.Item1, false);
+						UpdateTransaction(previous.Item1, false);
 						CanUndo = _undoHistory.Count != 0;
 					}
 				});
@@ -95,11 +82,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	public TransactionSummaryViewModel CurrentTransactionSummary { get; }
 
-	public TransactionSummaryViewModel PreviewTransactionSummary { get; }
-
-	public List<TransactionSummaryViewModel> TransactionSummaries { get; }
-
-	public PrivacySuggestionsFlyoutViewModel PrivacySuggestions { get; }
+	public PrivacyWarningsFlyoutViewModel PrivacyWarnings { get; }
 
 	public ICommand AdjustFeeCommand { get; }
 
@@ -107,24 +90,19 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	public ICommand UndoCommand { get; }
 
-	private void UpdateTransaction(TransactionSummaryViewModel summary, BuildTransactionResult transaction, bool addToUndoHistory = true)
+	private void UpdateTransaction(BuildTransactionResult transaction, bool addToUndoHistory = true)
 	{
-		if (!summary.IsPreview)
+		if (addToUndoHistory)
 		{
-			if (addToUndoHistory)
-			{
-				AddToUndoHistory();
-			}
-
-			Transaction = transaction;
-			_currentTransactionInfo = _info.Clone();
-
-			UpdateFeeAdjustability();
+			AddToUndoHistory();
 		}
 
-		summary.UpdateTransaction(transaction, _info);
+		Transaction = transaction;
+		_currentTransactionInfo = _info.Clone();
 
-		DisplayedTransactionSummary = summary;
+		UpdateFeeAdjustability();
+
+		CurrentTransactionSummary.UpdateTransaction(transaction, _info);
 	}
 
 	private void UpdateFeeAdjustability()
@@ -188,7 +166,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 		if (newTransaction is { })
 		{
-			UpdateTransaction(CurrentTransactionSummary, newTransaction);
+			UpdateTransaction(newTransaction);
 		}
 	}
 
@@ -311,7 +289,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	{
 		if (await BuildTransactionAsync() is { } initialTransaction)
 		{
-			UpdateTransaction(CurrentTransactionSummary, initialTransaction);
+			UpdateTransaction(initialTransaction);
 		}
 		else
 		{
@@ -323,72 +301,17 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 	{
 		base.OnNavigatedTo(isInHistory, disposables);
 
-		PrivacySuggestions.WhenAnyValue(x => x.PreviewSuggestion)
-			.DoAsync(
-				async x =>
-				{
-					if (x?.Transaction is { } transaction)
-					{
-						UpdateTransaction(PreviewTransactionSummary, transaction);
-						await PrivacySuggestions.UpdatePreviewWarningsAsync(_info, transaction, _cancellationTokenSource.Token);
-					}
-					else
-					{
-						DisplayedTransactionSummary = CurrentTransactionSummary;
-						PrivacySuggestions.ClearPreviewWarnings();
-					}
-				})
-			.Subscribe()
-			.DisposeWith(disposables);
-
-		PrivacySuggestions.WhenAnyValue(x => x.SelectedSuggestion)
-			.SubscribeAsync(
-				async suggestion =>
-				{
-					PrivacySuggestions.SelectedSuggestion = null;
-
-					if (suggestion is { })
-					{
-						ApplyPrivacySuggestion(suggestion);
-					}
-				})
-			.DisposeWith(disposables);
-
 		this.WhenAnyValue(x => x.Transaction)
 			.WhereNotNull()
 			.Throttle(TimeSpan.FromMilliseconds(100))
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Do(
-				_ =>
-				{
-					_cancellationTokenSource.Cancel();
-					_cancellationTokenSource = new();
-				})
-			.DoAsync(
-				async transaction =>
-				{
-					await PrivacySuggestions.BuildPrivacySuggestionsAsync(_info, transaction, _cancellationTokenSource.Token);
-				})
-			.Subscribe()
+			.Subscribe(transaction => PrivacyWarnings.Update(_info, transaction))
 			.DisposeWith(disposables);
 
 		if (!isInHistory)
 		{
 			RxApp.MainThreadScheduler.Schedule(async () => await InitialiseViewModelAsync());
 		}
-	}
-
-	protected override void OnNavigatedFrom(bool isInHistory)
-	{
-		if (!isInHistory)
-		{
-			_cancellationTokenSource.Cancel();
-			_cancellationTokenSource.Dispose();
-		}
-
-		base.OnNavigatedFrom(isInHistory);
-
-		DisplayedTransactionSummary = null;
 	}
 
 	private async Task OnConfirmAsync()
@@ -414,7 +337,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 				var finalTransaction = transaction.Transaction;
 				await SendTransactionAsync(finalTransaction);
-				_cancellationTokenSource.Cancel();
 				_sendFlow.Sent?.Invoke();
 
 				if (_sendFlow.BondUnlockHeight is not null)
@@ -465,45 +387,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 		{
 			_undoHistory.Push((Transaction, _currentTransactionInfo));
 			CanUndo = true;
-		}
-	}
-
-	private void ApplyPrivacySuggestion(PrivacySuggestion suggestion)
-	{
-		switch (suggestion)
-		{
-			case FullPrivacySuggestion fullPrivacySuggestion:
-				{
-					if (fullPrivacySuggestion.IsChangeless)
-					{
-						_info.ChangelessCoins = fullPrivacySuggestion.Coins;
-					}
-					else
-					{
-						_info.Coins = fullPrivacySuggestion.Coins;
-					}
-
-					break;
-				}
-
-			case BetterPrivacySuggestion betterPrivacySuggestion:
-				{
-					if (betterPrivacySuggestion.IsChangeless)
-					{
-						_info.ChangelessCoins = betterPrivacySuggestion.Coins;
-					}
-					else
-					{
-						_info.Coins = betterPrivacySuggestion.Coins;
-					}
-
-					break;
-				}
-		}
-
-		if (suggestion.Transaction is { } transaction)
-		{
-			UpdateTransaction(CurrentTransactionSummary, transaction);
 		}
 	}
 }

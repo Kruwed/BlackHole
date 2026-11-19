@@ -5,7 +5,6 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
-using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
 
@@ -14,9 +13,6 @@ namespace WalletWasabi.Fluent.Models.Wallets;
 public interface ICoinListModel
 {
 	IObservableCache<CoinModel, int> List { get; }
-
-	/// <summary>The coins grouped by their privacy level.</summary>
-	IObservableCache<CoinGroup, PrivacyLevel> Groups { get; }
 
 	CoinModel GetCoinModel(SmartCoin smartCoin);
 
@@ -41,25 +37,11 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 				.Merge(isCoinjoinRunningChanged)
 				.Publish();
 
-		// The list and the groups are made of the same reading of the coins. The wallet may be processing blocks in the
-		// background, so two readings can differ, and a group must not hold a coin that the list does not know.
-		// The list is subscribed first: it has the coins by the time the groups announce them.
-		var coins = signals.Select(_ => GetCoins().ToArray()).Publish();
-
-		List = coins
-			.Select(x => x.Select(CreateCoinModel))
+		List = signals
+			.Select(_ => GetCoins().Select(CreateCoinModel).ToArray())
 			.EditDiff(x => x.Key)
 			.DisposeMany()
 			.AsObservableCache()
-			.DisposeWith(_disposables);
-
-		Groups = coins
-			.Select(x => x.GetCoinGroups())
-			.EditDiff(x => x.PrivacyLevel)
-			.AsObservableCache()
-			.DisposeWith(_disposables);
-
-		coins.Connect()
 			.DisposeWith(_disposables);
 
 		signals
@@ -75,8 +57,6 @@ public abstract partial class CoinListModel : ICoinListModel, IDisposable
 	protected IWalletModel WalletModel { get; }
 
 	public IObservableCache<CoinModel, int> List { get; }
-
-	public IObservableCache<CoinGroup, PrivacyLevel> Groups { get; }
 
 	public CoinModel GetCoinModel(SmartCoin smartCoin)
 	{

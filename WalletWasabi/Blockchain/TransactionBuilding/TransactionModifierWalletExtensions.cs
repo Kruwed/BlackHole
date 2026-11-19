@@ -246,9 +246,8 @@ public static class TransactionModifierWalletExtensions
 		{
 			// It might be that the change is too small to CPFP, so we try to add another input.
 			// Let's only do this once, because the more we try to merge the more problematic it'll get from privacy point of view.
-			var remainingCoins = wallet.Coins
+			var remainingCoins = GetCoinsLinkedTo(ownOutput, wallet.Coins)
 				.Except(allowedInputs)
-				.Where(x => x.HdPubKey.Cluster == ownOutput.HdPubKey.Cluster || x.IsPrivate(Constants.PrivateThreshold)) // Coins that are already linked to the output, or to nothing.
 				.OrderByDescending(x => x.Confirmed)
 				.ThenByDescending(x => x.Amount);
 
@@ -264,6 +263,13 @@ public static class TransactionModifierWalletExtensions
 			throw;
 		}
 	}
+
+	/// <summary>
+	/// The coins that a transaction can spend together with the given coin without telling anything new: the ones that
+	/// are linked to it already. The wallet never adds a coin by itself that nothing connects to the others so far.
+	/// </summary>
+	public static IEnumerable<SmartCoin> GetCoinsLinkedTo(SmartCoin coin, IEnumerable<SmartCoin> coins) =>
+		coins.Where(x => x.HdPubKey.Cluster == coin.HdPubKey.Cluster);
 
 	public static async Task<BuildTransactionResult> CpfpTransactionAsync(this Wallet wallet, SmartTransaction transactionToCpfp, IEnumerable<SmartCoin> allowedInputs, FeeRate? preferredFeeRate, CancellationToken cancellationToken)
 	{

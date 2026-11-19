@@ -16,9 +16,6 @@ public partial class TransactionInfo
 	{
 		Destination = destination;
 
-		this.WhenAnyValue(x => x.FeeRate)
-			.Subscribe(_ => OnFeeChanged());
-
 		this.WhenAnyValue(x => x.Coins)
 			.Subscribe(_ => OnCoinsChanged());
 	}
@@ -28,10 +25,6 @@ public partial class TransactionInfo
 	public Destination Destination { get; init; }
 
 	public FeeRate? MaximumPossibleFeeRate { get; set; }
-
-	public IEnumerable<SmartCoin> ChangelessCoins { get; set; } = [];
-
-	public bool IsOptimized => ChangelessCoins.Any();
 
 	public bool IsCustomFeeUsed { get; set; }
 
@@ -57,15 +50,9 @@ public partial class TransactionInfo
 
 	public Money TotalAmount => AllRecipients.Aggregate(Money.Zero, (sum, r) => sum + r.Amount);
 
-	private void OnFeeChanged()
-	{
-		ChangelessCoins = [];
-	}
-
 	private void OnCoinsChanged()
 	{
 		MaximumPossibleFeeRate = null;
-		ChangelessCoins = []; // Clear ChangelessCoins when the coins change, so we calculate the suggestions with the new coins.
 	}
 
 	public TransactionInfo Clone()
@@ -77,7 +64,6 @@ public partial class TransactionInfo
 			Amount = Amount,
 			Destination = Destination,
 			MaximumPossibleFeeRate = MaximumPossibleFeeRate,
-			ChangelessCoins = ChangelessCoins,
 			IsCustomFeeUsed = IsCustomFeeUsed,
 			SubtractFee = SubtractFee,
 			IsFixedAmount = IsFixedAmount,

@@ -21,15 +21,6 @@ public static class TransactionHelpers
 			return BuildPayToManyTransaction(wallet, transactionInfo, tryToSign);
 		}
 
-		if (transactionInfo.IsOptimized)
-		{
-			return wallet.BuildChangelessTransaction(
-				transactionInfo.Destination,
-				transactionInfo.FeeRate,
-				transactionInfo.ChangelessCoins,
-				tryToSign: tryToSign);
-		}
-
 		return wallet.BuildTransaction(
 			transactionInfo.Destination,
 			transactionInfo.Amount,

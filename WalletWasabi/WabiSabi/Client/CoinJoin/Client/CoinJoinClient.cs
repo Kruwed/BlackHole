@@ -30,8 +30,7 @@ public class CoinJoinClient
 		CoinJoinConfiguration coinJoinConfiguration,
 		InputVerifier verifyInputsExistence,
 		LiquidityClueProvider liquidityClueProvider,
-		TimeSpan doNotRegisterInLastMinuteTimeLimit = default,
-		int minAnonScoreForPayments = 0)
+		TimeSpan doNotRegisterInLastMinuteTimeLimit = default)
 	{
 		ArenaRequestHandlerFactory = arenaRequestHandlerFactory;
 		_keyChain = keyChain;
@@ -43,7 +42,6 @@ public class CoinJoinClient
 		_coinSelector = coinSelector;
 		_secureRandom = SecureRandom.Instance;
 		_doNotRegisterInLastMinuteTimeLimit = doNotRegisterInLastMinuteTimeLimit;
-		_minAnonScoreForPayments = minAnonScoreForPayments;
 	}
 
 	public event EventHandler<CoinJoinProgressEventArgs>? CoinJoinClientProgress;
@@ -60,7 +58,6 @@ public class CoinJoinClient
 	private readonly InputVerifier _verifyInputsExistence;
 	private readonly CoinSelector _coinSelector;
 	private readonly TimeSpan _doNotRegisterInLastMinuteTimeLimit;
-	private readonly int _minAnonScoreForPayments;
 	private readonly TimeSpan _maxWaitingTimeForRound = TimeSpan.FromMinutes(10);
 
 	private async Task<RoundState> WaitForRoundAsync(uint256 excludeRound, CancellationToken token)
@@ -796,9 +793,7 @@ public class CoinJoinClient
 		// Verify other participants' inputs to detect a malicious coordinator.
 		await _verifyInputsExistence(theirCoins.ToArray(), cancellationToken).ConfigureAwait(false);
 
-		var arePaymentsAllowed = registeredAliceClients.All(x => x.SmartCoin.IsPrivate(_minAnonScoreForPayments));
-
-		var outputTxOuts = _outputProvider.GetOutputs(roundId, roundParameters, registeredCoins.Select(x => x.Outpoint).ToImmutableArray(), registeredCoinEffectiveValues, theirCoinEffectiveValues, (int)availableVsizes.Sum(), arePaymentsAllowed).ToArray();
+		var outputTxOuts = _outputProvider.GetOutputs(roundId, roundParameters, registeredCoins.Select(x => x.Outpoint).ToImmutableArray(), registeredCoinEffectiveValues, theirCoinEffectiveValues, (int)availableVsizes.Sum()).ToArray();
 
 		DependencyGraph dependencyGraph = DependencyGraph.ResolveCredentialDependencies(registeredCoinEffectiveValues, outputTxOuts, roundParameters.MiningFeeRate, availableVsizes, roundParameters.MaxAmountCredentialValue, roundParameters.MaxVsizeCredentialValue);
 		DependencyGraphTaskScheduler scheduler = new(dependencyGraph);

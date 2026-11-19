@@ -3,22 +3,22 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using WalletWasabi.Fluent.Controls.Sorting;
 using WalletWasabi.Fluent.Helpers;
-using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 
+/// <summary>
+/// A list of coins with one row for every coin, which the user can tick.
+/// </summary>
 public class CoinListViewModel : ViewModelBase, IDisposable
 {
 	private readonly CompositeDisposable _disposables = new();
-	private readonly ReadOnlyObservableCollection<CoinListItem> _itemsCollection;
 	private readonly bool _allowCoinjoiningCoinSelection;
 
 	[SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Uses DisposeWith()")]
@@ -31,42 +31,27 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 	{
 		_allowCoinjoiningCoinSelection = allowCoinjoiningCoinSelection;
 
-		var viewModels = new SourceList<CoinListItem>().DisposeWith(_disposables);
+		var viewModels = new SourceList<CoinViewModel>().DisposeWith(_disposables);
 
 		var changes = viewModels.Connect();
 
-		var coinItems = changes
-			.TransformMany(
-				item =>
-				{
-					// When root item is a coin item
-					if (item is CoinViewModel c)
-					{
-						return new[] { c };
-					}
-
-					return item.Children;
-				})
-			.AddKey(model => model.Coin.Key);
+		var coinItems = changes.AddKey(model => model.Coin.Key);
 
 		coinItems.OnItemAdded(model => model.Coin.SubscribeToCoinChanges(_disposables))
 			.Subscribe()
 			.DisposeWith(_disposables);
 
 		changes
-			.Sort(SortExpressionComparer<CoinListItem>.Descending(x => x.AnonymityScore ?? x.Children.Min(c => c.AnonymityScore) ?? 0))
+			.Sort(DefaultOrder)
 			.DisposeMany()
-			.Bind(out _itemsCollection)
-			.Subscribe()
-			.DisposeWith(_disposables);
-
-		coinItems
 			.Bind(out var coinItemsCollection)
 			.Subscribe()
 			.DisposeWith(_disposables);
 
+		CoinItems = coinItemsCollection;
+
 		coinItems.AutoRefresh(x => x.IsSelected)
-			.Filter(x => x.IsSelected == true)
+			.Filter(x => x.IsSelected)
 			.Transform(x => x.Coin)
 			.Bind(out var selection)
 			.Subscribe()
@@ -74,27 +59,35 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 
 		Selection = selection;
 
-		availableCoins.Groups
+		// Coins on the same address are ticked together.
+		coinItems
+			.WhenPropertyChanged(x => x.IsSelected, notifyOnInitialValue: false)
+			.Subscribe(change =>
+			{
+				var others = CoinItems
+					.Where(x => x.IsSelected != change.Value && x.Coin.IsSameAddress(change.Sender.Coin))
+					.ToArray();
+
+				foreach (var other in others)
+				{
+					other.IsSelected = change.Value;
+				}
+			})
+			.DisposeWith(_disposables);
+
+		availableCoins.List
 			.Connect(suppressEmptyChangeSets: false)
 			.ToCollection()
 			.Do(
-				groups =>
+				coins =>
 				{
 					IsRebuilding = true;
 
 					try
 					{
 						IList<CoinModel> oldSelection = Selection.ToArray();
-						var oldExpandedItemKeys = _itemsCollection.Where(x => x.IsExpanded).Select(x => x.Key).ToArray();
-						Rebuild(viewModels, groups, availableCoins);
-						UpdateSelection(coinItemsCollection, oldSelection);
-						RestoreExpandedRows(oldExpandedItemKeys);
-
-						// For user convenience, expand the only available group.
-						if (_itemsCollection is [CoinGroupViewModel group])
-						{
-							group.IsExpanded = true;
-						}
+						Rebuild(viewModels, coins);
+						UpdateSelection(CoinItems, oldSelection);
 					}
 					finally
 					{
@@ -104,41 +97,30 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 			.Subscribe()
 			.DisposeWith(_disposables);
 
-		TreeDataGridSource = CoinListDataGridSource.Create(_itemsCollection, allowSelection);
+		TreeDataGridSource = CoinListDataGridSource.Create(CoinItems, allowSelection);
 		TreeDataGridSource.DisposeWith(_disposables);
-		CoinItems = coinItemsCollection;
-
-		ExpandAllCommand = ReactiveCommand.Create(
-			() =>
-			{
-				foreach (var item in _itemsCollection)
-				{
-					item.IsExpanded = true;
-				}
-			});
 
 		Sortables =
 		[
-			new SortableItem("Status") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[0], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[0], ListSortDirection.Descending)) },
-			new SortableItem("Date") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[1], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[1], ListSortDirection.Descending)) },
-			new SortableItem("Amount") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[2], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[2], ListSortDirection.Descending)) },
-			new SortableItem("Privacy") { SortByAscendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Ascending)), SortByDescendingCommand = ReactiveCommand.Create(() => TreeDataGridSource.SortBy(TreeDataGridSource.Columns[3], ListSortDirection.Descending)) },
+			CreateSortable("Status", column: 0),
+			CreateSortable("Anonymity Score", column: 1),
+			CreateSortable("Amount", column: 2),
 		];
 
 		SetInitialSelection(initialCoinSelection);
 	}
 
-	private void SetInitialSelection(IEnumerable<CoinModel> initialSelection)
-	{
-		var initialSmartCoins = initialSelection.GetSmartCoins().ToList();
-		var coinsToSelect = CoinItems.Where(x => initialSmartCoins.Contains(x.Coin.GetSmartCoin()));
+	/// <summary>
+	/// The order of the rows until the user asks for another one: the coins with the highest anonymity score come first
+	/// and, among coins of the same score, the largest. The last step only keeps coins that are alike in both in one order.
+	/// </summary>
+	public static IComparer<CoinViewModel> DefaultOrder { get; } =
+		SortExpressionComparer<CoinViewModel>
+			.Descending(x => x.AnonymityScore)
+			.ThenByDescending(x => x.Amount.Btc)
+			.ThenByAscending(x => x.Coin.Key);
 
-		foreach (var coinItem in coinsToSelect)
-		{
-			coinItem.IsSelected = true;
-		}
-	}
-
+	/// <summary>The rows of the list, one for every coin.</summary>
 	public ReadOnlyObservableCollection<CoinViewModel> CoinItems { get; }
 
 	/// <summary>
@@ -147,11 +129,9 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 	/// </summary>
 	public bool IsRebuilding { get; private set; }
 
-	public ReactiveCommand<Unit, Unit> ExpandAllCommand { get; set; }
-
 	public ReadOnlyObservableCollection<CoinModel> Selection { get; }
 
-	public HierarchicalTreeDataGridSource<CoinListItem> TreeDataGridSource { get; }
+	public FlatTreeDataGridSource<CoinViewModel> TreeDataGridSource { get; }
 
 	public IEnumerable<SortableItem> Sortables { get; private set; }
 
@@ -160,11 +140,23 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 		_disposables.Dispose();
 	}
 
+	private SortableItem CreateSortable(string name, int column) =>
+		new(name)
+		{
+			SortByAscendingCommand = ReactiveCommand.Create(() => SortBy(column, ListSortDirection.Ascending)),
+			SortByDescendingCommand = ReactiveCommand.Create(() => SortBy(column, ListSortDirection.Descending))
+		};
+
+	private void SortBy(int column, ListSortDirection direction) =>
+		((ITreeDataGridSource)TreeDataGridSource).SortBy(TreeDataGridSource.Columns[column], direction);
+
+	private void SetInitialSelection(IEnumerable<CoinModel> initialSelection) => UpdateSelection(CoinItems, initialSelection.ToList());
+
 	private static void UpdateSelection(IEnumerable<CoinViewModel> coinItems, IList<CoinModel> selectedCoins)
 	{
 		var selectedSmartCoins = selectedCoins.GetSmartCoins().ToList();
 
-		var coinsToSelect = coinItems.Where(x => selectedSmartCoins.Contains(x.Coin.GetSmartCoin()));
+		var coinsToSelect = coinItems.Where(x => selectedSmartCoins.Contains(x.Coin.GetSmartCoin())).ToArray();
 
 		foreach (var coinItem in coinsToSelect)
 		{
@@ -172,34 +164,17 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 		}
 	}
 
-	private void Rebuild(ISourceList<CoinListItem> source, IEnumerable<CoinGroup> groups, ICoinListModel availableCoins)
+	private void Rebuild(ISourceList<CoinViewModel> source, IEnumerable<CoinModel> coins)
 	{
-		var newItems =
-			groups.Select(group =>
-			{
-				// A group of a single coin is shown as that coin.
-				if (group.Coins.Count() == 1)
-				{
-					var coin = group.Coins.First();
-					var coinModel = availableCoins.GetCoinModel(coin);
+		var newItems = coins
+			.Select(coin => new CoinViewModel(UiContext, coin, _allowCoinjoiningCoinSelection))
+			.ToArray();
 
-					return (CoinListItem)new CoinViewModel(UiContext, group.Title, coinModel, _allowCoinjoiningCoinSelection);
-				}
-
-				return new CoinGroupViewModel(UiContext, group, availableCoins, _allowCoinjoiningCoinSelection);
-			});
-
-		// A group whose coins changed is another row: the one in the list would go on showing the coins that it was made of.
-		source.EditDiff(newItems, new LambdaComparer<CoinListItem>((a, b) => Equals(a?.Key, b?.Key) && Equals(a?.Content, b?.Content)));
-	}
-
-	private void RestoreExpandedRows(IEnumerable<string> oldItemKeys)
-	{
-		var itemsToExpand = _itemsCollection.Where(item => oldItemKeys.Contains(item.Key));
-
-		foreach (var item in itemsToExpand)
-		{
-			item.IsExpanded = true;
-		}
+		// A coin that changed is another row: the one in the list would go on showing the coin as it was.
+		source.EditDiff(
+			newItems,
+			new LambdaComparer<CoinViewModel>(
+				(a, b) => a?.Coin.Key == b?.Coin.Key && a?.Content == b?.Content,
+				row => row?.Coin.Key ?? 0));
 	}
 }
