@@ -12,8 +12,8 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.WabiSabi.Client;
 
 /// <summary>
-/// Tests for <see cref="CoinJoinCoinSelector"/>: a round gets the coins that the user lets into coinjoins, all of them
-/// that it takes.
+/// Tests for <see cref="CoinJoinCoinSelector"/>: a round gets the coins that the user lets into coinjoins and that it
+/// takes, ten of them at most.
 /// </summary>
 public class CoinJoinCoinSelectionTests
 {
@@ -26,25 +26,80 @@ public class CoinJoinCoinSelectionTests
 	}
 
 	/// <summary>
-	/// The wallet does not choose among the coins: however many there are, each of them is registered.
+	/// Up to ten coins, the wallet does not choose among them: each of them is registered.
 	/// </summary>
 	[Theory]
 	[InlineData(1)]
 	[InlineData(2)]
+	[InlineData(9)]
 	[InlineData(10)]
-	[InlineData(11)]
-	[InlineData(40)]
-	public void SelectsEveryCoin(int coinCount)
+	public void SelectsEveryCoinUpToTen(int coinCount)
 	{
-		var km = KeyManager.CreateNew(out _, "", Network.Main);
-		var coinsToSelectFrom = Enumerable
-			.Range(0, coinCount)
-			.Select(i => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.1m * (i + 1))))
-			.ToList();
+		var coinsToSelectFrom = CreateCoinsOfDifferentAmounts(coinCount);
 
 		var coins = CoinJoinCoinSelector.SelectCoinsForRound(coinsToSelectFrom, WabiSabiFactory.CreateUtxoSelectionParameters());
 
 		AssertSameCoins(coinsToSelectFrom, coins);
+	}
+
+	/// <summary>
+	/// A round gets ten coins of a wallet at most. Of more coins, the ten largest are registered.
+	/// </summary>
+	[Theory]
+	[InlineData(11)]
+	[InlineData(12)]
+	[InlineData(40)]
+	public void SelectsTheTenLargestOfMoreCoins(int coinCount)
+	{
+		var coinsToSelectFrom = CreateCoinsOfDifferentAmounts(coinCount);
+
+		var coins = CoinJoinCoinSelector.SelectCoinsForRound(coinsToSelectFrom, WabiSabiFactory.CreateUtxoSelectionParameters());
+
+		Assert.Equal(CoinJoinCoinSelector.MaxInputsRegistrableByWallet, coins.Count);
+		AssertSameCoins(coinsToSelectFrom.OrderByDescending(x => x.Amount).Take(10).ToList(), coins);
+	}
+
+	/// <summary>
+	/// The coins that a round did not get are still there for the next one.
+	/// </summary>
+	[Fact]
+	public void CoinsThatWereLeftGoIntoALaterRound()
+	{
+		var coinsToSelectFrom = CreateCoinsOfDifferentAmounts(14);
+
+		var firstRound = CoinJoinCoinSelector.SelectCoinsForRound(coinsToSelectFrom, WabiSabiFactory.CreateUtxoSelectionParameters());
+		var left = coinsToSelectFrom.Except(firstRound).ToList();
+		var secondRound = CoinJoinCoinSelector.SelectCoinsForRound(left, WabiSabiFactory.CreateUtxoSelectionParameters());
+
+		Assert.Equal(10, firstRound.Count);
+		Assert.Equal(4, left.Count);
+		AssertSameCoins(left, secondRound);
+		Assert.True(left.Max(x => x.Amount) < firstRound.Min(x => x.Amount));
+	}
+
+	/// <summary>
+	/// Nothing but the amount decides which coins a round gets: of coins of the same amount, any may be the ones.
+	/// </summary>
+	[Fact]
+	public void CoinsOfTheSameAmountAreTakenInNoOrder()
+	{
+		var km = KeyManager.CreateNew(out _, "", Network.Main);
+		var larger = BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(2m));
+		var equal = Enumerable
+			.Range(0, 12)
+			.Select(_ => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(1m)))
+			.ToList();
+
+		var selections = Enumerable
+			.Range(0, 20)
+			.Select(_ => CoinJoinCoinSelector.SelectCoinsForRound([.. equal, larger], WabiSabiFactory.CreateUtxoSelectionParameters()))
+			.ToList();
+
+		Assert.All(selections, selection => Assert.Equal(10, selection.Count));
+		Assert.All(selections, selection => Assert.Contains(larger, selection));
+
+		// Twelve coins give 220 ways to take nine of them: twenty selections that are all the same do not happen by chance.
+		Assert.True(selections.Select(selection => string.Join(",", selection.Select(x => x.Outpoint.ToString()).Order())).Distinct().Count() > 1);
 	}
 
 	/// <summary>
@@ -75,7 +130,7 @@ public class CoinJoinCoinSelectionTests
 
 	/// <summary>
 	/// A coin that is below the smallest or above the largest amount of the round stays out of it. The other coins take
-	/// part without it.
+	/// part without it, and it does not use up one of their ten places.
 	/// </summary>
 	[Fact]
 	public void LeavesOutTheCoinsThatTheRoundDoesNotTake()
@@ -83,7 +138,7 @@ public class CoinJoinCoinSelectionTests
 		var km = KeyManager.CreateNew(out _, "", Network.Main);
 		var parameters = WabiSabiFactory.CreateUtxoSelectionParameters();
 		var taken = Enumerable
-			.Range(0, 12)
+			.Range(0, 10)
 			.Select(i => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(1m)))
 			.ToList();
 		var tooSmall = BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), parameters.AllowedInputAmounts.Min - Money.Satoshis(1));
@@ -154,6 +209,19 @@ public class CoinJoinCoinSelectionTests
 		var coins = CoinJoinCoinSelector.SelectCoinsForRound(coinsToSelectFrom, UtxoSelectionParameters.FromRoundParameters(roundParams, [ScriptType.Taproot]));
 
 		AssertSameCoins(coinsToSelectFrom, coins);
+	}
+
+	private static List<SmartCoin> CreateCoinsOfDifferentAmounts(int count)
+	{
+		var km = KeyManager.CreateNew(out _, "", Network.Main);
+
+		// Not in the order of their amounts, so that the place of a coin among the others says nothing.
+		var random = new Random(count);
+		return Enumerable
+			.Range(1, count)
+			.OrderBy(_ => random.Next())
+			.Select(i => BitcoinFactory.CreateSmartCoin(BitcoinFactory.CreateHdPubKey(km), Money.Coins(0.1m * i)))
+			.ToList();
 	}
 
 	/// <summary>The selection has each of the expected coins once and nothing else. Its order is random.</summary>

@@ -178,8 +178,8 @@ public class CoinJoinManager : BackgroundService
 				throw new CoinJoinClientException(CoinjoinError.UserInSendWorkflow);
 			}
 
-			// Every coin that the user lets in and that can be registered now is a candidate. The round gets all of the
-			// candidates that it takes: nothing about a coin makes the wallet hold it back.
+			// Every coin that the user lets in and that can be registered now is a candidate. The round gets the
+			// candidates that it takes, ten at most.
 			var coinCandidates = SelectCandidateCoins(walletToStart);
 
 			NotifyWalletStartedCoinJoin(walletToStart);

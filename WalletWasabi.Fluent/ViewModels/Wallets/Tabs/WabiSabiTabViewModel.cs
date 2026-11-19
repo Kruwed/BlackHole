@@ -80,9 +80,9 @@ public partial class WabiSabiTabViewModel : WalletTabViewModel
 	public bool IsCoinJoinEnabled => WalletModel.IsCoinJoinEnabled;
 
 	/// <summary>
-	/// The coins of the wallet. A round gets every ticked coin that it accepts and that can be registered at that time,
-	/// the others are kept out of coinjoins. A coin is ticked unless the user unticked it, so a coin that arrives is
-	/// submitted too.
+	/// The coins of the wallet. A round gets the ticked coins that it accepts and that can be registered at that time,
+	/// ten at most, the others are kept out of coinjoins. A coin is ticked unless the user unticked it, so a coin that
+	/// arrives is submitted too.
 	/// </summary>
 	public CoinListViewModel CoinList { get; }
 

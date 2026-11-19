@@ -149,7 +149,7 @@
     </DockPanel>
 
     <Panel DockPanel.Dock="Top" Margin="0 0 0 10" Opacity="0.6">
-      <TextBlock Text="Every ticked coin that a round accepts is submitted into it. Untick a coin to keep it out."
+      <TextBlock Text="A round gets the ticked coins that it accepts, 10 at most: the largest go first. Untick a coin to keep it out."
                  TextWrapping="Wrap" IsVisible="{Binding !IsCoinjoining}" />
       <TextBlock Text="A round is under way. The ticks can be changed once it is over or the coinjoin is stopped."
                  TextWrapping="Wrap" IsVisible="{Binding IsCoinjoining}" />
