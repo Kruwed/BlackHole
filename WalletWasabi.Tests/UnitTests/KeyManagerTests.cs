@@ -349,13 +349,15 @@ public class KeyManagerTests
 
 		Assert.Equal([0, 1, 2, 3], firstRound.Select(key => key.Index));
 		Assert.Equal([4, 5, 6], secondRound.Select(key => key.Index));
+
+		// The keys were given out, and nothing was paid to them.
 		Assert.All(firstRound.Concat(secondRound), key =>
 		{
 			Assert.True(key.IsInternal);
-			Assert.Equal(KeyState.Used, key.KeyState);
+			Assert.Equal(KeyState.Locked, key.KeyState);
 		});
 
-		// Nothing was paid to them, and still the change of a payment does not go to one of them.
+		// The change of a payment does not go to one of them either.
 		Assert.Equal(7, manager.GetNextChangeKey().Index);
 
 		// The wallet goes on watching as many unused addresses after them as its gap limit tells.
@@ -366,19 +368,23 @@ public class KeyManagerTests
 		var sameManager = KeyManager.FromFile(filePath);
 		Assert.Equal(
 			firstRound.Concat(secondRound).Select(key => key.PubKey),
-			sameManager.GetKeys(KeyState.Used, isInternal: true).Select(key => key.PubKey));
+			sameManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.PubKey));
 		Assert.Equal([7, 8], sameManager.GetNextCoinJoinKeys(2).Select(key => key.Index));
 
 		// A round in which the wallet has no output of its own takes no key.
 		Assert.Empty(sameManager.GetNextCoinJoinKeys(0));
 		Assert.Equal(9, sameManager.GetNextChangeKey().Index);
 
+		// A round does not ask for more keys than a wallet has outputs in it.
+		Assert.Throws<ArgumentOutOfRangeException>(() => sameManager.GetNextCoinJoinKeys(KeyManager.MaxCoinJoinKeysPerRound + 1));
+
 		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	/// <summary>
 	/// Earlier versions kept the keys of a round locked until its transaction was broadcast, and gave them to the next round
-	/// if it was not. A key that a wallet file has as locked may therefore have been in a round that failed: no round gets it.
+	/// if it was not. A key that a wallet file has as locked may therefore have been in a round that failed: no round gets
+	/// it as a new one.
 	/// </summary>
 	[Fact]
 	public void KeysThatWereKeptForTheNextRoundAreNotGivenOut()
@@ -398,9 +404,208 @@ public class KeyManagerTests
 
 		Assert.Equal([3, 4], sameManager.GetNextCoinJoinKeys(2).Select(key => key.Index));
 
-		// They are not addresses for change either, and they stay as they are.
+		// They are not addresses for change either.
 		Assert.Equal(5, sameManager.GetNextChangeKey().Index);
-		Assert.Equal([0, 1, 2], sameManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.Index));
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// Rounds that fail must not take the wallet beyond its gap limit: a wallet that is recovered from the backup watches 210
+	/// keys after the last one that was paid to, and does not find what is paid to a later one. When 200 keys in a row went
+	/// to rounds that failed, the rounds share the ten that are left.
+	/// </summary>
+	[Fact]
+	public void RoundsShareTheLastKeysOfTheGapLimit()
+	{
+		var filePath = "wallet-shared-coinjoin-keys.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out Share[] shares, "", Network.Main, filePath);
+
+		// Twenty rounds fail one after the other. Each of them got ten keys that no round had.
+		var givenOutOnce = Enumerable.Range(0, 20).SelectMany(_ => manager.GetNextCoinJoinKeys(10)).ToArray();
+		Assert.Equal(Enumerable.Range(0, 200), givenOutOnce.Select(key => key.Index));
+
+		// Ten keys are left within the gap limit. The rounds that follow get those, as often as it takes.
+		var shared = manager.GetNextCoinJoinKeys(10);
+		Assert.Equal(Enumerable.Range(200, 10), shared.Select(key => key.Index));
+		Assert.Equal(shared, manager.GetNextCoinJoinKeys(10));
+		Assert.Equal(shared.Take(4), manager.GetNextCoinJoinKeys(4));
+		Assert.Equal(shared, manager.GetNextCoinJoinKeys(10));
+
+		// A wallet that is opened again goes on like that.
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(shared.Select(key => key.PubKey), sameManager.GetNextCoinJoinKeys(10).Select(key => key.PubKey));
+
+		// A wallet that is recovered from the backup watches every key that a round got, and not the one after them.
+		var recovered = KeyManager.Recover(shares, "", Network.Main);
+		Assert.All(givenOutOnce.Concat(shared), key => Assert.True(recovered.TryGetKeyForScriptPubKey(key.P2Taproot, out _)));
+
+		var keyBeyond = Assert.Single(manager.GetKeys(key => key.IsInternal && key.Index == 210));
+		Assert.False(recovered.TryGetKeyForScriptPubKey(keyBeyond.P2Taproot, out _));
+
+		// The change of a payment stays within the gap limit as well. Rounds had every key up to there, so it goes to the
+		// last one.
+		Assert.Equal(209, manager.GetNextChangeKey().Index);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// The keys are counted from the last one that was paid to. A round that succeeds pays to its keys, so the rounds after
+	/// it get keys that no round had.
+	/// </summary>
+	[Fact]
+	public void SharingKeysEndsWithARoundThatSucceeds()
+	{
+		var manager = KeyManager.CreateNew(out _, "", Network.Main);
+
+		for (var round = 0; round < 20; round++)
+		{
+			manager.GetNextCoinJoinKeys(10);
+		}
+
+		// Two rounds share the last keys of the gap limit and fail as well. A third one, with six outputs, is broadcast.
+		var shared = manager.GetNextCoinJoinKeys(10);
+		Assert.Equal(shared, manager.GetNextCoinJoinKeys(10));
+
+		var paid = manager.GetNextCoinJoinKeys(6);
+		Assert.Equal(Enumerable.Range(200, 6), paid.Select(key => key.Index));
+
+		manager.MarkAsPaid(paid.Select(key => key.P2Taproot));
+		Assert.All(paid, key => Assert.Equal(KeyState.Used, key.KeyState));
+
+		// The four keys that the round did not pay to were in rounds that failed. The next round gets none of them.
+		Assert.Equal(210, manager.GetNextChangeKey().Index);
+		Assert.Equal(Enumerable.Range(210, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+
+		// The count started anew at the last key that was paid to, number 205: the keys up to number 405 are given out once,
+		// and the four count among them.
+		var givenOutOnce = Enumerable.Range(0, 18).SelectMany(_ => manager.GetNextCoinJoinKeys(10)).ToArray();
+		Assert.Equal(Enumerable.Range(220, 180), givenOutOnce.Select(key => key.Index));
+
+		Assert.Equal(Enumerable.Range(400, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(406, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(406, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+	}
+
+	/// <summary>
+	/// The change of a payment is paid to a key as well, so it ends the sharing like a round that succeeds.
+	/// </summary>
+	[Fact]
+	public void SharingKeysEndsWithAPaymentThatLeavesChange()
+	{
+		var manager = KeyManager.CreateNew(out _, "", Network.Main);
+
+		for (var round = 0; round < 21; round++)
+		{
+			manager.GetNextCoinJoinKeys(10);
+		}
+
+		Assert.Equal(Enumerable.Range(200, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+
+		// The wallet learns from the transaction of the payment that its change address was paid to.
+		var changeKey = manager.GetNextChangeKey();
+		Assert.Equal(209, changeKey.Index);
+		manager.SetKeyState(KeyState.Used, changeKey);
+
+		Assert.Equal(210, manager.GetNextChangeKey().Index);
+		Assert.Equal(Enumerable.Range(210, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+	}
+
+	/// <summary>
+	/// A round gets the keys that are still given out once before it gets shared ones, and the change of a payment goes to a
+	/// key that no round had for as long as there is one within the gap limit.
+	/// </summary>
+	[Fact]
+	public void ARoundTakesTheKeysThatAreLeftBeforeItSharesKeys()
+	{
+		var manager = KeyManager.CreateNew(out _, "", Network.Main);
+
+		// 28 rounds with seven outputs each fail: 196 keys.
+		for (var round = 0; round < 28; round++)
+		{
+			manager.GetNextCoinJoinKeys(7);
+		}
+
+		// Four keys are left that are given out once. The next round gets them, and three of the last ten.
+		Assert.Equal(Enumerable.Range(196, 7), manager.GetNextCoinJoinKeys(7).Select(key => key.Index));
+		Assert.Equal(203, manager.GetNextChangeKey().Index);
+
+		// The rounds after it share the last ten, from the first of them on.
+		Assert.Equal(Enumerable.Range(200, 7), manager.GetNextCoinJoinKeys(7).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(200, 7), manager.GetNextCoinJoinKeys(7).Select(key => key.Index));
+		Assert.Equal(207, manager.GetNextChangeKey().Index);
+	}
+
+	/// <summary>
+	/// A wallet with a wider gap limit watches more keys, but a wallet that is recovered from its backup watches 210 unless
+	/// it is told otherwise. So the keys that rounds share are the last ten of 210 in every wallet.
+	/// </summary>
+	[Fact]
+	public void AWiderGapLimitDoesNotMoveTheKeysThatRoundsShare()
+	{
+		var manager = KeyManager.Recover(WalletGenerator.GenerateShares(), "", Network.Main, filePath: null, minGapLimit: 550);
+		Assert.Equal(550, manager.MinGapLimit);
+
+		var givenOutOnce = Enumerable.Range(0, 20).SelectMany(_ => manager.GetNextCoinJoinKeys(10)).ToArray();
+		Assert.Equal(Enumerable.Range(0, 200), givenOutOnce.Select(key => key.Index));
+
+		Assert.Equal(Enumerable.Range(200, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(200, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+	}
+
+	/// <summary>
+	/// The keys are counted from the last change address that was paid to, so the wallet file must not call an address paid
+	/// to that nothing was paid to. The version before this one did that with the addresses of every round, and a round
+	/// that was reported as broadcast may have a transaction that never came. A wallet that has its transactions puts that
+	/// right.
+	/// </summary>
+	[Fact]
+	public void ChangeAddressesThatWereNotPaidToCountAsGivenOut()
+	{
+		var filePath = "wallet-unpaid-coinjoin-keys.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		var changeKeys = manager.GetKeys(KeyState.Clean, isInternal: true).Take(30).ToArray();
+		var receiveKey = manager.GetNextReceiveKey();
+
+		foreach (var key in changeKeys.Append(receiveKey))
+		{
+			manager.SetKeyState(KeyState.Used, key);
+		}
+		manager.ToFile();
+
+		// Three of the thirty change addresses were paid to.
+		var paidKeys = changeKeys.Take(3).ToHashSet();
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(27, sameManager.ForgetPaymentsThatNeverCame(paidKeys.Contains));
+
+		Assert.Equal([0, 1, 2], sameManager.GetKeys(KeyState.Used, isInternal: true).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(3, 27), sameManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.Index));
+
+		// Receive addresses are not counted like this and stay as they are.
+		Assert.Equal(receiveKey.PubKey, Assert.Single(sameManager.GetKeys(KeyState.Used, isInternal: false)).PubKey);
+
+		// The wallet file is put right, and there is nothing left to do the next time.
+		var thirdManager = KeyManager.FromFile(filePath);
+		Assert.Equal(Enumerable.Range(3, 27), thirdManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.Index));
+		Assert.Equal(0, thirdManager.ForgetPaymentsThatNeverCame(paidKeys.Contains));
+
+		// The count is from the third address on, which is number 2: the keys up to number 202 are given out once. The 27
+		// count among them, and 173 are left.
+		Assert.Equal(30, thirdManager.GetNextChangeKey().Index);
+		for (var round = 0; round < 17; round++)
+		{
+			thirdManager.GetNextCoinJoinKeys(10);
+		}
+
+		Assert.Equal(Enumerable.Range(200, 10), thirdManager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(203, 10), thirdManager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(Enumerable.Range(203, 10), thirdManager.GetNextCoinJoinKeys(10).Select(key => key.Index));
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

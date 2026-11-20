@@ -90,7 +90,8 @@ public class AmountDecomposer
 		var denoms = GetFilteredDenominations(allInputCoinEffectiveValues);
 
 		var smallestScriptType = Math.Min(ScriptType.P2WPKH.EstimateOutputVsize(), ScriptType.Taproot.EstimateOutputVsize());
-		var maxNumberOfOutputsAllowed = Math.Min(AvailableVsize / smallestScriptType, 10); // The absolute max possible with the smallest script type.
+		// The absolute max possible with the smallest script type, and no more than the wallet has keys for in a round.
+		var maxNumberOfOutputsAllowed = Math.Min(AvailableVsize / smallestScriptType, KeyManager.MaxCoinJoinKeysPerRound);
 
 		// If there are no output denominations, the participation in coinjoin makes no sense.
 		if (!denoms.Any())

@@ -182,11 +182,64 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 	[Fact]
 	public async Task CoinJoinAfterAFailedBroadcastGetsNewAddressesAsync()
 	{
+		KeyManager keyManager = KeyManager.CreateNew(out _, password: "", Network.Main);
+
+		var (refused, broadcast) = await CoinJoinAfterAFailedBroadcastAsync(keyManager);
+
+		Assert.Empty(refused.Intersect(broadcast));
+	}
+
+	/// <summary>
+	/// Rounds that fail do not take the wallet beyond its gap limit. When they have had every key but the last ten of it,
+	/// the next rounds share those: the round after a failed one gets its addresses again. Once a round was broadcast, that
+	/// is over.
+	/// </summary>
+	[Fact]
+	public async Task CoinJoinAfterAFailedBroadcastSharesTheLastAddressesOfTheGapLimitAsync()
+	{
+		KeyManager keyManager = KeyManager.CreateNew(out _, password: "", Network.Main);
+
+		// Twenty rounds failed before, each with ten outputs of the wallet.
+		for (var round = 0; round < 20; round++)
+		{
+			keyManager.GetNextCoinJoinKeys(10);
+		}
+
+		var lastKeysOfGapLimit = keyManager.GetKeys(key => key.IsInternal && key.Index is >= 200 and < 210);
+
+		var (refused, broadcast) = await CoinJoinAfterAFailedBroadcastAsync(keyManager);
+
+		// Both rounds got their addresses from the last ten, from the first of them on.
+		Assert.Equal(lastKeysOfGapLimit.Take(refused.Length).Select(key => key.P2Taproot), refused.OrderBy(script => IndexOf(script)));
+		Assert.Equal(lastKeysOfGapLimit.Take(broadcast.Length).Select(key => key.P2Taproot), broadcast.OrderBy(script => IndexOf(script)));
+
+		// The round that was broadcast paid to its addresses, so the wallet counts anew from there: the next round gets
+		// addresses that neither of the two had.
+		Assert.All(broadcast, script => Assert.Equal(KeyState.Used, GetKey(script).KeyState));
+
+		var nextAddresses = keyManager.GetNextCoinJoinKeys(10).Select(key => key.P2Taproot).ToArray();
+		Assert.Empty(nextAddresses.Intersect(refused.Concat(broadcast)));
+
+		HdPubKey GetKey(Script script) =>
+			keyManager.TryGetKeyForScriptPubKey(script, out var key) ? key : throw new InvalidOperationException("The address is not one of the wallet.");
+
+		int IndexOf(Script script) => GetKey(script).Index;
+	}
+
+	/// <summary>
+	/// Two coinjoins of a wallet, one after the other, with a coordinator whose node refuses the transaction of the first.
+	/// </summary>
+	/// <returns>The addresses of the wallet in the transaction that was refused, and in the one that was broadcast.</returns>
+	private async Task<(Script[] Refused, Script[] Broadcast)> CoinJoinAfterAFailedBroadcastAsync(KeyManager keyManager)
+	{
 		long[] amounts = [10_000_000, 20_000_000, 30_000_000, 40_000_000, 100_000_000];
 		int inputCount = amounts.Length;
 
-		KeyManager keyManager = KeyManager.CreateNew(out _, password: "", Network.Main);
-		var coins = GenerateSmartCoins(keyManager, amounts, inputCount);
+		// The coins are on receive addresses of the wallet.
+		var coins = keyManager.GetKeys(key => !key.IsInternal)
+			.Take(inputCount)
+			.Select((key, i) => BitcoinFactory.CreateSmartCoin(key, Money.Satoshis(amounts[i])))
+			.ToImmutableList();
 
 		// The node refuses the first transaction that the coordinator sends to it and takes the second one.
 		var sentTransactions = new ConcurrentQueue<Transaction>();
@@ -233,7 +286,8 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 
 		Assert.NotEmpty(addressesByRound[0]);
 		Assert.NotEmpty(addressesByRound[1]);
-		Assert.Empty(addressesByRound[0].Intersect(addressesByRound[1]));
+
+		return (addressesByRound[0], addressesByRound[1]);
 	}
 
 	/// <summary>

@@ -298,7 +298,7 @@ public class CoinJoinClientTests
 		{
 			Assert.True(km.TryGetKeyForScriptPubKey(script, out var key));
 			Assert.True(key.IsInternal);
-			Assert.Equal(KeyState.Used, key.KeyState);
+			Assert.Equal(KeyState.Locked, key.KeyState);
 		});
 	}
 

@@ -255,6 +255,13 @@ public class Wallet : BackgroundService
 
 		LoadCoinsSelectedForCoinJoin();
 
+		// The wallet has all of its transactions now, so it can tell which change addresses were paid to. The gap limit is
+		// counted from the last of them, and the wallet file may be wrong about some.
+		if (TransactionProcessor.ForgetPaymentsThatNeverCame() is var unpaid and > 0)
+		{
+			Logger.LogInfo(FormatLog($"Nothing was paid to {unpaid} change addresses that the wallet file had as paid to. They count as given out.", this));
+		}
+
 		await base.StartAsync(cancellationToken).ConfigureAwait(false);
 
 		Loaded = true;

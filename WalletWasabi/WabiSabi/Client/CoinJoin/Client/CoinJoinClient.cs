@@ -274,6 +274,9 @@ public class CoinJoinClient
 			catch (Exception ex)
 			{
 				Logger.LogWarning(FormatLog($"Waiting for the round to end failed with: '{ex}'.", roundState));
+
+				// The transaction may have been broadcast, so no round may get these addresses again.
+				_outputProvider.DestinationProvider.MarkAsPaid(outputTxOuts.Select(o => o.ScriptPubKey));
 				throw new UnknownRoundEndingException(mySignedCoins, ex);
 			}
 
@@ -295,6 +298,13 @@ public class CoinJoinClient
 			};
 
 			Logger.LogInfo(FormatLog(msg, roundState));
+
+			if (roundState.EndRoundState == EndRoundState.TransactionBroadcasted)
+			{
+				// The wallet learns from the transaction which of its addresses were paid to. A round that starts before it has
+				// seen the transaction must not get them again, so they are told now: the ones that the transaction pays to.
+				_outputProvider.DestinationProvider.MarkAsPaid(roundState.CoinjoinState.Outputs.Select(o => o.ScriptPubKey));
+			}
 
 			// Coinjoin succeeded but wallet had no input in it.
 			if (mySignedCoins.IsEmpty && roundState.EndRoundState == EndRoundState.TransactionBroadcasted)

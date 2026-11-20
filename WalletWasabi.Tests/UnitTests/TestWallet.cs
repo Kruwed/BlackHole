@@ -109,6 +109,11 @@ public class TestWallet : IKeyChain, IDestinationProvider
 	public IEnumerable<IDestination> GetNextDestinations(int count) =>
 		Enumerable.Range(0, count).Select(_ => CreateNewAddress());
 
+	public void MarkAsPaid(IEnumerable<Script> scripts)
+	{
+		// The test wallet gives out a new address every time.
+	}
+
 	public ImmutableHashSet<ScriptType> SupportedScriptTypes { get; } = [ScriptType.P2WPKH];
 
 	public void ScanTransaction(Transaction tx)

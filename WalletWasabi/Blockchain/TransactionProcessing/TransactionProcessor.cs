@@ -45,6 +45,20 @@ public class TransactionProcessor(
 		=> Process(txs as IEnumerable<SmartTransaction>);
 
 	/// <summary>
+	/// Puts right the change addresses that the wallet file has as paid to although no transaction of the wallet pays to
+	/// them, see <see cref="KeyManager.ForgetPaymentsThatNeverCame"/>. No transaction is processed meanwhile, so a payment
+	/// that comes in at that moment is not overlooked.
+	/// </summary>
+	/// <returns>The number of addresses that were put right.</returns>
+	public int ForgetPaymentsThatNeverCame()
+	{
+		lock (Lock)
+		{
+			return KeyManager.ForgetPaymentsThatNeverCame(Coins.IsUsed);
+		}
+	}
+
+	/// <summary>
 	/// Processes the transactions of a block that concern the wallet.
 	/// </summary>
 	/// <returns>What became of those transactions. Empty if nothing in the block concerns the wallet.</returns>

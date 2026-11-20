@@ -46,7 +46,7 @@ public class OutputProvider
 
 	internal static IEnumerable<TxOut> GetTxOuts(IEnumerable<Output> outputValues, IDestinationProvider destinationProvider)
 	{
-		// Get as many destinations as outputs we need. They are new ones: no round had them before.
+		// Get as many destinations as outputs we need.
 		var outputs = outputValues.ToArray();
 		var destinations = new Stack<IDestination>(destinationProvider.GetNextDestinations(outputs.Length));
 

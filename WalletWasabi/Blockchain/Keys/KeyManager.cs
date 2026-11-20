@@ -41,6 +41,12 @@ public class KeyManager
 	/// </summary>
 	private const int SilentPaymentKeyGapLimit = 21;
 
+	/// <summary>
+	/// The most keys that one coinjoin round takes for the outputs of the wallet. That many keys at the end of the gap limit
+	/// are the ones that rounds share when they have used up the others, see <see cref="GetNextCoinJoinKeys"/>.
+	/// </summary>
+	public const int MaxCoinJoinKeysPerRound = 10;
+
 	/// <summary>What a coinjoin may leave over unless the user decides otherwise.</summary>
 	public static readonly Money DefaultMaxCoinjoinLeftover = Money.Satoshis(5_000);
 
@@ -375,51 +381,164 @@ public class KeyManager
 		return (newKey, newHdPubKeys, newHdPubKeyGenerator);
 	}
 
-	public HdPubKey GetNextChangeKey() =>
-		GetKeys(x =>
-			x.KeyState == KeyState.Clean &&
-			x.IsInternal)
-			.First();
-
 	/// <summary>
-	/// Gives out keys for the outputs of one coinjoin round. A key is given out once: the keys are marked as used, and the
-	/// wallet file is written, before this returns and so before anybody gets to see their addresses.
+	/// The key of the next change address: the first one that was not given out. It is not taken by this, a payment to it is
+	/// what takes it.
 	/// </summary>
 	/// <remarks>
-	/// Whatever becomes of the round, its keys never go to another one. A round that fails has shown its addresses to the
+	/// The key is within the gap limit, see <see cref="GetNextCoinJoinKeys"/>. If coinjoin rounds that failed have had every
+	/// key up to there, it is the last key of the gap limit although rounds had it: an address beyond would be one that a
+	/// recovered wallet does not watch. The payment to it lets the wallet count anew from there.
+	/// </remarks>
+	public HdPubKey GetNextChangeKey()
+	{
+		lock (_criticalStateLock)
+		{
+			var keys = GetChangeKeysNoLock();
+			var lastIndexOfGap = GetLastPaidIndex(keys) + AbsoluteMinGapLimit;
+			var firstCleanKey = keys.First(key => key.KeyState == KeyState.Clean);
+
+			return firstCleanKey.Index <= lastIndexOfGap
+				? firstCleanKey
+				: keys.Single(key => key.Index == lastIndexOfGap);
+		}
+	}
+
+	/// <summary>
+	/// Gives out keys for the outputs of one coinjoin round. The wallet file knows that they were given out before this
+	/// returns, and so before anybody gets to see their addresses.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// A key is given out once, whatever becomes of its round. A round that fails has shown its addresses to the
 	/// coordinator, and to everybody in the round if it got as far as the signing of the transaction. Addresses that come
 	/// back in the next round tell that the two rounds had the same participant.
+	/// </para>
+	/// <para>
+	/// Rounds that fail must not take the wallet beyond its gap limit, though: a wallet that is recovered from its backup
+	/// watches <see cref="AbsoluteMinGapLimit"/> keys after the last one that was paid to, and does not find what is paid to
+	/// a later one. So only the keys before the last <see cref="MaxCoinJoinKeysPerRound"/> of them are given out once. When
+	/// those are used up, rounds get the last ones, and get them again, until something is paid to a key: by a round that
+	/// succeeds, or by the change of a payment. From that key on the keys are counted anew.
+	/// </para>
 	/// </remarks>
 	public ImmutableArray<HdPubKey> GetNextCoinJoinKeys(int count)
 	{
 		lock (_criticalStateLock)
 		{
-			var generator = _taprootInternalKeyGenerator;
-			Guard.InRangeAndNotNull(nameof(count), count, 0, generator.MinGapLimit);
+			Guard.InRangeAndNotNull(nameof(count), count, 0, MaxCoinJoinKeysPerRound);
 
-			_hdPubKeyCache.AddRangeKeys(generator.AssertCleanKeysIndexed(_hdPubKeyCache.GetView(generator.KeyPath)).Select(CreateHdPubKey));
+			var keys = GetChangeKeysNoLock();
+			var lastIndexOfGap = GetLastPaidIndex(keys) + AbsoluteMinGapLimit;
+			var firstSharedIndex = lastIndexOfGap - MaxCoinJoinKeysPerRound + 1;
 
-			// The gap limit is at least as large as the count, so there are enough clean keys.
-			var keys = _hdPubKeyCache
-				.GetView(generator.KeyPath)
-				.CleanKeys
-				.OrderBy(key => key.Index)
+			var newKeys = keys
+				.Where(key => key.KeyState == KeyState.Clean && key.Index < firstSharedIndex)
 				.Take(count)
-				.ToImmutableArray();
+				.ToArray();
 
-			foreach (var key in keys)
+			var sharedKeys = keys
+				.Where(key => key.Index >= firstSharedIndex && key.Index <= lastIndexOfGap)
+				.Take(count - newKeys.Length);
+
+			HdPubKey[] givenOut = [.. newKeys, .. sharedKeys];
+			if (givenOut.Length != count)
 			{
-				SetKeyState(KeyState.Used, key);
+				throw new InvalidOperationException($"The wallet has {givenOut.Length} keys for the coinjoin round instead of {count}.");
 			}
 
-			if (keys.Length > 0)
+			var keysToMark = givenOut.Where(key => key.KeyState != KeyState.Locked).ToArray();
+			foreach (var key in keysToMark)
+			{
+				SetKeyState(KeyState.Locked, key);
+			}
+
+			if (keysToMark.Length > 0)
 			{
 				ToFileNoLock();
 			}
 
-			return keys;
+			return [.. givenOut];
 		}
 	}
+
+	/// <summary>
+	/// Tells that a coinjoin round paid to these addresses, or may have: its transaction was broadcast, or nobody knows how
+	/// the round ended. The wallet learns of a payment from the transaction as well, but a round that starts before it has
+	/// seen the transaction must not get the addresses again.
+	/// </summary>
+	public void MarkAsPaid(IEnumerable<Script> scripts)
+	{
+		lock (_criticalStateLock)
+		{
+			var changed = false;
+
+			foreach (var script in scripts)
+			{
+				if (_hdPubKeyCache.TryGetPubKey(script, out var key) && key.KeyState != KeyState.Used)
+				{
+					SetKeyState(KeyState.Used, key);
+					changed = true;
+				}
+			}
+
+			if (changed)
+			{
+				ToFileNoLock();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Puts right the change addresses that the wallet file has as paid to although no transaction of the wallet pays to
+	/// them: they were given out and not paid, see <see cref="KeyState.Locked"/>. The gap limit is counted from the last
+	/// address that was paid to, so the difference matters.
+	/// </summary>
+	/// <remarks>
+	/// Such addresses are the ones of a coinjoin that was reported as broadcast and whose transaction never came, and the
+	/// ones that an earlier version gave to rounds, which called them used at once.
+	/// </remarks>
+	/// <param name="isPaid">Tells whether a transaction of the wallet pays to the key. No payment may come in while this runs.</param>
+	/// <returns>The number of addresses that were put right.</returns>
+	internal int ForgetPaymentsThatNeverCame(Func<HdPubKey, bool> isPaid)
+	{
+		HdPubKey[] usedKeys;
+		lock (_criticalStateLock)
+		{
+			usedKeys = GetChangeKeysNoLock().Where(key => key.KeyState == KeyState.Used).ToArray();
+		}
+
+		// The question is asked without the lock: who answers it has a lock of its own.
+		var unpaidKeys = usedKeys.Where(key => !isPaid(key)).ToArray();
+
+		lock (_criticalStateLock)
+		{
+			foreach (var key in unpaidKeys)
+			{
+				key.SetKeyState(KeyState.Locked);
+			}
+
+			if (unpaidKeys.Length > 0)
+			{
+				ToFileNoLock();
+			}
+		}
+
+		return unpaidKeys.Length;
+	}
+
+	/// <summary>The keys of the change addresses in their order. The wallet watches its gap limit of unused ones after the last one that was given out.</summary>
+	private HdPubKey[] GetChangeKeysNoLock()
+	{
+		var generator = _taprootInternalKeyGenerator;
+		_hdPubKeyCache.AddRangeKeys(generator.AssertCleanKeysIndexed(_hdPubKeyCache.GetView(generator.KeyPath)).Select(CreateHdPubKey));
+
+		return _hdPubKeyCache.GetView(generator.KeyPath).OrderBy(key => key.Index).ToArray();
+	}
+
+	/// <returns>The index of the last key that was paid to, or -1 if none was.</returns>
+	private static int GetLastPaidIndex(HdPubKey[] keys) =>
+		keys.Where(key => key.KeyState == KeyState.Used).Select(key => key.Index).DefaultIfEmpty(-1).Max();
 
 	public ImmutableArray<HdPubKey> GetKeys(Func<HdPubKey, bool>? wherePredicate)
 	{
