@@ -1,5 +1,6 @@
 using WalletWasabi.BitcoinRpc;
 using WalletWasabi.FeeRateEstimation;
+using WalletWasabi.JoinMarket;
 using WalletWasabi.Blockchain.TransactionProcessing;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.WabiSabi.Client.Batching;
@@ -126,5 +127,8 @@ public record AnonymityPointsChanged;
 
 /// <summary>The wallet processed a transaction that creates or spends a fidelity bond of it.</summary>
 public record FidelityBondTransactionProcessed(SmartTransaction Transaction);
+
+/// <summary>The offer that the wallet has on the market changed: there is one now, it is another one, or it is gone.</summary>
+public record MakerOfferChanged(MakerOfferState? Offer);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);
 public record CoinjoinCostsAdded(uint256 TransactionId, CoinjoinCosts Costs);

@@ -77,6 +77,9 @@ public static class Constants
 
 	public const int DefaultMaxDaysInMempool = 30;
 
+	/// <summary>The Nostr relays that the offers of a market maker are posted to unless others are named.</summary>
+	public static readonly string[] DefaultNostrRelays = ["wss://relay.primal.net", "wss://relay.damus.io", "wss://nos.lol"];
+
 	// Defined in hours. Do not modify these values or the order!
 	public static readonly int[] CoinJoinFeeRateMedianTimeFrames = new[] { 24, 168, 720 };
 

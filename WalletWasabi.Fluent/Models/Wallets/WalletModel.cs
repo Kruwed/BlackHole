@@ -53,6 +53,9 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	/// <summary>The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height.</summary>
 	WalletBondsModel Bonds { get; }
 
+	/// <summary>The offer of the wallet as a market maker of JoinMarket-style coinjoins.</summary>
+	WalletMakerOfferModel MakerOffer { get; }
+
 	IObservable<bool> Loaded { get; }
 
 	/// <summary>
@@ -109,6 +112,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 		Addresses = new AddressesModel(services, Wallet);
 
 		Bonds = new WalletBondsModel(services, Wallet);
+
+		MakerOffer = new WalletMakerOfferModel(services);
 
 		Loaded = services.EventBus.AsObservable<WalletLoaded>()
 			.ObserveOn(RxApp.MainThreadScheduler)
@@ -168,6 +173,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
 
 	public WalletBondsModel Bonds { get; }
+
+	public WalletMakerOfferModel MakerOffer { get; }
 
 	public IObservable<bool> Loaded { get; }
 

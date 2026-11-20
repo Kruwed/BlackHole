@@ -21,6 +21,7 @@ using WalletWasabi.Extensions;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Helpers;
 using WalletWasabi.Io;
+using WalletWasabi.JoinMarket;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
 using WalletWasabi.Rpc;
@@ -92,6 +93,9 @@ public class Global
 		WalletManager = new WalletManager(Config.Network, walletDirectories, walletFactory);
 
 		TransactionBroadcaster = new TransactionBroadcaster(_bitcoinRpcClient, EventBus);
+
+		// The offer of the wallet is there from the start, for whoever shows it. It does nothing until the user posts an offer.
+		RegisterMakerOfferService();
 
 		_ticker = new Timer(_ => EventBus.Publish(new Tick(DateTime.UtcNow)));
 		_ticker.DisposeUsing(_disposables);
@@ -495,6 +499,31 @@ public class Global
 		var coinJoinConfiguration = new CoinJoinConfiguration(Config.CoordinatorIdentifier, Config.MaxCoinjoinMiningFeeRate, Config.AbsoluteMinInputCount, AllowSoloCoinjoining: false);
 		HostedServices.Register<CoinJoinManager>(() => new CoinJoinManager(GetCoinJoinWalletsAsync, new RoundStateProvider(roundUpdater), wabiSabiHttpClientFactory, coinJoinConfiguration, _coinPrison, CreateInputVerifier(), EventBus), "CoinJoin Manager");
 	}
+
+	/// <summary>
+	/// The service that keeps the offer of the wallet on the Nostr relays. It contacts no relay until the user posts an offer.
+	/// </summary>
+	private void RegisterMakerOfferService()
+	{
+		var publisher = CreateNostrPublisher(Config, TorSettings);
+
+		HostedServices.Register<MakerOfferService>(
+			() => new MakerOfferService(Network, publisher, () => WalletManager.Wallet?.Coins, EventBus),
+			"Maker Offer");
+
+		// A transaction of the wallet may have spent a coin that is on offer.
+		var makerOfferService = HostedServices.Get<MakerOfferService>();
+		EventBus.Subscribe<WalletRelevantTransactionProcessed>(_ => makerOfferService.TriggerRound())
+			.DisposeUsing(_disposables);
+	}
+
+	/// <summary>
+	/// Makes what posts to the Nostr relays of the configuration. The relays are reached through Tor and in no other way,
+	/// unless Tor is turned off: then they are reached directly, like everything else.
+	/// </summary>
+	/// <exception cref="FormatException">The configuration names something that is not the address of a relay.</exception>
+	public static NostrRelayPublisher CreateNostrPublisher(Config config, TorSettings torSettings) =>
+		new(NostrRelayPublisher.ParseRelays(config.NostrRelays), config.UseTor != TorMode.Disabled ? torSettings.SocksEndpoint : null);
 
 	/// <summary>The wallets that the coinjoin manager looks after: the wallet of the application, once there is one.</summary>
 	private Task<IEnumerable<Wallet>> GetCoinJoinWalletsAsync() =>

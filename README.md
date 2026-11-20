@@ -1,6 +1,6 @@
 # Black Hole
 
-An open-source, non-custodial, privacy-focused Bitcoin wallet for the Linux desktop that talks only to your own Bitcoin node.
+An open-source, non-custodial, privacy-focused Bitcoin wallet for the Linux desktop that asks only your own Bitcoin node about the blockchain.
 
 Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWasabi). It keeps the Tor integration and the WabiSabi coinjoins of Wasabi Wallet and drops most of the rest.
 
@@ -13,6 +13,7 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 - **Coinjoins** with the WabiSabi coordinator that you choose, over Tor.
 - **Manual coin control** when sending.
 - **Fidelity bonds**: coins that are locked until a block height that you name. See [Fidelity bonds](#fidelity-bonds).
+- **Offers as a market maker**: up to two coins and your prices for anonymity points, posted to Nostr relays over Tor. See [Maker offers](#maker-offers).
 
 ## The window
 
@@ -22,7 +23,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
 - **Send**: the coins of the wallet, and above them the address, the amount and the fee rate of a payment. Tick the coins that the transaction may spend, fill in the rest, and *Continue* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one.
 - **Receive**: *New Address* generates an address and shows it. The list has the addresses that were generated and have not been paid to yet; a right click on one copies it.
 - **WabiSabi**: the WabiSabi coinjoins of the wallet with their controls, and the coins of the wallet. No coin is ticked until you tick it: a coin takes part in coinjoins only once you chose it, and that goes for a coin that arrives and for what a coinjoin gives you as well. A round gets the ticked coins that it accepts, ten of them at most. Nothing coinjoins by itself: *Play* starts one round, and when that round is over, however it ended, the coinjoin is stopped until you press *Play* again.
-- **JoinMarket**: the fidelity bonds, which are all that there is of that protocol so far, and a list of market makers that is a placeholder: it has its columns and no rows yet.
+- **JoinMarket**: what makes the wallet a market maker of JoinMarket-style coinjoins, which is all that there is of that protocol so far: its fidelity bonds (*Bond*) and its offer (*Offer*). The list of market makers shows the offer of this wallet while it has one. It shows nobody else's: the wallet does not look for makers yet.
 - **ZeroLink**: a placeholder. The wallet does nothing of that protocol yet.
 
 To the right of the tabs the title bar tells the fee rate, how many blocks the wallet has processed and the balance. In a window that is too narrow for all of it these give way, the fee rate first and the balance last, so that the tabs and the buttons stay. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Connections*.
@@ -97,6 +98,25 @@ A fidelity bond is coins that are locked until the chain reaches a block height.
 - **Redeeming.** Once the chain has reached the unlock height, *Redeem* pays a bond back to the wallet, to a new address of it, less the mining fee.
 - **Recovery.** There are too many heights to watch the addresses of all of them, so the wallet watches the ones that it gave out, and the wallet file remembers them. The recovery words do not tell them. A wallet that is recovered, or told to *Resync Wallet*, therefore looks for a bond at every height that it could have chosen, from the first block that it goes through to ten years above the chain. Getting ready for that takes about a minute before the first block is processed. This finds the bonds that are in the blocks. A bond address from before the recovery that is paid after it, or a bond that another copy of the wallet made, is found by resyncing again.
 - **Privacy.** A bond that is shown to others is public, and so is the history of the coins in it.
+
+## Maker offers
+
+A market maker of JoinMarket-style coinjoins lets a taker put its coins into the coinjoin of the taker. *Offer* on the *JoinMarket* tab makes the offer of this wallet: tick one or two coins and name three numbers.
+
+- **Minimum fee rate**, in sat/vB: the lowest mining fee rate of a coinjoin that your coins go into.
+- **Bid**, in sats per anonymity point: what you pay for a point.
+- **Ask**, in sats per anonymity point: what you want for a point. It cannot be lower than the bid.
+
+What the two prices are for: a coinjoin destroys the anonymity points of the coins that go into it, and the coins that come out of it have the points of the new transaction. So the coinjoin of a taker swaps the points of your coins for others. If you have more points afterwards, you pay the taker the bid for each of them; if you have fewer, the taker pays you the ask for each.
+
+Black Hole does nothing with an offer yet except post it: it does not look for the offers of others, and it does not answer a taker. No coinjoin of this kind exists so far.
+
+- **Where it goes.** *Post* sends the offer to Nostr relays: `relay.primal.net`, `relay.damus.io` and `nos.lol`, or the ones that you name at the start with `--nostrrelays=wss://one.example;wss://two.example`. They are reached through Tor, unless Tor is turned off. Nothing is sent to a relay before you post an offer. This and the coordinator of your WabiSabi coinjoins are the only servers that Black Hole talks to besides your node.
+- **What it tells.** The offer is an event of the kind for the discovery of coinjoins (15750, a [draft](https://github.com/nostr-protocol/nips/pull/384)) with the tags `type` = `BlackHoleJoinMarket` and `network` = `mainnet`, `signet` or `regtest`. Its content is JSON, for example `{"minFeeRate":2.5,"bid":100,"ask":150,"liquidity":50000000}`: the fee rate, the two prices, and what the ticked coins hold together, in sats. The third tag of that kind, `endpoint`, is left out: there is no place yet where a taker reaches a maker.
+- **What it does not tell.** Which coins they are, and what each of them holds. Whoever reads the relays can still search the chain for coins of that amount, most easily when the offer has one coin. Every offer is signed with a new key, so two offers cannot be told to come from the same wallet by their keys.
+- **How long it stands.** Until you take it back with *Withdraw offer*, until its coins are spent, or until you close Black Hole. Readers of that kind of event take one that is older than 15 minutes for gone, so a standing offer is posted again every 10 minutes. The kind is replaceable, which means that a relay keeps only the newest event of a key: an offer is changed by posting it again, and taken back by an event that tells nothing. An offer is not stored. After a restart there is none until you post one.
+- **Coins.** A coin of the offer that is spent leaves the offer, which is posted again with what is left. The offer keeps no coin from being spent or coinjoined.
+- **When no relay can be reached.** An offer that no relay took is not made, and the page tells why. If a standing offer cannot be posted again, its row in the list shows a warning, and it is tried again every minute.
 
 ## License
 

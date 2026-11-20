@@ -72,6 +72,22 @@ public class ConfigTests
 	}
 
 	/// <summary>
+	/// The offer of a market maker is posted to Nostr relays. Which ones is an option of the start; without it they are
+	/// the ones that the application knows.
+	/// </summary>
+	[Fact]
+	public void OffersGoToTheRelaysThatAreNamedAtTheStart()
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.Equal(["wss://relay.primal.net", "wss://relay.damus.io", "wss://nos.lol"], config.NostrRelays);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--nostrrelays=wss://one.example;ws://127.0.0.1:7777/"]);
+		Assert.Equal(["wss://one.example", "ws://127.0.0.1:7777/"], config.NostrRelays);
+
+		Assert.Contains("NostrRelays", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+	}
+
+	/// <summary>
 	/// Settings can only be changed in the application while none of them was given on the command line or in the environment.
 	/// Options that are not settings, like the log level, do not get in the way.
 	/// </summary>
@@ -84,6 +100,7 @@ public class ConfigTests
 	[InlineData("--torsocksport=9050")]
 	[InlineData("--torcontrolport=9051")]
 	[InlineData("--network=regtest")]
+	[InlineData("--nostrrelays=wss://relay.example")]
 	public void OptionsThatAreNotSettingsLeaveTheSettingsChangeable(string option)
 	{
 		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option]);

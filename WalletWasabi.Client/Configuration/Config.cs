@@ -51,7 +51,8 @@ public class Config
 			[nameof(MaxCoinjoinMiningFeeRate)] = GetDecimalValue("MaxCoinjoinMiningFeeRate", PersistentConfig.MaxCoinJoinMiningFeeRate, cliArgs),
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = GetLongValue("MaxDaysInMempool", PersistentConfig.MaxDaysInMempool, cliArgs),
-			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs)
+			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs),
+			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", Constants.DefaultNostrRelays, cliArgs)
 		};
 
 		// Check if any setting is overridden (either by an environment value, or by a CLI argument).
@@ -76,7 +77,8 @@ public class Config
 		nameof(RpcOnionEnabled),
 		nameof(BlockOnlyMode),
 		nameof(LogLevel),
-		nameof(LogModes)
+		nameof(LogModes),
+		nameof(NostrRelays)
 	];
 
 	private static readonly Dictionary<string, string> Help =
@@ -105,6 +107,7 @@ public class Config
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
 			["MaxDaysInMempool"] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
+			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that an offer of the JoinMarket tab is posted to. Nothing is sent to them before an offer is posted",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }
@@ -134,6 +137,9 @@ public class Config
 		Constants.AbsoluteMinInputCount);
 
 	public string[] ExperimentalFeatures => GetEffectiveValue<string[]>(nameof(ExperimentalFeatures));
+
+	/// <summary>The Nostr relays that the offer of a market maker is posted to.</summary>
+	public string[] NostrRelays => GetEffectiveValue<string[]>(nameof(NostrRelays));
 
 	public ServiceConfiguration ServiceConfiguration { get; }
 
