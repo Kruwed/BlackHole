@@ -17,7 +17,6 @@ A few examples:
 
 | Config file                | Command line                | Environment variable                |
 |----------------------------|-----------------------------|-------------------------------------|
-| Network: "TestNet"         | --network=testnet           | BLACKHOLE_NETWORK=testnet           |
 | JsonRpcServerEnabled: true | --jsonrpcserverenabled=true | BLACKHOLE_JSONRPCSERVERENABLED=true |
 | UseTor: true               | --usetor=true               | BLACKHOLE_USETOR=true               |
 
@@ -38,16 +37,16 @@ There are a few special switches that are not present in the `Config.json` file 
 
 ### Examples
 
-Run the daemon on the testnet Bitcoin network with Tor disabled and accept JSON RPC calls. Store everything in `$HOME/temp/blackhole-1`.
+Run the daemon on the signet Bitcoin network with Tor disabled and accept JSON RPC calls. Store everything in `$HOME/temp/blackhole-1`.
 
 ```bash
-$ blackholed --usetor=false --datadir="$HOME/temp/blackhole-1" --network=testnet --jsonrpcserverenabled=true --blockonly=true
+$ blackholed --usetor=false --datadir="$HOME/temp/blackhole-1" --network=signet --jsonrpcserverenabled=true --blockonly=true
 ```
 
-Run the daemon on the testnet Bitcoin network.
+Run the daemon on the signet Bitcoin network.
 
 ```bash
-$ BLACKHOLE_NETWORK=testnet blackholed
+$ BLACKHOLE_NETWORK=signet blackholed
 ```
 
 Run the daemon and open the wallet

@@ -42,9 +42,9 @@ public class WalletDirectoriesTests
 		Assert.Equal(Network.Main, mainWd.Network);
 		Assert.Equal(Path.Combine(baseDir, "Wallets"), mainWd.WalletsDir);
 
-		var testWd = new WalletDirectories(Network.TestNet, baseDir);
-		Assert.Equal(Network.TestNet, testWd.Network);
-		Assert.Equal(Path.Combine(baseDir, "Wallets", "TestNet4"), testWd.WalletsDir);
+		var signetWd = new WalletDirectories(Bitcoin.Instance.Signet, baseDir);
+		Assert.Equal(Bitcoin.Instance.Signet, signetWd.Network);
+		Assert.Equal(Path.Combine(baseDir, "Wallets", "signet"), signetWd.WalletsDir);
 
 		var regWd = new WalletDirectories(Network.RegTest, baseDir);
 		Assert.Equal(Network.RegTest, regWd.Network);

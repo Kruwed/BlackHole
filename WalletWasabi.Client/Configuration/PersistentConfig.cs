@@ -35,7 +35,6 @@ public record PersistentConfig(
 		Network switch
 		{
 			_ when Network == Network.Main => "Config.json",
-			_ when Network == Network.TestNet => "Config.TestNet.json",
 			_ when Network == Network.RegTest => "Config.RegTest.json",
 			_ when Network == Bitcoin.Instance.Signet => "Config.Signet.json",
 			_ => throw new NotSupportedException("Unsupported network")
@@ -72,10 +71,8 @@ public record PersistentConfig_2_6_0(
 
 public record PersistentConfigPrev2_6_0(
 	string MainNetIndexerUri,
-	string TestNetIndexerUri,
 	string RegTestIndexerUri,
 	string MainNetCoordinatorUri,
-	string TestNetCoordinatorUri,
 	string RegTestCoordinatorUri,
 	string UseTor,
 	bool TerminateTorOnExit,
@@ -83,10 +80,8 @@ public record PersistentConfigPrev2_6_0(
 	bool DownloadNewVersion,
 	bool UseBitcoinRpc,
 	string MainNetBitcoinRpcCredentialString,
-	string TestNetBitcoinRpcCredentialString,
 	string RegTestBitcoinRpcCredentialString,
 	EndPoint MainNetBitcoinRpcEndPoint,
-	EndPoint TestNetBitcoinRpcEndPoint,
 	EndPoint RegTestBitcoinRpcEndPoint,
 	bool JsonRpcServerEnabled,
 	string JsonRpcUser,
@@ -115,12 +110,11 @@ public record PersistentConfigPrev2_6_0(
 
 	private PersistentConfigPrev2_6_0 MigrateOldDefaultBackendUris()
 	{
-		if (MainNetIndexerUri == "https://wasabiwallet.io/" || TestNetIndexerUri == "https://wasabiwallet.co/")
+		if (MainNetIndexerUri == "https://wasabiwallet.io/")
 		{
 			return this with
 			{
 				MainNetIndexerUri = "https://api.wasabiwallet.io/",
-				TestNetIndexerUri = "https://api.wasabiwallet.co/",
 			};
 		}
 
@@ -173,11 +167,9 @@ public record PersistentConfigPrev2_6_0(
 			return this with
 			{
 				MainNetBitcoinRpcEndPoint = GetRpcEndpoint(config, "main", Network.Main.RPCPort),
-				TestNetBitcoinRpcEndPoint = GetRpcEndpoint(config, "testnet4", Network.TestNet.RPCPort),
 				RegTestBitcoinRpcEndPoint = GetRpcEndpoint(config, "regtest", Network.RegTest.RPCPort),
 
 				MainNetBitcoinRpcCredentialString = GetRpcCredentialString(config, "main", defaultBitcoinDataDir) ?? "",
-				TestNetBitcoinRpcCredentialString = GetRpcCredentialString(config, "testnet4", defaultBitcoinDataDir) ?? "",
 				RegTestBitcoinRpcCredentialString = GetRpcCredentialString(config, "regtest", defaultBitcoinDataDir) ?? "",
 			};
 		}

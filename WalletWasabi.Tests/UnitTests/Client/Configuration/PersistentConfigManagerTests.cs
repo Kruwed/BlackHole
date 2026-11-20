@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NBitcoin;
+using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Client;
 using WalletWasabi.Client.Configuration;
 using WalletWasabi.Helpers;
@@ -124,6 +125,88 @@ public class PersistentConfigManagerTests
 		string savedJson = PersistentConfigManager.ToFile(configPath, config);
 		Assert.DoesNotContain("EnableGpu", savedJson);
 		Assert.Contains("\"AbsoluteMinInputCount\": 33", savedJson);
+	}
+
+	/// <summary>
+	/// The application works on mainnet, signet and regtest. Each of them has a config file of its own, and the two
+	/// that are for testing differ from mainnet in the same settings.
+	/// </summary>
+	[Fact]
+	public void EveryNetworkHasItsConfigFile()
+	{
+		Assert.Equal([Network.Main, Bitcoin.Instance.Signet, Network.RegTest], PersistentConfigManager.Networks);
+
+		PersistentConfig[] defaults =
+		[
+			PersistentConfigManager.DefaultMainNetConfig,
+			PersistentConfigManager.DefaultSignetConfig,
+			PersistentConfigManager.DefaultRegTestConfig
+		];
+		Assert.Equal(PersistentConfigManager.Networks, defaults.Select(config => config.Network));
+		Assert.Equal(["Config.json", "Config.Signet.json", "Config.RegTest.json"], defaults.Select(config => config.GetConfigFileName()));
+
+		foreach (var config in defaults)
+		{
+			var isForTesting = config.Network != Network.Main;
+
+			Assert.Equal(RpcSettings.GetDefaultUri(config.Network), config.BitcoinRpcUri);
+			Assert.Equal("", config.BitcoinRpcCredentialString);
+			Assert.Equal(isForTesting, config.JsonRpcServerEnabled);
+			Assert.Equal(isForTesting ? Constants.AbsoluteMinInputCount : Constants.DefaultAbsoluteMinInputCount, config.AbsoluteMinInputCount);
+		}
+	}
+
+	/// <summary>
+	/// A network that is given at the start counts for that start. Without one, the application starts on the network
+	/// that the data folder was first used with.
+	/// </summary>
+	[Fact]
+	public async Task StartsOnTheGivenNetworkOrOnTheOneOfTheDataFolderAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string networkFilePath = Path.Combine(workDirectory, "network");
+
+		// The first start of a data folder writes the network, here the one that is given.
+		Assert.Equal(Bitcoin.Instance.Signet, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, "signet"));
+		Assert.Equal(Bitcoin.Instance.Signet, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName: null));
+
+		// Another network that is given later counts for that start only.
+		Assert.Equal(Network.RegTest, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, "regtest"));
+		Assert.Equal(Bitcoin.Instance.Signet, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName: null));
+
+		// A new data folder is one for mainnet when no network is given.
+		File.Delete(networkFilePath);
+		Assert.Equal(Network.Main, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName: null));
+		Assert.Equal(Network.Main, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName: null));
+	}
+
+	/// <summary>
+	/// The application does not work on testnet4 any more, which is what it called "testnet". A start on it is refused,
+	/// whether the network is given at the start or the data folder was used with it by a version that still had it.
+	/// </summary>
+	[Theory]
+	[InlineData("testnet")]
+	[InlineData("testnet4")]
+	[InlineData("TestNet4")]
+	public async Task RefusesToStartOnTestnetAsync(string networkName)
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string networkFilePath = Path.Combine(workDirectory, "network");
+
+		// Given at the start. A network that is refused is not written into the data folder.
+		var exception = Assert.Throws<NotSupportedException>(() => PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, networkName));
+		Assert.Equal($"Network '{networkName}' is not supported. The supported networks are main, signet and regtest.", exception.Message);
+		Assert.False(File.Exists(networkFilePath));
+
+		// Left in the data folder by a version that had the network. The message tells where the network is set.
+		File.WriteAllText(networkFilePath, networkName);
+		exception = Assert.Throws<NotSupportedException>(() => PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName: null));
+		Assert.StartsWith($"Network '{networkName}' is not supported.", exception.Message);
+		Assert.EndsWith($"The network is set in the file '{networkFilePath}'.", exception.Message);
+
+		// Such a data folder can still be started on a network that is given, and that does not change the folder.
+		Assert.Equal(Network.Main, PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, "main"));
+		Assert.Equal(networkName, File.ReadAllText(networkFilePath));
 	}
 
 	// Test for migration 2.6.0 -> 2.8.0
@@ -266,7 +349,7 @@ public class PersistentConfigManagerTests
 		// Comprehensive test that all non-removed fields are preserved during migration.
 		// What chose external services (new versions, fee rate estimations, broadcasting) is dropped.
 		var v2_6_0Config = new PersistentConfig_2_6_0(
-			Network: Network.TestNet,
+			Network: Network.RegTest,
 			IndexerUri: "https://api.wasabiwallet.co/", // Should be dropped
 			CoordinatorUri: "https://coordinator.test/",
 			UseTor: "EnabledOnlyRunning",
@@ -296,7 +379,7 @@ public class PersistentConfigManagerTests
 		var migratedConfig = WasabiApplication.UpdateFrom260To280(v2_6_0Config);
 
 		// Verify all preserved fields
-		Assert.Equal(Network.TestNet, migratedConfig.Network);
+		Assert.Equal(Network.RegTest, migratedConfig.Network);
 		Assert.Equal("https://coordinator.test/", migratedConfig.CoordinatorUri);
 		Assert.Equal("EnabledOnlyRunning", migratedConfig.UseTor);
 		Assert.True(migratedConfig.TerminateTorOnExit);

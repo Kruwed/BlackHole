@@ -150,38 +150,16 @@ public class WasabiApplication
 		var networkFilePath = Path.Combine(Config.DataDir, "network");
 		Logger.LogInfo($"Loading network file '{networkFilePath}'.");
 
-		Network? network;
-		var networkFileExists = File.Exists(networkFilePath);
 		// The command line and the environment choose the network like they set any other option.
-		if (Config.TryGetOverrideValue("network", AppConfig.Arguments, out var networkName))
-		{
-			network = Network.GetNetwork(networkName) ?? Network.Main;
-			if (!networkFileExists)
-			{
-				PersistentConfigManager.UpdateNetwork(networkFilePath, network);
-			}
-		}
-		else
-		{
-			if (networkFileExists)
-			{
-				networkName = File.ReadAllText(networkFilePath).Trim();
-				network = Network.GetNetwork(networkName) ?? Network.Main;
-			}
-			else
-			{
-				network = Network.Main;
-				PersistentConfigManager.UpdateNetwork(networkFilePath, network);
-			}
-		}
+		Config.TryGetOverrideValue("network", AppConfig.Arguments, out var givenNetworkName);
+		var network = PersistentConfigManager.LoadOrCreateNetwork(networkFilePath, givenNetworkName);
 
-		var configFileName = networkName switch
+		var configFileName = network switch
 		{
 			_ when network == Network.Main => "Config.json",
-			_ when network == Network.TestNet => "Config.TestNet.json",
 			_ when network == Network.RegTest => "Config.RegTest.json",
 			_ when network == Bitcoin.Instance.Signet => "Config.Signet.json",
-			_ => throw new NotSupportedException($"Network '{networkName}' is not supported."),
+			_ => throw new NotSupportedException($"Network '{network}' is not supported."),
 		};
 		var configFilePath = Path.Combine(Config.DataDir, configFileName);
 
@@ -201,8 +179,6 @@ public class WasabiApplication
 	{
 		CreateConfigFileIfNotExists(Path.Combine(Config.DataDir, "Config.RegTest.json"),
 			PersistentConfigManager.DefaultRegTestConfig);
-		CreateConfigFileIfNotExists(Path.Combine(Config.DataDir, "Config.TestNet.json"),
-			PersistentConfigManager.DefaultTestNetConfig);
 		CreateConfigFileIfNotExists(Path.Combine(Config.DataDir, "Config.Signet.json"),
 			PersistentConfigManager.DefaultSignetConfig);
 		CreateConfigFileIfNotExists(Path.Combine(Config.DataDir, "Config.json"),
@@ -231,9 +207,6 @@ public class WasabiApplication
 			var regtestConfigFilePath = Path.Combine(Config.DataDir, "Config.RegTest.json");
 			PersistentConfigManager.ToFile(regtestConfigFilePath, configs.RegTest);
 
-			var testnetConfigFilePath = Path.Combine(Config.DataDir, "Config.TestNet.json");
-			PersistentConfigManager.ToFile(testnetConfigFilePath, configs.TestNet);
-
 			var mainnetConfigFilePath = Path.Combine(Config.DataDir, "Config.json");
 			PersistentConfigManager.ToFile(mainnetConfigFilePath, configs.MainNet);
 		}
@@ -254,7 +227,6 @@ public class WasabiApplication
 		}
 
 		Upgrade("Config.json");
-		Upgrade("Config.TestNet.json");
 		Upgrade("Config.RegTest.json");
 	}
 
@@ -287,7 +259,7 @@ public class WasabiApplication
 	}
 
 
-	private (PersistentConfig MainNet, PersistentConfig TestNet, PersistentConfig RegTest) UpdateFrom260To280((PersistentConfig_2_6_0 MainNet, PersistentConfig_2_6_0 TestNet, PersistentConfig_2_6_0 RegTest) configs260)
+	private (PersistentConfig MainNet, PersistentConfig RegTest) UpdateFrom260To280((PersistentConfig_2_6_0 MainNet, PersistentConfig_2_6_0 RegTest) configs260)
 	{
 		static bool MustMigrate(PersistentConfig_2_6_0 cfg) =>
 			cfg.UseBitcoinRpc is false && !Uri.IsWellFormedUriString(cfg.BitcoinRpcUri, UriKind.Absolute);
@@ -314,28 +286,7 @@ public class WasabiApplication
 			ExperimentalFeatures: []
 		);
 
-		oldConfig = configs260.TestNet;
-		var testConfig = new PersistentConfig(
-			Network: Network.TestNet,
-			BitcoinRpcCredentialString : MustMigrate(configs260.TestNet) ? string.Empty : oldConfig.BitcoinRpcCredentialString,
-			BitcoinRpcUri : MustMigrate(configs260.TestNet) ? string.Empty : oldConfig.BitcoinRpcUri,
-			ExperimentalFeatures : [],
-			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
-			ConfigVersion : 4,
-			CoordinatorUri : oldConfig.CoordinatorUri,
-			CoordinatorIdentifier : oldConfig.CoordinatorIdentifier,
-			UseTor : oldConfig.UseTor,
-			JsonRpcUser : oldConfig.JsonRpcUser,
-			JsonRpcPassword : oldConfig.JsonRpcPassword,
-			JsonRpcServerEnabled : oldConfig.JsonRpcServerEnabled,
-			JsonRpcServerPrefixes : oldConfig.JsonRpcServerPrefixes,
-			TerminateTorOnExit : oldConfig.TerminateTorOnExit,
-			TorBridges : oldConfig.TorBridges,
-			MaxCoinJoinMiningFeeRate : oldConfig.MaxCoinJoinMiningFeeRate,
-			MaxDaysInMempool: oldConfig.MaxDaysInMempool
-		);
-
-		oldConfig = configs260.TestNet;
+		oldConfig = configs260.RegTest;
 		var regtestConfig = new PersistentConfig(
 			Network: Network.RegTest,
 			BitcoinRpcCredentialString: MustMigrate(configs260.RegTest) ? string.Empty : oldConfig.BitcoinRpcCredentialString,
@@ -355,10 +306,10 @@ public class WasabiApplication
 			MaxCoinJoinMiningFeeRate : oldConfig.MaxCoinJoinMiningFeeRate,
 			MaxDaysInMempool: oldConfig.MaxDaysInMempool
 		);
-		return (MainNet: mainConfig, TestNet: testConfig, RegTest: regtestConfig);
+		return (MainNet: mainConfig, RegTest: regtestConfig);
 	}
 
-	private (PersistentConfig_2_6_0 MainNet, PersistentConfig_2_6_0 TestNet, PersistentConfig_2_6_0 RegTest) UpdateFromPrev260To260(PersistentConfigPrev2_6_0 oldConfig)
+	private (PersistentConfig_2_6_0 MainNet, PersistentConfig_2_6_0 RegTest) UpdateFromPrev260To260(PersistentConfigPrev2_6_0 oldConfig)
 	{
 		oldConfig = oldConfig.Migrate();
 		var mainConfig = new PersistentConfig_2_6_0(
@@ -389,14 +340,6 @@ public class WasabiApplication
 			ExperimentalFeatures: []
 		);
 
-		var testConfig = mainConfig with
-		{
-			Network	= Network.TestNet,
-			CoordinatorUri = oldConfig.TestNetCoordinatorUri,
-			BitcoinRpcCredentialString = oldConfig.TestNetBitcoinRpcCredentialString,
-			BitcoinRpcUri = oldConfig.TestNetBitcoinRpcEndPoint.ToUriString("http")
-		};
-
 		var regtestConfig = mainConfig with
 		{
 			Network = Network.RegTest,
@@ -404,7 +347,7 @@ public class WasabiApplication
 			BitcoinRpcCredentialString = oldConfig.RegTestBitcoinRpcCredentialString,
 			BitcoinRpcUri = oldConfig.RegTestBitcoinRpcEndPoint.ToUriString("http")
 		};
-		return (MainNet: mainConfig, TestNet: testConfig, RegTest: regtestConfig);
+		return (MainNet: mainConfig, RegTest: regtestConfig);
 	}
 
 	private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

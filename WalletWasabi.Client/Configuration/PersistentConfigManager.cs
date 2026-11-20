@@ -1,5 +1,6 @@
 using NBitcoin;
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using WalletWasabi.Crypto.Randomness;
@@ -32,29 +33,49 @@ public static class PersistentConfigManager
 		ExperimentalFeatures: [],
 		ConfigVersion : 4);
 
-	public static readonly PersistentConfig DefaultTestNetConfig = DefaultMainNetConfig with
-	{
-		Network = Network.TestNet,
-		CoordinatorUri = Constants.TestnetCoordinatorUri,
-		BitcoinRpcCredentialString = string.Empty,
-		BitcoinRpcUri = Constants.DefaultTestNetBitcoinRpcUri,
-		JsonRpcServerEnabled = true,
-		AbsoluteMinInputCount = Constants.AbsoluteMinInputCount,
-	};
-
-	public static readonly PersistentConfig DefaultRegTestConfig = DefaultTestNetConfig with
+	public static readonly PersistentConfig DefaultRegTestConfig = DefaultMainNetConfig with
 	{
 		Network = Network.RegTest,
 		CoordinatorUri = Constants.RegTestCoordinatorUri,
 		BitcoinRpcUri = Constants.DefaultRegTestBitcoinRpcUri,
+		JsonRpcServerEnabled = true,
+		AbsoluteMinInputCount = Constants.AbsoluteMinInputCount,
 	};
 
-	public static readonly PersistentConfig DefaultSignetConfig = DefaultTestNetConfig with
+	public static readonly PersistentConfig DefaultSignetConfig = DefaultRegTestConfig with
 	{
 		Network = Bitcoin.Instance.Signet,
 		CoordinatorUri = Constants.SignetCoordinatorUri,
 		BitcoinRpcUri = Constants.DefaultSignetBitcoinRpcUri,
 	};
+
+	/// <summary>The networks that the application works on.</summary>
+	public static readonly ImmutableArray<Network> Networks = [Network.Main, Bitcoin.Instance.Signet, Network.RegTest];
+
+	/// <summary>
+	/// Tells the network that the application starts on: the one that was given at the start or, failing that, the one in the
+	/// network file of the data folder. A data folder without that file is one for mainnet. The first start writes the network into the file.
+	/// </summary>
+	/// <exception cref="NotSupportedException">The application does not work on the network. Such a network is not written into the file.</exception>
+	public static Network LoadOrCreateNetwork(string networkFilePath, string? givenNetworkName)
+	{
+		var networkFileExists = File.Exists(networkFilePath);
+		var networkName = givenNetworkName ?? (networkFileExists ? File.ReadAllText(networkFilePath).Trim() : null);
+		var network = networkName is null ? Network.Main : Network.GetNetwork(networkName) ?? Network.Main;
+
+		if (!Networks.Contains(network))
+		{
+			var whereItIsSet = givenNetworkName is null ? $" The network is set in the file '{networkFilePath}'." : "";
+			throw new NotSupportedException($"Network '{networkName}' is not supported. The supported networks are main, signet and regtest.{whereItIsSet}");
+		}
+
+		if (!networkFileExists)
+		{
+			UpdateNetwork(networkFilePath, network);
+		}
+
+		return network;
+	}
 
 	public static string ToFile(string filePath, PersistentConfig obj)
 	{
@@ -107,7 +128,6 @@ public static class PersistentConfigManager
 			Path.GetFileName(configFilePath) switch
 			{
 				"Config.json" => DefaultMainNetConfig,
-				"Config.TestNet.json" => DefaultTestNetConfig,
 				"Config.RegTest.json" => DefaultRegTestConfig,
 				"Config.Signet.json" => DefaultSignetConfig,
 				_ => throw new ArgumentException($"The file '{configFilePath}' is not a valid config file name.")

@@ -110,15 +110,12 @@ public class KeyManager
 	public static KeyPath GetAccountKeyPath(Network network, KeyPurpose purpose) =>
 		new((network.Name, purpose) switch
 		{
-			("TestNet4", KeyPurpose.LoudPaymentKey) => "m/86h/1h/0h",
 			("signet", KeyPurpose.LoudPaymentKey) => "m/86h/1h/0h",
 			("RegTest", KeyPurpose.LoudPaymentKey) => "m/86h/0h/0h",
 			("Main", KeyPurpose.LoudPaymentKey) => "m/86h/0h/0h",
-			("TestNet4", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/1h/0h/1h",
 			("signet", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/1h/0h/1h",
 			("RegTest", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/0h/0h/1h",
 			("Main", KeyPurpose.SilentPaymentKey.ScanKey) => "m/352h/0h/0h/1h",
-			("TestNet4", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/1h/0h/0h",
 			("signet", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/1h/0h/0h",
 			("RegTest", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/0h/0h/0h",
 			("Main", KeyPurpose.SilentPaymentKey.SpendKey) => "m/352h/0h/0h/0h",

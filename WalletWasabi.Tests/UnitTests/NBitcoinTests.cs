@@ -11,7 +11,7 @@ public class NBitcoinTests
 	public void DefaultPortsMatch()
 	{
 		Assert.Equal(WalletWasabi.Helpers.Constants.DefaultMainNetBitcoinRpcPort, Network.Main.RPCPort);
-		Assert.Equal(WalletWasabi.Helpers.Constants.DefaultTestNetBitcoinRpcPort, Network.TestNet.RPCPort);
+		Assert.Equal(WalletWasabi.Helpers.Constants.DefaultSignetBitcoinRpcPort, Bitcoin.Instance.Signet.RPCPort);
 		Assert.Equal(WalletWasabi.Helpers.Constants.DefaultRegTestBitcoinCorePort, Network.RegTest.RPCPort);
 	}
 

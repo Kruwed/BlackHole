@@ -40,7 +40,7 @@ public class BitcoinAddressJsonConverter : JsonConverter<BitcoinAddress>
 		{
 			try
 			{
-				ba = BitcoinAddress.Create(bitcoinAddressString, Network.TestNet);
+				ba = BitcoinAddress.Create(bitcoinAddressString, Bitcoin.Instance.Signet);
 			}
 			catch
 			{

@@ -114,7 +114,7 @@ public partial class RedeemBondViewModel : RoutableViewModel
 
 	private void UpdateOptions(FeeRateEstimations? estimations)
 	{
-		if (!TransactionFeeHelper.TryGetFeeEstimates(estimations, _walletModel.Network, out var usable))
+		if (!TransactionFeeHelper.TryGetFeeEstimates(estimations, out var usable))
 		{
 			return;
 		}

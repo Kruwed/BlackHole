@@ -177,13 +177,13 @@ public class Bip321UriParserTests
 		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(Money.Coins(50m), result.Amount);
 
-		Assert.True(Bip321UriParser.TryParse("bitcoin:2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.TestNet, out result, out error));
+		Assert.True(Bip321UriParser.TryParse("bitcoin:2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Bitcoin.Instance.Signet, out result, out error));
 		Assert.Null(error);
 		Assert.Equal("2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc", result.Address.ToWif(Network.Main));
 		Assert.Equal("Luke-Jr", result.Label);
 		Assert.Equal(Money.Coins(50m), result.Amount);
 
-		Assert.True(Bip321UriParser.TryParse("bitcoin:tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Network.TestNet, out result, out error));
+		Assert.True(Bip321UriParser.TryParse("bitcoin:tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx?amount=50&label=Luke-Jr&message=Donation%20for%20project%20xyz", Bitcoin.Instance.Signet, out result, out error));
 		Assert.Null(error);
 		Assert.Equal("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", result.Address.ToWif(Network.Main));
 		Assert.Equal("Luke-Jr", result.Label);
@@ -193,7 +193,7 @@ public class Bip321UriParserTests
 		Assert.Null(error);
 		Assert.Equal("18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", result.Address.ToWif(Network.Main));
 
-		Assert.True(Bip321UriParser.TryParse("bitcoin:mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP?amount=0.02&label=bolt11_example&lightning=lntb20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfpp3x9et2e20v6pu37c5d9vax37wxq72un989qrsgqdj545axuxtnfemtpwkc45hx9d2ft7x04mt8q7y6t0k2dge9e7h8kpy9p34ytyslj3yu569aalz2xdk8xkd7ltxqld94u8h2esmsmacgpghe9k8", Network.TestNet, out result, out error));
+		Assert.True(Bip321UriParser.TryParse("bitcoin:mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP?amount=0.02&label=bolt11_example&lightning=lntb20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfpp3x9et2e20v6pu37c5d9vax37wxq72un989qrsgqdj545axuxtnfemtpwkc45hx9d2ft7x04mt8q7y6t0k2dge9e7h8kpy9p34ytyslj3yu569aalz2xdk8xkd7ltxqld94u8h2esmsmacgpghe9k8", Bitcoin.Instance.Signet, out result, out error));
 		Assert.Null(error);
 		Assert.Equal("mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP", result.Address.ToWif(Network.Main));
 		Assert.Equal("bolt11_example", result.Label);
@@ -201,7 +201,7 @@ public class Bip321UriParserTests
 
 		// Handling of unknown parameters.
 		{
-			Assert.True(Bip321UriParser.TryParse("bitcoin:mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP?amount=0.02&label=unknown_params&unknown1=1&unknown2=true&unknown3=someValue", Network.TestNet, out result, out error));
+			Assert.True(Bip321UriParser.TryParse("bitcoin:mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP?amount=0.02&label=unknown_params&unknown1=1&unknown2=true&unknown3=someValue", Bitcoin.Instance.Signet, out result, out error));
 			Assert.Null(error);
 			Assert.Equal("mk2QpYatsKicvFVuTAQLBryyccRXMUaGHP", result.Address.ToWif(Network.Main));
 			Assert.Equal("unknown_params", result.Label);

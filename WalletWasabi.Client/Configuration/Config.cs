@@ -82,7 +82,7 @@ public class Config
 	private static readonly Dictionary<string, string> Help =
 		new()
 		{
-			[nameof(Network)] = "The Bitcoin network to use: main, testnet, signet, or regtest",
+			[nameof(Network)] = "The Bitcoin network to use: main, signet, or regtest",
 			[nameof(CoordinatorUri)] = "The coordinator server's URL to connect to",
 			[nameof(UseTor)] = "All the communications go through the Tor network",
 			[nameof(TorFolder)] = "Folder where Tor binary is located",

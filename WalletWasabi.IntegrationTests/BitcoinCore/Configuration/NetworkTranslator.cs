@@ -12,10 +12,6 @@ public static class NetworkTranslator
 		{
 			return "main";
 		}
-		else if (network == Network.TestNet)
-		{
-			return "test";
-		}
 		else if (network == Network.RegTest)
 		{
 			return "regtest";
@@ -41,10 +37,6 @@ public static class NetworkTranslator
 		{
 			return "";
 		}
-		else if (network == Network.TestNet)
-		{
-			return "testnet3";
-		}
 		else if (network == Network.RegTest)
 		{
 			return "regtest";
@@ -60,10 +52,6 @@ public static class NetworkTranslator
 		if (network == Network.Main)
 		{
 			return ["-regtest=0", "-testnet=0"];
-		}
-		else if (network == Network.TestNet)
-		{
-			return ["-regtest=0", "-testnet4=1"];
 		}
 		else if (network == Network.RegTest)
 		{

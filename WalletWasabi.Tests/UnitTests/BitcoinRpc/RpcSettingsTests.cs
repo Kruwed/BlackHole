@@ -89,12 +89,11 @@ public class RpcSettingsTests
 	public void DefaultAddressIsTheOneOfBitcoinCore()
 	{
 		Assert.Equal(Constants.DefaultMainNetBitcoinRpcUri, RpcSettings.GetDefaultUri(Network.Main));
-		Assert.Equal(Constants.DefaultTestNetBitcoinRpcUri, RpcSettings.GetDefaultUri(Network.TestNet));
 		Assert.Equal(Constants.DefaultSignetBitcoinRpcUri, RpcSettings.GetDefaultUri(Bitcoin.Instance.Signet));
 		Assert.Equal(Constants.DefaultRegTestBitcoinRpcUri, RpcSettings.GetDefaultUri(Network.RegTest));
 
 		// Every default is an address that can be asked.
-		foreach (var network in new[] { Network.Main, Network.TestNet, Bitcoin.Instance.Signet, Network.RegTest })
+		foreach (var network in new[] { Network.Main, Bitcoin.Instance.Signet, Network.RegTest })
 		{
 			Assert.True(RpcSettings.TryParseUri(RpcSettings.GetDefaultUri(network), out _));
 		}

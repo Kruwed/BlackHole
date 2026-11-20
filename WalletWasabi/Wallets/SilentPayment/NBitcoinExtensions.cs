@@ -17,10 +17,6 @@ public static class NBitcoinExtensions
 		{
 			return "sp";
 		}
-		if (network == Network.TestNet)
-		{
-			return "tsp";
-		}
 		if (network == Bitcoin.Instance.Signet)
 		{
 			return "tsp";

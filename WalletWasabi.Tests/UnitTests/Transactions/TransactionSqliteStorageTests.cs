@@ -19,7 +19,7 @@ public class TransactionSqliteStorageTests
 {
 	[Theory]
 	[InlineData("main")]
-	[InlineData("testnet")]
+	[InlineData("signet")]
 	public void InsertDelete(string networkString)
 	{
 		Network? network = Network.GetNetwork(networkString);

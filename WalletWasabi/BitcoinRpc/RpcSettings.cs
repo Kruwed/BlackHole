@@ -14,7 +14,6 @@ public static class RpcSettings
 	/// </summary>
 	public static string GetDefaultUri(Network network) =>
 		network == Network.Main ? Constants.DefaultMainNetBitcoinRpcUri
-		: network == Network.TestNet ? Constants.DefaultTestNetBitcoinRpcUri
 		: network == Network.RegTest ? Constants.DefaultRegTestBitcoinRpcUri
 		: Constants.DefaultSignetBitcoinRpcUri;
 

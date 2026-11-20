@@ -23,8 +23,6 @@ public record WabiSabiConfig
 
 	public string MainNetBitcoinRpcUri { get; init; } = $"http://localhost:{Constants.DefaultMainNetBitcoinRpcPort}";
 
-	public string TestNetBitcoinRpcUri { get; init; } = Constants.DefaultTestNetBitcoinRpcUri;
-
 	public string RegTestBitcoinRpcUri { get; init; } = Constants.DefaultRegTestBitcoinRpcUri;
 
 	public string BitcoinRpcConnectionString { get; init; } = "user:password";

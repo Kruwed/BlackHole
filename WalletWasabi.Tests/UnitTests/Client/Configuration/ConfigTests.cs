@@ -142,11 +142,10 @@ public class ConfigTests
 
 	/// <summary>
 	/// The default credentials are the cookie file that Bitcoin Core writes into its data folder. NBitcoin knows the place
-	/// of the file for every network but testnet4, which is what "testnet" means here.
+	/// of the file for every network of the application.
 	/// </summary>
 	[Theory]
 	[InlineData("main", ".cookie")]
-	[InlineData("testnet", "testnet4/.cookie")]
 	[InlineData("signet", "signet/.cookie")]
 	[InlineData("regtest", "regtest/.cookie")]
 	public void DefaultCredentialsAreTheCookieFileOfBitcoinCore(string networkName, string expectedPathEnd)
@@ -158,7 +157,7 @@ public class ConfigTests
 		Assert.NotNull(cookieFilePath);
 		Assert.EndsWith(Path.Combine(".bitcoin", expectedPathEnd.Replace('/', Path.DirectorySeparatorChar)), cookieFilePath);
 
-		// The client can be made without credentials. It threw on testnet4.
+		// The client can be made without credentials.
 		var rpcClient = new RPCClient(new RPCCredentialString(), new Uri("http://localhost:1/"), network);
 		Assert.True(rpcClient.CredentialString.UseDefault);
 	}

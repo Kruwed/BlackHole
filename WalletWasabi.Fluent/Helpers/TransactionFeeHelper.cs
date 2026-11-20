@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -14,31 +13,11 @@ namespace WalletWasabi.Fluent.Helpers;
 
 public static class TransactionFeeHelper
 {
-	private static readonly FeeRateEstimations TestNetFeeRateEstimations = new(
-		new Dictionary<int, FeeRate>
-		{
-			[1] = new( 17m),
-			[2] = new( 12m),
-			[3] = new( 9m),
-			[6] = new( 9m),
-			[18] = new( 2m),
-			[36] = new( 2m),
-			[72] = new( 2m),
-			[144] = new( 2m),
-			[432] = new( 1m),
-			[1008] = new( 1m)
-		});
-
 	public static bool TryGetFeeEstimates(Wallet wallet, [NotNullWhen(true)] out FeeRateEstimations? estimates)
-		=> TryGetFeeEstimates(wallet.FeeRateEstimations, wallet.Network, out estimates);
+		=> TryGetFeeEstimates(wallet.FeeRateEstimations, out estimates);
 
-	public static bool TryGetFeeEstimates(FeeRateEstimations? feeRateEstimations, Network network, [NotNullWhen(true)] out FeeRateEstimations? estimates)
+	public static bool TryGetFeeEstimates(FeeRateEstimations? feeRateEstimations, [NotNullWhen(true)] out FeeRateEstimations? estimates)
 	{
-		if (network == Network.TestNet)
-		{
-			estimates = TestNetFeeRateEstimations;
-			return true;
-		}
 		if (feeRateEstimations is { Estimations.Count: > 0 })
 		{
 			estimates = feeRateEstimations;

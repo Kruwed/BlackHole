@@ -45,7 +45,7 @@ public class OutputDescriptorTests
 
 	[Theory]
 	[InlineData("Main", "86'/0'/0'")]
-	[InlineData("TestNet4", "86'/1'/0'")]
+	[InlineData("Signet", "86'/1'/0'")]
 	[InlineData("RegTest", "86'/0'/0'")]
 	public void UsesTheBip86AccountOfTheNetwork(string networkName, string expectedAccountKeyPath)
 	{

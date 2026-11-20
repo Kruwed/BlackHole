@@ -119,10 +119,8 @@ public static class PersistentConfigDecode
 	public static readonly Decoder<PersistentConfigPrev2_6_0> PersistentConfigPrev2_6_0 =
 		Object(get => new PersistentConfigPrev2_6_0(
 			get.Required("MainNetBackendUri", Decode.String),
-			get.Required("TestNetBackendUri", Decode.String),
 			get.Required("RegTestBackendUri", Decode.String),
 			get.Required("MainNetCoordinatorUri", Decode.String),
-			get.Required("TestNetCoordinatorUri", Decode.String),
 			get.Required("RegTestCoordinatorUri", Decode.String),
 			get.Required("UseTor", UseTor),
 			get.Required("TerminateTorOnExit", Decode.Bool),
@@ -130,10 +128,8 @@ public static class PersistentConfigDecode
 			get.Required("DownloadNewVersion", Decode.Bool),
 			get.Optional("UseBitcoinRpc", Decode.Bool, false),
 			get.Optional("MainNetBitcoinRpcCredentialString", Decode.String) ?? "",
-			get.Optional("TestNetBitcoinRpcCredentialString", Decode.String) ?? "",
 			get.Optional("RegTestBitcoinRpcCredentialString", Decode.String) ?? "",
 			get.Optional("MainNetBitcoinRpcEndPoint", Decode.EndPoint) ?? DefaultEndPoint,
-			get.Optional("TestNetBitcoinRpcEndPoint", Decode.EndPoint) ?? DefaultEndPoint,
 			get.Optional("RegTestBitcoinRpcEndPoint", Decode.EndPoint) ?? DefaultEndPoint,
 			get.Required("JsonRpcServerEnabled", Decode.Bool),
 			get.Required("JsonRpcUser", Decode.String),

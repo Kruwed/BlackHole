@@ -21,6 +21,5 @@ The ports of Wasabi Wallet and of its ancestor HiddenWallet (3712x, 3715x) are c
 | 9150  | Tor socks port used by Tor Browser                      |
 | 9151  | Tor control port used by Tor Browser                    |
 | 8332  | Bitcoin Core Mainnet RPC                                |
-| 48332 | Bitcoin Core Testnet4 RPC                               |
 | 38332 | Bitcoin Core Signet RPC                                 |
 | 18443 | Bitcoin Core Regtest RPC                                |

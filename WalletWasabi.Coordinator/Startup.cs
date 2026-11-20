@@ -81,10 +81,6 @@ public class Startup(IConfiguration configuration)
 			{
 				host = config.MainNetBitcoinRpcUri;
 			}
-			else if (config.Network == Network.TestNet)
-			{
-				host = config.TestNetBitcoinRpcUri;
-			}
 			else if (config.Network == Network.RegTest)
 			{
 				host = config.RegTestBitcoinRpcUri;

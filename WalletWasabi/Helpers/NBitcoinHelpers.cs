@@ -17,19 +17,12 @@ public static class NBitcoinHelpers
 		{
 			try
 			{
-				epk = ExtPubKey.Parse(extPubKeyString, Network.TestNet); // Starts with "ExtPubKey": "xpub...
+				epk = ExtPubKey.Parse(extPubKeyString, Network.RegTest); // Starts with "ExtPubKey": "tpub...
 			}
 			catch
 			{
-				try
-				{
-					epk = ExtPubKey.Parse(extPubKeyString, Network.RegTest); // Starts with "ExtPubKey": "xpub...
-				}
-				catch
-				{
-					// Try hex, Old wallet format was like this.
-					epk = new ExtPubKey(Convert.FromHexString(extPubKeyString)); // Starts with "ExtPubKey": "hexbytes...
-				}
+				// Try hex, Old wallet format was like this.
+				epk = new ExtPubKey(Convert.FromHexString(extPubKeyString)); // Starts with "ExtPubKey": "hexbytes...
 			}
 		}
 

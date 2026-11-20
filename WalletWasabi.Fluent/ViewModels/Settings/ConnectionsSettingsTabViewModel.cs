@@ -6,6 +6,7 @@ using System.Windows.Input;
 using NBitcoin;
 using NBitcoin.RPC;
 using ReactiveUI;
+using WalletWasabi.Client.Configuration;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.Validation;
@@ -55,7 +56,7 @@ public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 
 	public ApplicationSettings Settings { get; }
 
-	public IEnumerable<Network> Networks { get; } = [Network.Main, Network.TestNet, Bitcoin.Instance.Signet, Network.RegTest];
+	public IEnumerable<Network> Networks { get; } = PersistentConfigManager.Networks;
 
 	public IReadOnlyList<TorMode> TorModes =>
 		Enum.GetValues<TorMode>();

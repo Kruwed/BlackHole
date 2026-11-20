@@ -119,7 +119,7 @@ public partial class SendFeeViewModel : DialogViewModelBase<FeeRate>
 		UiContext.Services.EventBus.AsObservable<MiningFeeRatesChanged>()
 			.Select(e =>
 			{
-				TransactionFeeHelper.TryGetFeeEstimates(e.AllFeeEstimate, _wallet.Network, out var estimates);
+				TransactionFeeHelper.TryGetFeeEstimates(e.AllFeeEstimate, out var estimates);
 				return estimates;
 			})
 			.WhereNotNull()

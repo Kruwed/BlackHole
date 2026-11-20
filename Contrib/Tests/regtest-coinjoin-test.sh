@@ -87,7 +87,6 @@ cat > $COORDINATOR_DATADIR/Config.json << EOF
 {
   "Network": "RegTest",
   "MainNetBitcoinRpcUri": "http://localhost:$BITCOIN_RPC_PORT",
-  "TestNetBitcoinRpcUri": "http://localhost:$BITCOIN_RPC_PORT",
   "RegTestBitcoinRpcUri": "http://localhost:$BITCOIN_RPC_PORT",
   "BitcoinRpcConnectionString": "regtest:regtest",
   "ConfirmationTarget": 108,

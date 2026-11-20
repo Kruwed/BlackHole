@@ -30,7 +30,6 @@ public static partial class Encode
 		Object([
 			("Network", Network(cfg.Network)),
 			("MainNetBitcoinRpcUri", String(cfg.MainNetBitcoinRpcUri)),
-			("TestNetBitcoinRpcUri", String(cfg.TestNetBitcoinRpcUri)),
 			("RegTestBitcoinRpcUri", String(cfg.RegTestBitcoinRpcUri)),
 			("BitcoinRpcConnectionString", String(cfg.BitcoinRpcConnectionString)),
 			("ConfirmationTarget", UInt(cfg.ConfirmationTarget)),
@@ -106,7 +105,6 @@ public static partial class Decode
 		{
 			Network = get.Required("Network", Network),
 			MainNetBitcoinRpcUri = get.Required("MainNetBitcoinRpcUri", String),
-			TestNetBitcoinRpcUri = get.Required("TestNetBitcoinRpcUri", String),
 			RegTestBitcoinRpcUri = get.Required("RegTestBitcoinRpcUri", String),
 			BitcoinRpcConnectionString = get.Required("BitcoinRpcConnectionString", String),
 			ConfirmationTarget = get.Required("ConfirmationTarget", UInt),

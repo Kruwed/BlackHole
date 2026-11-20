@@ -94,7 +94,7 @@ public class AllTransactionStoreTests
 		var networks = new List<Network>
 		{
 			Network.Main,
-			Network.TestNet,
+			Bitcoin.Instance.Signet,
 			Network.RegTest
 		};
 
@@ -129,7 +129,7 @@ public class AllTransactionStoreTests
 	[Fact]
 	public async Task CanInitializeAsync()
 	{
-		var network = Network.TestNet;
+		var network = Bitcoin.Instance.Signet;
 
 		var uTx1 = new SmartTransaction(
 			Transaction.Parse("01000000000102d5ae6e2612cdf8932d0e4f684d8ad9afdbca0afffba5c3dc0bf85f2b661bfb670000000000ffffffffbfd117908d5ba536624630519aaea7419605efa33bf1cb50c5ff7441f7b27a5b0100000000ffffffff01c6473d0000000000160014f9d25fe27812c3d35ad3819fcab8b95098effe15024730440220165730f8275434a5484b6aba3c71338a109b7cfd7380fdc18c6791a6afba9dee0220633b3b65313e57bdbd491d17232e6702912869d81461b4c939600d1cc99c06ec012102667c9fb272660cd6c06f853314b53c41da851f86024f9475ff15ea0636f564130247304402205e81562139231274cd7f705772c2810e34b7a291bd9882e6c567553babca9c7402206554ebd60d62a605a27bd4bf6482a533dd8dd35b12dc9d6abfa21738fdf7b57a012102b25dec5439a1aad8d901953a90d16252514a55f547fe2b85bc12e3f72cff1c4b00000000", network),
@@ -235,7 +235,7 @@ public class AllTransactionStoreTests
 	[Fact]
 	public async Task MempoolAndConfirmedDuplicatesAsync()
 	{
-		Network network = Network.TestNet;
+		Network network = Bitcoin.Instance.Signet;
 		PrepareTestEnv(network, out SmartTransaction uTx1, out SmartTransaction uTx2, out SmartTransaction uTx3, out SmartTransaction cTx1, out SmartTransaction cTx2, out SmartTransaction cTx3);
 
 		using AllTransactionStore txStore = new(SqliteStorageHelper.InMemoryDatabase, network);
@@ -261,7 +261,7 @@ public class AllTransactionStoreTests
 	[Fact]
 	public async Task CorrectOrderAsync()
 	{
-		var network = Network.TestNet;
+		var network = Bitcoin.Instance.Signet;
 
 		var uTx1 = new SmartTransaction(
 			Transaction.Parse("01000000000102d5ae6e2612cdf8932d0e4f684d8ad9afdbca0afffba5c3dc0bf85f2b661bfb670000000000ffffffffbfd117908d5ba536624630519aaea7419605efa33bf1cb50c5ff7441f7b27a5b0100000000ffffffff01c6473d0000000000160014f9d25fe27812c3d35ad3819fcab8b95098effe15024730440220165730f8275434a5484b6aba3c71338a109b7cfd7380fdc18c6791a6afba9dee0220633b3b65313e57bdbd491d17232e6702912869d81461b4c939600d1cc99c06ec012102667c9fb272660cd6c06f853314b53c41da851f86024f9475ff15ea0636f564130247304402205e81562139231274cd7f705772c2810e34b7a291bd9882e6c567553babca9c7402206554ebd60d62a605a27bd4bf6482a533dd8dd35b12dc9d6abfa21738fdf7b57a012102b25dec5439a1aad8d901953a90d16252514a55f547fe2b85bc12e3f72cff1c4b00000000", network),
@@ -382,7 +382,7 @@ public class AllTransactionStoreTests
 	[Fact]
 	public async Task ReorgAsync()
 	{
-		Network network = Network.TestNet;
+		Network network = Bitcoin.Instance.Signet;
 		PrepareTestEnv(
 			network,
 			out SmartTransaction uTx1,
