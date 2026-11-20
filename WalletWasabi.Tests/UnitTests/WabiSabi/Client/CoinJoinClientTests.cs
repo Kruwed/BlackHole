@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
+using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Crypto;
 using WalletWasabi.Crypto.Randomness;
 using WalletWasabi.Tests.Helpers;
@@ -264,6 +265,41 @@ public class CoinJoinClientTests
 		}
 
 		Assert.Empty(toCheck);
+	}
+
+	/// <summary>
+	/// The outputs of a round go to addresses that no round had before. The addresses are taken the moment the round gets
+	/// them, and nothing gives them back when the round fails.
+	/// </summary>
+	[Fact]
+	public void EveryRoundGetsNewAddresses()
+	{
+		FeeRate feeRate = new(10m);
+
+		var outputs = new[]
+		{
+			Output.FromDenomination(Money.Coins(1m), ScriptType.Taproot, feeRate),
+			Output.FromDenomination(Money.Coins(2m), ScriptType.Taproot, feeRate),
+			Output.FromDenomination(Money.Coins(3m), ScriptType.Taproot, feeRate),
+		};
+
+		var km = ServiceFactory.CreateKeyManager("");
+		var destinationProvider = new InternalDestinationProvider(km);
+
+		// Nobody tells the wallet how the first round ended: a round that failed is no different from this.
+		var firstRound = OutputProvider.GetTxOuts(outputs, destinationProvider).Select(x => x.ScriptPubKey).ToArray();
+		var secondRound = OutputProvider.GetTxOuts(outputs, destinationProvider).Select(x => x.ScriptPubKey).ToArray();
+
+		Assert.Equal(outputs.Length, firstRound.Length);
+		Assert.Equal(outputs.Length, secondRound.Length);
+		Assert.Equal(2 * outputs.Length, firstRound.Concat(secondRound).Distinct().Count());
+
+		Assert.All(firstRound.Concat(secondRound), script =>
+		{
+			Assert.True(km.TryGetKeyForScriptPubKey(script, out var key));
+			Assert.True(key.IsInternal);
+			Assert.Equal(KeyState.Used, key.KeyState);
+		});
 	}
 
 	private static AliceClient CreateAliceClient(

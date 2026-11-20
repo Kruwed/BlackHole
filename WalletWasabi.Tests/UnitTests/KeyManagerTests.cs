@@ -332,6 +332,79 @@ public class KeyManagerTests
 		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
+	/// <summary>
+	/// The keys of the outputs of a coinjoin round are given out once. Whatever becomes of the round, the next one gets
+	/// other keys: a round that failed has shown its addresses to the coordinator and to the other participants.
+	/// </summary>
+	[Fact]
+	public void CoinJoinKeysAreGivenOutOnlyOnce()
+	{
+		var filePath = "wallet-coinjoin-keys.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+
+		var firstRound = manager.GetNextCoinJoinKeys(4);
+		var secondRound = manager.GetNextCoinJoinKeys(3);
+
+		Assert.Equal([0, 1, 2, 3], firstRound.Select(key => key.Index));
+		Assert.Equal([4, 5, 6], secondRound.Select(key => key.Index));
+		Assert.All(firstRound.Concat(secondRound), key =>
+		{
+			Assert.True(key.IsInternal);
+			Assert.Equal(KeyState.Used, key.KeyState);
+		});
+
+		// Nothing was paid to them, and still the change of a payment does not go to one of them.
+		Assert.Equal(7, manager.GetNextChangeKey().Index);
+
+		// The wallet goes on watching as many unused addresses after them as its gap limit tells.
+		Assert.Equal(Enumerable.Range(7, manager.MinGapLimit), manager.GetKeys(KeyState.Clean, isInternal: true).Select(key => key.Index));
+
+		// The wallet file knows as soon as the keys are given out. A wallet that is closed or that crashes in the middle of a
+		// round does not give them out again.
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal(
+			firstRound.Concat(secondRound).Select(key => key.PubKey),
+			sameManager.GetKeys(KeyState.Used, isInternal: true).Select(key => key.PubKey));
+		Assert.Equal([7, 8], sameManager.GetNextCoinJoinKeys(2).Select(key => key.Index));
+
+		// A round in which the wallet has no output of its own takes no key.
+		Assert.Empty(sameManager.GetNextCoinJoinKeys(0));
+		Assert.Equal(9, sameManager.GetNextChangeKey().Index);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// Earlier versions kept the keys of a round locked until its transaction was broadcast, and gave them to the next round
+	/// if it was not. A key that a wallet file has as locked may therefore have been in a round that failed: no round gets it.
+	/// </summary>
+	[Fact]
+	public void KeysThatWereKeptForTheNextRoundAreNotGivenOut()
+	{
+		var filePath = "wallet-locked-coinjoin-keys.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		foreach (var key in manager.GetKeys(KeyState.Clean, isInternal: true).Take(3))
+		{
+			manager.SetKeyState(KeyState.Locked, key);
+		}
+		manager.ToFile();
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Equal([0, 1, 2], sameManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.Index));
+
+		Assert.Equal([3, 4], sameManager.GetNextCoinJoinKeys(2).Select(key => key.Index));
+
+		// They are not addresses for change either, and they stay as they are.
+		Assert.Equal(5, sameManager.GetNextChangeKey().Index);
+		Assert.Equal([0, 1, 2], sameManager.GetKeys(KeyState.Locked, isInternal: true).Select(key => key.Index));
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
 	[Fact]
 	public void CanSerialize()
 	{

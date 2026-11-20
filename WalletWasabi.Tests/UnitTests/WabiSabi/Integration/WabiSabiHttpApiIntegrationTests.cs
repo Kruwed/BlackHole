@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NBitcoin;
+using NBitcoin.RPC;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -174,6 +176,67 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 	}
 
 	/// <summary>
+	/// A round whose transaction could not be broadcast has shown the addresses of the wallet to the coordinator all the
+	/// same. The next coinjoin of the wallet gets other ones.
+	/// </summary>
+	[Fact]
+	public async Task CoinJoinAfterAFailedBroadcastGetsNewAddressesAsync()
+	{
+		long[] amounts = [10_000_000, 20_000_000, 30_000_000, 40_000_000, 100_000_000];
+		int inputCount = amounts.Length;
+
+		KeyManager keyManager = KeyManager.CreateNew(out _, password: "", Network.Main);
+		var coins = GenerateSmartCoins(keyManager, amounts, inputCount);
+
+		// The node refuses the first transaction that the coordinator sends to it and takes the second one.
+		var sentTransactions = new ConcurrentQueue<Transaction>();
+
+		await using var coordinatorApp = _apiApplicationFactory.WithWebHostBuilder(builder =>
+			builder.AddMockRpcClient(coins,
+				rpc =>
+					rpc.OnSendRawTransactionAsync = (tx) =>
+					{
+						sentTransactions.Enqueue(tx);
+						if (sentTransactions.Count == 1)
+						{
+							throw new RPCException(RPCErrorCode.RPC_TRANSACTION_REJECTED, "The node refuses the transaction.", null);
+						}
+
+						return tx.GetHash();
+					})
+			.ConfigureServices(services =>
+				// The input registration keeps its default length, and ends as soon as the wallet registered its coins. A short
+				// one would open a new round on every tick, and the second coinjoin could get into one that is about to expire.
+				services.AddSingleton(s => new WabiSabiConfig
+				{
+					MaxInputCountByRound = inputCount,
+					OutputRegistrationTimeout = TimeSpan.FromSeconds(20), // This phase always lasts its whole time frame.
+				})));
+
+		using var httpClient = coordinatorApp.CreateClient();
+		var apiClient = _apiApplicationFactory.CreateWabiSabiHttpApiClient(httpClient);
+
+		using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+		using var roundStateUpdater = RoundStateUpdaterForTesting.Create(apiClient);
+		var roundStateProvider = new RoundStateProvider(roundStateUpdater);
+
+		var coinJoinClient = WabiSabiFactory.CreateTestCoinJoinClient(_ => apiClient, keyManager, roundStateProvider);
+
+		Assert.IsType<FailedCoinJoinResult>(await coinJoinClient.StartCoinJoinAsync(() => coins, cts.Token));
+		Assert.IsType<SuccessfulCoinJoinResult>(await coinJoinClient.StartCoinJoinAsync(() => coins, cts.Token));
+
+		Assert.Equal(2, sentTransactions.Count);
+		var addressesByRound = sentTransactions
+			.Select(tx => tx.Outputs.Select(output => output.ScriptPubKey).Where(script => keyManager.TryGetKeyForScriptPubKey(script, out _)).ToArray())
+			.ToArray();
+
+		Assert.NotEmpty(addressesByRound[0]);
+		Assert.NotEmpty(addressesByRound[1]);
+		Assert.Empty(addressesByRound[0].Intersect(addressesByRound[1]));
+	}
+
+	/// <summary>
 	/// A coordinator may ask for a smallest output far above dust. The client joins such a round, and what the wallet
 	/// gives up in it stays within its dust forfeit limit, although the round could not put up to its smallest output
 	/// into an output of its own.
@@ -345,6 +408,10 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 			broadcastedTx.Inputs.Select(x => x.PrevOut.ToString()).Order());
 	}
 
+	/// <summary>
+	/// A participant that does not sign makes the round fail, and the others go on in the blame round. There they register
+	/// other addresses than in the round that failed: that round has shown theirs to the coordinator and to everybody in it.
+	/// </summary>
 	[Theory]
 	[InlineData(new long[] { 30_000_000, 40_000_000 }, new long[] { 50_000_000, 60_000_000 }, new long[] { 70_000_000, 80_000_000 })]
 	public async Task CoinJoinWithBlameRoundTestAsync(long[] satAmounts1, long[] satAmounts2, long[] satAmounts3)
@@ -472,6 +539,24 @@ public class WabiSabiHttpApiIntegrationTests : IClassFixture<WabiSabiApiApplicat
 			.Order();
 
 		Assert.Equal(expectedInputs, actualInputs);
+
+		// No address of the round that failed comes back in the blame round.
+		var roundStates = (await apiClient1.GetStatusAsync(RoundStateRequest.Empty, cts.Token)).RoundStates;
+		var blameRound = Assert.Single(roundStates, x => x.IsBlame && x.EndRoundState == EndRoundState.TransactionBroadcasted);
+		var failedRound = Assert.Single(roundStates, x => x.Id == blameRound.BlameOf);
+		Assert.Equal(EndRoundState.NotAllAlicesSign, failedRound.EndRoundState);
+
+		var failedRoundAddresses = failedRound.CoinjoinState.Outputs.Select(x => x.ScriptPubKey).ToArray();
+		var blameRoundAddresses = blameRound.CoinjoinState.Outputs.Select(x => x.ScriptPubKey).ToArray();
+
+		Assert.Equal(broadcastedTx.Outputs.Select(x => x.ScriptPubKey.ToString()).Order(), blameRoundAddresses.Select(x => x.ToString()).Order());
+		foreach (var keyManager in new[] { keyManager1, keyManager3 })
+		{
+			Assert.Contains(failedRoundAddresses, script => keyManager.TryGetKeyForScriptPubKey(script, out _));
+			Assert.Contains(blameRoundAddresses, script => keyManager.TryGetKeyForScriptPubKey(script, out _));
+		}
+
+		Assert.Empty(failedRoundAddresses.Intersect(blameRoundAddresses));
 	}
 
 	[Theory]

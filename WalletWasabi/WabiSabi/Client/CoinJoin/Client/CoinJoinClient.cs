@@ -274,8 +274,7 @@ public class CoinJoinClient
 			catch (Exception ex)
 			{
 				Logger.LogWarning(FormatLog($"Waiting for the round to end failed with: '{ex}'.", roundState));
-				throw new UnknownRoundEndingException(mySignedCoins,
-					outputTxOuts.Select(o => o.ScriptPubKey).ToImmutableList(), ex);
+				throw new UnknownRoundEndingException(mySignedCoins, ex);
 			}
 
 			var hash = unsignedCoinJoin is { } tx ? tx.GetHash().ToString() : "Not available";
@@ -829,7 +828,6 @@ public class CoinJoinClient
 						break;
 
 					case DependencyGraphTaskScheduler.AlreadyRegisteredScriptError s:
-						_outputProvider.DestinationProvider.TrySetScriptStates(KeyState.Used, [s.ScriptPubKey]);
 						Logger.LogInfo(FormatLog($"Script ({s.ScriptPubKey}) was already registered. Continuing...", roundState));
 						break;
 				}

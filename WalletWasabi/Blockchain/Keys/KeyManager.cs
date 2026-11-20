@@ -381,10 +381,45 @@ public class KeyManager
 			x.IsInternal)
 			.First();
 
-	public ImmutableArray<HdPubKey> GetNextCoinJoinKeys() =>
-		GetKeys(x =>
-				x.KeyState == KeyState.Locked &&
-				x.IsInternal == true);
+	/// <summary>
+	/// Gives out keys for the outputs of one coinjoin round. A key is given out once: the keys are marked as used, and the
+	/// wallet file is written, before this returns and so before anybody gets to see their addresses.
+	/// </summary>
+	/// <remarks>
+	/// Whatever becomes of the round, its keys never go to another one. A round that fails has shown its addresses to the
+	/// coordinator, and to everybody in the round if it got as far as the signing of the transaction. Addresses that come
+	/// back in the next round tell that the two rounds had the same participant.
+	/// </remarks>
+	public ImmutableArray<HdPubKey> GetNextCoinJoinKeys(int count)
+	{
+		lock (_criticalStateLock)
+		{
+			var generator = _taprootInternalKeyGenerator;
+			Guard.InRangeAndNotNull(nameof(count), count, 0, generator.MinGapLimit);
+
+			_hdPubKeyCache.AddRangeKeys(generator.AssertCleanKeysIndexed(_hdPubKeyCache.GetView(generator.KeyPath)).Select(CreateHdPubKey));
+
+			// The gap limit is at least as large as the count, so there are enough clean keys.
+			var keys = _hdPubKeyCache
+				.GetView(generator.KeyPath)
+				.CleanKeys
+				.OrderBy(key => key.Index)
+				.Take(count)
+				.ToImmutableArray();
+
+			foreach (var key in keys)
+			{
+				SetKeyState(KeyState.Used, key);
+			}
+
+			if (keys.Length > 0)
+			{
+				ToFileNoLock();
+			}
+
+			return keys;
+		}
+	}
 
 	public ImmutableArray<HdPubKey> GetKeys(Func<HdPubKey, bool>? wherePredicate)
 	{
@@ -607,45 +642,6 @@ public class KeyManager
 			.Select(CreateHdPubKey);
 
 		_hdPubKeyCache.AddRangeKeys(keys);
-	}
-
-	/// <summary>
-	/// Make sure there's always locked internal keys generated and indexed.
-	/// </summary>
-	public void AssertLockedInternalKeysIndexedAndPersist(int howMany)
-	{
-		lock (_criticalStateLock)
-		{
-			if (AssertLockedInternalKeysIndexedNoLock(howMany))
-			{
-				ToFileNoLock();
-			}
-		}
-	}
-
-	private bool AssertLockedInternalKeysIndexedNoLock(int howMany)
-	{
-		var hdPubKeyGenerator = _taprootInternalKeyGenerator;
-
-		Guard.InRangeAndNotNull(nameof(howMany), howMany, 0, hdPubKeyGenerator.MinGapLimit);
-		var internalView = _hdPubKeyCache.GetView(hdPubKeyGenerator.KeyPath);
-		var lockedKeyCount = internalView.LockedKeys.Count();
-		var missingLockedKeys = Math.Max(howMany - lockedKeyCount, 0);
-
-		_hdPubKeyCache.AddRangeKeys(hdPubKeyGenerator.AssertCleanKeysIndexed(internalView).Select(CreateHdPubKey));
-
-		var availableCandidates = _hdPubKeyCache
-			.GetView(hdPubKeyGenerator.KeyPath)
-			.CleanKeys
-			.Take(missingLockedKeys)
-			.ToList();
-
-		foreach (var hdPubKeys in availableCandidates)
-		{
-			SetKeyState(KeyState.Locked, hdPubKeys);
-		}
-
-		return availableCandidates.Count > 0;
 	}
 
 	public void ToFile()

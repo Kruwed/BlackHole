@@ -368,7 +368,6 @@ public class CoinJoinManager : BackgroundService
 	private async Task HandleCoinJoinFinalizationAsync(CoinJoinTracker finishedCoinJoin, CancellationToken cancellationToken)
 	{
 		var wallet = finishedCoinJoin.Wallet;
-		var destinationProvider = wallet.OutputProvider.DestinationProvider;
 		var batchedPayments = wallet.BatchedPayments;
 		CoinJoinClientException? cjClientException = null;
 		var forceStop = false;
@@ -388,7 +387,6 @@ public class CoinJoinManager : BackgroundService
 					.Sum(p => p.Amount));
 				_coinRefrigerator.Freeze(successfulCoinjoin.Coins);
 				batchedPayments.MovePaymentsToFinished(coinjoinTxId);
-				MarkDestinationsUsed(destinationProvider, successfulCoinjoin.OutputScripts);
 				wallet.AddCoinjoinCosts(coinjoinTxId, successfulCoinjoin.Costs with { PaymentsTotal = paymentsTotal });
 				Logger.LogInfo(FormatLog($"{nameof(CoinJoinClient)} finished. Coinjoin transaction was broadcast.", wallet));
 			}
@@ -403,7 +401,6 @@ public class CoinJoinManager : BackgroundService
 			// Signed payments go back to pending, but they are only paid again in a transaction
 			// that conflicts with this one.
 			_coinRefrigerator.Freeze(ex.Coins);
-			MarkDestinationsUsed(destinationProvider, ex.OutputScripts);
 			Logger.LogWarning(FormatLog($"Round ending unknown: {ex.Message}", wallet));
 		}
 		catch (CoinJoinClientException clientException)
@@ -500,14 +497,6 @@ public class CoinJoinManager : BackgroundService
 				RequestCoinJoinStart(wallet);
 			}
 		}
-	}
-
-	/// <summary>
-	/// Mark all the outputs we had in any of our wallets used.
-	/// </summary>
-	private void MarkDestinationsUsed(IDestinationProvider destinationProvider, ImmutableList<Script> outputs)
-	{
-		destinationProvider.TrySetScriptStates(KeyState.Used, outputs);
 	}
 
 	private void NotifyWalletStartedCoinJoin(Wallet openedWallet) =>

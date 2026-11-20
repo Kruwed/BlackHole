@@ -9,23 +9,9 @@ public class InternalDestinationProvider : IDestinationProvider
 
 	private readonly KeyManager _keyManager;
 
-	public IEnumerable<IDestination> GetNextDestinations(int count)
-	{
-		// Get all locked internal keys we have and assert we have enough.
-		_keyManager.AssertLockedInternalKeysIndexedAndPersist(count);
-
-		return _keyManager.GetNextCoinJoinKeys().Select(x => x.GetAddress(_keyManager.GetNetwork()));
-	}
-
-	public void TrySetScriptStates(KeyState state, IEnumerable<Script> scripts)
-	{
-		foreach (var hdPubKey in _keyManager.GetKeys(key => scripts.Any(key.ContainsScript)))
-		{
-			_keyManager.SetKeyState(state, hdPubKey);
-		}
-
-		_keyManager.ToFile();
-	}
+	/// <remarks>The keys of the addresses are used from here on, and the wallet file knows it, see <see cref="KeyManager.GetNextCoinJoinKeys"/>.</remarks>
+	public IEnumerable<IDestination> GetNextDestinations(int count) =>
+		_keyManager.GetNextCoinJoinKeys(count).Select(key => key.GetAddress(_keyManager.GetNetwork())).ToArray();
 
 	/// <summary>The wallet only has Taproot addresses.</summary>
 	public ImmutableHashSet<ScriptType> SupportedScriptTypes { get; } = [ScriptType.Taproot];

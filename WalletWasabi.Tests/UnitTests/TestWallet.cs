@@ -106,11 +106,6 @@ public class TestWallet : IKeyChain, IDestinationProvider
 		return transaction;
 	}
 
-	public void TrySetScriptStates(KeyState state, IEnumerable<Script> scripts)
-	{
-		// Test wallet doesn't care
-	}
-
 	public IEnumerable<IDestination> GetNextDestinations(int count) =>
 		Enumerable.Range(0, count).Select(_ => CreateNewAddress());
 
