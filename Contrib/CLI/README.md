@@ -64,6 +64,8 @@ fullkeypath     internal  keystate  handedout  scriptpubkey                     
 
 `handedout` tells whether `getnewaddress` (or the Receive screen) already gave the address out. An address is given out only once, whether or not it was paid.
 
+`keystate` is 0 for an address that was not used, 2 for one that a transaction pays to, and 1 for one that nothing was paid to and that is not given out as a new one: a change address that a coinjoin round got, or a receive address that was taken off the list on the Receive screen.
+
 ```bash
 $ ./wcli.sh gethistory | head -10
 
