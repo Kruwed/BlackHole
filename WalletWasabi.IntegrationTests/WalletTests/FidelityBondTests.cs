@@ -95,7 +95,7 @@ public class FidelityBondTests
 			Assert.True(soonBond.IsRedeemable(chainHeight));
 
 			var redemption = wallet.BuildFidelityBondRedemption(soonBond, RegTestEnvironment.DefaultPassword, FeeRate, chainHeight);
-			var broadcaster = new TransactionBroadcaster(env.RpcClient, env.EventBus);
+			var broadcaster = new TransactionBroadcaster(env.RpcClient, env.TransactionStore, env.EventBus);
 			await broadcaster.SendTransactionAsync(redemption);
 
 			await env.WaitForConditionAsync(() => wallet.GetFidelityBonds().Any(bond => bond.UnlockHeight == soon && bond.IsSpent), TimeSpan.FromSeconds(30));
@@ -158,7 +158,7 @@ public class FidelityBondTests
 				FeeStrategy.CreateFromConfirmationTarget(6),
 				allowUnconfirmed: false);
 
-			await new TransactionBroadcaster(env.RpcClient, env.EventBus).SendTransactionAsync(funding.Transaction);
+			await new TransactionBroadcaster(env.RpcClient, env.TransactionStore, env.EventBus).SendTransactionAsync(funding.Transaction);
 
 			// The bond is there at once, unconfirmed, and what the wallet can spend is the change.
 			await env.WaitForConditionAsync(() => wallet.GetFidelityBonds().Count == 1, TimeSpan.FromSeconds(30));

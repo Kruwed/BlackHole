@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -26,6 +27,7 @@ public sealed class TestSocks5Proxy : IAsyncDisposable
 	private readonly Task _acceptLoop;
 	private readonly Lock _lock = new();
 	private readonly List<SocksRequest> _requests = [];
+	private volatile bool _isRefusing;
 
 	/// <param name="destination">Where every client is connected to.</param>
 	public TestSocks5Proxy(IPEndPoint destination)
@@ -37,6 +39,13 @@ public sealed class TestSocks5Proxy : IAsyncDisposable
 	}
 
 	public IPEndPoint EndPoint { get; }
+
+	/// <summary>Whether the proxy turns every client away, like a Tor that reaches nothing. A test can switch that at any time.</summary>
+	public bool IsRefusing
+	{
+		get => _isRefusing;
+		set => _isRefusing = value;
+	}
 
 	public IReadOnlyList<SocksRequest> Requests
 	{
@@ -135,6 +144,13 @@ public sealed class TestSocks5Proxy : IAsyncDisposable
 			lock (_lock)
 			{
 				_requests.Add(new SocksRequest(userName, password, host, (portBytes[0] << 8) | portBytes[1], isHostName));
+			}
+
+			if (IsRefusing)
+			{
+				// The answer of a proxy that could not connect: 5, "connection refused", and an address that says nothing.
+				await stream.WriteAsync(new byte[] { 5, 5, 0, 1, 0, 0, 0, 0, 0, 0 }, _cts.Token);
+				return;
 			}
 
 			using var destination = new TcpClient();

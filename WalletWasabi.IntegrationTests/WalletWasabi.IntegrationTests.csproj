@@ -26,6 +26,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- The stand-in for Tor that the unit tests have, for the node that broadcasts privately. -->
+		<Compile Include="..\WalletWasabi.Tests\Helpers\TestSocks5Proxy.cs" Link="Infrastructure\TestSocks5Proxy.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
 		<None Update="BundledApps\Binaries\linux-arm64\bitcoind">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

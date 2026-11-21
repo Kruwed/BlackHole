@@ -62,6 +62,12 @@ public class CoreNodeParams
 	public int? PeerBlockFilters { get; set; }
 	public string? WhiteBindPermissions { get; set; }
 
+	/// <summary>Whether the node broadcasts the transactions that it is handed privately (1). It needs a proxy for that.</summary>
+	public int? PrivateBroadcast { get; set; }
+
+	/// <summary>The SOCKS5 proxy of the node, as address and port.</summary>
+	public string? Proxy { get; set; }
+
 	public EndPointStrategy P2pEndPointStrategy { get; }
 	public EndPointStrategy RpcEndPointStrategy { get; }
 	public IMemoryCache Cache { get; }

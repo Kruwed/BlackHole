@@ -27,6 +27,17 @@ public interface IRPCClient
 
 	Task<uint256> SendRawTransactionAsync(Transaction transaction, CancellationToken cancellationToken = default);
 
+	/// <summary>
+	/// Tells which transactions the node is broadcasting privately at the moment: the ones that it was handed and has
+	/// not heard back from the network yet. Until it hears a transaction back, the node does not have it in its mempool.
+	/// Bitcoin Core knows the request since version 31.
+	/// </summary>
+	Task<uint256[]> GetPrivateBroadcastQueueAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>Makes the node stop broadcasting a transaction privately.</summary>
+	/// <returns>Whether the node was broadcasting it. It is not if it heard the transaction back already, or was never handed it.</returns>
+	Task<bool> AbortPrivateBroadcastAsync(uint256 txid, CancellationToken cancellationToken = default);
+
 	Task<MempoolEntry> GetMempoolEntryAsync(uint256 txid, bool throwIfNotFound = true, CancellationToken cancellationToken = default);
 
 	Task<uint256[]> GetRawMempoolAsync(CancellationToken cancellationToken = default);

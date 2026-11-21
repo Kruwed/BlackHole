@@ -9,7 +9,7 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 - **One wallet.** Its backup is SLIP39: 20 recovery words by default, or several shares with a threshold if you choose to split it. Before the wallet is created you confirm the backup that you wrote down, by putting every word of it into its place, of every share; no word is filled in for you, and the confirmation cannot be skipped. The password encrypts the wallet file on the computer only; the backup alone recovers the wallet.
 - **Taproot only.** Every address of the wallet is a Taproot (P2TR) address.
 - **A new address for every payment.** *Receive* on the *Coins* tab lists the addresses that await a payment, and *New Address* there generates one that was not given out before.
-- **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions are broadcast through it. The wallet scans the blocks of the node, starting with the block the wallet was created at.
+- **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions leave through the private broadcast of the node, see [Private broadcast](#private-broadcast). The wallet scans the blocks of the node, starting with the block the wallet was created at.
 - **Coinjoins** with the coordinator that you choose, over Tor: WabiSabi rounds, and ZeroLink rounds, which take one coin of a standard amount from every participant and give one output each. See [Coinjoin](#coinjoin) and [ZeroLink rounds](#zerolink-rounds).
 - **Manual coin control**: you tick the coins that a payment spends, that a coinjoin round gets, that a bond locks and that an offer offers.
 - **Fidelity bonds**: coins that are locked until a block height that you name. See [Fidelity bonds](#fidelity-bonds).
@@ -38,7 +38,7 @@ Windows and macOS support, SegWit v0 addresses, hardware wallets, passphrases, B
 ## Requirements
 
 - Linux on x64 or arm64.
-- A Bitcoin node with the RPC interface enabled, for example Bitcoin Core with `server=1`. The node must have the blocks since the creation of the wallet, so a pruned node only works while it still has them.
+- A Bitcoin node with the RPC interface enabled that broadcasts privately: Bitcoin Core 31 or later with `server=1` and `privatebroadcast=1`, and with a way to Tor or I2P, which the private broadcast goes through. See [Private broadcast](#private-broadcast). The node must have the blocks since the creation of the wallet, so a pruned node only works while it still has them.
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) to build from source.
 
 ## Build and run
@@ -65,6 +65,19 @@ The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `
 Recovering a wallet scans every block since the activation of Taproot unless you tell the height the wallet was created at (*Advanced Recovery Options*). On mainnet the full scan takes hours.
 
 A wallet watches 210 unused addresses after the last one that was paid to (its gap limit). A recovered wallet does not find a payment whose address follows more unused addresses than that until the gap limit is raised, in *Advanced Recovery Options* or later with *Resync Wallet* in *Settings → Connections*. Addresses stay unused when they were generated with *New Address* and never paid to. Coinjoin rounds that fail leave change addresses unused too, but they do not take the wallet beyond its gap limit, see [Coinjoin](#coinjoin).
+
+## Private broadcast
+
+Black Hole hands every transaction of the wallet to your node and takes the node to broadcast it privately. Bitcoin Core does that since version 31 with `privatebroadcast=1` in its `bitcoin.conf`, for which the node needs a way to Tor (`proxy=` or `onion=`) or to I2P (`i2psam=`). Such a node does not announce the transaction to the nodes that it is connected to, which would tell them that the transaction came from yours. It sends it over a few short-lived connections through Tor or I2P instead, and takes it into its own mempool only when it hears it back from the network, like a transaction of anybody else.
+
+Black Hole does not check that your node does this, and it cannot ask the node for it: it assumes it. A node without the setting announces the transaction itself, as its own.
+
+What follows from the way such a node works:
+
+- **A transaction is on its way for some seconds.** The node needs them to open its connections and to hear the transaction back. The wallet lists the transaction at once.
+- **A payment from the change of a payment that was just sent waits for that one.** Until the node has heard a transaction back it knows nothing of what the transaction pays out, and it refuses a transaction that spends from it. Black Hole hands the second transaction over again every second until the node takes it. A node that has not heard the first one back after a minute does not get through to Tor or I2P; Black Hole says so then, and the second payment is to be sent again later.
+- **A speed-up or a cancellation stops what it replaces.** If the node is still sending the transaction that is replaced, Black Hole tells it to stop, so that it does not go on sending both.
+- **The node keeps what it is sending in its memory.** A transaction that it has not heard back when it is restarted is gone, and Black Hole goes on listing it as pending. Cancelling it in the *History*, or a speed-up that replaces it, puts something on its way again.
 
 ## Data
 

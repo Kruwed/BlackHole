@@ -92,7 +92,7 @@ public class Global
 		var walletDirectories = new WalletDirectories(Config.Network, DataDir);
 		WalletManager = new WalletManager(Config.Network, walletDirectories, walletFactory);
 
-		TransactionBroadcaster = new TransactionBroadcaster(_bitcoinRpcClient, EventBus);
+		TransactionBroadcaster = new TransactionBroadcaster(_bitcoinRpcClient, TransactionStore, EventBus);
 
 		// The offer of the wallet is there from the start, for whoever shows it. It does nothing until the user posts an offer.
 		RegisterMakerOfferService();

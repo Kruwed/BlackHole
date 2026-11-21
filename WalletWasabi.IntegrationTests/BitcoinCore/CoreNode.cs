@@ -233,6 +233,16 @@ public class CoreNode
 			desiredConfigLines.Add($"{configPrefix}.rpcthreads = {coreNodeParams.RpcThreads}");
 		}
 
+		if (coreNodeParams.PrivateBroadcast is { })
+		{
+			desiredConfigLines.Add($"{configPrefix}.privatebroadcast = {coreNodeParams.PrivateBroadcast}");
+		}
+
+		if (coreNodeParams.Proxy is { })
+		{
+			desiredConfigLines.Add($"{configPrefix}.proxy = {coreNodeParams.Proxy}");
+		}
+
 		var sectionComment = $"# The following configuration options were added or modified by Wasabi Wallet.";
 
 		// If the comment is not already present.
@@ -245,9 +255,14 @@ public class CoreNode
 			desiredConfigLines.Insert(0, sectionComment);
 		}
 
-		if (coreNode.Config.RemoveAll("mempoolreplacement") != 0 // We remove the line, so it will use the default - that is full-RBF.
-			|| coreNode.Config.AddOrUpdate(string.Join(Environment.NewLine, desiredConfigLines))
-			|| !File.Exists(configPath))
+		// What the node is to be started with goes into the file in any case. A file that an earlier start left behind
+		// may say something else, like the proxy of that start.
+		var isConfigChanged = coreNode.Config.AddOrUpdate(string.Join(Environment.NewLine, desiredConfigLines));
+
+		// We remove the line, so it will use the default - that is full-RBF.
+		isConfigChanged |= coreNode.Config.RemoveAll("mempoolreplacement") != 0;
+
+		if (isConfigChanged || !File.Exists(configPath))
 		{
 			IoHelpers.EnsureContainingDirectoryExists(configPath);
 			await File.WriteAllTextAsync(configPath, coreNode.Config.ToString(), CancellationToken.None).ConfigureAwait(false);

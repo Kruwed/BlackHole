@@ -17,6 +17,8 @@ public class MockRpcClient : IRPCClient
 	public Func<Task<BlockchainInfo>>? OnGetBlockchainInfoAsync { get; set; }
 	public Func<uint256, Task<GetBlockRPCResponse>>? OnGetVerboseBlockAsync { get; set; }
 	public Func<Transaction, uint256>? OnSendRawTransactionAsync { get; set; }
+	public Func<Task<uint256[]>>? OnGetPrivateBroadcastQueueAsync { get; set; }
+	public Func<uint256, Task<bool>>? OnAbortPrivateBroadcastAsync { get; set; }
 	public Func<Task<MemPoolInfo>>? OnGetMempoolInfoAsync { get; set; }
 	public Func<uint256, Task<MempoolEntry?>>? OnGetMempoolEntryAsync { get; set; }
 	public Func<Task<uint256[]>>? OnGetRawMempoolAsync { get; set; }
@@ -161,6 +163,16 @@ public class MockRpcClient : IRPCClient
 			{ } fn => Task.FromResult(fn(transaction)),
 			null => Task.FromException<uint256>(new InvalidOperationException($"{nameof(OnSendRawTransactionAsync)} was invoked but never assigned."))
 		};
+	}
+
+	public Task<uint256[]> GetPrivateBroadcastQueueAsync(CancellationToken cancellationToken = default)
+	{
+		return OnGetPrivateBroadcastQueueAsync?.Invoke() ?? NotImplementedTask<uint256[]>(nameof(GetPrivateBroadcastQueueAsync));
+	}
+
+	public Task<bool> AbortPrivateBroadcastAsync(uint256 txid, CancellationToken cancellationToken = default)
+	{
+		return OnAbortPrivateBroadcastAsync?.Invoke(txid) ?? NotImplementedTask<bool>(nameof(AbortPrivateBroadcastAsync));
 	}
 
 	public Task<uint256> SendToAddressAsync(BitcoinAddress address, Money amount, bool replaceable = false, CancellationToken cancellationToken = default)

@@ -142,6 +142,29 @@ public class RpcClientBase : IRPCClient
 		return await RpcClient.EstimateSmartFeeAsync(confirmationTarget, estimateMode, cancellationToken).ConfigureAwait(false);
 	}
 
+	public virtual async Task<uint256[]> GetPrivateBroadcastQueueAsync(CancellationToken cancellationToken = default)
+	{
+		var response = await RpcClient.SendCommandAsync("getprivatebroadcastinfo", cancellationToken).ConfigureAwait(false);
+
+		return response.Result?["transactions"] is JArray transactions
+			? [.. transactions.Select(transaction => uint256.Parse(transaction.Value<string>("txid")))]
+			: [];
+	}
+
+	public virtual async Task<bool> AbortPrivateBroadcastAsync(uint256 txid, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			await RpcClient.SendCommandAsync("abortprivatebroadcast", cancellationToken, txid.ToString()).ConfigureAwait(false);
+			return true;
+		}
+		catch (RPCException ex) when (ex.RPCCode == RPCErrorCode.RPC_INVALID_ADDRESS_OR_KEY)
+		{
+			// The node is not broadcasting such a transaction.
+			return false;
+		}
+	}
+
 	public virtual IRPCClient PrepareBatch()
 	{
 		return new RpcClientBase(RpcClient.PrepareBatch());

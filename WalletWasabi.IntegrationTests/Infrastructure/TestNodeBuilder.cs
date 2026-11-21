@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -13,10 +14,12 @@ namespace WalletWasabi.IntegrationTests.Infrastructure;
 public static class TestNodeBuilder
 {
 	/// <param name="txIndex">Whether the node keeps an index of all transactions (1) or not (0).</param>
-	public static async Task<CoreNode> CreateAsync([CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", string additionalFolder = "", int txIndex = 1)
+	/// <param name="configure">Changes what the node is started with, if it is not to be a node like the others.</param>
+	public static async Task<CoreNode> CreateAsync([CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", string additionalFolder = "", int txIndex = 1, Action<CoreNodeParams>? configure = null)
 	{
 		var dataDir = Path.Combine(GetWorkDir(callerFilePath, callerMemberName), additionalFolder);
 		var nodeParameters = CreateDefaultCoreNodeParams(dataDir, txIndex);
+		configure?.Invoke(nodeParameters);
 
 		return await CoreNode.CreateAsync(nodeParameters, CancellationToken.None).ConfigureAwait(false);
 	}

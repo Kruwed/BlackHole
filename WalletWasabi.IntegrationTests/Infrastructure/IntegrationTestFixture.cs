@@ -21,9 +21,9 @@ public class IntegrationTestFixture : IAsyncLifetime, IAsyncDisposable
 	/// <summary>Wallet-specific RPC client for operations requiring wallet context.</summary>
 	public IRPCClient WalletRpcClient { get; private set; } = null!;
 
-	public async ValueTask InitializeAsync()
+	public virtual async ValueTask InitializeAsync()
 	{
-		BitcoinCoreNode = await TestNodeBuilder.CreateAsync(callerFilePath: "IntegrationTests", callerMemberName: "BitcoinCoreData");
+		BitcoinCoreNode = await CreateNodeAsync();
 
 		// Create a wallet for the Bitcoin Core node and get the wallet-specific RPC client
 		var walletRpc = await BitcoinCoreNode.RpcClient.CreateWalletAsync(walletNameOrPath: "integration_test_wallet");
@@ -37,12 +37,18 @@ public class IntegrationTestFixture : IAsyncLifetime, IAsyncDisposable
 		await WalletRpcClient.GenerateAsync(110);
 	}
 
-	public async ValueTask DisposeAsync()
+	/// <summary>Starts the node of the tests. A fixture of tests that need another kind of node starts that one.</summary>
+	protected virtual Task<CoreNode> CreateNodeAsync() =>
+		TestNodeBuilder.CreateAsync(callerFilePath: "IntegrationTests", callerMemberName: "BitcoinCoreData");
+
+	public virtual async ValueTask DisposeAsync()
 	{
 		if (!_disposedValue)
 		{
 			await BitcoinCoreNode.TryStopAsync();
 			_disposedValue = true;
 		}
+
+		GC.SuppressFinalize(this);
 	}
 }
