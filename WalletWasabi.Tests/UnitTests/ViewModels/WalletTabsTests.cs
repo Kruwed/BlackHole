@@ -8,8 +8,9 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// The wallet is a set of tabs that the title bar lists. These are the rules of the tabs that can be told without a
-/// window: what a tab is, and what the Send tab says about the amounts and the fee rate.
+/// The wallet is a set of tabs that the title bar lists: History, Coins and Order Book. These are the rules of the tabs
+/// that can be told without a window: what a tab is, what the Coins tab says about the amounts and the fee rate of a
+/// payment, and which coins it gives to a coinjoin round.
 /// </summary>
 public class WalletTabsTests
 {
@@ -17,10 +18,8 @@ public class WalletTabsTests
 	public void TabsHaveTheirTitles()
 	{
 		Assert.Equal("History", HistoryTabViewModel.TabTitle);
-		Assert.Equal("Send", SendTabViewModel.TabTitle);
-		Assert.Equal("Receive", ReceiveTabViewModel.TabTitle);
-		Assert.Equal("WabiSabi", WabiSabiTabViewModel.TabTitle);
-		Assert.Equal("JoinMarket", JoinMarketTabViewModel.TabTitle);
+		Assert.Equal("Coins", CoinsTabViewModel.TabTitle);
+		Assert.Equal("Order Book", OrderBookTabViewModel.TabTitle);
 	}
 
 	[Fact]
@@ -47,12 +46,12 @@ public class WalletTabsTests
 			[6] = new(10m)
 		});
 
-		Assert.Equal(new FeeRate(102m), SendTabViewModel.GetSuggestedFeeRate(estimations));
-		Assert.Equal("102", SendTabViewModel.FormatFeeRate(SendTabViewModel.GetSuggestedFeeRate(estimations)!));
+		Assert.Equal(new FeeRate(102m), CoinsTabViewModel.GetSuggestedFeeRate(estimations));
+		Assert.Equal("102", CoinsTabViewModel.FormatFeeRate(CoinsTabViewModel.GetSuggestedFeeRate(estimations)!));
 
 		// Without an estimate for the next two blocks the form suggests nothing, and neither does the title bar tell a fee rate.
-		Assert.Null(SendTabViewModel.GetSuggestedFeeRate(new FeeRateEstimations(new Dictionary<int, FeeRate> { [6] = new(10m) })));
-		Assert.Null(SendTabViewModel.GetSuggestedFeeRate(null));
+		Assert.Null(CoinsTabViewModel.GetSuggestedFeeRate(new FeeRateEstimations(new Dictionary<int, FeeRate> { [6] = new(10m) })));
+		Assert.Null(CoinsTabViewModel.GetSuggestedFeeRate(null));
 	}
 
 	[Theory]
@@ -62,7 +61,7 @@ public class WalletTabsTests
 	[InlineData("0.1", 0.1)]
 	public void SendFormTakesAFeeRateInSatoshisPerVirtualByte(string text, decimal expected)
 	{
-		Assert.Equal(new FeeRate(expected), SendTabViewModel.ParseFeeRate(text));
+		Assert.Equal(new FeeRate(expected), CoinsTabViewModel.ParseFeeRate(text));
 	}
 
 	[Theory]
@@ -76,34 +75,34 @@ public class WalletTabsTests
 	[InlineData("100000")]
 	public void SendFormRefusesWhatIsNoFeeRate(string text)
 	{
-		Assert.Null(SendTabViewModel.ParseFeeRate(text));
+		Assert.Null(CoinsTabViewModel.ParseFeeRate(text));
 	}
 
 	[Fact]
 	public void FeeRateIsWrittenWithoutNeedlessDigits()
 	{
-		Assert.Equal("144.71", SendTabViewModel.FormatFeeRate(new FeeRate(144.714m)));
-		Assert.Equal("2", SendTabViewModel.FormatFeeRate(new FeeRate(2m)));
-		Assert.Equal("0.1", SendTabViewModel.FormatFeeRate(new FeeRate(0.1m)));
+		Assert.Equal("144.71", CoinsTabViewModel.FormatFeeRate(new FeeRate(144.714m)));
+		Assert.Equal("2", CoinsTabViewModel.FormatFeeRate(new FeeRate(2m)));
+		Assert.Equal("0.1", CoinsTabViewModel.FormatFeeRate(new FeeRate(0.1m)));
 	}
 
 	[Fact]
 	public void AmountIsCheckedAgainstTheSelectedCoins()
 	{
 		// All is well within what the coins hold, and at exactly that too: the payment takes its fee from itself then.
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0.05m, totalBtc: 0.05m, selectedBtc: 0.1m));
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0.1m, totalBtc: 0.1m, selectedBtc: 0.1m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 0.05m, totalBtc: 0.05m, selectedBtc: 0.1m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 0.1m, totalBtc: 0.1m, selectedBtc: 0.1m));
 
 		// More than the coins hold, by this payment alone or by all the payments together.
-		Assert.Equal("The selected coins hold less than that.", SendTabViewModel.DescribeAmountError(amountBtc: 0.2m, totalBtc: 0.2m, selectedBtc: 0.1m));
-		Assert.Equal("The selected coins hold less than that.", SendTabViewModel.DescribeAmountError(amountBtc: 0.05m, totalBtc: 0.15m, selectedBtc: 0.1m));
+		Assert.Equal("The selected coins hold less than that.", CoinsTabViewModel.DescribeAmountError(amountBtc: 0.2m, totalBtc: 0.2m, selectedBtc: 0.1m));
+		Assert.Equal("The selected coins hold less than that.", CoinsTabViewModel.DescribeAmountError(amountBtc: 0.05m, totalBtc: 0.15m, selectedBtc: 0.1m));
 	}
 
 	[Fact]
 	public void AmountIsNotHeldAgainstCoinsThatAreNotSelectedYet()
 	{
 		// The form may be filled in before the coins are picked. It cannot be continued without them.
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 5m, totalBtc: 5m, selectedBtc: 0m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 5m, totalBtc: 5m, selectedBtc: 0m));
 	}
 
 	[Fact]
@@ -111,40 +110,40 @@ public class WalletTabsTests
 	{
 		// Nothing typed yet, a number that starts with a zero being typed, or what "Max" leaves once the last coin was
 		// unticked: no message. The form cannot be continued with it.
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 1m));
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 0m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 1m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0m, selectedBtc: 0m));
 
 		// The other payments take more than the coins hold, and "Max" leaves nothing for this one: their rows say so, this one does not.
-		Assert.Null(SendTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0.5m, selectedBtc: 0.1m));
+		Assert.Null(CoinsTabViewModel.DescribeAmountError(amountBtc: 0m, totalBtc: 0.5m, selectedBtc: 0.1m));
 	}
 
 	[Fact]
 	public void AmountCannotBeMoreThanThereIs()
 	{
-		Assert.Equal("Amount must be less than the total supply of BTC.", SendTabViewModel.DescribeAmountError(amountBtc: 21_000_001m, totalBtc: 21_000_001m, selectedBtc: 1m));
+		Assert.Equal("Amount must be less than the total supply of BTC.", CoinsTabViewModel.DescribeAmountError(amountBtc: 21_000_001m, totalBtc: 21_000_001m, selectedBtc: 1m));
 	}
 
 	[Fact]
 	public void FeeIsSaidToComeOutOfAPaymentThatTakesAll()
 	{
-		Assert.True(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: false));
+		Assert.True(CoinsTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: false));
 
 		// The amount was typed: the fee is paid on top of it.
-		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: false, amountBtc: 0.1m, hasAmountMessage: false));
+		Assert.False(CoinsTabViewModel.ShowsFeeSubtractionNote(takesAll: false, amountBtc: 0.1m, hasAmountMessage: false));
 
 		// "Max" with the last coin unticked: there is no payment to take a fee from.
-		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0m, hasAmountMessage: false));
-		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: null, hasAmountMessage: false));
+		Assert.False(CoinsTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0m, hasAmountMessage: false));
+		Assert.False(CoinsTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: null, hasAmountMessage: false));
 
 		// A message about the amount stands in the same place and goes first.
-		Assert.False(SendTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: true));
+		Assert.False(CoinsTabViewModel.ShowsFeeSubtractionNote(takesAll: true, amountBtc: 0.1m, hasAmountMessage: true));
 	}
 
 	[Fact]
 	public void HintTellsWhatToDoBeforeAnAmountCanBeSent()
 	{
-		Assert.Equal("Select the coins to spend below", SendTabViewModel.DescribeSelectionHint(hasCoins: true));
-		Assert.Equal("The wallet has no coins to spend", SendTabViewModel.DescribeSelectionHint(hasCoins: false));
+		Assert.Equal("Select the coins to spend below", CoinsTabViewModel.DescribeSelectionHint(hasCoins: true));
+		Assert.Equal("The wallet has no coins to spend", CoinsTabViewModel.DescribeSelectionHint(hasCoins: false));
 	}
 
 	[Fact]
@@ -152,24 +151,26 @@ public class WalletTabsTests
 	{
 		Assert.Equal(
 			["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"],
-			JoinMarketTabViewModel.Columns);
+			OrderBookTabViewModel.Columns);
 	}
 
+	/// <summary>
+	/// Play tells the wallet about every coin of the list, the unticked ones too: a coin that was chosen for an earlier
+	/// round and is not ticked now has to be taken out again.
+	/// </summary>
 	[Fact]
-	public void TickOfACoinDecidesWhetherItGoesIntoRounds()
+	public void PlayNamesEveryCoinOfTheListWithItsTick()
 	{
-		// The user ticked a coin that is not chosen for coinjoins in the wallet: it is chosen from now on.
-		Assert.True(WabiSabiTabViewModel.GetSelectionChange(isTicked: true, isSelected: false));
+		var ticked = new OutPoint(uint256.One, 0);
+		var unticked = new OutPoint(uint256.One, 1);
 
-		// The user unticked a coin that is chosen: it is taken out again.
-		Assert.False(WabiSabiTabViewModel.GetSelectionChange(isTicked: false, isSelected: true));
-	}
+		var selection = CoinsTabViewModel.GetRoundSelection([(ticked, true), (unticked, false)]);
 
-	[Fact]
-	public void TickThatSaysWhatTheWalletDoesAlreadyChangesNothing()
-	{
-		Assert.Null(WabiSabiTabViewModel.GetSelectionChange(isTicked: true, isSelected: true));
-		Assert.Null(WabiSabiTabViewModel.GetSelectionChange(isTicked: false, isSelected: false));
+		Assert.Equal(2, selection.Count);
+		Assert.True(selection[ticked]);
+		Assert.False(selection[unticked]);
+
+		Assert.Empty(CoinsTabViewModel.GetRoundSelection([]));
 	}
 
 	[Theory]

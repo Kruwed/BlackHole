@@ -5,7 +5,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.BondsView">
   <ContentArea Title="{Binding Title}"
-               Caption="Coins that are locked until the chain reaches a block height. Nothing can spend them before, this wallet included."
+               Caption="Coins that are locked until the chain reaches a block height. Nothing can spend them before, this wallet included. A new bond locks the coins that are ticked on the Coins tab."
                EnableCancel="{Binding EnableCancel}" CancelContent="Close"
                EnableNext="True" NextContent="New Bond"
                ScrollViewer.VerticalScrollBarVisibility="Auto">

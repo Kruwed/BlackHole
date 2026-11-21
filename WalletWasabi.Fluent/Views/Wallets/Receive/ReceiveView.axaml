@@ -1,11 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
              xmlns:receive="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Receive"
-             x:DataType="tabs:ReceiveTabViewModel"
+             x:DataType="receive:ReceiveViewModel"
              x:CompileBindings="True"
-             ClipToBounds="False"
-             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.ReceiveTabView">
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Receive.ReceiveView">
 
   <UserControl.Resources>
     <!-- What a right click on an address of the list offers. -->
@@ -18,20 +16,22 @@
     </ContextMenu>
   </UserControl.Resources>
 
-  <DockPanel>
-
-    <!-- The addresses that were generated and have not been paid to yet, and at the right end the button for a new one -->
-    <DockPanel DockPanel.Dock="Top" Margin="0 10 0 20">
-      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding GenerateCommand}"
-              VerticalAlignment="Center"
+  <ContentArea Title="{Binding Title}"
+               Caption="The addresses that were generated and have not been paid to yet. Give each address to one payer only: payments to the same address are linked to each other."
+               EnableCancel="{Binding EnableCancel}" CancelContent="Close"
+               ScrollViewer.VerticalScrollBarVisibility="Disabled"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+    <ContentArea.TopContent>
+      <!-- The button for a new address, at the right end of the title -->
+      <Button Classes="function" Command="{Binding GenerateCommand}"
+              HorizontalAlignment="Right" VerticalAlignment="Center"
               ToolTip.Tip="Generates an address that was not given out before and shows it.">
         <StackPanel Orientation="Horizontal">
           <PathIcon Data="{StaticResource wallet_action_receive}" />
           <TextBlock Text="New Address" />
         </StackPanel>
       </Button>
-      <TextBlock VerticalAlignment="Center" Text="Addresses Awaiting Payment" FontSize="{StaticResource FontSizeH5}" />
-    </DockPanel>
+    </ContentArea.TopContent>
 
     <Panel>
       <TreeDataGrid Source="{Binding Source}" VerticalAlignment="Stretch" IsVisible="{Binding HasAddresses}">
@@ -45,9 +45,9 @@
           </Style>
         </TreeDataGrid.Styles>
       </TreeDataGrid>
-      <TextBlock Text="No address is awaiting a payment. Give each address to one payer only: payments to the same address are linked to each other."
+      <TextBlock Text="No address is awaiting a payment."
                  IsVisible="{Binding !HasAddresses}" Opacity="0.6" TextWrapping="Wrap"
-                 HorizontalAlignment="Left" VerticalAlignment="Top" />
+                 HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0 60 0 0" />
     </Panel>
-  </DockPanel>
+  </ContentArea>
 </UserControl>

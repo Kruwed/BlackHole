@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace WalletWasabi.Fluent.Views.Wallets.Tabs;
 
-public class WabiSabiTabView : UserControl
+public class CoinsTabView : UserControl
 {
-	public WabiSabiTabView()
+	public CoinsTabView()
 	{
 		InitializeComponent();
 	}

@@ -1,47 +1,40 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Wallets.Offers"
-             xmlns:sorting="clr-namespace:WalletWasabi.Fluent.Controls.Sorting"
-             xmlns:coins="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Coins"
              x:DataType="vm:MakerOfferViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Offers.MakerOfferView">
 
   <UserControl.Styles>
-    <!-- A field has room for a message of one line below its box, so that a message that comes or goes does not move the coins.
+    <!-- A field has room for a message of one line below its box, so that a message that comes or goes does not move what is below.
          The box is as wide as the field, and so is the message: the unit is in the label. -->
     <Style Selector="StackPanel.field">
-      <Setter Property="MinHeight" Value="86" />
+      <Setter Property="MinHeight" Value="108" />
       <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="TextBlock.complaint">
+      <Setter Property="Foreground" Value="{DynamicResource SystemErrorTextColor}" />
     </Style>
   </UserControl.Styles>
 
   <ContentArea Title="{Binding Title}"
-               Caption="Offer up to two coins to the takers of coinjoins, and name your prices for anonymity points."
+               Caption="Offer the coins that are ticked on the Coins tab, two at most, to the takers of coinjoins, and name your prices for anonymity points."
                EnableCancel="{Binding EnableCancel}"
                EnableNext="True" NextContent="Post"
                EnableSkip="{Binding HasOffer}" SkipContent="Withdraw offer"
                IsBusy="{Binding IsBusy}"
-               ScrollViewer.VerticalScrollBarVisibility="Disabled"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-    <ContentArea.TopContent>
-      <Button Theme="{StaticResource DialogSortButton}" ToolTip.Tip="Sorting" HorizontalAlignment="Right">
-        <Button.Flyout>
-          <Flyout Placement="BottomEdgeAlignedRight">
-            <sorting:SortControl Sortables="{Binding CoinList.Sortables}" />
-          </Flyout>
-        </Button.Flyout>
-      </Button>
-    </ContentArea.TopContent>
     <ContentArea.BottomContent>
-      <!-- What the ticked coins hold together: the liquidity of the offer. -->
-      <AmountControl Amount="{Binding SelectedAmount}" HorizontalAlignment="Center" />
+      <!-- What the coins of the offer hold together: its liquidity. -->
+      <AmountControl Amount="{Binding OfferedAmount}" HorizontalAlignment="Center"
+                     IsVisible="{Binding OfferedAmount, Converter={x:Static ObjectConverters.IsNotNull}}" />
     </ContentArea.BottomContent>
 
-    <DockPanel>
+    <StackPanel Margin="0 0 20 0">
 
       <!-- The terms of the offer. -->
-      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,16,*,16,*">
+      <Grid ColumnDefinitions="*,16,*,16,*">
         <StackPanel Grid.Column="0" Classes="field"
                     ToolTip.Tip="The lowest mining fee rate of a coinjoin that your coins go into.">
           <Label Content="Minimum _fee rate (sat/vB)" Target="FeeRateBox" />
@@ -65,20 +58,18 @@
         </StackPanel>
       </Grid>
 
+      <!-- The coins of the offer: which ones they are, or what is to be done first. -->
+      <TextBlock TextWrapping="Wrap" Text="{Binding CoinsText}" Classes.complaint="{Binding HasNoCoinsToOffer}" />
+
       <!-- What an offer means, and where it goes. -->
-      <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0 10 0 0">
-        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SystemErrorTextColor}"
+      <StackPanel Spacing="6" Margin="0 16 0 0">
+        <TextBlock TextWrapping="Wrap" Classes="complaint"
                    Text="{Binding ErrorMessage}"
                    IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SystemErrorTextColor}"
-                   Text="An offer holds two coins at most. Coins on the same address are ticked together."
-                   IsVisible="{Binding HasTooManyCoins}" />
         <TextBlock TextWrapping="Wrap" Opacity="0.6"
                    Text="A coinjoin destroys the anonymity points of the coins that go into it, and the coins that you get out of it have the points of the new transaction. If you have more points afterwards, you pay the taker the bid for each of them. If you have fewer, the taker pays you the ask for each." />
         <TextBlock TextWrapping="Wrap" Opacity="0.6" Text="{Binding PostingText}" />
       </StackPanel>
-
-      <coins:CoinListView DataContext="{Binding CoinList}" MinHeight="120" />
-    </DockPanel>
+    </StackPanel>
   </ContentArea>
 </UserControl>

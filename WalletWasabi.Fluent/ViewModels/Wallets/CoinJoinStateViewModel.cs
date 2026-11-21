@@ -70,7 +70,11 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	/// </summary>
 	private string? _outcome;
 
-	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel) : base(uiContext)
+	/// <param name="startRound">
+	/// What Play does: it starts a round, and it decides before which coins the round gets. The coins are the ones that
+	/// are ticked in the list next to the controls, which these controls do not know.
+	/// </param>
+	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, Func<Task> startRound) : base(uiContext)
 	{
 		_wallet = wallet;
 		_walletInstance = walletInstance;
@@ -84,7 +88,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 		ConfigureStateMachine();
 
-		PlayCommand = ReactiveCommand.CreateFromTask(walletCoinjoinModel.StartAsync);
+		PlayCommand = ReactiveCommand.CreateFromTask(startRound);
 
 		// A coinjoin cannot be stopped in its critical phase, and not twice.
 		var stopCommandCanExecute =

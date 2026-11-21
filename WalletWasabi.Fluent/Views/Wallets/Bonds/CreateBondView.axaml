@@ -5,7 +5,7 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.Bonds.CreateBondView">
   <ContentArea Title="{Binding Title}"
-               Caption="Name the block height that the coins are locked until. Then pick the coins."
+               Caption="Name the block height that the coins are locked until. The coins are the ones that are ticked on the Coins tab."
                EnableBack="{Binding EnableBack}"
                EnableCancel="{Binding EnableCancel}"
                EnableNext="True" NextContent="Continue"
@@ -50,9 +50,8 @@
                  Text="The address can be paid from another wallet too. Such a bond is listed once its transaction is confirmed."
                  IsVisible="{Binding Address, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-      <TextBlock TextWrapping="Wrap" Opacity="0.6"
-                 Text="This wallet has no coins to lock."
-                 IsVisible="{Binding !HasCoins}" />
+      <!-- Which coins the bond locks, or what is to be done first if none is ticked. -->
+      <TextBlock TextWrapping="Wrap" Opacity="0.6" Text="{Binding CoinsText}" />
     </StackPanel>
   </ContentArea>
 </UserControl>

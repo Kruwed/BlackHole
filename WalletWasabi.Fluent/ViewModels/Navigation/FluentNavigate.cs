@@ -17,6 +17,7 @@ using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Fluent.ViewModels.Wallets.Advanced;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
+using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Features;
 using WalletWasabi.Fluent.ViewModels.Wallets.Offers;
@@ -198,15 +199,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConfirmMultiShareViewModel(UiContext, options, wordsDictionary), navigationMode);
 	}
 
-	public FluentDialog<IEnumerable<SmartCoin>> ManualControlDialog(IWalletModel walletModel, Wallet wallet, uint bondUnlockHeight, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new ManualControlDialogViewModel(UiContext, walletModel, wallet, bondUnlockHeight);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<IEnumerable<SmartCoin>>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
 	public void AddCoinJoinPayment(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var viewModel = new AddCoinJoinPaymentViewModel(UiContext, walletModel, wallet, ShowQrCodeCameraDialogAsync);
@@ -230,6 +222,11 @@ public partial class FluentNavigate
 	/// <summary>
 	/// Shows an address that awaits its payment: one that was just generated, or one that was generated earlier.
 	/// </summary>
+	public void Receive(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new ReceiveViewModel(UiContext, wallet), navigationMode);
+	}
+
 	public void ReceiveAddress(IWalletModel wallet, IAddress model, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ReceiveAddressViewModel(UiContext, wallet, model), navigationMode);
@@ -254,14 +251,14 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new CoinJoinDetailsViewModel(UiContext, wallet, transaction), navigationMode);
 	}
 
-	public void Bonds(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void Bonds(IWalletModel walletModel, Wallet wallet, CoinListViewModel coins, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new BondsViewModel(UiContext, walletModel, wallet), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new BondsViewModel(UiContext, walletModel, wallet, coins), navigationMode);
 	}
 
-	public void CreateBond(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void CreateBond(IWalletModel walletModel, Wallet wallet, CoinListViewModel coins, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new CreateBondViewModel(UiContext, walletModel, wallet), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new CreateBondViewModel(UiContext, walletModel, wallet, coins), navigationMode);
 	}
 
 	public void BondAmount(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -274,9 +271,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new RedeemBondViewModel(UiContext, walletModel, bond), navigationMode);
 	}
 
-	public void MakerOffer(IWalletModel walletModel, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void MakerOffer(IWalletModel walletModel, CoinListViewModel coins, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new MakerOfferViewModel(UiContext, walletModel), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new MakerOfferViewModel(UiContext, walletModel, coins), navigationMode);
 	}
 
 	public void AddedWalletPage(WalletSettingsModel walletSettings, WalletCreationOptions options, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

@@ -17,7 +17,7 @@
       </KeyDownTrigger>
     </Interaction.Behaviors>
     <ContentArea.TopContent>
-      <!-- What the picked coins hold -->
+      <!-- What the ticked coins hold -->
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Classes="h8" Opacity="0.6" Orientation="Horizontal" Spacing="5">
         <TextBlock Text="Max:" Margin="0 1 0 0" />
         <Button Focusable="False" Classes="plainHyperlink h8" Command="{Binding InsertMaxCommand}">
@@ -46,7 +46,7 @@
       </PreviewItem>
 
       <TextBlock TextWrapping="Wrap" Opacity="0.8"
-                 Text="What you lock here cannot be spent before that block. If you lock all of the picked coins, the mining fee is taken from the bond." />
+                 Text="What you lock here cannot be spent before that block. If you lock all of the ticked coins, the mining fee is taken from the bond." />
     </StackPanel>
   </ContentArea>
 </UserControl>

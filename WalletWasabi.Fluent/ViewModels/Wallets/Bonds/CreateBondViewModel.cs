@@ -1,13 +1,19 @@
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using NBitcoin;
+using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Helpers;
+using WalletWasabi.Fluent.Models.Transactions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
 using WalletWasabi.Wallets;
@@ -16,7 +22,8 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 
 /// <summary>
 /// The first step to a new fidelity bond: the user names the block height that the coins are locked until. Every height
-/// has its own address. The coins of the wallet that go there are chosen next.
+/// has its own address. The coins that go there are the ones that are ticked on the Coins tab, and how much of them
+/// is locked is asked next.
 /// </summary>
 [NavigationMetaData(Title = "New Fidelity Bond", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class CreateBondViewModel : RoutableViewModel
@@ -25,6 +32,7 @@ public partial class CreateBondViewModel : RoutableViewModel
 	private static readonly TimeSpan TypingPause = TimeSpan.FromMilliseconds(600);
 
 	private readonly IWalletModel _walletModel;
+	private readonly CoinListViewModel _coins;
 
 	[AutoNotify] private string _unlockHeightText = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private uint? _unlockHeight;
@@ -32,11 +40,14 @@ public partial class CreateBondViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _address;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _chainText = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightKnown;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasCoins;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasTickedCoins;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _coinsText;
 
-	public CreateBondViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
+	/// <param name="coins">The list of the Coins tab. The bond locks the coins that are ticked in it.</param>
+	public CreateBondViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, CoinListViewModel coins) : base(uiContext)
 	{
 		_walletModel = walletModel;
+		_coins = coins;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
 		EnableBack = true;
@@ -49,17 +60,30 @@ public partial class CreateBondViewModel : RoutableViewModel
 		var canContinue = this.WhenAnyValue(
 			x => x.UnlockHeight,
 			x => x.Address,
-			x => x.HasCoins,
+			x => x.HasTickedCoins,
 			(unlockHeight, address, hasCoins) => unlockHeight is not null && address is not null && hasCoins);
 
-		// The coins that are locked are picked by the user, like the coins of any other payment.
+		// The coins that are locked are the ones that the user ticked on the Coins tab, like the coins of a payment.
+		// They are taken when the page is left: a coin that was spent while the page was open is not among them.
 		NextCommand = ReactiveCommand.Create(
 			() =>
 			{
-				if (UnlockHeight is { } unlockHeight)
+				var tickedCoins = coins.Selection.GetSmartCoins().ToArray();
+
+				if (UnlockHeight is not { } unlockHeight || tickedCoins.Length == 0)
 				{
-					Navigate().To().ManualControlDialog(walletModel, wallet, unlockHeight);
+					return;
 				}
+
+				var parameters = new SendFlowModel(wallet, walletModel, tickedCoins, UiContext.Services)
+				{
+					BondUnlockHeight = unlockHeight,
+
+					// The ticks were for this bond. Once its transaction is sent, they are used up, as with a payment.
+					Sent = () => coins.SelectAll(false)
+				};
+
+				Navigate().To().BondAmount(walletModel, parameters);
 			},
 			canContinue);
 	}
@@ -72,6 +96,22 @@ public partial class CreateBondViewModel : RoutableViewModel
 		return uint.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var height) ? height : null;
 	}
 
+	/// <summary>
+	/// Tells which coins a new bond locks: the ones that are ticked on the Coins tab. Without a ticked coin it tells what
+	/// to do, as the page cannot be continued then.
+	/// </summary>
+	/// <param name="tickedCount">How many coins are ticked.</param>
+	/// <param name="tickedAmount">What the ticked coins hold together.</param>
+	/// <param name="walletHasCoins">Whether the wallet has any coin that could be ticked.</param>
+	public static string DescribeCoins(int tickedCount, Money tickedAmount, bool walletHasCoins) =>
+		tickedCount switch
+		{
+			0 when !walletHasCoins => "This wallet has no coins to lock.",
+			0 => "No coin is ticked. Close this page, tick the coins to lock on the Coins tab and come back.",
+			1 => $"The bond locks the coin that is ticked on the Coins tab, or a part of it. It holds {tickedAmount.ToFormattedString()} BTC.",
+			_ => $"The bond locks the {tickedCount} coins that are ticked on the Coins tab, or a part of them. They hold {tickedAmount.ToFormattedString()} BTC."
+		};
+
 	/// <summary>Tells until when the coins are locked and how long that is from now, as far as the node tells how far the chain is.</summary>
 	public static string DescribeLock(IWalletModel walletModel, uint unlockHeight) =>
 		walletModel.Bonds.ChainHeight is { } chainHeight
@@ -82,9 +122,20 @@ public partial class CreateBondViewModel : RoutableViewModel
 	{
 		base.OnNavigatedTo(isInHistory, disposables);
 
-		_walletModel.HasBalance
+		// Nothing is ticked or unticked while this page covers the Coins tab, but a ticked coin can be spent meanwhile.
+		_coins.Selection
+			.ToObservableChangeSet()
+			.ToSignal()
+			.Merge(_coins.CoinItems.ToObservableChangeSet().ToSignal())
+			.StartWith(Unit.Default)
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.BindTo(this, x => x.HasCoins)
+			.Subscribe(_ =>
+			{
+				var ticked = _coins.Selection.ToArray();
+
+				HasTickedCoins = ticked.Length > 0;
+				CoinsText = DescribeCoins(ticked.Length, ticked.TotalAmount(), walletHasCoins: _coins.CoinItems.Count > 0);
+			})
 			.DisposeWith(disposables);
 
 		// Every block brings the unlock height nearer, and may reach it.

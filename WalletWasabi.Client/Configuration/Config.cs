@@ -107,7 +107,7 @@ public class Config
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
 			["MaxDaysInMempool"] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
-			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that an offer of the JoinMarket tab is posted to. Nothing is sent to them before an offer is posted",
+			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that the offer of the wallet as a market maker is posted to. Nothing is sent to them before an offer is posted",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }

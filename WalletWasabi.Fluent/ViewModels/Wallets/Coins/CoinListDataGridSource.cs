@@ -51,11 +51,6 @@ public static class CoinListDataGridSource
 			return 3;
 		}
 
-		if (x.IsSelectedForCoinJoin)
-		{
-			return 4;
-		}
-
 		return 0;
 	}
 

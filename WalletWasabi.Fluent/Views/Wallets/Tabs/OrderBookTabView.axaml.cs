@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace WalletWasabi.Fluent.Views.Wallets.Tabs;
 
-public class JoinMarketTabView : UserControl
+public class OrderBookTabView : UserControl
 {
-	public JoinMarketTabView()
+	public OrderBookTabView()
 	{
 		InitializeComponent();
 	}

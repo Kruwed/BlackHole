@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace WalletWasabi.Fluent.Views.Wallets.Tabs;
+namespace WalletWasabi.Fluent.Views.Wallets.Receive;
 
-public class ZeroLinkTabView : UserControl
+public class ReceiveView : UserControl
 {
-	public ZeroLinkTabView()
+	public ReceiveView()
 	{
 		InitializeComponent();
 	}

@@ -1,28 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:tabs="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Tabs"
-             x:DataType="tabs:JoinMarketTabViewModel"
+             x:DataType="tabs:OrderBookTabViewModel"
              x:CompileBindings="True"
              ClipToBounds="False"
-             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.JoinMarketTabView">
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Tabs.OrderBookTabView">
   <DockPanel>
 
-    <!-- What makes this wallet a market maker is at the right end: its fidelity bonds and its offer. The buttons wait for the wallet to know its transactions. -->
-    <DockPanel DockPanel.Dock="Top" Margin="0 10 0 20">
-      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding BondCommand}" VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal">
-          <PathIcon Data="{StaticResource wallet_action_bond}" />
-          <TextBlock Text="Bond" />
-        </StackPanel>
-      </Button>
-      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding OfferCommand}" VerticalAlignment="Center" Margin="0 0 8 0">
-        <StackPanel Orientation="Horizontal">
-          <PathIcon Data="{StaticResource wallet_action_offer}" />
-          <TextBlock Text="Offer" />
-        </StackPanel>
-      </Button>
-      <TextBlock VerticalAlignment="Center" Text="Market Makers" FontSize="{StaticResource FontSizeH5}" />
-    </DockPanel>
+    <TextBlock DockPanel.Dock="Top" Margin="0 10 0 20" Text="Market Makers" FontSize="{StaticResource FontSizeH5}" />
 
     <!-- The list of the market makers: its columns, the offer of this wallet if it has one, and rows that are empty until the wallet finds makers. -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,*,*,*,*,*,*" Margin="14 0 14 8">

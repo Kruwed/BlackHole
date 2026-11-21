@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Logging;
 using WalletWasabi.Wallets;
 
@@ -15,7 +16,8 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 
 /// <summary>
 /// The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height. New ones are created
-/// from here, and the ones whose unlock height the chain has reached are redeemed from here.
+/// from here, out of the coins that are ticked on the Coins tab, and the ones whose unlock height the chain has reached
+/// are redeemed from here.
 /// </summary>
 [NavigationMetaData(Title = "Fidelity Bonds", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class BondsViewModel : RoutableViewModel
@@ -27,13 +29,14 @@ public partial class BondsViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount? _lockedAmount;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isChainHeightKnown = true;
 
-	public BondsViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet) : base(uiContext)
+	/// <param name="coins">The list of the Coins tab. A new bond locks the coins that are ticked in it.</param>
+	public BondsViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, CoinListViewModel coins) : base(uiContext)
 	{
 		_walletModel = walletModel;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
-		NextCommand = ReactiveCommand.Create(() => Navigate().To().CreateBond(walletModel, wallet));
+		NextCommand = ReactiveCommand.Create(() => Navigate().To().CreateBond(walletModel, wallet, coins));
 	}
 
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)

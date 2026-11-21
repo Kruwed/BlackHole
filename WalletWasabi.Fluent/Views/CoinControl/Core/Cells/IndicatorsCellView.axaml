@@ -26,29 +26,14 @@
                 ToolTip.Tip="Pending" />
     </Panel>
 
-    <!-- Only a coin that the user chose for coinjoins has to do with them. -->
-    <Panel>
-      <!-- CJ active -->
-      <Panel.IsVisible>
-        <MultiBinding Converter="{x:Static BoolConverters.And}">
-          <Binding Path="!IsBanned"/>
-          <Binding Path="IsSelectedForCoinJoin"/>
-        </MultiBinding>
-      </Panel.IsVisible>
-      <PathIcon IsVisible="{Binding IsCoinjoining}"
-                Data="{StaticResource wallet_action_coinjoin}"
-                Foreground="{DynamicResource SystemAccentColor}"
-                Height="15"
-                ToolTip.Tip="Coinjoining" />
-      <!-- CJ inactive -->
-      <PathIcon IsVisible="{Binding !IsCoinjoining}"
-                Data="{StaticResource wallet_action_coinjoin}"
-                Height="15"
-                Opacity="0.6"
-                ToolTip.Tip="Ticked for coinjoins" />
-    </Panel>
+    <!-- In a coinjoin round. Which coins the next round gets is told by the ticks of the Coins tab, not by a sign here. -->
+    <PathIcon IsVisible="{Binding IsCoinjoining}"
+              Data="{StaticResource wallet_action_coinjoin}"
+              Foreground="{DynamicResource SystemAccentColor}"
+              Height="15"
+              ToolTip.Tip="Coinjoining" />
 
-    <!-- Banned -->
+    <!-- Banned. Only a coin that was given to a round has to do with that. -->
     <PathIcon Data="{StaticResource warning_circle}"
               Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
               Height="14"

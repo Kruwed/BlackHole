@@ -14,7 +14,8 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
 /// <summary>
 /// The wallet, once it is decrypted. It is a set of pages, and the window shows one of them at a time. The title bar
-/// lists them as tabs: the history, which is the one to start with, sending, receiving, and one for every coinjoin protocol.
+/// lists them as tabs: the history, which is the one to start with, the coins with all that is done with them, and
+/// the order book of the market makers.
 /// </summary>
 [AppLifetime]
 public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
@@ -29,13 +30,10 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		Wallet = wallet;
 
 		History = new HistoryTabViewModel(uiContext, walletModel, Select);
-		Send = new SendTabViewModel(uiContext, walletModel, wallet, Select);
-		Receive = new ReceiveTabViewModel(uiContext, walletModel, Select);
-		WabiSabi = new WabiSabiTabViewModel(uiContext, walletModel, wallet, Select);
-		JoinMarket = new JoinMarketTabViewModel(uiContext, walletModel, wallet, Select);
-		ZeroLink = new ZeroLinkTabViewModel(uiContext, Select);
+		Coins = new CoinsTabViewModel(uiContext, walletModel, wallet, Select);
+		OrderBook = new OrderBookTabViewModel(uiContext, walletModel, Select);
 
-		Tabs = [History, Send, Receive, WabiSabi, JoinMarket, ZeroLink];
+		Tabs = [History, Coins, OrderBook];
 
 		_selectedTab = History;
 
@@ -61,15 +59,9 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 
 	public HistoryTabViewModel History { get; }
 
-	public SendTabViewModel Send { get; }
+	public CoinsTabViewModel Coins { get; }
 
-	public ReceiveTabViewModel Receive { get; }
-
-	public WabiSabiTabViewModel WabiSabi { get; }
-
-	public JoinMarketTabViewModel JoinMarket { get; }
-
-	public ZeroLinkTabViewModel ZeroLink { get; }
+	public OrderBookTabViewModel OrderBook { get; }
 
 	public override string Title
 	{

@@ -8,7 +8,8 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// What the page of the offer takes as the terms of an offer, and how the list of market makers shows the offer of the wallet.
+/// What the page of the offer takes as the terms of an offer, which coins it offers, and how the list of market makers
+/// shows the offer of the wallet.
 /// </summary>
 public class MakerOfferPagesTests
 {
@@ -86,6 +87,67 @@ public class MakerOfferPagesTests
 		Assert.Equal("0.123", MakerOfferViewModel.FormatFeeRate(new FeeRate(0.123m)));
 	}
 
+	/// <summary>An offer offers the coins that are ticked on the Coins tab: one or two of them.</summary>
+	[Theory]
+	[InlineData(1, 0)]
+	[InlineData(2, 0)]
+	[InlineData(1, 2)] // An offer stands: the ticked coin takes the place of its two.
+	[InlineData(2, 1)]
+	public void OfferGetsTheTickedCoins(int tickedCount, int standingCount)
+	{
+		Assert.Equal(OfferCoinsSource.Ticked, MakerOfferViewModel.ChooseCoins(tickedCount, standingCount));
+	}
+
+	/// <summary>
+	/// With no coin ticked, the offer that stands keeps its coins. Its terms can be changed that way without looking
+	/// for its coins in the list again.
+	/// </summary>
+	[Fact]
+	public void StandingOfferKeepsItsCoinsWhenNoCoinIsTicked()
+	{
+		Assert.Equal(OfferCoinsSource.StandingOffer, MakerOfferViewModel.ChooseCoins(tickedCount: 0, standingCount: 1));
+		Assert.Equal(OfferCoinsSource.StandingOffer, MakerOfferViewModel.ChooseCoins(tickedCount: 0, standingCount: 2));
+
+		// Without an offer and without a tick there is nothing to offer.
+		Assert.Equal(OfferCoinsSource.None, MakerOfferViewModel.ChooseCoins(tickedCount: 0, standingCount: 0));
+	}
+
+	/// <summary>An offer holds two coins at most. More ticked coins are not cut down to two: the user decides which two.</summary>
+	[Theory]
+	[InlineData(3, 0)]
+	[InlineData(3, 2)]
+	[InlineData(40, 1)]
+	public void MoreTickedCoinsThanAnOfferHoldsMakeNoOffer(int tickedCount, int standingCount)
+	{
+		Assert.Equal(OfferCoinsSource.TooMany, MakerOfferViewModel.ChooseCoins(tickedCount, standingCount));
+	}
+
+	[Fact]
+	public void PageTellsWhichCoinsTheOfferGetsOrWhatIsToBeDoneFirst()
+	{
+		Assert.Equal(
+			"The offer holds the coin that is ticked on the Coins tab.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 1, standingCount: 0));
+		Assert.Equal(
+			"The offer holds the 2 coins that are ticked on the Coins tab.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 2, standingCount: 0));
+		Assert.Equal(
+			"The offer gets the 2 coins that are ticked on the Coins tab, in place of what it holds now.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 2, standingCount: 1));
+		Assert.Equal(
+			"No coin is ticked on the Coins tab, so the offer keeps the coin that it holds now.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 0, standingCount: 1));
+		Assert.Equal(
+			"No coin is ticked on the Coins tab, so the offer keeps the 2 coins that it holds now.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 0, standingCount: 2));
+		Assert.Equal(
+			"No coin is ticked. Close this page, tick one or two coins on the Coins tab and come back.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 0, standingCount: 0));
+		Assert.Equal(
+			"An offer holds two coins at most, and 3 are ticked on the Coins tab. Coins on the same address are ticked together.",
+			MakerOfferViewModel.DescribeCoins(tickedCount: 3, standingCount: 2));
+	}
+
 	/// <summary>
 	/// The list of market makers has the columns Market Maker, Fee Rate, Spread, Bid, Ask, Liquidity and Bond.
 	/// The offer of this wallet is a row of it. An offer names no bond yet.
@@ -96,7 +158,7 @@ public class MakerOfferPagesTests
 		var offer = new MakerOffer(new FeeRate(2.5m), Bid: Money.Satoshis(100), Ask: Money.Satoshis(1_150), Liquidity: Money.Coins(0.5m));
 		var state = new MakerOfferState([new OutPoint(uint256.One, 0)], offer, DateTimeOffset.UnixEpoch, Problem: null);
 
-		var row = JoinMarketTabViewModel.CreateRow(state);
+		var row = OrderBookTabViewModel.CreateRow(state);
 
 		Assert.Equal("This wallet", row.Maker);
 		Assert.Equal("2.5 sat/vB", row.FeeRate);
@@ -114,7 +176,7 @@ public class MakerOfferPagesTests
 		var offer = new MakerOffer(new FeeRate(1m), Money.Zero, Money.Satoshis(1), Money.Coins(1));
 		var state = new MakerOfferState([new OutPoint(uint256.One, 0)], offer, DateTimeOffset.UnixEpoch, "No Nostr relay took it: relay.example: refused");
 
-		var row = JoinMarketTabViewModel.CreateRow(state);
+		var row = OrderBookTabViewModel.CreateRow(state);
 
 		Assert.True(row.HasProblem);
 		Assert.Equal("No Nostr relay took it: relay.example: refused", row.Problem);

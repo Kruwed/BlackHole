@@ -136,6 +136,15 @@ public class CoinListViewModel : ViewModelBase, IDisposable
 
 	public IEnumerable<SortableItem> Sortables { get; private set; }
 
+	/// <summary>Ticks every coin of the list, or unticks every coin.</summary>
+	public void SelectAll(bool value)
+	{
+		foreach (var coin in CoinItems)
+		{
+			coin.IsSelected = value;
+		}
+	}
+
 	public void Dispose()
 	{
 		_disposables.Dispose();

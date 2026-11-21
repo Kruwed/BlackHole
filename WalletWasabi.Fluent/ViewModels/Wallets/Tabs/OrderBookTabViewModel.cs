@@ -1,13 +1,11 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reactive.Linq;
-using System.Windows.Input;
 using NBitcoin;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.JoinMarket;
-using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
@@ -19,37 +17,22 @@ public record MarketMakerRow(string Maker, string FeeRate, string Spread, string
 }
 
 /// <summary>
-/// The tab of the JoinMarket-style coinjoins. The wallet can be a market maker: it has fidelity bonds, and it posts an
-/// offer of its coins to the Nostr relays. Both are opened from here, and this tab is the only place that opens them.
-/// The list of the market makers shows the offer of this wallet and nobody else's: the wallet does not look for makers yet.
+/// The tab of the order book: the market makers of the JoinMarket-style coinjoins with what they offer. It shows the
+/// offer of this wallet and nobody else's: the wallet does not look for makers yet. The offer of the wallet and its
+/// fidelity bonds are made on the Coins tab, out of the coins that are ticked there.
 /// </summary>
 [AppLifetime]
-public partial class JoinMarketTabViewModel : WalletTabViewModel
+public partial class OrderBookTabViewModel : WalletTabViewModel
 {
-	public const string TabTitle = "JoinMarket";
+	public const string TabTitle = "Order Book";
 
 	/// <summary>What the list calls the maker that this wallet is.</summary>
 	public const string OwnMakerName = "This wallet";
 
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private IReadOnlyList<MarketMakerRow> _marketMakers = [];
 
-	public JoinMarketTabViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
+	public OrderBookTabViewModel(UiContext uiContext, IWalletModel walletModel, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
 	{
-		// The bonds are read from the transactions of the wallet, so they wait for the wallet to know them all.
-		walletModel.WhenAnyValue(x => x.IsLoaded)
-			.BindTo(this, x => x.IsWalletLoaded);
-
-		// The fidelity bonds: coins that are locked until the chain reaches a block height.
-		BondCommand = ReactiveCommand.Create(
-			() => UiContext.Navigate().To().Bonds(walletModel, wallet),
-			this.WhenAnyValue(x => x.IsWalletLoaded));
-
-		// The offer: coins that a taker may put into its coinjoin. It is made of the coins of the wallet, so it waits for them as well.
-		OfferCommand = ReactiveCommand.Create(
-			() => UiContext.Navigate().To().MakerOffer(walletModel),
-			this.WhenAnyValue(x => x.IsWalletLoaded));
-
 		walletModel.MakerOffer.Changed
 			.StartWith(walletModel.MakerOffer.Current)
 			.ObserveOn(RxApp.MainThreadScheduler)
@@ -60,12 +43,6 @@ public partial class JoinMarketTabViewModel : WalletTabViewModel
 	/// The columns of the list of market makers. The first one names the maker, the others tell what it offers.
 	/// </summary>
 	public static IReadOnlyList<string> Columns { get; } = ["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"];
-
-	/// <summary>Opens the fidelity bonds of the wallet.</summary>
-	public ICommand BondCommand { get; }
-
-	/// <summary>Opens the offer of the wallet.</summary>
-	public ICommand OfferCommand { get; }
 
 	public IReadOnlyList<string> MarketMakerColumns => Columns;
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -23,6 +24,7 @@ using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
+using WalletWasabi.Logging;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
@@ -33,14 +35,19 @@ using Constants = WalletWasabi.Helpers.Constants;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
 /// <summary>
-/// The tab that pays. It lists the coins of the wallet, of which the user picks the ones that the transaction may spend,
-/// and above them it takes the address and the amount of the payment and the fee rate. Nothing is signed here: "Continue"
-/// shows the transaction, and it is sent from there.
+/// The tab of the coins. It lists the coins of the wallet, and what is done with coins starts here, with the ones that
+/// the user ticked: a payment spends them, a WabiSabi coinjoin round gets them, a fidelity bond locks them and an offer
+/// offers them to the takers of coinjoins. Receiving starts here too.
 /// </summary>
+/// <remarks>
+/// The ticks belong to the list and to nothing else. They are not kept anywhere, and every one of the four takes the
+/// coins that are ticked at the moment it is asked for. For a payment the tab takes the address, the amount and the fee
+/// rate above the list. Nothing is signed here: "Continue" shows the transaction, and it is sent from there.
+/// </remarks>
 [AppLifetime]
-public partial class SendTabViewModel : WalletTabViewModel
+public partial class CoinsTabViewModel : WalletTabViewModel
 {
-	public const string TabTitle = "Send";
+	public const string TabTitle = "Coins";
 
 	/// <summary>The fee rate that the form starts with is the estimate for a confirmation within this many blocks, as in the title bar.</summary>
 	private const int SuggestedFeeRateTarget = 2;
@@ -70,8 +77,9 @@ public partial class SendTabViewModel : WalletTabViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _selectionHint = DescribeSelectionHint(hasCoins: false);
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isFeeSubtractionNoteVisible;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinStateViewModel? _coinJoinState;
 
-	public SendTabViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
+	public CoinsTabViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
 	{
 		_wallet = wallet;
 		_walletModel = walletModel;
@@ -80,9 +88,31 @@ public partial class SendTabViewModel : WalletTabViewModel
 		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, [], allowCoinjoiningCoinSelection: true, allowSelection: true);
 		AdditionalRecipients = new IndexedCollection<RecipientRowViewModel>(_additionalRecipients);
 
-		// What the wallet knows about its coins is not complete until it has processed the blocks of the node, so paying waits for that.
+		// What the wallet knows about its coins is not complete until it has processed the blocks of the node, so
+		// everything that takes coins waits for that.
 		walletModel.WhenAnyValue(x => x.IsLoaded)
 			.BindTo(this, x => x.IsWalletLoaded);
+
+		// The coinjoin controls come with the loaded wallet. Nothing starts a round but their Play button.
+		this.WhenAnyValue(x => x.IsWalletLoaded)
+			.Where(isLoaded => isLoaded && CoinJoinState is null && walletModel.Coinjoin is not null)
+			.Subscribe(_ => CoinJoinState = new CoinJoinStateViewModel(uiContext, walletModel, wallet, walletModel.Coinjoin!, StartRoundAsync));
+
+		// The settings only decide how the wallet coinjoins later, so they are open while the wallet still processes blocks.
+		CoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
+		{
+			if (UiContext.MainViewModel is { } mainViewModel)
+			{
+				await mainViewModel.SettingsPage.ActivateCoordinatorTabAsync();
+			}
+		});
+
+		// An address can be generated at any time. A bond and an offer are about the coins of the wallet.
+		var isWalletLoaded = this.WhenAnyValue(x => x.IsWalletLoaded);
+
+		ReceiveCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Receive(walletModel));
+		BondCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Bonds(walletModel, wallet, CoinList), isWalletLoaded);
+		OfferCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().MakerOffer(walletModel, CoinList), isWalletLoaded);
 
 		this.ValidateProperty(x => x.To, ValidateToField);
 		this.ValidateProperty(x => x.AmountBtc, ValidateAmount);
@@ -130,7 +160,7 @@ public partial class SendTabViewModel : WalletTabViewModel
 		PasteCommand = ReactiveCommand.CreateFromTask(async () => To = (await ApplicationHelper.GetTextAsync()).WithoutWhitespace());
 		QrCommand = ReactiveCommand.CreateFromTask(ScanQrCodeAsync);
 		PasteFromClipboardCommand = ReactiveCommand.CreateFromTask<object>(PasteFromClipboardAsync);
-		ToggleSelectionCommand = ReactiveCommand.Create(() => SelectAll(!CoinList.Selection.Any()));
+		ToggleSelectionCommand = ReactiveCommand.Create(() => CoinList.SelectAll(!CoinList.Selection.Any()));
 
 		InsertMaxCommand = ReactiveCommand.Create(() =>
 		{
@@ -185,8 +215,27 @@ public partial class SendTabViewModel : WalletTabViewModel
 		ContinueCommand = ReactiveCommand.CreateFromTask(OnContinueAsync, canContinue.ObserveOn(RxApp.MainThreadScheduler));
 	}
 
-	/// <summary>The coins of the wallet. The ones that are ticked are the ones that the transaction may spend.</summary>
+	/// <summary>
+	/// The coins of the wallet. The ones that are ticked are the ones that a payment may spend, that a coinjoin round
+	/// gets, that a bond locks and that an offer offers. No coin is ticked before the user ticks it: a coin that
+	/// arrives, also out of a coinjoin, is not.
+	/// </summary>
 	public CoinListViewModel CoinList { get; }
+
+	/// <summary>Whether a coordinator is set. Without one there is no WabiSabi coinjoin, and the tab says so.</summary>
+	public bool IsCoinJoinEnabled => _walletModel.IsCoinJoinEnabled;
+
+	/// <summary>Opens the settings of the coinjoins: the coordinator and the limits that the wallet keeps to.</summary>
+	public ICommand CoordinatorSettingsCommand { get; }
+
+	/// <summary>Opens the addresses that await a payment. A new address is generated from there.</summary>
+	public ICommand ReceiveCommand { get; }
+
+	/// <summary>Opens the fidelity bonds of the wallet. A new bond locks the coins that are ticked.</summary>
+	public ICommand BondCommand { get; }
+
+	/// <summary>Opens the offer of the wallet as a market maker. An offer offers the coins that are ticked.</summary>
+	public ICommand OfferCommand { get; }
 
 	public IndexedCollection<RecipientRowViewModel> AdditionalRecipients { get; }
 
@@ -224,6 +273,23 @@ public partial class SendTabViewModel : WalletTabViewModel
 	/// </summary>
 	public static bool ShowsFeeSubtractionNote(bool takesAll, decimal? amountBtc, bool hasAmountMessage) =>
 		takesAll && amountBtc > 0 && !hasAmountMessage;
+
+	/// <summary>
+	/// Tells the wallet's choice of coins for the round that Play starts: every coin of the list is named, the ticked
+	/// ones as chosen and the others as not chosen. So the round gets what is ticked now and nothing that an earlier
+	/// round was started with.
+	/// </summary>
+	public static IReadOnlyDictionary<OutPoint, bool> GetRoundSelection(IEnumerable<(OutPoint Outpoint, bool IsTicked)> coins)
+	{
+		var selection = new Dictionary<OutPoint, bool>();
+
+		foreach (var (outpoint, isTicked) in coins)
+		{
+			selection[outpoint] = isTicked;
+		}
+
+		return selection;
+	}
 
 	/// <summary>What stands next to the amount while no coin is picked: what is to be done first.</summary>
 	public static string DescribeSelectionHint(bool hasCoins) =>
@@ -312,12 +378,31 @@ public partial class SendTabViewModel : WalletTabViewModel
 		_recipientsChanged.OnNext(Unit.Default);
 	}
 
-	private void SelectAll(bool value)
+	/// <summary>
+	/// Starts one WabiSabi round with the coins that are ticked. The wallet is told first which coins they are: a round
+	/// takes the coins that the wallet has as chosen for coinjoins, ten at most. If the wallet could not be told, no
+	/// round is started, as it would get other coins than the ticked ones.
+	/// </summary>
+	private async Task StartRoundAsync()
 	{
-		foreach (var coin in CoinList.CoinItems)
+		if (_walletModel.Coinjoin is not { } coinjoin)
 		{
-			coin.IsSelected = value;
+			return;
 		}
+
+		try
+		{
+			var ticks = CoinList.CoinItems.Select(row => (row.Coin.GetSmartCoin().Outpoint, row.IsSelected)).ToArray();
+
+			await _walletModel.Coins.SelectForCoinjoinAsync(GetRoundSelection(ticks));
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex);
+			return;
+		}
+
+		await coinjoin.StartAsync();
 	}
 
 	private void RecalculateMaxAmount()
@@ -530,7 +615,7 @@ public partial class SendTabViewModel : WalletTabViewModel
 		}
 
 		_additionalRecipients.Clear();
-		SelectAll(false);
+		CoinList.SelectAll(false);
 
 		_parsedAddress = null;
 		To = "";

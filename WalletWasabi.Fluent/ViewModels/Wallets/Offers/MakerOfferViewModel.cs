@@ -7,6 +7,8 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
+using WalletWasabi.Blockchain.TransactionOutputs;
+using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -19,33 +21,50 @@ using WalletWasabi.Models;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Offers;
 
+/// <summary>Where the coins of an offer come from when it is posted.</summary>
+public enum OfferCoinsSource
+{
+	/// <summary>No coin is ticked and no offer stands: there is nothing to offer.</summary>
+	None,
+
+	/// <summary>The coins that are ticked on the Coins tab.</summary>
+	Ticked,
+
+	/// <summary>No coin is ticked: the offer that stands keeps its coins, and only its terms change.</summary>
+	StandingOffer,
+
+	/// <summary>More coins are ticked than an offer holds.</summary>
+	TooMany
+}
+
 /// <summary>
-/// The offer of the wallet as a market maker: the user picks up to two coins, names the lowest fee rate of a coinjoin
-/// that the coins may go into and the two prices of an anonymity point, and posts that to the Nostr relays. The offer
-/// that stands is shown here too, to be changed or taken back.
+/// The offer of the wallet as a market maker: up to two coins, the lowest fee rate of a coinjoin that the coins may go
+/// into and the two prices of an anonymity point, posted to the Nostr relays. The coins are the ones that are ticked on
+/// the Coins tab. The offer that stands is shown here too, to be changed or taken back.
 /// </summary>
 [NavigationMetaData(Title = "Offer", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class MakerOfferViewModel : RoutableViewModel
 {
 	private readonly IWalletModel _walletModel;
+	private readonly CoinListViewModel _coins;
 
 	[AutoNotify] private string _minFeeRateText = "";
 	[AutoNotify] private string _bidText = "";
 	[AutoNotify] private string _askText = "";
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private int _selectedCount;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount? _selectedAmount;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private OfferCoinsSource _coinsSource;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _coinsText = "";
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount? _offeredAmount;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasOffer;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _errorMessage;
 
-	public MakerOfferViewModel(UiContext uiContext, IWalletModel walletModel) : base(uiContext)
+	/// <param name="coins">The list of the Coins tab. An offer offers the coins that are ticked in it.</param>
+	public MakerOfferViewModel(UiContext uiContext, IWalletModel walletModel, CoinListViewModel coins) : base(uiContext)
 	{
 		_walletModel = walletModel;
+		_coins = coins;
 
-		// The offer that stands is what the page starts with.
+		// The terms of the offer that stands are what the page starts with.
 		var standing = walletModel.MakerOffer.Current;
-		var offeredCoins = standing is null
-			? []
-			: walletModel.Coins.List.Items.Where(coin => standing.Coins.Contains(coin.GetSmartCoin().Outpoint)).ToList();
 
 		if (standing is not null)
 		{
@@ -54,8 +73,8 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			_askText = FormatPrice(standing.Offer.Ask);
 		}
 
-		CoinList = new CoinListViewModel(uiContext, walletModel.Coins, offeredCoins, allowCoinjoiningCoinSelection: true, allowSelection: true);
 		HasOffer = standing is not null;
+		UpdateCoins();
 
 		// A click beside the page does not close it: what was typed would be gone.
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
@@ -73,8 +92,8 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			x => x.MinFeeRateText,
 			x => x.BidText,
 			x => x.AskText,
-			x => x.SelectedCount,
-			(feeRate, bid, ask, count) => ParseTerms(feeRate, bid, ask) is not null && count is > 0 and <= MakerOffer.MaxCoinCount);
+			x => x.CoinsSource,
+			(feeRate, bid, ask, source) => ParseTerms(feeRate, bid, ask) is not null && source is OfferCoinsSource.Ticked or OfferCoinsSource.StandingOffer);
 
 		NextCommand = ReactiveCommand.CreateFromTask(PostAsync, canPost);
 		SkipCommand = ReactiveCommand.CreateFromTask(WithdrawAsync, this.WhenAnyValue(x => x.HasOffer));
@@ -82,10 +101,8 @@ public partial class MakerOfferViewModel : RoutableViewModel
 		EnableAutoBusyOn(NextCommand, SkipCommand);
 	}
 
-	public CoinListViewModel CoinList { get; }
-
-	/// <summary>Whether more coins are ticked than an offer holds.</summary>
-	public bool HasTooManyCoins => SelectedCount > MakerOffer.MaxCoinCount;
+	/// <summary>Whether the page has no coins for an offer: none is ticked, or too many are. What it says about the coins is a complaint then.</summary>
+	public bool HasNoCoinsToOffer => CoinsSource is OfferCoinsSource.None or OfferCoinsSource.TooMany;
 
 	/// <summary>Where the offer goes, and what it tells there.</summary>
 	public string PostingText
@@ -123,51 +140,92 @@ public partial class MakerOfferViewModel : RoutableViewModel
 
 	public static string FormatPrice(Money price) => price.Satoshi.ToString(CultureInfo.InvariantCulture);
 
+	/// <summary>
+	/// Tells where the coins of an offer come from that is posted now. The ticked coins are the offer's, if an offer
+	/// can hold them. With no coin ticked, an offer that stands keeps its coins, so that its terms can be changed
+	/// without ticking its coins again.
+	/// </summary>
+	/// <param name="tickedCount">How many coins are ticked on the Coins tab.</param>
+	/// <param name="standingCount">How many coins the offer that stands holds: none without such an offer.</param>
+	public static OfferCoinsSource ChooseCoins(int tickedCount, int standingCount) =>
+		tickedCount switch
+		{
+			> MakerOffer.MaxCoinCount => OfferCoinsSource.TooMany,
+			> 0 => OfferCoinsSource.Ticked,
+			_ when standingCount > 0 => OfferCoinsSource.StandingOffer,
+			_ => OfferCoinsSource.None
+		};
+
+	/// <summary>What the page says about the coins of the offer: which ones they are, or what is to be done first.</summary>
+	/// <param name="tickedCount">How many coins are ticked on the Coins tab.</param>
+	/// <param name="standingCount">How many coins the offer that stands holds: none without such an offer.</param>
+	public static string DescribeCoins(int tickedCount, int standingCount) =>
+		ChooseCoins(tickedCount, standingCount) switch
+		{
+			OfferCoinsSource.TooMany =>
+				$"An offer holds two coins at most, and {tickedCount} are ticked on the Coins tab. Coins on the same address are ticked together.",
+			OfferCoinsSource.Ticked when standingCount > 0 =>
+				$"The offer gets the {Count(tickedCount, "coin that is", "coins that are")} ticked on the Coins tab, in place of what it holds now.",
+			OfferCoinsSource.Ticked =>
+				$"The offer holds the {Count(tickedCount, "coin that is", "coins that are")} ticked on the Coins tab.",
+			OfferCoinsSource.StandingOffer =>
+				$"No coin is ticked on the Coins tab, so the offer keeps the {Count(standingCount, "coin", "coins")} that it holds now.",
+			_ => "No coin is ticked. Close this page, tick one or two coins on the Coins tab and come back."
+		};
+
+	private static string Count(int count, string one, string many) => count == 1 ? one : $"{count} {many}";
+
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
 	{
 		base.OnNavigatedTo(isInHistory, disposables);
 
-		// What is ticked, also when the list is put together again because the coins of the wallet changed.
-		CoinList.CoinItems
+		// Nothing is ticked or unticked while this page covers the Coins tab, but a coin can be spent meanwhile, and
+		// the offer follows the coins that it holds.
+		_coins.Selection
 			.ToObservableChangeSet()
-			.AutoRefresh(x => x.IsSelected)
-			.ToCollection()
-			.Subscribe(UpdateSelection)
-			.DisposeWith(disposables);
-
-		_walletModel.MakerOffer.Changed
+			.ToSignal()
+			.Merge(_coins.CoinItems.ToObservableChangeSet().ToSignal())
+			.Merge(_walletModel.MakerOffer.Changed.ToSignal())
+			.StartWith(System.Reactive.Unit.Default)
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(offer => HasOffer = offer is not null)
+			.Subscribe(_ =>
+			{
+				HasOffer = _walletModel.MakerOffer.Current is not null;
+				UpdateCoins();
+			})
 			.DisposeWith(disposables);
-
-		HasOffer = _walletModel.MakerOffer.Current is not null;
 	}
 
-	protected override void OnNavigatedFrom(bool isInHistory)
+	/// <summary>The coins that the offer that stands holds, as far as the wallet still has them.</summary>
+	private SmartCoin[] GetStandingCoins() =>
+		_walletModel.MakerOffer.Current is { } standing
+			? [.. _coins.CoinItems.Select(row => row.Coin.GetSmartCoin()).Where(coin => standing.Coins.Contains(coin.Outpoint))]
+			: [];
+
+	/// <summary>The coins that an offer gets that is posted now. None if there is nothing to offer, or too much.</summary>
+	private SmartCoin[] GetCoinsToOffer()
 	{
-		if (!isInHistory)
+		var ticked = _coins.Selection.GetSmartCoins().ToArray();
+		var standing = GetStandingCoins();
+
+		return ChooseCoins(ticked.Length, standing.Length) switch
 		{
-			CoinList.Dispose();
-		}
+			OfferCoinsSource.Ticked => ticked,
+			OfferCoinsSource.StandingOffer => standing,
+			_ => []
+		};
 	}
 
-	/// <summary>
-	/// Follows the ticks. Once an offer is full, the coins that are not in it cannot be ticked, which shows how many
-	/// coins an offer holds. Coins on one address are ticked together, so more than that can be ticked all the same.
-	/// </summary>
-	private void UpdateSelection(IReadOnlyCollection<CoinViewModel> rows)
+	private void UpdateCoins()
 	{
-		var selected = rows.Where(row => row.IsSelected).ToArray();
-		var isFull = selected.Length >= MakerOffer.MaxCoinCount;
+		var tickedCount = _coins.Selection.Count;
+		var standingCount = GetStandingCoins().Length;
+		var coins = GetCoinsToOffer();
 
-		foreach (var row in rows)
-		{
-			row.CanBeSelected = row.IsSelected || !isFull;
-		}
-
-		SelectedCount = selected.Length;
-		SelectedAmount = selected.Length > 0 ? new Amount(selected.Sum(row => row.Coin.Amount)) : null;
-		this.RaisePropertyChanged(nameof(HasTooManyCoins));
+		CoinsSource = ChooseCoins(tickedCount, standingCount);
+		CoinsText = DescribeCoins(tickedCount, standingCount);
+		OfferedAmount = coins.Length > 0 ? new Amount(coins.Sum(coin => coin.Amount)) : null;
+		this.RaisePropertyChanged(nameof(HasNoCoinsToOffer));
 	}
 
 	private async Task PostAsync()
@@ -177,8 +235,16 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			return;
 		}
 
+		// The coins are taken now: a coin that was spent while the page was open is not among them.
+		var coins = GetCoinsToOffer();
+
+		if (coins.Length == 0)
+		{
+			UpdateCoins();
+			return;
+		}
+
 		ErrorMessage = null;
-		var coins = CoinList.Selection.GetSmartCoins().ToArray();
 
 		try
 		{

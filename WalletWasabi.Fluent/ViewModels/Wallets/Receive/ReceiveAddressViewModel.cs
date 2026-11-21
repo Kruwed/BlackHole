@@ -9,7 +9,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 
 /// <summary>
-/// Shows an address to receive a payment to, with its QR code. The Receive tab opens it for the address that it just
+/// Shows an address to receive a payment to, with its QR code. The Receive page opens it for the address that it just
 /// generated and for an address of its list, one that was generated earlier and still awaits its payment.
 /// </summary>
 [NavigationMetaData(Title = "Receive Address", NavigationTarget = NavigationTarget.DialogScreen)]
@@ -30,7 +30,8 @@ public partial class ReceiveAddressViewModel : RoutableViewModel
 		CopyAddressCommand = ReactiveCommand.CreateFromTask(() =>
 			UiContext.Clipboard.SetTextAsync(Address));
 
-		NextCommand = CancelCommand;
+		// The page lies on top of the list of the addresses, and "OK" leads back there.
+		NextCommand = BackCommand;
 
 		QrCode = UiContext.QrCodeGenerator.Generate(model.Text.ToUpperInvariant());
 	}

@@ -4,6 +4,7 @@ using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
+using WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
@@ -105,6 +106,45 @@ public class CoinsChosenForCoinJoinTests
 		Assert.Equal(
 			new[] { kept.Outpoint, other.Outpoint }.OrderBy(x => x.ToString()),
 			keyManager.CoinsSelectedForCoinJoin.OrderBy(x => x.ToString()));
+	}
+
+	/// <summary>
+	/// Play on the Coins tab names every coin of its list with its tick. So the round gets the coins that are ticked
+	/// then, and a coin that an earlier round was started with is taken out again unless it is ticked.
+	/// </summary>
+	[Fact]
+	public void RoundStartedOnTheCoinsTabGetsTheTickedCoinsAndNoOthers()
+	{
+		using var environment = new WalletWithCoins();
+		var (wallet, keyManager) = (environment.Wallet, environment.Wallet.KeyManager);
+
+		var earlier = environment.GiveTheWalletCoin(Money.Coins(1m));
+		var ticked = environment.GiveTheWalletCoin(Money.Coins(2m));
+		var untouched = environment.GiveTheWalletCoin(Money.Coins(3m));
+		wallet.SelectCoinForCoinJoin(earlier.Outpoint);
+
+		wallet.SelectCoinsForCoinJoin(CoinsTabViewModel.GetRoundSelection(
+		[
+			(earlier.Outpoint, false),
+			(ticked.Outpoint, true),
+			(untouched.Outpoint, false)
+		]));
+
+		Assert.False(earlier.IsSelectedForCoinJoin);
+		Assert.True(ticked.IsSelectedForCoinJoin);
+		Assert.False(untouched.IsSelectedForCoinJoin);
+		Assert.Equal([ticked.Outpoint], keyManager.CoinsSelectedForCoinJoin);
+
+		// With nothing ticked, nothing is chosen: the round then tells that no coin is ticked.
+		wallet.SelectCoinsForCoinJoin(CoinsTabViewModel.GetRoundSelection(
+		[
+			(earlier.Outpoint, false),
+			(ticked.Outpoint, false),
+			(untouched.Outpoint, false)
+		]));
+
+		Assert.DoesNotContain(wallet.Coins, coin => coin.IsSelectedForCoinJoin);
+		Assert.Empty(keyManager.CoinsSelectedForCoinJoin);
 	}
 
 	[Fact]

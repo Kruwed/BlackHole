@@ -148,6 +148,25 @@ public class FidelityBondPagesTests
 		Assert.NotNull(WalletBondsModel.ValidateUnlockHeight(uint.MaxValue, ChainHeight));
 	}
 
+	/// <summary>A new bond locks the coins that are ticked on the Coins tab. Without a ticked coin the page tells what to do.</summary>
+	[Fact]
+	public void NewBondLocksTheCoinsThatAreTicked()
+	{
+		Assert.Equal(
+			"The bond locks the coin that is ticked on the Coins tab, or a part of it. It holds 0.50 000 000 BTC.",
+			CreateBondViewModel.DescribeCoins(tickedCount: 1, Money.Coins(0.5m), walletHasCoins: true));
+		Assert.Equal(
+			"The bond locks the 3 coins that are ticked on the Coins tab, or a part of them. They hold 1.20 000 000 BTC.",
+			CreateBondViewModel.DescribeCoins(tickedCount: 3, Money.Coins(1.2m), walletHasCoins: true));
+
+		Assert.Equal(
+			"No coin is ticked. Close this page, tick the coins to lock on the Coins tab and come back.",
+			CreateBondViewModel.DescribeCoins(tickedCount: 0, Money.Zero, walletHasCoins: true));
+		Assert.Equal(
+			"This wallet has no coins to lock.",
+			CreateBondViewModel.DescribeCoins(tickedCount: 0, Money.Zero, walletHasCoins: false));
+	}
+
 	[Theory]
 	[InlineData("1028732", 1_028_732u)]
 	[InlineData("1,028,732", 1_028_732u)]

@@ -15,8 +15,8 @@ using Constants = WalletWasabi.Helpers.Constants;
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 
 /// <summary>
-/// The amount of a new fidelity bond: how much of the coins that the user picked goes to the address of the bond. The
-/// transaction is previewed and sent like any other payment after that.
+/// The amount of a new fidelity bond: how much of the coins that the user ticked on the Coins tab goes to the address
+/// of the bond. The transaction is previewed and sent like any other payment after that.
 /// </summary>
 [NavigationMetaData(Title = "Lock Coins", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class BondAmountViewModel : RoutableViewModel
@@ -28,7 +28,7 @@ public partial class BondAmountViewModel : RoutableViewModel
 
 	[AutoNotify] private decimal? _amountBtc;
 
-	/// <param name="parameters">The coins that the user picked, and the block height that they are locked until.</param>
+	/// <param name="parameters">The coins that the user ticked, and the block height that they are locked until.</param>
 	public BondAmountViewModel(UiContext uiContext, IWalletModel walletModel, SendFlowModel parameters) : base(uiContext)
 	{
 		_walletModel = walletModel;
@@ -51,7 +51,7 @@ public partial class BondAmountViewModel : RoutableViewModel
 		NextCommand = ReactiveCommand.CreateFromTask(OnNextAsync, canContinue);
 	}
 
-	/// <summary>What the coins that the user picked hold. No more than that can be locked.</summary>
+	/// <summary>What the coins that the user ticked hold. No more than that can be locked.</summary>
 	public Amount Balance { get; }
 
 	public string Address { get; }
@@ -77,7 +77,7 @@ public partial class BondAmountViewModel : RoutableViewModel
 		}
 		else if (amount > _parameters.AvailableAmountBtc)
 		{
-			errors.Add(ErrorSeverity.Error, "The coins that you picked do not hold that much.");
+			errors.Add(ErrorSeverity.Error, "The coins that you ticked do not hold that much.");
 		}
 	}
 
