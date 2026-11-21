@@ -26,7 +26,8 @@ public class CoinJoinTrackerFactory
 	private readonly InputVerifier _inputVerifier;
 	private readonly CancellationToken _cancellationToken;
 
-	public CoinJoinTracker CreateAndStart(Wallet wallet, Func<IEnumerable<SmartCoin>> coinCandidatesFunc)
+	/// <param name="protocol">The kind of coinjoin that the wallet takes part in.</param>
+	public CoinJoinTracker CreateAndStart(Wallet wallet, CoinJoinProtocol protocol, Func<IEnumerable<SmartCoin>> coinCandidatesFunc)
 	{
 		if (wallet.KeyChain is null)
 		{
@@ -42,6 +43,6 @@ public class CoinJoinTrackerFactory
 			_inputVerifier,
 			doNotRegisterInLastMinuteTimeLimit: TimeSpan.FromMinutes(1));
 
-		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, _cancellationToken);
+		return new CoinJoinTracker(wallet, coinJoinClient, coinCandidatesFunc, protocol, _cancellationToken);
 	}
 }

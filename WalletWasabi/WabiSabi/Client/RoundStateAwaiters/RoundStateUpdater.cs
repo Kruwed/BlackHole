@@ -10,6 +10,7 @@ public abstract record RoundUpdateMessage
 {
 	public record UpdateMessage(DateTime CurrentTime) : RoundUpdateMessage;
 	public record CreateRoundAwaiter(uint256? RoundId, Phase? Phase, Predicate<RoundState>? Predicate, IReplyChannel<Task<RoundState>> ReplayChannel) : RoundUpdateMessage;
+	public record CreateRoundSelector(Func<IReadOnlyCollection<RoundState>, RoundState?> Select, IReplyChannel<Task<RoundState>> ReplayChannel) : RoundUpdateMessage;
 }
 
 public class RoundStateProvider(MailboxProcessor<RoundUpdateMessage> roundStateUpdater)
@@ -34,6 +35,23 @@ public class RoundStateProvider(MailboxProcessor<RoundUpdateMessage> roundStateU
 		var awaiter = await roundStateUpdater
 			.PostAndReplyAsync<Task<RoundState>>(
 				chan => new RoundUpdateMessage.CreateRoundAwaiter(null, null, predicate, chan),
+				cancellationToken).ConfigureAwait(false);
+		using var cts =
+			CancellationTokenSource.CreateLinkedTokenSource(roundStateUpdater.CancellationToken, cancellationToken);
+		return await awaiter.WaitAsync(cts.Token).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Waits for a round that is picked out of all the rounds of the coordinator at once: which round suits best can
+	/// depend on the other rounds that there are.
+	/// </summary>
+	/// <param name="select">Picks the round, or none if it is not there yet. It is asked again with every news of the coordinator.</param>
+	public async Task<RoundState> CreateRoundAwaiterAsync(Func<IReadOnlyCollection<RoundState>, RoundState?> select,
+		CancellationToken cancellationToken)
+	{
+		var awaiter = await roundStateUpdater
+			.PostAndReplyAsync<Task<RoundState>>(
+				chan => new RoundUpdateMessage.CreateRoundSelector(select, chan),
 				cancellationToken).ConfigureAwait(false);
 		using var cts =
 			CancellationTokenSource.CreateLinkedTokenSource(roundStateUpdater.CancellationToken, cancellationToken);
@@ -77,6 +95,11 @@ public static class RoundStateUpdater
 				var roundStateAwaiter = new RoundStateAwaiter(m.Predicate, m.RoundId, m.Phase, cancellationToken);
 				state = state with {Awaiters = state.Awaiters.Add(roundStateAwaiter)};
 				m.ReplayChannel.Reply(roundStateAwaiter.Task);
+				break;
+			case RoundUpdateMessage.CreateRoundSelector m:
+				var roundSelector = new RoundStateAwaiter(m.Select, cancellationToken);
+				state = state with {Awaiters = state.Awaiters.Add(roundSelector)};
+				m.ReplayChannel.Reply(roundSelector.Task);
 				break;
 		}
 

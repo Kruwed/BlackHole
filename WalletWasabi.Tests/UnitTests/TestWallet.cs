@@ -96,7 +96,7 @@ public class TestWallet : IKeyChain, IDestinationProvider
 				ScriptPubKeyType.Segwit);
 	}
 
-	public Transaction Sign(TransactionWithPrecomputedData unsignedCoinJoin, Coin coin)
+	public Transaction Sign(TransactionWithPrecomputedData unsignedCoinJoin, Coin coin, TaprootSigHash sigHash = TaprootSigHash.All)
 	{
 		if (!ScriptPubKeys.TryGetValue(coin.ScriptPubKey, out var extKey))
 		{

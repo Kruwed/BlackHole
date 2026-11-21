@@ -1,0 +1,136 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wallets="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets"
+             x:DataType="wallets:CoinJoinBoxViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.CoinJoinBoxView">
+  <UserControl.Styles>
+    <Style Selector="Border#Box :is(TextBlock)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#Box Button:disabled PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForegroundDisabled}" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- The coinjoins of one kind: what the coinjoin is doing, and its controls. The boxes have one width, the one that
+       the box with a menu needs, so that they line up where one is below the other. -->
+  <Border Name="Box" ClipToBounds="True" Margin="0 0 10 6" MinWidth="551"
+          TextElement.FontFamily="{StaticResource MonospacedFont}"
+          CornerRadius="4"
+          BorderBrush="{DynamicResource GlassEdgeColor}"
+          BorderThickness="1">
+    <Panel>
+      <Panel Background="{DynamicResource TileRegionColor}" Opacity="0.35" />
+      <StackPanel Margin="10 8" Orientation="Horizontal" Spacing="20">
+
+        <!-- Which kind it is. The first box has the logo. -->
+        <StackPanel VerticalAlignment="Center" Spacing="2" MinWidth="58">
+          <Image Height="35" Width="35" HorizontalAlignment="Center" Source="{DynamicResource app_logo_dynamic}"
+                 IsVisible="{Binding IsWabiSabi}" />
+          <TextBlock Text="{Binding Name}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <!-- With a coordinator -->
+        <StackPanel Orientation="Horizontal" Spacing="20" IsVisible="{Binding IsCoinJoinEnabled}">
+
+          <!-- The wallet is loaded: what the coinjoin is doing -->
+          <StackPanel Spacing="5" Width="350" VerticalAlignment="Center"
+                      IsVisible="{Binding State, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TransitioningContentControl MinHeight="18" Content="{Binding State.CurrentStatus}">
+              <TransitioningContentControl.PageTransition>
+                <PageSlide Duration="0:0:0.125" Orientation="Vertical" SlideInEasing="0.4,0,0.6,1" SlideOutEasing="0.4,0,0.6,1" />
+              </TransitioningContentControl.PageTransition>
+              <TransitioningContentControl.DataTemplates>
+                <DataTemplate DataType="x:String">
+                  <TextBlock Text="{Binding .}" />
+                </DataTemplate>
+              </TransitioningContentControl.DataTemplates>
+            </TransitioningContentControl>
+
+            <ProgressBar Minimum="0" Maximum="100" IsIndeterminate="{Binding State.IsCountDownDelayHappening, FallbackValue=False}" Value="{Binding State.ProgressValue, FallbackValue=0}">
+              <ProgressBar.Foreground>
+                <SolidColorBrush Color="{DynamicResource SystemAccentColor}" Opacity="0.4" />
+              </ProgressBar.Foreground>
+              <ProgressBar.Background>
+                <SolidColorBrush Color="{DynamicResource SystemBaseMediumColor}" Opacity="0.5" />
+              </ProgressBar.Background>
+            </ProgressBar>
+
+            <DockPanel LastChildFill="False">
+              <TextBlock Text="{Binding State.LeftText}" DockPanel.Dock="Left" />
+              <TextBlock Text="{Binding State.RightText}" DockPanel.Dock="Right" />
+            </DockPanel>
+          </StackPanel>
+
+          <!-- The wallet is not loaded yet: the controls come with it -->
+          <StackPanel Spacing="4" Width="350" VerticalAlignment="Center"
+                      IsVisible="{Binding State, Converter={x:Static ObjectConverters.IsNull}}">
+            <TextBlock Text="Coinjoin waits for the wallet" />
+            <TextBlock Text="It is processing the blocks" />
+          </StackPanel>
+
+          <Separator Classes="vertical" />
+
+          <!-- Play is not to be had while a round of another kind is under way: the wallet has one coinjoin at a time. -->
+          <Button Classes="plain"
+                  IsVisible="{Binding State.PlayVisible, FallbackValue=False}"
+                  Command="{Binding State.PlayCommand}"
+                  ToolTip.Tip="{Binding State.PlayToolTip}"
+                  ToolTip.ShowOnDisabled="True">
+            <PathIcon Data="{StaticResource play_regular}" />
+          </Button>
+
+          <Button Classes="plain"
+                  IsVisible="{Binding State.StopVisible, FallbackValue=False}"
+                  Command="{Binding State.StopCommand}"
+                  ToolTip.Tip="Stop coinjoin">
+            <PathIcon Data="{StaticResource stop_regular}" />
+          </Button>
+
+          <Button Classes="plain" ToolTip.Tip="Settings and more" IsVisible="{Binding IsWabiSabi}">
+            <Button.Flyout>
+              <MenuFlyout Placement="Bottom">
+                <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
+                  <MenuItem.Icon>
+                    <PathIcon Data="{StaticResource coordinator}" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Coinjoin Payments" Command="{Binding State.CoinJoinPaymentsCommand}"
+                          IsVisible="{Binding State, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <MenuItem.Icon>
+                    <PathIcon Data="{StaticResource embedded_payment}" />
+                  </MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+            <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
+          </Button>
+        </StackPanel>
+
+        <!-- Without a coordinator there is no coinjoin -->
+        <StackPanel Orientation="Horizontal" Spacing="20" IsVisible="{Binding !IsCoinJoinEnabled}">
+          <StackPanel Spacing="4" Width="350" VerticalAlignment="Center">
+            <TextBlock Text="Coordinator not configured" />
+            <TextBlock Text="Coinjoin not available" />
+          </StackPanel>
+
+          <Separator Classes="vertical" IsVisible="{Binding IsWabiSabi}" />
+
+          <Button Classes="plain" ToolTip.Tip="Settings" IsVisible="{Binding IsWabiSabi}">
+            <Button.Flyout>
+              <MenuFlyout Placement="Bottom">
+                <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
+                  <MenuItem.Icon>
+                    <PathIcon Data="{StaticResource coordinator}" />
+                  </MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+            <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
+          </Button>
+        </StackPanel>
+      </StackPanel>
+    </Panel>
+  </Border>
+</UserControl>

@@ -1,6 +1,7 @@
 using System.Net.Http;
 using WalletWasabi.Crypto;
 using WalletWasabi.WabiSabi.Client.RoundStateAwaiters;
+using WalletWasabi.ZeroLink;
 using static WalletWasabi.Logging.LoggerTools;
 
 namespace WalletWasabi.WabiSabi.Client.CoinJoin.Client;
@@ -25,6 +26,9 @@ public class AliceClient
 		IssuedVsizeCredentials = issuedVsizeCredentials;
 		_maxVsizeAllocationPerAlice = roundParameters.MaxVsizeAllocationPerAlice;
 		_confirmationTimeout = roundParameters.ConnectionConfirmationTimeout / 2;
+
+		// The inputs of a ZeroLink round are signed the way that leaves the signature at 64 bytes, all of them alike.
+		_sigHash = ZeroLinkRules.IsZeroLinkRound(roundParameters) ? ZeroLinkRules.SigHash : TaprootSigHash.All;
 	}
 
 	public Guid AliceId { get; }
@@ -35,6 +39,7 @@ public class AliceClient
 	public IEnumerable<Credential> IssuedAmountCredentials { get; private set; }
 	public IEnumerable<Credential> IssuedVsizeCredentials { get; private set; }
 	private readonly long _maxVsizeAllocationPerAlice;
+	private readonly TaprootSigHash _sigHash;
 	private readonly TimeSpan _confirmationTimeout;
 
 	public DateTimeOffset LastSuccessfulInputConnectionConfirmation { get; private set; } = DateTimeOffset.UtcNow;
@@ -190,7 +195,7 @@ public class AliceClient
 
 	public async Task SignTransactionAsync(TransactionWithPrecomputedData unsignedCoinJoin, IKeyChain keyChain, CancellationToken cancellationToken)
 	{
-		await _arenaClient.SignTransactionAsync(RoundId, SmartCoin.Coin, keyChain, unsignedCoinJoin, cancellationToken).ConfigureAwait(false);
+		await _arenaClient.SignTransactionAsync(RoundId, SmartCoin.Coin, keyChain, unsignedCoinJoin, cancellationToken, _sigHash).ConfigureAwait(false);
 
 		Logger.LogInfo(FormatLog("Posted a signature.", this));
 	}

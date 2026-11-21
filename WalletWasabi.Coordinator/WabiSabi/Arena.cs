@@ -21,6 +21,7 @@ using WalletWasabi.WabiSabi.Coordinator.Models;
 using WalletWasabi.WabiSabi.Coordinator.Rounds;
 using WalletWasabi.WabiSabi.Models;
 using WalletWasabi.WabiSabi.Models.MultipartyTransaction;
+using WalletWasabi.ZeroLink;
 using static WalletWasabi.Logging.LoggerTools;
 
 namespace WalletWasabi.Coordinator.WabiSabi;
@@ -36,6 +37,11 @@ public partial class Arena : PeriodicRunner
 		TimeSpan? period = null
 		) : base(period ?? TimeSpan.FromSeconds(2))
 	{
+		if (config.FindZeroLinkDenominationProblem() is { } problem)
+		{
+			throw new ArgumentException(problem, nameof(config));
+		}
+
 		_config = config;
 		_rpc = rpc;
 		_prison = prison;
@@ -230,8 +236,21 @@ public partial class Arena : PeriodicRunner
 					Logger.LogInfo(FormatLog($"{coinjoin.Inputs.Count()} inputs were added.", round));
 					Logger.LogInfo(FormatLog($"{coinjoin.Outputs.Count()} outputs were added.", round));
 
-					round.CoordinatorScript = GetCoordinatorScriptPreventReuse(round);
-					coinjoin = AddCoordinationFee(round, coinjoin, round.CoordinatorScript, _config.TrimCoordinatorOutput);
+					if (ZeroLinkRules.IsZeroLinkRound(round.Parameters))
+					{
+						// The transaction of a ZeroLink round has the inputs and the outputs of its participants and
+						// nothing else. The coordinator adds no output of its own: what the participants pay beyond
+						// their inputs and outputs is the fee of what the transaction has besides those.
+						if (ZeroLinkRules.FindViolation(round.Parameters, [.. coinjoin.Inputs], [.. coinjoin.Outputs]) is { } violation)
+						{
+							throw new InvalidOperationException($"The transaction is not one of a ZeroLink round. {violation}");
+						}
+					}
+					else
+					{
+						round.CoordinatorScript = GetCoordinatorScriptPreventReuse(round);
+						coinjoin = AddCoordinationFee(round, coinjoin, round.CoordinatorScript, _config.TrimCoordinatorOutput);
+					}
 
 					round.CoinjoinState = FinalizeTransaction(coinjoin);
 
@@ -380,16 +399,28 @@ public partial class Arena : PeriodicRunner
 			return;
 		}
 
+		FeeRate feeRate = await GetFeeRateEstimationAsync(cancellationToken).ConfigureAwait(false);
+
+		// The blame round of a ZeroLink round is a ZeroLink round of the same denomination. Its output amount follows
+		// the fee rate of the moment, and if that leaves no output, there is no blame round.
+		var isZeroLink = ZeroLinkRules.TryGetDenomination(round.Parameters, out var zeroLinkDenomination);
+		if (isZeroLink && !ZeroLinkRules.CanHoldRound(zeroLinkDenomination!, feeRate))
+		{
+			EndRound(round, EndRoundState.AbortedNotEnoughAlicesSigned);
+			return;
+		}
+
 		// This indicates to the client that there will be a blame round.
 		EndRound(round, EndRoundState.NotAllAlicesSign);
 
-		FeeRate feeRate = await GetFeeRateEstimationAsync(cancellationToken).ConfigureAwait(false);
 		var blameWhitelist = round.Alices
 			.Select(x => x.Coin.Outpoint)
 			.Where(x => !_prison.IsBanned(x, _config.GetDoSConfiguration(), DateTimeOffset.UtcNow))
 			.ToHashSet();
 
-		RoundParameters parameters = _roundParametersFactory(feeRate, _config.MinInputCountByBlameRound);
+		RoundParameters parameters = isZeroLink
+			? ZeroLinkRules.CreateRoundParameters(_config, feeRate, zeroLinkDenomination!, _config.MinInputCountByBlameRound)
+			: _roundParametersFactory(feeRate, _config.MinInputCountByBlameRound);
 		BlameRound blameRound = new(parameters, round, blameWhitelist, SecureRandom.Instance);
 		Rounds.Add(blameRound);
 		Logger.LogInfo(FormatLog($"Created from round {round.Id}. Mining fee rate: {blameRound.Parameters.MiningFeeRate.SatoshiPerByte} sat/vB.", blameRound));
@@ -397,8 +428,13 @@ public partial class Arena : PeriodicRunner
 
 	private async Task CreateRoundsAsync(CancellationToken cancellationToken)
 	{
+		// The rounds that can be registered to, with enough time left to do so.
+		var registrableRounds = Rounds
+			.Where(x => x is not BlameRound && x.Phase == Phase.InputRegistration && x.InputRegistrationTimeFrame.Remaining > TimeSpan.FromMinutes(1))
+			.ToArray();
+
 		// Add more rounds if not enough.
-		var registrableRoundCount = Rounds.Count(x => x is not BlameRound && x.Phase == Phase.InputRegistration && x.InputRegistrationTimeFrame.Remaining > TimeSpan.FromMinutes(1));
+		var registrableRoundCount = registrableRounds.Count(x => !ZeroLinkRules.IsZeroLinkRound(x.Parameters));
 		int roundsToCreate = _config.RoundParallelization - registrableRoundCount;
 		for (int i = 0; i < roundsToCreate; i++)
 		{
@@ -408,6 +444,28 @@ public partial class Arena : PeriodicRunner
 			var r = new Round(parameters, SecureRandom.Instance);
 			Rounds.Add(r);
 			Logger.LogInfo(FormatLog($"Created new round. Mining fee rate: {r.Parameters.MiningFeeRate.SatoshiPerByte} sat/vB.", r));
+		}
+
+		// One ZeroLink round of every denomination of the configuration is open for registration.
+		var openZeroLinkDenominations = registrableRounds
+			.Select(x => ZeroLinkRules.TryGetDenomination(x.Parameters, out var denomination) ? denomination : null)
+			.Where(x => x is not null)
+			.ToHashSet();
+
+		foreach (var denomination in _config.ZeroLinkDenominations.Where(x => !openZeroLinkDenominations.Contains(x)))
+		{
+			FeeRate feeRate = await GetFeeRateEstimationAsync(cancellationToken).ConfigureAwait(false);
+
+			if (!ZeroLinkRules.CanHoldRound(denomination, feeRate))
+			{
+				// The fee of a participant is more than the denomination, or leaves dust of it. That passes with the fee rate.
+				Logger.LogDebug($"No ZeroLink round of {denomination.ToString(false, true)} BTC is held at {feeRate.SatoshiPerByte} sat/vB.");
+				continue;
+			}
+
+			var r = new Round(ZeroLinkRules.CreateRoundParameters(_config, feeRate, denomination), SecureRandom.Instance);
+			Rounds.Add(r);
+			Logger.LogInfo(FormatLog($"Created new ZeroLink round of {denomination.ToString(false, true)} BTC. Mining fee rate: {r.Parameters.MiningFeeRate.SatoshiPerByte} sat/vB. Every output: {r.Parameters.AllowedOutputAmounts.Min.ToString(false, true)} BTC.", r));
 		}
 	}
 

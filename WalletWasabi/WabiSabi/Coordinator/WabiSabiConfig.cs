@@ -3,6 +3,7 @@ using System.Text;
 using WalletWasabi.Discoverability;
 using WalletWasabi.Serialization;
 using WalletWasabi.WabiSabi.Coordinator.DoSPrevention;
+using WalletWasabi.ZeroLink;
 
 namespace WalletWasabi.WabiSabi.Coordinator;
 
@@ -99,6 +100,13 @@ public record WabiSabiConfig
 
 	public bool TrimCoordinatorOutput { get; init; } = false;
 
+	/// <summary>
+	/// The denominations that the coordinator holds ZeroLink rounds for: one round of each is open for registration at
+	/// a time. Each is a standard denomination between the smallest and the largest registrable amount. With none,
+	/// which is the default, the coordinator holds no ZeroLink rounds.
+	/// </summary>
+	public ImmutableArray<Money> ZeroLinkDenominations { get; init; } = [];
+
 	public AnnouncerConfig AnnouncerConfig { get; init; } = new();
 
 	public ImmutableSortedSet<ScriptType> AllowedInputTypes => GetScriptTypes(AllowP2wpkhInputs, AllowP2trInputs, false, false, false);
@@ -107,6 +115,37 @@ public record WabiSabiConfig
 
 	public bool PublishAsOnionService { get; init; }
 	public string? OnionServicePrivateKey { get; set; }
+
+	/// <summary>Tells what is wrong with the list of the ZeroLink denominations, if anything is.</summary>
+	public string? FindZeroLinkDenominationProblem()
+	{
+		foreach (var denomination in ZeroLinkDenominations)
+		{
+			var amount = denomination.ToString(fplus: false, trimExcessZero: true);
+
+			if (!ZeroLinkRules.IsStandardDenomination(denomination))
+			{
+				return $"{amount} BTC in {nameof(ZeroLinkDenominations)} is not a standard denomination. In satoshis, a standard denomination is a power of 2, a power of 3 or twice that, or 1, 2 or 5 times a power of 10.";
+			}
+
+			if (denomination < MinRegistrableAmount || denomination > MaxRegistrableAmount)
+			{
+				return $"{amount} BTC in {nameof(ZeroLinkDenominations)} is not between {nameof(MinRegistrableAmount)} and {nameof(MaxRegistrableAmount)}.";
+			}
+		}
+
+		if (ZeroLinkDenominations.Distinct().Count() != ZeroLinkDenominations.Length)
+		{
+			return $"{nameof(ZeroLinkDenominations)} names a denomination twice.";
+		}
+
+		if (ZeroLinkDenominations.Length > 0 && !(AllowP2trInputs && AllowP2trOutputs))
+		{
+			return $"{nameof(ZeroLinkDenominations)} needs {nameof(AllowP2trInputs)} and {nameof(AllowP2trOutputs)}: the inputs and the outputs of a ZeroLink round are Taproot ones.";
+		}
+
+		return null;
+	}
 
 	public Script GetNextCleanCoordinatorScript() => DeriveCoordinatorScript(CoordinatorExtPubKeyCurrentDepth);
 

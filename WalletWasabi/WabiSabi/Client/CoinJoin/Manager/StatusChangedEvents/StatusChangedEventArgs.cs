@@ -1,3 +1,5 @@
+using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
+
 namespace WalletWasabi.WabiSabi.Client.StatusChangedEvents;
 
 public enum StopReason
@@ -30,7 +32,10 @@ public enum CoinjoinError
 	CoordinatorLiedAboutInputs,
 
 	/// <summary>The coordinator had no round to register to for as long as the client waits for one.</summary>
-	NoRoundAvailable
+	NoRoundAvailable,
+
+	/// <summary>A ZeroLink round takes a coin of a standard denomination, and the user chose none.</summary>
+	NoStandardDenominationCoins
 }
 
 public class StatusChangedEventArgs : EventArgs
@@ -41,4 +46,7 @@ public class StatusChangedEventArgs : EventArgs
 	}
 
 	public Wallet Wallet { get; }
+
+	/// <summary>The kind of coinjoin that the news is about.</summary>
+	public CoinJoinProtocol Protocol { get; init; }
 }

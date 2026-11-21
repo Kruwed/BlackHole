@@ -1,5 +1,6 @@
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
+using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using WalletWasabi.WabiSabi.Client.CoinJoinProgressEvents;
 using WalletWasabi.WabiSabi.Coordinator.Rounds;
 
@@ -13,14 +14,18 @@ public class CoinJoinTracker : IDisposable
 		Wallet wallet,
 		CoinJoinClient coinJoinClient,
 		Func<IEnumerable<SmartCoin>> coinCandidatesFunc,
+		CoinJoinProtocol protocol,
 		CancellationToken cancellationToken)
 	{
 		Wallet = wallet;
+		Protocol = protocol;
 		_coinJoinClient = coinJoinClient;
 		_coinJoinClient.CoinJoinClientProgress += CoinJoinClient_CoinJoinClientProgress;
 
 		_cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		CoinJoinTask = coinJoinClient.StartCoinJoinAsync(coinCandidatesFunc, _cancellationTokenSource.Token);
+		CoinJoinTask = protocol == CoinJoinProtocol.ZeroLink
+			? coinJoinClient.StartZeroLinkAsync(coinCandidatesFunc, _cancellationTokenSource.Token)
+			: coinJoinClient.StartCoinJoinAsync(coinCandidatesFunc, _cancellationTokenSource.Token);
 	}
 
 	public event EventHandler<CoinJoinProgressEventArgs>? WalletCoinJoinProgressChanged;
@@ -30,6 +35,10 @@ public class CoinJoinTracker : IDisposable
 	private readonly CancellationTokenSource _cancellationTokenSource;
 
 	public Wallet Wallet { get; }
+
+	/// <summary>The kind of coinjoin that the wallet takes part in.</summary>
+	public CoinJoinProtocol Protocol { get; }
+
 	public Task<CoinJoinResult> CoinJoinTask { get; }
 
 	public bool IsCompleted => CoinJoinTask.IsCompleted;
@@ -44,6 +53,9 @@ public class CoinJoinTracker : IDisposable
 	/// when it is gone.
 	/// </summary>
 	public bool IsStartRequested { get; set; }
+
+	/// <summary>The kind of the coinjoin that was asked for while this one was on its way down.</summary>
+	public CoinJoinProtocol RequestedProtocol { get; set; }
 	public List<CoinBanned> BannedCoins { get; private set; } = new();
 
 	public void Stop()

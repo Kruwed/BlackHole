@@ -65,6 +65,11 @@ public class Startup(IConfiguration configuration)
 		var config = WabiSabiConfig.TryLoadFile(configFilePath) ??
 			throw new InvalidDataException($"Failed to load '{configFilePath}' config.");
 
+		if (config.FindZeroLinkDenominationProblem() is { } problem)
+		{
+			throw new InvalidDataException($"'{configFilePath}': {problem}");
+		}
+
 		services.AddSingleton(config);
 
 		var torSetting = new TorSettings(dataDir,

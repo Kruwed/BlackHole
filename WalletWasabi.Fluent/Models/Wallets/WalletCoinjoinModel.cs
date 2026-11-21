@@ -69,10 +69,10 @@ public partial class WalletCoinjoinModel : ReactiveObject
 
 	public IObservable<bool> IsStarted { get; }
 
-	/// <summary>Starts one coinjoin round. When it is over the coinjoin is stopped again.</summary>
-	public async Task StartAsync()
+	/// <summary>Starts one coinjoin round of the given kind. When it is over the coinjoin is stopped again.</summary>
+	public async Task StartAsync(CoinJoinProtocol protocol = CoinJoinProtocol.WabiSabi)
 	{
-		_coinJoinManager.RequestCoinJoinStart(_wallet);
+		_coinJoinManager.RequestCoinJoinStart(_wallet, protocol);
 	}
 
 	public async Task StopAsync()

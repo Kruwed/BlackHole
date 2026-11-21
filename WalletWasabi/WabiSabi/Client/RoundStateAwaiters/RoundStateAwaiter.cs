@@ -23,7 +23,17 @@ public record RoundStateAwaiter
 		_cancellationTokenRegistration = cancellationToken.Register(Cancel);
 	}
 
+	/// <summary>Waits for a round that is picked out of all the rounds of the coordinator at once.</summary>
+	/// <param name="select">Picks the round out of the rounds that the coordinator has, or none if it is not there yet.</param>
+	public RoundStateAwaiter(Func<IReadOnlyCollection<RoundState>, RoundState?> select, CancellationToken cancellationToken)
+	{
+		_taskCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		_select = select;
+		_cancellationTokenRegistration = cancellationToken.Register(Cancel);
+	}
+
 	private readonly TaskCompletionSource<RoundState> _taskCompletionSource;
+	private readonly Func<IReadOnlyCollection<RoundState>, RoundState?>? _select;
 	private readonly Predicate<RoundState>? _predicate;
 	private readonly uint256? _roundId;
 	private readonly Phase? _phase;
@@ -35,6 +45,17 @@ public record RoundStateAwaiter
 	{
 		if (Task.IsCompleted)
 		{
+			return true;
+		}
+
+		if (_select is not null)
+		{
+			if (_select(allRoundStates.Values.ToArray()) is not { } selected)
+			{
+				return false;
+			}
+
+			_taskCompletionSource.SetResult(selected);
 			return true;
 		}
 

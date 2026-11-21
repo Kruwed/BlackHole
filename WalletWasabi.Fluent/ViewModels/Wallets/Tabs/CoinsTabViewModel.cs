@@ -77,7 +77,6 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _selectionHint = DescribeSelectionHint(hasCoins: false);
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isFeeSubtractionNoteVisible;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinStateViewModel? _coinJoinState;
 
 	public CoinsTabViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
 	{
@@ -93,19 +92,9 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 		walletModel.WhenAnyValue(x => x.IsLoaded)
 			.BindTo(this, x => x.IsWalletLoaded);
 
-		// The coinjoin controls come with the loaded wallet. Nothing starts a round but their Play button.
-		this.WhenAnyValue(x => x.IsWalletLoaded)
-			.Where(isLoaded => isLoaded && CoinJoinState is null && walletModel.Coinjoin is not null)
-			.Subscribe(_ => CoinJoinState = new CoinJoinStateViewModel(uiContext, walletModel, wallet, walletModel.Coinjoin!, StartRoundAsync));
-
-		// The settings only decide how the wallet coinjoins later, so they are open while the wallet still processes blocks.
-		CoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
-		{
-			if (UiContext.MainViewModel is { } mainViewModel)
-			{
-				await mainViewModel.SettingsPage.ActivateCoordinatorTabAsync();
-			}
-		});
+		// Every kind of coinjoin has its box with its controls. A round of either gets the coins that are ticked in the list.
+		WabiSabi = new CoinJoinBoxViewModel(uiContext, walletModel, wallet, CoinJoinProtocol.WabiSabi, StartRoundAsync);
+		ZeroLink = new CoinJoinBoxViewModel(uiContext, walletModel, wallet, CoinJoinProtocol.ZeroLink, StartRoundAsync);
 
 		// An address can be generated at any time. A bond and an offer are about the coins of the wallet.
 		var isWalletLoaded = this.WhenAnyValue(x => x.IsWalletLoaded);
@@ -222,11 +211,14 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 	/// </summary>
 	public CoinListViewModel CoinList { get; }
 
-	/// <summary>Whether a coordinator is set. Without one there is no WabiSabi coinjoin, and the tab says so.</summary>
-	public bool IsCoinJoinEnabled => _walletModel.IsCoinJoinEnabled;
+	/// <summary>The WabiSabi coinjoins: a round gets the ticked coins that it takes, ten at most.</summary>
+	public CoinJoinBoxViewModel WabiSabi { get; }
 
-	/// <summary>Opens the settings of the coinjoins: the coordinator and the limits that the wallet keeps to.</summary>
-	public ICommand CoordinatorSettingsCommand { get; }
+	/// <summary>
+	/// The ZeroLink coinjoins: a round gets one ticked coin, of a standard denomination that the coordinator has a
+	/// round of, and gives one output of that denomination less the fee.
+	/// </summary>
+	public CoinJoinBoxViewModel ZeroLink { get; }
 
 	/// <summary>Opens the addresses that await a payment. A new address is generated from there.</summary>
 	public ICommand ReceiveCommand { get; }
@@ -379,11 +371,12 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 	}
 
 	/// <summary>
-	/// Starts one WabiSabi round with the coins that are ticked. The wallet is told first which coins they are: a round
-	/// takes the coins that the wallet has as chosen for coinjoins, ten at most. If the wallet could not be told, no
-	/// round is started, as it would get other coins than the ticked ones.
+	/// Starts one round of the given kind with the coins that are ticked. The wallet is told first which coins they
+	/// are: a round takes of the coins that the wallet has as chosen for coinjoins, ten at most in a WabiSabi round and
+	/// one in a ZeroLink round. If the wallet could not be told, no round is started, as it would get other coins than
+	/// the ticked ones.
 	/// </summary>
-	private async Task StartRoundAsync()
+	private async Task StartRoundAsync(CoinJoinProtocol protocol)
 	{
 		if (_walletModel.Coinjoin is not { } coinjoin)
 		{
@@ -402,7 +395,7 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 			return;
 		}
 
-		await coinjoin.StartAsync();
+		await coinjoin.StartAsync(protocol);
 	}
 
 	private void RecalculateMaxAmount()

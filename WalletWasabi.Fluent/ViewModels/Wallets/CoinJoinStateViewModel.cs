@@ -8,6 +8,7 @@ using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.State;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
 using WalletWasabi.Services;
+using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using WalletWasabi.WabiSabi.Client.CoinJoinProgressEvents;
 using WalletWasabi.WabiSabi.Client.StatusChangedEvents;
 using WalletWasabi.WabiSabi.Coordinator.Rounds;
@@ -16,8 +17,9 @@ using WalletWasabi.Wallets;
 namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
 /// <summary>
-/// The controls of the coinjoin and what they say about it. A coinjoin is one round: Play starts it, and when the round is
-/// over, however it ended, the coinjoin is stopped again. The outcome stays on display until the next round is started.
+/// The controls of the coinjoins of one kind and what they say about them. A coinjoin is one round: Play starts it, and
+/// when the round is over, however it ended, the coinjoin is stopped again. The outcome stays on display until the next
+/// round is started. A wallet has one coinjoin at a time, so Play waits while a round of another kind is under way.
 /// </summary>
 [AppLifetime]
 public partial class CoinJoinStateViewModel : ViewModelBase
@@ -42,6 +44,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private const string CoinsRejectedMessage = "Some funds are rejected from coinjoining";
 	private const string OnlyImmatureCoinsAvailableMessage = "Only immature funds are available";
 	private const string NoCoinsSelectedMessage = "No coin is ticked";
+	private const string NoStandardDenominationCoinsMessage = "No ticked coin holds a standard amount";
 	private const string CoordinatorLiedMessage = "Coordinator lied and might be malicious!";
 
 	private readonly IWalletModel _wallet;
@@ -60,6 +63,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	[AutoNotify] private bool _isInCriticalPhase;
 	[AutoNotify] private bool _isCountDownDelayHappening;
 	[AutoNotify] private bool _isCoinjoinSupported;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isOtherProtocolBusy;
 
 	private DateTimeOffset _countDownStartTime;
 	private DateTimeOffset _countDownEndTime;
@@ -74,21 +78,39 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	/// What Play does: it starts a round, and it decides before which coins the round gets. The coins are the ones that
 	/// are ticked in the list next to the controls, which these controls do not know.
 	/// </param>
-	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, Func<Task> startRound) : base(uiContext)
+	/// <param name="protocol">The kind of coinjoin that the controls are for. What the wallet tells about coinjoins of another kind is not theirs to show.</param>
+	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, CoinJoinProtocol protocol, Func<Task> startRound) : base(uiContext)
 	{
 		_wallet = wallet;
 		_walletInstance = walletInstance;
 
+		Protocol = protocol;
+		PlayToolTip = protocol == CoinJoinProtocol.ZeroLink
+			? "Start a ZeroLink round with one ticked coin: a coin of a standard amount that the coordinator has a round of. The largest such amount goes first."
+			: "Start a coinjoin round with the ticked coins. A round takes 10 at most: the largest go first.";
+
 		walletCoinjoinModel.StatusUpdated
+					   .Where(e => e.Protocol == protocol)
 					   .Do(ProcessStatusChange)
 					   .Subscribe();
+
+		// The wallet has one coinjoin at a time. While one of another kind is under way, from the moment that it is
+		// asked for until the wallet has stopped it, this kind has to wait.
+		walletCoinjoinModel.StatusUpdated
+					   .Where(e => e.Protocol != protocol)
+					   .Subscribe(e => IsOtherProtocolBusy = e switch
+					   {
+						   StartedEventArgs or WalletStartedCoinJoinEventArgs => true,
+						   WalletStoppedCoinJoinEventArgs => false,
+						   _ => IsOtherProtocolBusy
+					   });
 
 		// Nothing starts a coinjoin but the user.
 		_stateMachine = new StateMachine<State, Trigger>(State.Stopped);
 
 		ConfigureStateMachine();
 
-		PlayCommand = ReactiveCommand.CreateFromTask(startRound);
+		PlayCommand = ReactiveCommand.CreateFromTask(startRound, this.WhenAnyValue(x => x.IsOtherProtocolBusy, isBusy => !isBusy));
 
 		// A coinjoin cannot be stopped in its critical phase, and not twice.
 		var stopCommandCanExecute =
@@ -129,7 +151,13 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	private bool IsCounting => _countdownTimer.IsEnabled;
 
+	/// <summary>The kind of coinjoin that the controls are for.</summary>
+	public CoinJoinProtocol Protocol { get; }
+
 	public ICommand PlayCommand { get; }
+
+	/// <summary>What Play does with the ticked coins: it differs between the kinds of coinjoin.</summary>
+	public string PlayToolTip { get; }
 
 	public ICommand StopCommand { get; }
 
@@ -155,6 +183,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 			CoinjoinError.CoinsRejected => CoinsRejectedMessage,
 			CoinjoinError.OnlyImmatureCoinsAvailable => OnlyImmatureCoinsAvailableMessage,
 			CoinjoinError.NoCoinsSelected => NoCoinsSelectedMessage,
+			CoinjoinError.NoStandardDenominationCoins => NoStandardDenominationCoinsMessage,
 			CoinjoinError.MiningFeeRateTooHigh => CoinjoinMiningFeeRateTooHighMessage,
 			CoinjoinError.MinInputCountTooLow => MinInputCountTooLowMessage,
 			CoinjoinError.CoordinatorLiedAboutInputs => CoordinatorLiedMessage,

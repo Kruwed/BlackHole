@@ -25,6 +25,7 @@ using WalletWasabi.WabiSabi.Coordinator.PostRequests;
 using WalletWasabi.WabiSabi.Coordinator.Rounds;
 using WalletWasabi.WabiSabi.Models;
 using WalletWasabi.WabiSabi.Models.MultipartyTransaction;
+using WalletWasabi.ZeroLink;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.WabiSabi.Client;
@@ -105,6 +106,92 @@ public class CoinJoinClientTests
 		Assert.Empty(aliceClientsThatSigned);
 		Assert.Equal(0, requestHandler.SignatureRequests);
 		Assert.Null(requestHandler.CapturedSignature);
+	}
+
+	/// <summary>
+	/// The transaction of a ZeroLink round has inputs of one amount, outputs of one amount, and nothing else. A wallet
+	/// signs that, and it does not sign the transaction of such a round that has an input of another amount, although
+	/// its own output is in it and the fee is paid: such an input would stand out, and with it what it pays for.
+	/// </summary>
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task ClientSignsTheTransactionOfAZeroLinkRoundOnlyIfItIsByTheRulesAsync(bool hasAnInputOfAnotherAmount)
+	{
+		var denomination = Money.Coins(1m);
+		var roundParameters = ZeroLinkRules.CreateRoundParameters(new WabiSabiConfig(), new FeeRate(1m), denomination) with
+		{
+			TransactionSigningTimeout = TimeSpan.FromSeconds(11)
+		};
+		var round = WabiSabiFactory.CreateRound(roundParameters);
+		var outputAmount = roundParameters.AllowedOutputAmounts.Min;
+
+		// The coin of the wallet and the coin of another participant hold the denomination. The other participant has a larger coin too.
+		var (keyChain, victimCoin, _) = WabiSabiFactory.CreateCoinKeyPairs();
+		var (otherKeyChain, otherCoin, largerCoin) = WabiSabiFactory.CreateCoinKeyPairs();
+		Assert.Equal(denomination, victimCoin.Amount);
+		Assert.Equal(denomination, otherCoin.Amount);
+
+		var commitment = new CoinJoinInputCommitmentData(roundParameters.CoordinationIdentifier, round.Id);
+
+		using var victimOutputKey = new Key();
+		using var otherOutputKey = new Key();
+		var victimOutput = new TxOut(outputAmount, victimOutputKey.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86));
+		var otherOutput = new TxOut(outputAmount, otherOutputKey.PubKey.GetScriptPubKey(ScriptPubKeyType.TaprootBIP86));
+
+		var constructionState = new ConstructionState(roundParameters)
+			.AddInput(victimCoin.Coin, keyChain.GetOwnershipProof(victimCoin, commitment), commitment)
+			.AddInput(otherCoin.Coin, otherKeyChain.GetOwnershipProof(otherCoin, commitment), commitment)
+			.AddOutput(victimOutput)
+			.AddOutput(otherOutput);
+
+		if (hasAnInputOfAnotherAmount)
+		{
+			// A coordinator that keeps to its parameters does not take this input. One that does not can put it into the transaction all the same.
+			constructionState = constructionState with
+			{
+				Events = constructionState.Events.Add(new InputAdded(largerCoin.Coin, otherKeyChain.GetOwnershipProof(largerCoin, commitment)))
+			};
+		}
+
+		round.CoinjoinState = constructionState.Finalize();
+		round.SetPhase(Phase.TransactionSigning);
+		var roundState = RoundState.FromRound(round);
+
+		var requestHandler = new SigningCaptureRequestHandler(roundState);
+		using var updaterCts = new CancellationTokenSource();
+		using var roundStateUpdater = RoundStateUpdaterForTesting.Create(requestHandler, updaterCts.Token);
+		var roundStateProvider = new RoundStateProvider(roundStateUpdater);
+
+		var coinJoinClient = new CoinJoinClient(
+			_ => requestHandler,
+			keyChain,
+			outputProvider: null!,
+			roundStateProvider,
+			new CoinJoinConfiguration(roundParameters.CoordinationIdentifier, 150m, AbsoluteMinInputCount: 2, AllowSoloCoinjoining: false),
+			InputVerifiers.NoVerification());
+
+		var aliceClient = CreateAliceClient(roundState, victimCoin, requestHandler);
+
+		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+		var signingTask = coinJoinClient.ProceedWithSigningStateAsync(round.Id, [aliceClient], [victimOutput], timeout.Token);
+		roundStateUpdater.Update();
+
+		var (_, aliceClientsThatSigned) = await signingTask;
+
+		if (hasAnInputOfAnotherAmount)
+		{
+			Assert.Empty(aliceClientsThatSigned);
+			Assert.Equal(0, requestHandler.SignatureRequests);
+		}
+		else
+		{
+			Assert.Single(aliceClientsThatSigned);
+			Assert.Equal(1, requestHandler.SignatureRequests);
+
+			// The inputs of a ZeroLink round are spent by signatures of 64 bytes, all of them alike.
+			Assert.True(ZeroLinkRules.IsInputWitness(requestHandler.CapturedSignature!.Witness));
+		}
 	}
 
 	/// <summary>

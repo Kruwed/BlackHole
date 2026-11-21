@@ -26,7 +26,7 @@ public class KeyChain : IKeyChain
 		return NBitcoinExtensions.GetOwnershipProof(masterKey, secret, destination.ScriptPubKey, commitmentData);
 	}
 
-	public Transaction Sign(TransactionWithPrecomputedData unsignedCoinJoin, Coin coin)
+	public Transaction Sign(TransactionWithPrecomputedData unsignedCoinJoin, Coin coin, TaprootSigHash sigHash = TaprootSigHash.All)
 	{
 		var transaction = unsignedCoinJoin.Transaction.Clone();
 
@@ -47,7 +47,7 @@ public class KeyChain : IKeyChain
 		TransactionBuilder builder = Network.Main.CreateTransactionBuilder();
 		builder.AddKeys(secret);
 		builder.AddCoins(coin);
-		builder.SetSigningOptions(new SigningOptions(TaprootSigHash.All, (TaprootReadyPrecomputedTransactionData)unsignedCoinJoin.PrecomputedTransactionData));
+		builder.SetSigningOptions(new SigningOptions(sigHash, (TaprootReadyPrecomputedTransactionData)unsignedCoinJoin.PrecomputedTransactionData));
 		builder.SignTransactionInPlace(transaction);
 
 		return transaction;

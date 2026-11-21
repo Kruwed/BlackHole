@@ -519,6 +519,22 @@ public class WasabiJsonRpcService : IJsonRpcService
 		coinJoinManager.RequestCoinJoinStart(activeWallet);
 	}
 
+	/// <summary>
+	/// Starts one ZeroLink round with one of the coins that were chosen for coinjoins: a coin of a standard
+	/// denomination that the coordinator has a ZeroLink round for. The wallet gets one output, of the denomination
+	/// less the fee of the round.
+	/// </summary>
+	[JsonRpcMethod("startzerolink")]
+	public void StartZeroLink(string? password = null)
+	{
+		var coinJoinManager = GetCoinJoinManager();
+		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
+
+		AssertWalletIsLoaded();
+		AssertWalletIsLoggedIn(activeWallet, password ?? "");
+		coinJoinManager.RequestCoinJoinStart(activeWallet, CoinJoinProtocol.ZeroLink);
+	}
+
 	[JsonRpcMethod("stopcoinjoin")]
 	public void StopCoinJoining()
 	{

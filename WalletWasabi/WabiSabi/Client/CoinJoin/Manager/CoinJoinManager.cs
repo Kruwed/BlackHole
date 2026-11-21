@@ -64,9 +64,10 @@ public class CoinJoinManager : BackgroundService
 	/// Asks for one coinjoin of the wallet: the next round that suits its coins, with the blame rounds that follow if that
 	/// round is disrupted. When it is over, however it ends, the wallet stops. Another round takes another request.
 	/// </summary>
-	public void RequestCoinJoinStart(Wallet wallet)
+	/// <param name="protocol">The kind of coinjoin that is asked for. A wallet has one coinjoin at a time: a request is passed over while a coinjoin of the wallet is under way, whatever its kind.</param>
+	public void RequestCoinJoinStart(Wallet wallet, CoinJoinProtocol protocol = CoinJoinProtocol.WabiSabi)
 	{
-		_mailboxProcessor.Post(new StartCoinJoinCommand(wallet));
+		_mailboxProcessor.Post(new StartCoinJoinCommand(wallet, protocol));
 	}
 
 	public void RequestCoinJoinStop(Wallet wallet)
@@ -149,6 +150,7 @@ public class CoinJoinManager : BackgroundService
 	private void HandleStartCoinJoinCommand(StartCoinJoinCommand startCommand, CoinJoinTrackerFactory coinJoinTrackerFactory)
 	{
 		var walletToStart = startCommand.Wallet;
+		var protocol = startCommand.Protocol;
 
 		if (_state.TrackedCoinJoins.TryGetValue(walletToStart.WalletId, out var tracker))
 		{
@@ -158,6 +160,7 @@ public class CoinJoinManager : BackgroundService
 				// then, so the start that is asked for now is kept for that moment: a Play that follows a Stop closely,
 				// or a send dialog that is closed as soon as it opened.
 				tracker.IsStartRequested = true;
+				tracker.RequestedProtocol = protocol;
 				Logger.LogDebug(FormatLog("The coinjoin is being stopped. The one that is asked for starts when it is gone.", walletToStart));
 				return;
 			}
@@ -182,12 +185,12 @@ public class CoinJoinManager : BackgroundService
 			// the candidates that it takes, ten at most.
 			var coinCandidates = SelectCandidateCoins(walletToStart);
 
-			NotifyWalletStartedCoinJoin(walletToStart);
+			NotifyWalletStartedCoinJoin(walletToStart, protocol);
 
 			return coinCandidates;
 		}
 
-		var coinJoinTracker = coinJoinTrackerFactory.CreateAndStart(walletToStart, SanityChecksAndGetCoinCandidatesFunc);
+		var coinJoinTracker = coinJoinTrackerFactory.CreateAndStart(walletToStart, protocol, SanityChecksAndGetCoinCandidatesFunc);
 
 		if (!_state.TrackedCoinJoins.TryAdd(walletToStart.WalletId, coinJoinTracker))
 		{
@@ -201,7 +204,7 @@ public class CoinJoinManager : BackgroundService
 		coinJoinTracker.WalletCoinJoinProgressChanged += CoinJoinTracker_WalletCoinJoinProgressChanged;
 
 		var registrationTimeout = TimeSpan.MaxValue;
-		NotifyCoinJoinStarted(walletToStart, registrationTimeout);
+		NotifyCoinJoinStarted(walletToStart, protocol, registrationTimeout);
 
 		Logger.LogDebug(FormatLog($"{nameof(CoinJoinClient)} started.", walletToStart));
 	}
@@ -467,7 +470,7 @@ public class CoinJoinManager : BackgroundService
 		// Why there was no coinjoin, unless it was stopped. A coordinator that lied is told in any case.
 		if (cjClientException is not null && (forceStop || !finishedCoinJoin.IsStopped))
 		{
-			NotifyCoinJoinStartError(wallet, cjClientException.CoinjoinError);
+			NotifyCoinJoinStartError(wallet, finishedCoinJoin.Protocol, cjClientException.CoinjoinError);
 		}
 
 		// The send workflow and the shutdown start a coinjoin again that they stopped. This one may have come to its end
@@ -480,7 +483,7 @@ public class CoinJoinManager : BackgroundService
 		}
 
 		// A coinjoin is one round. However it ended, the wallet stops here: the next round starts when it is asked for.
-		NotifyWalletStoppedCoinJoin(wallet);
+		NotifyWalletStoppedCoinJoin(wallet, finishedCoinJoin.Protocol);
 
 		if (!_state.TrackedCoinJoins.TryRemove(wallet.WalletId, out _))
 		{
@@ -494,22 +497,22 @@ public class CoinJoinManager : BackgroundService
 			if (finishedCoinJoin.IsStartRequested && !cancellationToken.IsCancellationRequested)
 			{
 				// A start was asked for while this coinjoin was being stopped. Its turn has come.
-				RequestCoinJoinStart(wallet);
+				RequestCoinJoinStart(wallet, finishedCoinJoin.RequestedProtocol);
 			}
 		}
 	}
 
-	private void NotifyWalletStartedCoinJoin(Wallet openedWallet) =>
-		StatusChanged.SafeInvoke(this, new WalletStartedCoinJoinEventArgs(openedWallet));
+	private void NotifyWalletStartedCoinJoin(Wallet openedWallet, CoinJoinProtocol protocol) =>
+		StatusChanged.SafeInvoke(this, new WalletStartedCoinJoinEventArgs(openedWallet) { Protocol = protocol });
 
-	private void NotifyWalletStoppedCoinJoin(Wallet openedWallet) =>
-	StatusChanged.SafeInvoke(this, new WalletStoppedCoinJoinEventArgs(openedWallet));
+	private void NotifyWalletStoppedCoinJoin(Wallet openedWallet, CoinJoinProtocol protocol) =>
+		StatusChanged.SafeInvoke(this, new WalletStoppedCoinJoinEventArgs(openedWallet) { Protocol = protocol });
 
-	private void NotifyCoinJoinStarted(Wallet openedWallet, TimeSpan registrationTimeout) =>
-		StatusChanged.SafeInvoke(this, new StartedEventArgs(openedWallet, registrationTimeout));
+	private void NotifyCoinJoinStarted(Wallet openedWallet, CoinJoinProtocol protocol, TimeSpan registrationTimeout) =>
+		StatusChanged.SafeInvoke(this, new StartedEventArgs(openedWallet, registrationTimeout) { Protocol = protocol });
 
-	private void NotifyCoinJoinStartError(Wallet openedWallet, CoinjoinError error) =>
-		StatusChanged.SafeInvoke(this, new StartErrorEventArgs(openedWallet, error));
+	private void NotifyCoinJoinStartError(Wallet openedWallet, CoinJoinProtocol protocol, CoinjoinError error) =>
+		StatusChanged.SafeInvoke(this, new StartErrorEventArgs(openedWallet, error) { Protocol = protocol });
 
 	private void NotifyCoinJoinCompletion(CoinJoinTracker finishedCoinJoin)
 	{
@@ -521,14 +524,14 @@ public class CoinJoinManager : BackgroundService
 			_ => CompletionStatus.Unknown
 		};
 
-		CompletedEventArgs e = new(finishedCoinJoin.Wallet, status);
+		CompletedEventArgs e = new(finishedCoinJoin.Wallet, status) { Protocol = finishedCoinJoin.Protocol };
 		StatusChanged.SafeInvoke(this, e);
 	}
 
-	private void NotifyCoinJoinStatusChanged(Wallet wallet, CoinJoinProgressEventArgs coinJoinProgressEventArgs) =>
+	private void NotifyCoinJoinStatusChanged(Wallet wallet, CoinJoinProtocol protocol, CoinJoinProgressEventArgs coinJoinProgressEventArgs) =>
 		StatusChanged.SafeInvoke(
 			this,
-			new CoinJoinStatusEventArgs(wallet, coinJoinProgressEventArgs));
+			new CoinJoinStatusEventArgs(wallet, coinJoinProgressEventArgs) { Protocol = protocol });
 
 	private static async Task WaitAndHandleResultOfTasksAsync(string logPrefix, params Task[] tasks)
 	{
@@ -568,7 +571,7 @@ public class CoinJoinManager : BackgroundService
 
 		if (stateHolder.NeedRestart)
 		{
-			Task.Run(async () => RequestCoinJoinStart(wallet));
+			Task.Run(async () => RequestCoinJoinStart(wallet, stateHolder.Protocol));
 		}
 	}
 
@@ -581,9 +584,9 @@ public class CoinJoinManager : BackgroundService
 		}
 
 		// The coinjoin is started again after the send workflow, if one is running now.
-		if (IsCoinJoinRunning(wallet.WalletId))
+		if (TryGetRunningProtocol(wallet.WalletId, out var protocol))
 		{
-			_state.WalletsBlockedByUi[wallet.WalletId] = new UiBlockedStateHolder(NeedRestart: true);
+			_state.WalletsBlockedByUi[wallet.WalletId] = new UiBlockedStateHolder(NeedRestart: true, protocol);
 		}
 
 		RequestCoinJoinStop(wallet);
@@ -593,9 +596,9 @@ public class CoinJoinManager : BackgroundService
 	{
 		foreach (var wallet in await _getWalletsAsync().ConfigureAwait(false))
 		{
-			if (IsCoinJoinRunning(wallet.WalletId))
+			if (TryGetRunningProtocol(wallet.WalletId, out var protocol))
 			{
-				_state.WalletsBlockedByUi[wallet.WalletId] = new UiBlockedStateHolder(NeedRestart: true);
+				_state.WalletsBlockedByUi[wallet.WalletId] = new UiBlockedStateHolder(NeedRestart: true, protocol);
 				RequestCoinJoinStop(wallet);
 			}
 		}
@@ -607,14 +610,18 @@ public class CoinJoinManager : BackgroundService
 		{
 			if (_state.WalletsBlockedByUi.TryRemove(wallet.WalletId, out var stateHolder) && stateHolder.NeedRestart)
 			{
-				RequestCoinJoinStart(wallet);
+				RequestCoinJoinStart(wallet, stateHolder.Protocol);
 			}
 		}
 	}
 
-	/// <summary>Whether a coinjoin of the wallet is under way, one that did not come to its end yet.</summary>
-	private bool IsCoinJoinRunning(WalletId walletId) =>
-		_state.TrackedCoinJoins.TryGetValue(walletId, out var tracker) && !tracker.IsCompleted;
+	/// <summary>Tells whether a coinjoin of the wallet is under way, one that did not come to its end yet, and of which kind it is.</summary>
+	private bool TryGetRunningProtocol(WalletId walletId, out CoinJoinProtocol protocol)
+	{
+		var isRunning = _state.TrackedCoinJoins.TryGetValue(walletId, out var tracker) && !tracker.IsCompleted;
+		protocol = isRunning ? tracker!.Protocol : default;
+		return isRunning;
+	}
 
 	private void CoinJoinTracker_WalletCoinJoinProgressChanged(object? sender, CoinJoinProgressEventArgs e)
 	{
@@ -623,7 +630,10 @@ public class CoinJoinManager : BackgroundService
 			throw new InvalidOperationException("Sender must be a wallet.");
 		}
 
-		NotifyCoinJoinStatusChanged(wallet, e);
+		// The tracker of the wallet is the one that tells this: a wallet has one coinjoin at a time.
+		var protocol = _state.TrackedCoinJoins.TryGetValue(wallet.WalletId, out var tracker) ? tracker.Protocol : default;
+
+		NotifyCoinJoinStatusChanged(wallet, protocol, e);
 	}
 
 	public override void Dispose()
@@ -635,11 +645,12 @@ public class CoinJoinManager : BackgroundService
 	}
 
 	private record CoinJoinCommand(Wallet Wallet);
-	private record StartCoinJoinCommand(Wallet Wallet) : CoinJoinCommand(Wallet);
+	private record StartCoinJoinCommand(Wallet Wallet, CoinJoinProtocol Protocol) : CoinJoinCommand(Wallet);
 	private record StopCoinJoinCommand(Wallet Wallet) : CoinJoinCommand(Wallet);
 
 	/// <param name="NeedRestart">Whether the coinjoin is to be started again when the dialog that blocks it is left.</param>
-	private record UiBlockedStateHolder(bool NeedRestart);
+	/// <param name="Protocol">The kind of the coinjoin that is started again.</param>
+	private record UiBlockedStateHolder(bool NeedRestart, CoinJoinProtocol Protocol = CoinJoinProtocol.WabiSabi);
 
 	/// <param name="WalletsBlockedByUi">
 	/// The wallets whose coinjoins the user interface blocks: the send workflow and the shutdown prevention do that.

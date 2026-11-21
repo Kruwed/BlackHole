@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using NBitcoin;
 using WalletWasabi.Discoverability;
@@ -66,6 +67,7 @@ public static partial class Encode
 			("AllowP2wshOutputs", Bool(cfg.AllowP2wshOutputs)),
 			("DelayTransactionSigning", Bool(cfg.DelayTransactionSigning)),
 			("TrimCoordinatorOutput", Bool(cfg.TrimCoordinatorOutput)),
+			("ZeroLinkDenominations", Array(cfg.ZeroLinkDenominations.Select(MoneyBitcoins))),
 			("AnnouncerConfig", AnnouncerConfig(cfg.AnnouncerConfig)),
 			("PublishAsOnionService", Bool(cfg.PublishAsOnionService)),
 			("OnionServicePrivateKey", Optional(cfg.OnionServicePrivateKey, String))
@@ -99,6 +101,26 @@ public static partial class Decode
 			RelayUris = get.Required("RelayUris", Array(String)),
 			Key = get.Required("Key", String)
 		});
+
+	/// <summary>
+	/// The denominations of the ZeroLink rounds. A file that was written before there were such rounds has no list,
+	/// and that means none. A list that is there has to be readable: with one that is not, the file is not taken,
+	/// instead of the coordinator holding other rounds than its file says.
+	/// </summary>
+	private static Money[] ZeroLinkDenominations(Getters get)
+	{
+		const string Name = nameof(WabiSabi.Coordinator.WabiSabiConfig.ZeroLinkDenominations);
+
+		if (get.Value.ValueKind != JsonValueKind.Object || !get.Value.TryGetProperty(Name, out _))
+		{
+			return [];
+		}
+
+		Decoder<Money[]> list = value => Array(MoneyBitcoins)(value)
+			.MapError(error => $"{Name} cannot be read: it is a list of amounts in BTC, each one in quotation marks. {error}");
+
+		return get.Required(Name, list) ?? [];
+	}
 
 	public static Decoder<WabiSabiConfig> WabiSabiConfig(string filePath) =>
 		Object(get => new WabiSabiConfig(filePath)
@@ -141,6 +163,7 @@ public static partial class Decode
 			AllowP2wshOutputs = get.Required("AllowP2wshOutputs", Bool),
 			DelayTransactionSigning = get.Required("DelayTransactionSigning", Bool),
 			TrimCoordinatorOutput = get.Optional("TrimCoordinatorOutput", Bool, false),
+			ZeroLinkDenominations = [.. ZeroLinkDenominations(get)],
 			AnnouncerConfig = get.Required("AnnouncerConfig", AnnouncerConfig),
 			PublishAsOnionService = get.Optional("PublishAsOnionService", Bool, true),
 			OnionServicePrivateKey = get.Optional("OnionServicePrivateKey", String)

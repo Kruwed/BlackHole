@@ -7,6 +7,7 @@ using WalletWasabi.WabiSabi.Client.CredentialDependencies;
 using WalletWasabi.WabiSabi.Client.RoundStateAwaiters;
 using WalletWasabi.WabiSabi.Client.StatusChangedEvents;
 using WalletWasabi.WabiSabi.Coordinator.PostRequests;
+using WalletWasabi.ZeroLink;
 using static WalletWasabi.Logging.LoggerTools;
 
 namespace WalletWasabi.WabiSabi.Client.CoinJoin.Client;
@@ -69,7 +70,10 @@ public class CoinJoinClient
 						roundState.InputRegistrationEnd - DateTimeOffset.UtcNow > _doNotRegisterInLastMinuteTimeLimit
 						&& roundState.Phase == Phase.InputRegistration
 						&& !roundState.IsBlame
-						&& roundState.Id != excludeRound,
+						&& roundState.Id != excludeRound
+
+						// A ZeroLink round takes one input of one amount and gives one output: it is not for a coinjoin of this kind.
+						&& !ZeroLinkRules.IsZeroLinkRound(roundState.CoinjoinState.Parameters),
 					linkedCts.Token)
 				.ConfigureAwait(false);
 		}
@@ -180,6 +184,109 @@ public class CoinJoinClient
 			throw new CoinJoinClientException(CoinjoinError.NoCoinsEligibleToMix, $"Stopped looking for a suitable round. No coin was selected from '{coinCandidates.Length}' number of coins, total amount of coins were: {Money.Satoshis(coinCandidates.Sum(c => c.Amount))} BTC.");
 		}
 
+		return await ProceedWithRoundsAsync(currentRoundState, myCoins, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Takes part in one ZeroLink round with one coin. The coin is one of the candidates that holds a standard
+	/// denomination which the coordinator has a round for: the largest such denomination, and any coin of it. The
+	/// wallet gets one output, of the denomination less the fee of the round.
+	/// </summary>
+	/// <param name="coinCandidatesFunc">The coins that may take part: the ones that the user chose for coinjoins and that can be registered now.</param>
+	public async Task<CoinJoinResult> StartZeroLinkAsync(Func<IEnumerable<SmartCoin>> coinCandidatesFunc, CancellationToken cancellationToken)
+	{
+		// This throws if the wallet has no coin to register at all.
+		var denominations = coinCandidatesFunc()
+			.Where(IsCoinForZeroLink)
+			.Select(coin => coin.Amount)
+			.ToHashSet();
+
+		if (denominations.Count == 0)
+		{
+			throw new CoinJoinClientException(CoinjoinError.NoStandardDenominationCoins, "None of the coins holds a standard denomination.");
+		}
+
+		var roundState = await WaitForZeroLinkRoundAsync(denominations, cancellationToken).ConfigureAwait(false);
+		var roundParameters = roundState.CoinjoinState.Parameters;
+
+		if (roundParameters.MiningFeeRate.SatoshiPerByte > _coinJoinConfiguration.MaxCoinJoinMiningFeeRate)
+		{
+			string roundSkippedMessage = $"Mining fee rate was {roundParameters.MiningFeeRate} but max allowed is {_coinJoinConfiguration.MaxCoinJoinMiningFeeRate}.";
+			Logger.LogInfo(FormatLog(roundSkippedMessage, roundState));
+			throw new CoinJoinClientException(CoinjoinError.MiningFeeRateTooHigh, roundSkippedMessage);
+		}
+
+		if (roundParameters.MinInputCountByRound < _coinJoinConfiguration.AbsoluteMinInputCount)
+		{
+			string roundSkippedMessage = $"Min input count for the round was {roundParameters.MinInputCountByRound} but min allowed is {_coinJoinConfiguration.AbsoluteMinInputCount}.";
+			Logger.LogInfo(FormatLog(roundSkippedMessage, roundState));
+			throw new CoinJoinClientException(CoinjoinError.MinInputCountTooLow, roundSkippedMessage);
+		}
+
+		// The coins are asked for again: one of them may have been spent while the round was waited for. Coins of
+		// the same denomination are all the same to the round, so nothing but chance picks among them.
+		var denomination = roundParameters.AllowedInputAmounts.Min;
+		var coin = coinCandidatesFunc()
+			.Where(coin => IsCoinForZeroLink(coin) && coin.Amount == denomination)
+			.ToArray()
+			.ToShuffled(RandomnessProviders.Secure)
+			.FirstOrDefault()
+			?? throw new CoinJoinClientException(CoinjoinError.NoCoinsEligibleToMix, $"The coin of {denomination.ToString(false, true)} BTC is gone.");
+
+		Logger.LogInfo(FormatLog($"ZeroLink round of {denomination.ToString(false, true)} BTC: one input is to be registered, for one output of {roundParameters.AllowedOutputAmounts.Min.ToString(false, true)} BTC.", roundState));
+
+		return await ProceedWithRoundsAsync(roundState, [coin], cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>Whether a coin can go into a ZeroLink round, if the coordinator has one of its amount: it is a Taproot coin of a standard denomination.</summary>
+	public static bool IsCoinForZeroLink(SmartCoin coin) =>
+		coin.ScriptType == ScriptType.Taproot && ZeroLinkRules.IsStandardDenomination(coin.Amount);
+
+	/// <summary>
+	/// Picks the ZeroLink round for a wallet out of the rounds of a coordinator: of the rounds that can be registered to
+	/// and that take one of the given amounts, the one of the largest denomination.
+	/// </summary>
+	/// <param name="denominations">The amounts of the coins that the wallet could register.</param>
+	/// <param name="latestRegistrationEnd">A round is left alone if its registration ends before this.</param>
+	public static RoundState? SelectZeroLinkRound(IEnumerable<RoundState> roundStates, IReadOnlySet<Money> denominations, DateTimeOffset latestRegistrationEnd) =>
+		roundStates
+			.Where(roundState =>
+				roundState.Phase == Phase.InputRegistration
+				&& !roundState.IsBlame
+				&& roundState.InputRegistrationEnd > latestRegistrationEnd
+				&& ZeroLinkRules.TryGetDenomination(roundState.CoinjoinState.Parameters, out var denomination)
+				&& denominations.Contains(denomination))
+			.MaxBy(roundState => roundState.CoinjoinState.Parameters.AllowedInputAmounts.Min);
+
+	private async Task<RoundState> WaitForZeroLinkRoundAsync(IReadOnlySet<Money> denominations, CancellationToken token)
+	{
+		CoinJoinClientProgress.SafeInvoke(this, new WaitingForRound());
+
+		using CancellationTokenSource cts = new(_maxWaitingTimeForRound);
+		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token, cts.Token);
+
+		try
+		{
+			return await _roundStatusProvider
+				.CreateRoundAwaiterAsync(
+					roundStates => SelectZeroLinkRound(roundStates, denominations, DateTimeOffset.UtcNow + _doNotRegisterInLastMinuteTimeLimit),
+					linkedCts.Token)
+				.ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (cts.IsCancellationRequested && !token.IsCancellationRequested)
+		{
+			// Nobody stopped the coinjoin: the wait is over. The coordinator holds no ZeroLink round of these amounts.
+			var amounts = string.Join(", ", denominations.OrderDescending().Select(x => x.ToString(false, true)));
+			throw new CoinJoinClientException(CoinjoinError.NoRoundAvailable, $"No ZeroLink round of {amounts} BTC was seen for {_maxWaitingTimeForRound.TotalMinutes} minutes.");
+		}
+	}
+
+	/// <summary>
+	/// Goes through the round with the coins, and through the blame rounds that follow it for as long as a round is
+	/// disrupted.
+	/// </summary>
+	private async Task<CoinJoinResult> ProceedWithRoundsAsync(RoundState currentRoundState, ImmutableList<SmartCoin> myCoins, CancellationToken cancellationToken)
+	{
 		IRoundRestrictions roundRestrictions = UnrestrictedRound.Instance;
 
 		// Keep going to blame round until there's none, so CJs won't be DDoS-ed.
@@ -203,7 +310,16 @@ public class CoinJoinClient
 					roundRestrictions = new BlameRoundRestrictions(info.AllRoundCoins);
 
 					Logger.LogInfo(FormatLog("Waiting for the blame round.", currentRoundState));
+					var disruptedRoundParameters = currentRoundState.CoinjoinState.Parameters;
 					currentRoundState = await WaitForBlameRoundAsync(currentRoundState.Id, cancellationToken).ConfigureAwait(false);
+
+					// The blame round of a ZeroLink round is one too, of the same denomination. The wallet has no business in another kind of round with this coin.
+					if (ZeroLinkRules.TryGetDenomination(disruptedRoundParameters, out var disruptedDenomination)
+						&& !(ZeroLinkRules.TryGetDenomination(currentRoundState.CoinjoinState.Parameters, out var blameDenomination) && blameDenomination == disruptedDenomination))
+					{
+						throw new InvalidOperationException($"Blame Round ({currentRoundState.Id}): Abandoning: it is not a ZeroLink round of {disruptedDenomination.ToString(false, true)} BTC.");
+					}
+
 					break;
 
 				case SuccessfulCoinJoinResult success:
@@ -794,7 +910,9 @@ public class CoinJoinClient
 		// Verify other participants' inputs to detect a malicious coordinator.
 		await _verifyInputsExistence(theirCoins.ToArray(), cancellationToken).ConfigureAwait(false);
 
-		var outputTxOuts = _outputProvider.GetOutputs(roundId, roundParameters, registeredCoins.Select(x => x.Outpoint).ToImmutableArray(), registeredCoinEffectiveValues, theirCoinEffectiveValues, (int)availableVsizes.Sum()).ToArray();
+		var outputTxOuts = ZeroLinkRules.TryGetDenomination(roundParameters, out var zeroLinkDenomination)
+			? GetZeroLinkOutput(roundState, zeroLinkDenomination, registeredAliceClients)
+			: _outputProvider.GetOutputs(roundId, roundParameters, registeredCoins.Select(x => x.Outpoint).ToImmutableArray(), registeredCoinEffectiveValues, theirCoinEffectiveValues, (int)availableVsizes.Sum()).ToArray();
 
 		DependencyGraph dependencyGraph = DependencyGraph.ResolveCredentialDependencies(registeredCoinEffectiveValues, outputTxOuts, roundParameters.MiningFeeRate, availableVsizes, roundParameters.MaxAmountCredentialValue, roundParameters.MaxVsizeCredentialValue);
 		DependencyGraphTaskScheduler scheduler = new(dependencyGraph);
@@ -843,6 +961,30 @@ public class CoinJoinClient
 				}
 			}
 		}
+	}
+
+	/// <summary>
+	/// The output of the wallet in a ZeroLink round: one, of the denomination less the fee, to an address that no round
+	/// had before. Nothing is decomposed and no payment is added: the round takes no other amount.
+	/// </summary>
+	private TxOut[] GetZeroLinkOutput(RoundState roundState, Money denomination, ImmutableArray<AliceClient> registeredAliceClients)
+	{
+		var roundParameters = roundState.CoinjoinState.Parameters;
+
+		if (registeredAliceClients.Length != 1)
+		{
+			throw new InvalidOperationException($"Round ({roundState.Id}): {registeredAliceClients.Length} inputs are registered in a ZeroLink round, which takes one.");
+		}
+
+		// The inputs of the others have the amount of the round too, or the coordinator does not keep to the rules.
+		if (roundState.CoinjoinState.Inputs.FirstOrDefault(x => x.Amount != denomination) is { } wrongInput)
+		{
+			throw new InvalidOperationException($"Round ({roundState.Id}): the ZeroLink round of {denomination.ToString(false, true)} BTC has an input of {wrongInput.Amount.ToString(false, true)} BTC.");
+		}
+
+		var destination = _outputProvider.DestinationProvider.GetNextDestinations(1).Single();
+
+		return [new TxOut(ZeroLinkRules.GetOutputAmount(denomination, roundParameters.MiningFeeRate), destination.ScriptPubKey)];
 	}
 
 	internal async Task<(Transaction UnsignedCoinJoin, ImmutableArray<AliceClient> AliceClientsThatSigned)> ProceedWithSigningStateAsync(
@@ -908,8 +1050,18 @@ public class CoinJoinClient
 			Logger.LogInfo(FormatLog("Effective fee rate of the transaction is lower than expected.", roundState));
 		}
 
+		// A ZeroLink round has inputs of one amount and outputs of one amount, at most as many outputs as inputs, and
+		// nothing else. The wallet does not sign a transaction that is anything but that.
+		var zeroLinkViolation = ZeroLinkRules.IsZeroLinkRound(signingState.Parameters)
+			? ZeroLinkRules.FindViolation(signingState.Parameters, [.. signingState.Inputs], [.. unsignedCoinJoin.Transaction.Outputs])
+			: null;
+		if (zeroLinkViolation is not null)
+		{
+			Logger.LogWarning(FormatLog($"The transaction is not one of a ZeroLink round. {zeroLinkViolation}", roundState));
+		}
+
 		var allMyInputsArePresent = alicesInTransaction.Length == registeredAliceClients.Length;
-		var mustSignAllInputs = allMyInputsArePresent && allMyOutputsArePresent && !isItForbiddenSoloCoinjoining && !hasTooFewInputs && !isCoordinatorTakingExtraFees;
+		var mustSignAllInputs = allMyInputsArePresent && allMyOutputsArePresent && !isItForbiddenSoloCoinjoining && !hasTooFewInputs && !isCoordinatorTakingExtraFees && zeroLinkViolation is null;
 		if (!mustSignAllInputs)
 		{
 			Logger.LogInfo(FormatLog("A subset of inputs will be signed.", roundState));

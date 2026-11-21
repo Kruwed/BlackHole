@@ -188,9 +188,10 @@ public class ArenaClient
 		Coin coin,
 		IKeyChain keyChain, // unused now
 		TransactionWithPrecomputedData unsignedCoinJoin,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken,
+		TaprootSigHash sigHash = TaprootSigHash.All)
 	{
-		var signedCoinJoin = keyChain.Sign(unsignedCoinJoin, coin);
+		var signedCoinJoin = keyChain.Sign(unsignedCoinJoin, coin, sigHash);
 		var txInput = signedCoinJoin.Inputs.AsIndexedInputs().First(input => input.PrevOut == coin.Outpoint);
 		if (!txInput.VerifyScript(coin, ScriptVerify.Standard, unsignedCoinJoin.PrecomputedTransactionData, out var error))
 		{

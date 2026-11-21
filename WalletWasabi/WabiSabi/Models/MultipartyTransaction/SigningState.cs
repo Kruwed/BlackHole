@@ -1,3 +1,5 @@
+using WalletWasabi.ZeroLink;
+
 namespace WalletWasabi.WabiSabi.Models.MultipartyTransaction;
 
 public record SigningState : MultipartyTransactionState
@@ -45,6 +47,12 @@ public record SigningState : MultipartyTransactionState
 
 		// 2. Check the witness is not too long.
 		if (VirtualSizeHelpers.VirtualSize(Constants.InputBaseSizeInBytes, witness.ToBytes().Length) > registeredCoin.ScriptPubKey.EstimateInputVsize())
+		{
+			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.SignatureTooLong);
+		}
+
+		// In a ZeroLink round every input is spent the same way: by one signature of 64 bytes.
+		if (ZeroLinkRules.IsZeroLinkRound(Parameters) && !ZeroLinkRules.IsInputWitness(witness))
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.SignatureTooLong);
 		}
