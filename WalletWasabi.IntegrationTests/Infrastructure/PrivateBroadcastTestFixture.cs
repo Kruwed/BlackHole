@@ -33,6 +33,15 @@ public class PrivateBroadcastTestFixture : IntegrationTestFixture
 	/// </summary>
 	public IRPCClient NodeRpcClient { get; private set; } = null!;
 
+	/// <summary>
+	/// Whether the Bitcoin Core of the tests can broadcast privately. It can since version 31. A build environment that
+	/// brings an older one along has nothing to run these tests against, so they are skipped there.
+	/// </summary>
+	public bool IsPrivateBroadcastSupported { get; private set; }
+
+	/// <summary>What a test says when it is skipped for that.</summary>
+	public const string NotSupportedReason = "The Bitcoin Core of the tests is older than version 31 and cannot broadcast privately.";
+
 	/// <summary>What the node takes for Tor. While it refuses connections, nothing leaves the node.</summary>
 	public TestSocks5Proxy Proxy => _proxy ?? throw new InvalidOperationException("The fixture is not initialized.");
 
@@ -43,6 +52,17 @@ public class PrivateBroadcastTestFixture : IntegrationTestFixture
 		var node = _node = CreateRpcClient(BitcoinCoreNode);
 		var peer = CreateRpcClient(_peerNode!);
 		NodeRpcClient = new RpcClientBase(node);
+
+		try
+		{
+			await NodeRpcClient.GetPrivateBroadcastQueueAsync();
+			IsPrivateBroadcastSupported = true;
+		}
+		catch (RPCException ex) when (ex.RPCCode == RPCErrorCode.RPC_METHOD_NOT_FOUND)
+		{
+			// An older Bitcoin Core. It took the setting without a word and broadcasts the way it always did.
+			return;
+		}
 
 		// The second node gets the chain from the first one, and tells it afterwards what it hears of.
 		await peer.AddNodeAsync(BitcoinCoreNode.P2pEndPoint, onetry: true);

@@ -41,6 +41,8 @@ public class PrivateBroadcastTests : IClassFixture<PrivateBroadcastTestFixture>
 	[Fact(Timeout = 240_000)]
 	public async Task PaymentFromTheChangeOfAPaymentWaitsUntilTheNodeHeardThatOneBackAsync()
 	{
+		Assert.SkipUnless(_fixture.IsPrivateBroadcastSupported, PrivateBroadcastTestFixture.NotSupportedReason);
+
 		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
 		var wallet = await CreateFundedWalletAsync(env, TestContext.Current.CancellationToken);
 
@@ -86,6 +88,8 @@ public class PrivateBroadcastTests : IClassFixture<PrivateBroadcastTestFixture>
 	[Fact(Timeout = 240_000)]
 	public async Task NodeThatGetsNothingOutKeepsTheTransactionUntilItIsReplacedAsync()
 	{
+		Assert.SkipUnless(_fixture.IsPrivateBroadcastSupported, PrivateBroadcastTestFixture.NotSupportedReason);
+
 		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
 		var wallet = await CreateFundedWalletAsync(env, TestContext.Current.CancellationToken);
 
