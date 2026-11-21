@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:model="using:WalletWasabi.Fluent.Models.Transactions"
+             xmlns:send="clr-namespace:WalletWasabi.Fluent.ViewModels.Wallets.Send"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Send.TransactionWarningsView"
+             x:DataType="send:TransactionWarningsViewModel"
+             x:CompileBindings="True">
+  <UserControl.Styles>
+    <Style Selector="Border.warning">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Background" Value="{DynamicResource Layer1BackgroundBrushLight1}" />
+      <Setter Property="Padding" Value="5" />
+      <Setter Property="Margin" Value="5 0 5 5" />
+    </Style>
+
+    <Style Selector="Border.warning PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Margin" Value="5 5 10 5" />
+      <Setter Property="Data" Value="{StaticResource info_regular}" />
+      <Setter Property="DockPanel.Dock" Value="Left" />
+    </Style>
+
+    <Style Selector="Border.warning TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+  <ItemsControl ItemsSource="{Binding Warnings}">
+    <ItemsControl.DataTemplates>
+      <!-- Unconfirmed funds warning -->
+      <DataTemplate DataType="{x:Type model:UnconfirmedFundsWarning}">
+        <Border Classes="warning">
+          <DockPanel>
+            <PathIcon />
+            <TextBlock Text="Transaction uses unconfirmed coins."
+                       ToolTip.Tip="This may cause your transaction to be rejected, or delay its confirmation, or cost more than needed to get it confirmed within the desired time. Wait for a confirmation to only use confirmed coins." />
+          </DockPanel>
+        </Border>
+      </DataTemplate>
+
+      <!-- Coinjoining funds warning -->
+      <DataTemplate DataType="{x:Type model:CoinjoiningFundsWarning}">
+        <Border Classes="warning">
+          <DockPanel>
+            <PathIcon />
+            <TextBlock Text="Transaction uses coinjoining coins."
+                       ToolTip.Tip="This may cause your transaction to be replaced by the coinjoin. Consider waiting for the current coinjoin to be finished before sending this transaction." />
+          </DockPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.DataTemplates>
+  </ItemsControl>
+</UserControl>

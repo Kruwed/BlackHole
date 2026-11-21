@@ -26,7 +26,10 @@
           </Viewbox>
         </Button>
 
-        <Border Padding="10 0 10 10">
+        <!-- What there is to warn about the transaction: unconfirmed coins, and coins that are in a coinjoin round.
+             Most transactions spend neither, and then there is no sign here. The preview does not judge what a
+             transaction gives away. -->
+        <Border Padding="10 0 10 10" IsVisible="{Binding Warnings.HasWarnings}">
           <Border.Styles>
             <Style Selector="FlyoutPresenter">
               <Setter Property="MaxHeight" Value="1200" />
@@ -36,48 +39,17 @@
             <Style Selector="FlyoutPresenter /template/ Panel#RootPanel">
               <Setter Property="MaxHeight" Value="1200" />
             </Style>
-
-            <Style Selector="PathIcon.noPrivacy">
-              <Setter Property="Data" Value="{StaticResource warning_regular}" />
-              <Setter Property="Foreground" Value="{DynamicResource WarningMessageForeground}" />
-            </Style>
-            <Style Selector="PathIcon.badPrivacy">
-              <Setter Property="Data" Value="{StaticResource warning_regular}" />
-              <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
-            </Style>
-            <Style Selector="PathIcon.goodPrivacy">
-              <Setter Property="Data" Value="{StaticResource shield_regular}" />
-              <Setter Property="Foreground" Value="{DynamicResource PrivacyLevelStrongBrush}" />
-            </Style>
-            <Style Selector="PathIcon.maxPrivacy">
-              <Setter Property="Data" Value="{StaticResource shield_tick_regular}" />
-              <Setter Property="Foreground" Value="{DynamicResource PrivacyLevelStrongBrush}" />
-            </Style>
           </Border.Styles>
           <Interaction.Behaviors>
             <ShowFlyoutOnPointerOverBehavior />
           </Interaction.Behaviors>
           <FlyoutBase.AttachedFlyout>
             <Flyout Placement="BottomEdgeAlignedLeft" ShowMode="TransientWithDismissOnPointerMoveAway">
-              <Panel DataContext="{Binding PrivacyWarnings}" Margin="0 5 0 0">
-                <!-- Warnings -->
-                <send:PrivacyWarningsView IsVisible="{Binding !MaxPrivacy}" />
-
-                <!-- Full privacy message -->
-                <DockPanel IsVisible="{Binding MaxPrivacy}">
-                  <TextBlock Text="This transaction is well optimized" DockPanel.Dock="Top" HorizontalAlignment="Center" />
-                  <Image Margin="0 20" Source="{StaticResource privacy_indicator_good}" Height="100" Width="100" />
-                </DockPanel>
-              </Panel>
+              <send:TransactionWarningsView DataContext="{Binding Warnings}" Margin="0 5 0 0" />
             </Flyout>
           </FlyoutBase.AttachedFlyout>
           <Viewbox Height="20">
-            <Panel>
-              <PathIcon Classes.noPrivacy="{Binding PrivacyWarnings.NoPrivacy}"
-                        Classes.badPrivacy="{Binding PrivacyWarnings.BadPrivacy}"
-                        Classes.goodPrivacy="{Binding PrivacyWarnings.GoodPrivacy}"
-                        Classes.maxPrivacy="{Binding PrivacyWarnings.MaxPrivacy}" />
-            </Panel>
+            <PathIcon Data="{StaticResource info_regular}" Foreground="{DynamicResource TextControlForeground}" />
           </Viewbox>
         </Border>
       </StackPanel>

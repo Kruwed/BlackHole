@@ -53,7 +53,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			: "";
 		_currentTransactionInfo = _info.Clone();
 
-		PrivacyWarnings = new PrivacyWarningsFlyoutViewModel(uiContext, walletModel);
+		Warnings = new TransactionWarningsViewModel(uiContext);
 		CurrentTransactionSummary = new TransactionSummaryViewModel(uiContext, this, walletModel, _info);
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
@@ -82,7 +82,11 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	public TransactionSummaryViewModel CurrentTransactionSummary { get; }
 
-	public PrivacyWarningsFlyoutViewModel PrivacyWarnings { get; }
+	/// <summary>
+	/// What there is to warn about the transaction: that it spends unconfirmed coins or coins that are in a coinjoin
+	/// round. The preview does not judge what the transaction gives away, as the user picked its coins and its payments.
+	/// </summary>
+	public TransactionWarningsViewModel Warnings { get; }
 
 	public ICommand AdjustFeeCommand { get; }
 
@@ -305,7 +309,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			.WhereNotNull()
 			.Throttle(TimeSpan.FromMilliseconds(100))
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(transaction => PrivacyWarnings.Update(_info, transaction))
+			.Subscribe(transaction => Warnings.Update(transaction))
 			.DisposeWith(disposables);
 
 		if (!isInHistory)

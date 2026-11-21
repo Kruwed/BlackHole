@@ -74,8 +74,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 
 	WalletInfoModel GetWalletInfo();
-
-	PrivacyWarningsModel GetPrivacyWarningsModel();
 }
 
 [AppLifetime]
@@ -190,10 +188,5 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public WalletInfoModel GetWalletInfo()
 	{
 		return new WalletInfoModel(Wallet);
-	}
-
-	public PrivacyWarningsModel GetPrivacyWarningsModel()
-	{
-		return new PrivacyWarningsModel(Wallet);
 	}
 }
