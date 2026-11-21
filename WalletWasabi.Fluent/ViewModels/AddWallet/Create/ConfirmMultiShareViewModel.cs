@@ -3,18 +3,20 @@ using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using WalletWasabi.Fluent.ViewModels.Dialogs;
 using WalletWasabi.Fluent.ViewModels.Navigation;
 
 namespace WalletWasabi.Fluent.ViewModels.AddWallet.Create;
 
+/// <summary>
+/// One page of the confirmation of a backup that the user has just written down. The pages go through every share and
+/// through every word of it, and the wallet is created after the last one: the user has put every word of the backup
+/// into its place by then. No word is confirmed for the user, and nothing leads past a page.
+/// </summary>
 [NavigationMetaData(Title = "Confirm Recovery Words")]
 public partial class ConfirmMultiShareViewModel : RoutableViewModel
 {
-	private const int WordsToConfirmPerPage = 3;
-
 	private static readonly Dictionary<int, byte> WordsPerPageMap = new()
 	{
 		[12] = 12,
@@ -36,14 +38,12 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 	private readonly WalletCreationOptions.AddNewWallet _options;
 	private readonly Dictionary<int, List<RecoveryWordViewModel>> _wordsDictionary;
 	private readonly List<RecoveryWordViewModel> _words;
-	private readonly HashSet<int> _wordIndexesToConfirm;
 
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private byte _currentShare;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private byte _totalShares;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private byte _currentSharePage;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private byte _totalCurrenSharePages;
 
-	[AutoNotify] private bool _isSkipEnabled;
 	[AutoNotify] private RecoveryWordViewModel _currentWord;
 	[AutoNotify] private List<RecoveryWordViewModel> _availableWords;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _allWordsConfirmed;
@@ -65,73 +65,67 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 		_options = options;
 		_availableWords = new List<RecoveryWordViewModel>();
 
-		// Paginate recovery words.
-		var wordsPerPage = WordsPerPageMap[words.Count];
+		// The words of the share are spread over pages. Every word of this page has to be confirmed.
 		_currentSharePage = multiShareBackup.CurrentSharePage;
-		_totalCurrenSharePages = TotalPagesMap[words.Count];
-		var wordsToSkip = wordsPerPage * (_currentSharePage - 1);
+		_totalCurrenSharePages = (byte)GetPageCount(words.Count);
 
-		_words = words
-			.Skip(wordsToSkip)
-			.Take(wordsPerPage)
-			.OrderBy(x => x.Index)
-			.ToList();
-
-		_wordIndexesToConfirm = GetRandomIndexes(
-			array: _words.Select(x => x.Index).ToArray(),
-			count: WordsToConfirmPerPage);
-
-		ResetWords();
-
-		ConfirmNotRequiredWords(_words);
-
-		if (_words.FirstOrDefault(x => !x.IsConfirmed) is { } nextWord)
-		{
-			_currentWord = nextWord;
-		}
-		else
-		{
-			_currentWord = _words.Last();
-		}
+		_words = GetWordsOfPage(words, _currentSharePage).ToList();
+		_currentWord = _words[0];
 	}
 
 	public ObservableCollectionExtended<RecoveryWordViewModel> ConfirmationWords { get; } = new();
 
-	[System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Uses DisposeWith()")]
+	/// <summary>The number of pages that the confirmation of a share of so many words takes.</summary>
+	public static int GetPageCount(int wordCount) => TotalPagesMap[wordCount];
+
+	/// <summary>
+	/// The words of a share that one page of its confirmation is about, in their order. The pages are counted from 1,
+	/// and every word of the share is on one of them.
+	/// </summary>
+	public static IReadOnlyList<RecoveryWordViewModel> GetWordsOfPage(IReadOnlyList<RecoveryWordViewModel> wordsOfShare, int page)
+	{
+		var wordsPerPage = WordsPerPageMap[wordsOfShare.Count];
+
+		return wordsOfShare
+			.OrderBy(x => x.Index)
+			.Skip(wordsPerPage * (page - 1))
+			.Take(wordsPerPage)
+			.ToList();
+	}
+
 	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
 	{
 		base.OnNavigatedTo(isInHistory, disposables);
 
-		ResetWords();
+		// The page starts over every time that it is come to, also on the way back from a later page: no word stays
+		// confirmed, and none is confirmed for the user.
+		var confirmation = new RecoveryWordsConfirmation(_words);
 
 		ConfirmationWords.Clear();
-
-		var confirmationWordsSourceList = new SourceList<RecoveryWordViewModel>();
-
-		confirmationWordsSourceList
-			.DisposeWith(disposables)
-			.Connect()
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Bind(ConfirmationWords)
-			.OnItemAdded(x => x.Reset())
-			.Subscribe()
-			.DisposeWith(disposables);
+		ConfirmationWords.AddRange(confirmation.Words);
+		AvailableWords = confirmation.Choices.ToList();
+		CurrentWord = confirmation.CurrentWord;
+		AllWordsConfirmed = confirmation.AllWordsConfirmed;
 
 		EnableBack = true;
 
 		CancelCommand = ReactiveCommand.Create(OnCancel);
 
-		var nextCommandCanExecute =
-			confirmationWordsSourceList
-				.Connect()
-				.WhenValueChanged(x => x.IsConfirmed)
-				.ObserveOn(RxApp.MainThreadScheduler)
-				.Select(_ => confirmationWordsSourceList.Items.All(x => x.IsConfirmed));
+		// The next page, and after the last page the wallet, is only to be had with every word of this page in its place.
+		NextCommand = ReactiveCommand.CreateFromTask(
+			async () => await OnNextAsync(),
+			this.WhenAnyValue(x => x.AllWordsConfirmed).ObserveOn(RxApp.MainThreadScheduler));
 
-		NextCommand = ReactiveCommand.CreateFromTask(async () => await OnNextAsync(), nextCommandCanExecute);
-
-		nextCommandCanExecute.Do(x => AllWordsConfirmed = x)
-			.Subscribe()
+		confirmation.Choices
+			.Select(choice => choice.WhenAnyValue(x => x.IsSelected).Skip(1).Select(_ => choice))
+			.Merge()
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(choice =>
+			{
+				confirmation.OnChoiceChanged(choice);
+				CurrentWord = confirmation.CurrentWord;
+				AllWordsConfirmed = confirmation.AllWordsConfirmed;
+			})
 			.DisposeWith(disposables);
 
 		this.WhenAnyValue(
@@ -158,133 +152,11 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 			})
 			.DisposeWith(disposables);
 
-		SetSkip();
-
-		confirmationWordsSourceList.AddRange(_words);
-
-		ConfirmNotRequiredWords(_words);
-
-		AvailableWords = confirmationWordsSourceList.Items
-			.Select(x => new RecoveryWordViewModel(UiContext, x.Index, x.Word))
-			.OrderBy(x => x.Word)
-			.ToList();
-
-		var availableWordsSourceList = new SourceList<RecoveryWordViewModel>()
-			.DisposeWith(disposables);
-
-		availableWordsSourceList
-			.Connect()
-			.WhenPropertyChanged(x => x.IsSelected)
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(x => OnWordSelectionChanged(x.Sender))
-			.DisposeWith(disposables);
-
-		availableWordsSourceList.AddRange(AvailableWords);
-
-		ConfirmNotRequiredWords(AvailableWords);
-
-		SetNextWord();
-
 		var enableCancel = UiContext.WalletRepository.HasWallet;
 		SetupCancel(enableCancel: false, enableCancelOnEscape: enableCancel, enableCancelOnPressed: false);
 	}
 
-	private void ConfirmNotRequiredWords(IEnumerable<RecoveryWordViewModel> words)
-	{
-		foreach (var word in words)
-		{
-			if (!_wordIndexesToConfirm.Contains(word.Index))
-			{
-				word.SelectedWord = word.Word;
-				word.IsConfirmed = true;
-				word.IsEnabled = false;
-			}
-			else
-			{
-				word.SelectedWord = null;
-				word.IsConfirmed = false;
-				word.IsEnabled = true;
-			}
-		}
-	}
-
-	private static HashSet<int> GetRandomIndexes(int[] array, int count)
-	{
-		if (count > array.Length)
-		{
-			throw new ArgumentException("Count cannot be greater than array length.");
-		}
-
-		for (var i = array.Length - 1; i > 0; i--)
-		{
-			var j = RandomNumberGenerator.GetInt32(0, i + 1);
-			(array[i], array[j]) = (array[j], array[i]);
-		}
-
-		return array.Take(count).ToHashSet();
-	}
-
-	private void ResetWords()
-	{
-		foreach (var word in _words)
-		{
-			word.Reset();
-		}
-	}
-
-	private void SetNextWord()
-	{
-		if (ConfirmationWords.FirstOrDefault(x => !x.IsConfirmed) is { } nextWord)
-		{
-			CurrentWord = nextWord;
-		}
-		else
-		{
-			CurrentWord = ConfirmationWords.Last();
-		}
-
-		EnableAvailableWords(true);
-	}
-
-	private void OnWordSelectionChanged(RecoveryWordViewModel selectedWord)
-	{
-		if (selectedWord.IsSelected)
-		{
-			CurrentWord.SelectedWord = selectedWord.Word;
-		}
-		else
-		{
-			if (!CurrentWord.IsConfirmed)
-			{
-				CurrentWord.SelectedWord = null;
-			}
-		}
-
-		if (CurrentWord.IsConfirmed)
-		{
-			selectedWord.IsConfirmed = true;
-			SetNextWord();
-		}
-		else if (!selectedWord.IsSelected)
-		{
-			EnableAvailableWords(true);
-		}
-		else
-		{
-			EnableAvailableWords(false);
-			selectedWord.IsEnabled = true;
-		}
-	}
-
-	private void EnableAvailableWords(bool enable)
-	{
-		foreach (var w in AvailableWords)
-		{
-			w.IsEnabled = enable;
-		}
-	}
-
-	private async Task OnNextAsync(bool skip = false)
+	private async Task OnNextAsync()
 	{
 		var options = _options;
 
@@ -293,8 +165,8 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 			throw new ArgumentOutOfRangeException(nameof(options));
 		}
 
-		if ((_currentShare >= multiShareBackup.Settings.Shares && _currentSharePage >= _totalCurrenSharePages)
-		    || skip)
+		// After the last page of the last share the whole backup is confirmed, and the wallet can be created.
+		if (_currentShare >= multiShareBackup.Settings.Shares && _currentSharePage >= _totalCurrenSharePages)
 		{
 			var password = await Navigate().To()
 				.CreatePasswordDialog("Add Password", CreatePasswordDialogViewModel.NewWalletCaption, enableEmpty: true).GetResultAsync();
@@ -337,19 +209,5 @@ public partial class ConfirmMultiShareViewModel : RoutableViewModel
 	private void OnCancel()
 	{
 		Navigate().Clear();
-	}
-
-	private void SetSkip()
-	{
-#if RELEASE
-		IsSkipEnabled = UiContext.Services.GetNetwork() != NBitcoin.Network.Main || System.Diagnostics.Debugger.IsAttached;
-#else
-		IsSkipEnabled = true;
-#endif
-
-		if (IsSkipEnabled)
-		{
-			SkipCommand = ReactiveCommand.CreateFromTask(async () => await OnNextAsync(true));
-		}
 	}
 }

@@ -6,7 +6,7 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 
 ## What it does
 
-- **One wallet.** Its backup is SLIP39: 20 recovery words by default, or several shares with a threshold if you choose to split it. The password encrypts the wallet file on the computer only; the backup alone recovers the wallet.
+- **One wallet.** Its backup is SLIP39: 20 recovery words by default, or several shares with a threshold if you choose to split it. Before the wallet is created you confirm the backup that you wrote down, by putting every word of it into its place, of every share; no word is filled in for you, and the confirmation cannot be skipped. The password encrypts the wallet file on the computer only; the backup alone recovers the wallet.
 - **Taproot only.** Every address of the wallet is a Taproot (P2TR) address.
 - **A new address for every payment.** *Receive* on the *Coins* tab lists the addresses that await a payment, and *New Address* there generates one that was not given out before.
 - **Your node only.** Blocks, unconfirmed transactions and fee estimations come from the RPC interface of your Bitcoin node, and transactions are broadcast through it. The wallet scans the blocks of the node, starting with the block the wallet was created at.
