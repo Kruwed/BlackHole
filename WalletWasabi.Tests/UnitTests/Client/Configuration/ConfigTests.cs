@@ -72,16 +72,28 @@ public class ConfigTests
 	}
 
 	/// <summary>
-	/// The offer of a market maker is posted to Nostr relays. Which ones is an option of the start; without it they are
-	/// the ones that the application knows.
+	/// The offer of a market maker is posted to Nostr relays. Which ones is a setting: the ones of the config file,
+	/// which start out as the ones that the application knows. Like every setting they can be given at the start
+	/// instead.
 	/// </summary>
 	[Fact]
-	public void OffersGoToTheRelaysThatAreNamedAtTheStart()
+	public void OffersGoToTheRelaysOfTheSettings()
 	{
 		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
 		Assert.Equal(["wss://relay.primal.net", "wss://relay.damus.io", "wss://nos.lol"], config.NostrRelays);
 
-		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--nostrrelays=wss://one.example;ws://127.0.0.1:7777/"]);
+		// The relays that the user set.
+		var persistentConfig = PersistentConfigManager.DefaultMainNetConfig with { NostrRelays = new(["wss://mine.example"]) };
+		config = new Config(persistentConfig, []);
+		Assert.Equal(["wss://mine.example"], config.NostrRelays);
+		Assert.False(config.IsOverridden);
+
+		// None at all.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig with { NostrRelays = [] }, []);
+		Assert.Empty(config.NostrRelays);
+
+		// Given at the start, they go before the ones of the file.
+		config = new Config(persistentConfig, ["--nostrrelays=wss://one.example;ws://127.0.0.1:7777/"]);
 		Assert.Equal(["wss://one.example", "ws://127.0.0.1:7777/"], config.NostrRelays);
 
 		Assert.Contains("NostrRelays", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
@@ -100,7 +112,6 @@ public class ConfigTests
 	[InlineData("--torsocksport=9050")]
 	[InlineData("--torcontrolport=9051")]
 	[InlineData("--network=regtest")]
-	[InlineData("--nostrrelays=wss://relay.example")]
 	public void OptionsThatAreNotSettingsLeaveTheSettingsChangeable(string option)
 	{
 		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option]);
@@ -127,6 +138,7 @@ public class ConfigTests
 	[InlineData("--absolutemininputcount=30")]
 	[InlineData("--maxdaysinmempool=7")]
 	[InlineData("--experimentalfeatures=feature")]
+	[InlineData("--nostrrelays=wss://relay.example")]
 	public void SettingsThatAreGivenAtTheStartLockTheSettings(string option)
 	{
 		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, [option]);

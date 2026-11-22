@@ -29,7 +29,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 
 		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
 
-		ConnectionsSettingsTab = new ConnectionsSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
+		TorSettingsTab = new TorSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
+		NodeSettingsTab = new NodeSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
+		NostrSettingsTab = new NostrSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
 		CoordinatorTabSettings = new CoordinatorTabSettingsViewModel(UiContext, UiContext.ApplicationSettings);
 
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
@@ -85,17 +87,16 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
 	/// <summary>Shows the keys of the wallet, after its password was given.</summary>
 	public ICommand WalletKeysCommand { get; }
 
-	public ConnectionsSettingsTabViewModel ConnectionsSettingsTab { get; }
+	public TorSettingsTabViewModel TorSettingsTab { get; }
+
+	public NodeSettingsTabViewModel NodeSettingsTab { get; }
+
+	public NostrSettingsTabViewModel NostrSettingsTab { get; }
+
 	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
 
 	public async Task Activate()
 	{
-		await NavigateDialogAsync(this);
-	}
-
-	public async Task ActivateCoordinatorTabAsync()
-	{
-		SelectedTab = 1;
 		await NavigateDialogAsync(this);
 	}
 

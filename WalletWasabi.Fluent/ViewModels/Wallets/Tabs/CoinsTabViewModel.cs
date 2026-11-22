@@ -12,8 +12,8 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 /// <summary>
 /// The tab of the coins. It lists the coins of the wallet, and the user ticks the ones that something is to be done
 /// with. What is done with them starts in the dialog that the Coinjoin button opens: a payment spends them, a coinjoin
-/// gets them, a fidelity bond locks them and an offer offers them to the takers of coinjoins. Receiving starts here
-/// too.
+/// gets them, a fidelity bond locks them and an offer offers them to the takers of coinjoins. Receiving starts in
+/// that dialog too.
 /// </summary>
 /// <remarks>
 /// The ticks belong to the list and to nothing else. They are not kept anywhere, and whatever takes coins takes the
@@ -47,8 +47,8 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 		// kind of coinjoin that its box is set to.
 		CoinJoin = new CoinJoinViewModel(uiContext, walletModel, wallet, CoinList);
 
-		// An address can be generated at any time. What the dialog does is about the coins of the wallet.
-		ReceiveCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Receive(walletModel));
+		// The dialog is to be had at any time: an address can be generated while the wallet still processes blocks. What
+		// takes coins waits for the wallet inside the dialog.
 		CoinJoinCommand = ReactiveCommand.Create(
 			() =>
 			{
@@ -57,8 +57,7 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 				{
 					UiContext.Navigate(NavigationTarget.DialogScreen).To(CoinJoin);
 				}
-			},
-			this.WhenAnyValue(x => x.IsWalletLoaded));
+			});
 
 		ToggleSelectionCommand = ReactiveCommand.Create(() => CoinList.SelectAll(!CoinList.Selection.Any()));
 	}
@@ -71,15 +70,12 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 	public CoinListViewModel CoinList { get; }
 
 	/// <summary>
-	/// The dialog of what is done with the ticked coins: the payment, the box of the coinjoins, and through its menu
-	/// the offer of the wallet as a market maker and its fidelity bonds.
+	/// The dialog of what is done with the ticked coins, and of receiving: the payment and Receive, the box of the
+	/// coinjoins, and through its menu the offer of the wallet as a market maker and its fidelity bonds.
 	/// </summary>
 	public CoinJoinViewModel CoinJoin { get; }
 
-	/// <summary>Opens the addresses that await a payment. A new address is generated from there.</summary>
-	public ICommand ReceiveCommand { get; }
-
-	/// <summary>Opens the dialog of what is done with the ticked coins.</summary>
+	/// <summary>Opens the dialog of what is done with the ticked coins, and of receiving.</summary>
 	public ICommand CoinJoinCommand { get; }
 
 	/// <summary>Ticks every coin, or none if some are ticked.</summary>

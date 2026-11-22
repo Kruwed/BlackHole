@@ -31,24 +31,14 @@
                       IsChecked="{Binding HasSelection}" />
       </StackPanel>
 
-      <!-- Receiving coins, and what is done with the ticked ones. The second waits for the wallet to know its
-           transactions. -->
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="0 0 16 0">
-        <Button Classes="function" Command="{Binding ReceiveCommand}" VerticalAlignment="Center"
-                ToolTip.Tip="The addresses that await a payment, and a new one.">
-          <StackPanel Orientation="Horizontal">
-            <PathIcon Data="{StaticResource wallet_action_receive}" />
-            <TextBlock Text="Receive" />
-          </StackPanel>
-        </Button>
-        <Button Classes="function" Command="{Binding CoinJoinCommand}" VerticalAlignment="Center"
-                ToolTip.Tip="Pay with the ticked coins, coinjoin them, offer them as a maker or lock them in a bond.">
-          <StackPanel Orientation="Horizontal">
-            <PathIcon Data="{StaticResource wallet_action_coinjoin}" />
-            <TextBlock Text="Coinjoin" />
-          </StackPanel>
-        </Button>
-      </StackPanel>
+      <!-- What is done with the ticked coins, and receiving: all of it starts in the dialog of this button. -->
+      <Button DockPanel.Dock="Right" Classes="function" Command="{Binding CoinJoinCommand}" VerticalAlignment="Center" Margin="0 0 16 0"
+              ToolTip.Tip="Send and receive, coinjoin the ticked coins, offer them as a maker or lock them in a bond.">
+        <StackPanel Orientation="Horizontal">
+          <PathIcon Data="{StaticResource wallet_action_coinjoin}" />
+          <TextBlock Text="Coinjoin" />
+        </StackPanel>
+      </Button>
 
       <TextBlock VerticalAlignment="Center" Text="Coins" FontSize="{StaticResource FontSizeH5}" />
     </DockPanel>

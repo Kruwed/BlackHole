@@ -1,17 +1,20 @@
 using System.Collections.ObjectModel;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Windows.Input;
 using Avalonia.Threading;
 using WalletWasabi.Fluent.Models.Wallets;
-using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
+using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 
-[NavigationMetaData(Title = "Coinjoin Payments", NavigationTarget = NavigationTarget.DialogScreen)]
-public partial class CoinJoinPaymentsViewModel : DialogViewModelBase<Unit>
+/// <summary>
+/// The payments that wait for a WabiSabi round to make them: the ones that are queued, the ones that a round is making
+/// and the ones that were made, with the way to queue another one. It is a part of the main screen of WabiSabi in the
+/// Coinjoin dialog.
+/// </summary>
+public partial class CoinJoinPaymentsViewModel : ViewModelBase
 {
 	private readonly Wallet _wallet;
 	private readonly IWalletModel _walletModel;
@@ -31,9 +34,6 @@ public partial class CoinJoinPaymentsViewModel : DialogViewModelBase<Unit>
 		_wallet = wallet;
 		_walletModel = walletModel;
 
-		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
-		NextCommand = ReactiveCommand.Create(() => Close());
-
 		AddPaymentCommand = ReactiveCommand.Create(OnAddPayment);
 		CancelPaymentCommand = ReactiveCommand.Create<CoinJoinPaymentViewModel>(OnCancelPayment);
 
@@ -41,15 +41,17 @@ public partial class CoinJoinPaymentsViewModel : DialogViewModelBase<Unit>
 		_refreshTimer.Tick += (_, _) => RefreshPayments();
 	}
 
+	/// <summary>Opens the page that queues a payment. The way back from there leads to the dialog.</summary>
 	public ICommand AddPaymentCommand { get; }
+
 	public ICommand CancelPaymentCommand { get; }
 
-	public int MaxPaymentsPerRound => 4;
-
-	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
+	/// <summary>
+	/// Shows the payments as they are now, and keeps them up to date until what is given is disposed of: a round changes
+	/// them without telling.
+	/// </summary>
+	public void Activate(CompositeDisposable disposables)
 	{
-		base.OnNavigatedTo(isInHistory, disposables);
-
 		RefreshPayments();
 		_refreshTimer.Start();
 
@@ -61,7 +63,7 @@ public partial class CoinJoinPaymentsViewModel : DialogViewModelBase<Unit>
 
 	private void OnAddPayment()
 	{
-		Navigate(NavigationTarget.DialogScreen).To().AddCoinJoinPayment(_walletModel, _wallet);
+		UiContext.Navigate(NavigationTarget.DialogScreen).To().AddCoinJoinPayment(_walletModel, _wallet);
 	}
 
 	private void OnCancelPayment(CoinJoinPaymentViewModel payment)

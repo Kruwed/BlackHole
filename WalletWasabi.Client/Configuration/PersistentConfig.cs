@@ -28,6 +28,7 @@ public record PersistentConfig(
 	int AbsoluteMinInputCount,
 	int MaxDaysInMempool,
 	ValueList<string> ExperimentalFeatures,
+	ValueList<string> NostrRelays,
 	int ConfigVersion
 	) : IPersistentConfig
 {

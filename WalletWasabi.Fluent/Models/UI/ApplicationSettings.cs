@@ -57,6 +57,9 @@ public partial class ApplicationSettings : ReactiveObject
 	// Experimental
 	[AutoNotify] private string[] _experimentalFeatures;
 
+	// Nostr
+	[AutoNotify] private string[] _nostrRelays;
+
 	public ApplicationSettings(IServices services, PersistentConfig persistentConfig, Config config, UiConfig uiConfig)
 	{
 		_services = services;
@@ -87,6 +90,9 @@ public partial class ApplicationSettings : ReactiveObject
 		// Experimental
 		_experimentalFeatures = persistentConfig.ExperimentalFeatures.ToArray();
 
+		// Nostr
+		_nostrRelays = persistentConfig.NostrRelays.ToArray();
+
 		_oobe = uiConfig.Oobe;
 		_lastVersionHighlightsDisplayed = uiConfig.LastVersionHighlightsDisplayed;
 
@@ -111,7 +117,8 @@ public partial class ApplicationSettings : ReactiveObject
 					x => x.MaxCoinJoinMiningFeeRate,
 					x => x.AbsoluteMinInputCount,
 					x => x.CoordinatorUri,
-					(_, _, _) => Unit.Default)
+					x => x.NostrRelays,
+					(_, _, _, _) => Unit.Default)
 				.Skip(1);
 
 		Observable
@@ -220,6 +227,9 @@ public partial class ApplicationSettings : ReactiveObject
 			UseTor = UseTor.ToString(),
 			TerminateTorOnExit = TerminateTorOnExit,
 		};
+
+		// Nostr
+		result = result with { NostrRelays = new ValueList<string>(NostrRelays) };
 
 		return result;
 	}

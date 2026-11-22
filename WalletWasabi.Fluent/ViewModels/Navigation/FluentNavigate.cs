@@ -180,9 +180,9 @@ public partial class FluentNavigate
 		return new FluentDialog<ResyncWalletDialogResult?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void ConnectionsSettingsTab(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void NodeSettingsTab(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectionsSettingsTabViewModel(UiContext, settings), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new NodeSettingsTabViewModel(UiContext, settings), navigationMode);
 	}
 
 	public FluentDialog<System.Reactive.Unit> SettingsPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -235,15 +235,6 @@ public partial class FluentNavigate
 	public void ShuttingDown(ApplicationViewModel applicationViewModel, bool restart, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ShuttingDownViewModel(UiContext, applicationViewModel, restart), navigationMode);
-	}
-
-	public FluentDialog<System.Reactive.Unit> CoinJoinPayments(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new CoinJoinPaymentsViewModel(UiContext, walletModel, wallet);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<System.Reactive.Unit>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
 	public void CoinJoinDetails(IWalletModel wallet, CoinJoinTransactionModel transaction, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

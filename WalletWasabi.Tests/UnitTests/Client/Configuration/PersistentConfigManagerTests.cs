@@ -66,6 +66,11 @@ public class PersistentConfigManagerTests
 			  "AbsoluteMinInputCount": 21,
 			  "MaxDaysInMempool": 30,
 			  "ExperimentalFeatures": [],
+			  "NostrRelays": [
+			    "wss://relay.primal.net",
+			    "wss://relay.damus.io",
+			    "wss://nos.lol"
+			  ],
 			  "ConfigVersion": 4
 			}
 			""";
@@ -125,6 +130,37 @@ public class PersistentConfigManagerTests
 		string savedJson = PersistentConfigManager.ToFile(configPath, config);
 		Assert.DoesNotContain("EnableGpu", savedJson);
 		Assert.Contains("\"AbsoluteMinInputCount\": 33", savedJson);
+	}
+
+	/// <summary>
+	/// The Nostr relays are a setting. A file from before they were one names none: it is read with the relays that the
+	/// application knows, and they are written into it when it is saved. A file that names relays keeps them, also
+	/// when it names none at all.
+	/// </summary>
+	[Fact]
+	public async Task NostrRelaysAreKeptInTheConfigFileAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		// A file without the setting: the one that the application writes, less the relays.
+		var json = System.Text.Json.Nodes.JsonNode.Parse(PersistentConfigManager.ToFile(configPath, PersistentConfigManager.DefaultMainNetConfig))!.AsObject();
+		Assert.True(json.Remove("NostrRelays"));
+		File.WriteAllText(configPath, json.ToJsonString());
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Equal(Constants.DefaultNostrRelays, config.NostrRelays);
+		Assert.Contains("wss://relay.damus.io", PersistentConfigManager.ToFile(configPath, config));
+
+		// The relays of the user.
+		PersistentConfigManager.ToFile(configPath, config with { NostrRelays = new ValueList<string>(["wss://one.example", "ws://127.0.0.1:7777/"]) });
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Equal(["wss://one.example", "ws://127.0.0.1:7777/"], config.NostrRelays);
+
+		// No relay at all is a choice too, and not the same as a file that does not say.
+		PersistentConfigManager.ToFile(configPath, config with { NostrRelays = [] });
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Empty(config.NostrRelays);
 	}
 
 	/// <summary>

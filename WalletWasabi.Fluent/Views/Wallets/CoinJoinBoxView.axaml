@@ -18,8 +18,9 @@
     </Style>
   </UserControl.Styles>
 
-  <!-- The coinjoins: the kind that the box is set to, what its coinjoin is doing, and its controls. The menu lists the
-       kinds, and it leads to the offer of the wallet as a market maker and to its fidelity bonds. -->
+  <!-- The coinjoins: what the box shows, what its coinjoin is doing, and its controls. The menu lists what there is to
+       choose from: the first four are picked, and the dialog shows the main screen of the one that is. The last two
+       lead to the offer of the wallet as a market maker and to its fidelity bonds. -->
   <Border Name="Box" ClipToBounds="True"
           TextElement.FontFamily="{StaticResource MonospacedFont}"
           CornerRadius="4"
@@ -35,11 +36,15 @@
           <TextBlock Text="{Binding Name}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
         </StackPanel>
 
-        <!-- The kinds of coinjoin, and what else is done with the ticked coins. The box is at the bottom of its dialog,
-             so the menu opens upwards. -->
-        <Button DockPanel.Dock="Right" Classes="plain" Margin="20 0 0 0" ToolTip.Tip="Kinds of coinjoin, and more">
+        <!-- What there is to choose from. The box is at the bottom of its dialog, so the menu opens upwards. -->
+        <Button DockPanel.Dock="Right" Classes="plain" Margin="20 0 0 0" ToolTip.Tip="Payjoin, the coinjoins, Maker and Bond">
           <Button.Flyout>
             <MenuFlyout Placement="TopEdgeAlignedRight">
+              <MenuItem Header="{Binding Payjoin.Name}" Command="{Binding Payjoin.SelectCommand}">
+                <MenuItem.Icon>
+                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding Payjoin.IsSelected}" />
+                </MenuItem.Icon>
+              </MenuItem>
               <MenuItem Header="{Binding WabiSabi.Name}" Command="{Binding WabiSabi.SelectCommand}">
                 <MenuItem.Icon>
                   <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding WabiSabi.IsSelected}" />
@@ -55,7 +60,6 @@
                   <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding Taker.IsSelected}" />
                 </MenuItem.Icon>
               </MenuItem>
-              <Separator />
               <MenuItem Header="Maker" Command="{Binding MakerCommand}">
                 <MenuItem.Icon>
                   <PathIcon Data="{StaticResource wallet_action_offer}" />
@@ -64,18 +68,6 @@
               <MenuItem Header="Bond" Command="{Binding BondCommand}">
                 <MenuItem.Icon>
                   <PathIcon Data="{StaticResource wallet_action_bond}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <Separator />
-              <MenuItem Header="Coordinator Settings" Command="{Binding CoordinatorSettingsCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource coordinator}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="Coinjoin Payments" Command="{Binding CoinJoinPaymentsCommand}"
-                        IsVisible="{Binding IsCoinJoinEnabled}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource embedded_payment}" />
                 </MenuItem.Icon>
               </MenuItem>
             </MenuFlyout>

@@ -15,16 +15,20 @@ using WalletWasabi.Models;
 
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
+/// <summary>
+/// The Node tab of the settings: the network, and the RPC interface of the Bitcoin node that the wallet gets everything
+/// from.
+/// </summary>
 [AppLifetime]
-[NavigationMetaData(Title = "Connections")]
-public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
+[NavigationMetaData(Title = "Node")]
+public partial class NodeSettingsTabViewModel : RoutableViewModel
 {
 	[AutoNotify] private string _bitcoinRpcUri;
 	[AutoNotify] private string _bitcoinRpcCredentialString;
 	[AutoNotify] private string? _connectionStatusMessage;
 	[AutoNotify] private bool _connectionStatusIsSuccess;
 
-	public ConnectionsSettingsTabViewModel(UiContext uiContext, ApplicationSettings settings) : base(uiContext)
+	public NodeSettingsTabViewModel(UiContext uiContext, ApplicationSettings settings) : base(uiContext)
 	{
 		Settings = settings;
 
@@ -57,9 +61,6 @@ public partial class ConnectionsSettingsTabViewModel : RoutableViewModel
 	public ApplicationSettings Settings { get; }
 
 	public IEnumerable<Network> Networks { get; } = PersistentConfigManager.Networks;
-
-	public IReadOnlyList<TorMode> TorModes =>
-		Enum.GetValues<TorMode>();
 
 	public ICommand VerifyConnectionCommand { get; }
 

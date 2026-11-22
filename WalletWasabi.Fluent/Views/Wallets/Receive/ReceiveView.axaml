@@ -18,6 +18,7 @@
 
   <ContentArea Title="{Binding Title}"
                Caption="The addresses that were generated and have not been paid to yet. Give each address to one payer only: payments to the same address are linked to each other."
+               EnableBack="{Binding EnableBack}"
                EnableCancel="{Binding EnableCancel}" CancelContent="Close"
                ScrollViewer.VerticalScrollBarVisibility="Disabled"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">

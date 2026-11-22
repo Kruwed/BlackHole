@@ -34,6 +34,7 @@ public static class PersistentConfigEncode
 			("AbsoluteMinInputCount", Int(cfg.AbsoluteMinInputCount)),
 			("MaxDaysInMempool", Int(cfg.MaxDaysInMempool)),
 			("ExperimentalFeatures", Array(cfg.ExperimentalFeatures.Select(String))),
+			("NostrRelays", Array(cfg.NostrRelays.Select(String))),
 			("ConfigVersion", Int(4))
 		]);
 }
@@ -77,6 +78,10 @@ public static class PersistentConfigDecode
 					MaxDaysInMempool: get.Optional("MaxDaysInMempool", Decode.Int, Constants.DefaultMaxDaysInMempool),
 					ExperimentalFeatures: get.Optional("ExperimentalFeatures", ValueList(Decode.String)) ??
 					                      Helpers.ValueList<string>.Empty,
+
+					// A file from before the relays were a setting has none: the relays are the ones that the application knows.
+					NostrRelays: get.Optional("NostrRelays", ValueList(Decode.String)) ??
+					             new ValueList<string>(Constants.DefaultNostrRelays),
 					ConfigVersion: get.Required("ConfigVersion", Decode.Int)
 				);
 			}

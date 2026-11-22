@@ -11,7 +11,7 @@
              x:Class="WalletWasabi.Fluent.Views.Settings.SettingsPageView">
 
   <ContentArea Title="{Binding Title}"
-                 Caption="Manage connection and coordinator settings"
+                 Caption="Tor, your node, Nostr, the coordinator and the wallet"
                  EnableNext="True"
                  NextContent="Done"
                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
@@ -37,29 +37,44 @@
 
       <TabControl SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
                   Classes="Settings">
-        <TabItem Header="Connections">
+        <TabItem Header="Tor">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="15">
-              <v:ConnectionsSettingsTabView DataContext="{Binding ConnectionsSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
+            <v:TorSettingsTabView DataContext="{Binding TorSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
+          </ScrollViewer>
+        </TabItem>
 
-              <!-- The wallet reads the blocks of the node again. That is not a setting: it works while the settings are read-only too. -->
-              <StackPanel Classes="settingsLayout" IsVisible="{Binding HasWallet}">
-                <DockPanel ToolTip.Tip="{Binding ResyncWalletToolTip}">
-                  <TextBlock Text="Resync Wallet" />
-                  <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />
-                </DockPanel>
-                <DockPanel ToolTip.Tip="{Binding WalletKeysToolTip}">
-                  <TextBlock Text="Wallet Keys" />
-                  <Button Theme="{StaticResource FunctionButton}" Command="{Binding WalletKeysCommand}" Content="Open" DockPanel.Dock="Right" />
-                </DockPanel>
-              </StackPanel>
-            </StackPanel>
+        <TabItem Header="Node">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <v:NodeSettingsTabView DataContext="{Binding NodeSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
+          </ScrollViewer>
+        </TabItem>
+
+        <TabItem Header="Nostr">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <v:NostrSettingsTabView DataContext="{Binding NostrSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
           </ScrollViewer>
         </TabItem>
 
         <TabItem Header="Coordinator">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <v:CoordinatorTabSettingsView DataContext="{Binding CoordinatorTabSettings}" />
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- What is done with the wallet as a whole. These are not settings: they work while the settings are read-only
+             too. The tab comes with the wallet. -->
+        <TabItem Header="Wallet" IsVisible="{Binding HasWallet}">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Classes="settingsLayout">
+              <DockPanel ToolTip.Tip="{Binding ResyncWalletToolTip}">
+                <TextBlock Text="Resync Wallet" />
+                <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />
+              </DockPanel>
+              <DockPanel ToolTip.Tip="{Binding WalletKeysToolTip}">
+                <TextBlock Text="Wallet Keys" />
+                <Button Theme="{StaticResource FunctionButton}" Command="{Binding WalletKeysCommand}" Content="Open" DockPanel.Dock="Right" />
+              </DockPanel>
+            </StackPanel>
           </ScrollViewer>
         </TabItem>
 

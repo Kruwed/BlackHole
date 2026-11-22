@@ -13,9 +13,18 @@ using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
-/// <summary>The kinds of coinjoin that the menu of the coinjoin box lists. The box is set to one of them.</summary>
+/// <summary>
+/// What the menu of the coinjoin box lists to choose from. One of them is picked: the Coinjoin dialog shows its main
+/// screen, and the box is set to it.
+/// </summary>
 public enum CoinJoinOption
 {
+	/// <summary>
+	/// Payments that the payee takes part in. There is none yet: the option holds its place, and its main screen has
+	/// the ordinary payment and Receive. It is the one that the dialog opens with.
+	/// </summary>
+	Payjoin,
+
 	/// <summary>Rounds of the coordinator with the ticked coins, ten at most.</summary>
 	WabiSabi,
 
@@ -27,32 +36,37 @@ public enum CoinJoinOption
 }
 
 /// <summary>
-/// The box of the coinjoins in the Coinjoin dialog. There is one box for every kind of coinjoin: its menu lists the
-/// kinds, and the box shows the one that it is set to, with its name, what its coinjoin is doing, and Play and Stop.
-/// The menu also leads to the offer of the wallet as a market maker and to its fidelity bonds. Everything takes the
-/// coins that are ticked in the list of the Coins tab.
+/// The box of the coinjoins in the Coinjoin dialog. There is one box for everything: its menu lists what there is to
+/// choose from, and the box shows the one that is picked, with its name, what its coinjoin is doing, and Play and Stop.
+/// The dialog shows the main screen of the same one above the box. The menu also leads to the offer of the wallet as
+/// a market maker and to its fidelity bonds. Everything takes the coins that are ticked in the list of the Coins tab.
 /// </summary>
 /// <remarks>
-/// A wallet has one coinjoin at a time. While one is under way the box is set to its kind and stays so, as the box is
-/// where the coinjoin is watched and stopped.
+/// A wallet has one coinjoin at a time, and the box is where it is watched and stopped. So while a coinjoin is under
+/// way the box shows that one, whatever is picked in the menu: the pick still decides which main screen the dialog
+/// shows, so that a payment can be made or an address be had while a round goes on.
 /// </remarks>
 [AppLifetime]
 public partial class CoinJoinBoxViewModel : ViewModelBase
 {
+	/// <summary>What the dialog opens with, until something else is picked in the menu.</summary>
+	public const CoinJoinOption DefaultOption = CoinJoinOption.Payjoin;
+
 	private const string NoCoordinatorText = "Coordinator not configured";
 	private const string NoCoordinatorDetail = "Coinjoin not available";
 	private const string NotLoadedText = "Coinjoin waits for the wallet";
 	private const string NotLoadedDetail = "It is processing the blocks";
 	private const string NotAvailableYetText = "Not available yet";
+	private const string PayjoinDetail = "Send and Receive work without it";
 
 	private readonly IWalletModel _walletModel;
 	private readonly CoinListViewModel _coins;
 	private readonly Dictionary<CoinJoinOption, CoinJoinStateViewModel> _states = [];
 
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinOption _selectedOption = CoinJoinOption.WabiSabi;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinOption _selectedOption = DefaultOption;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinOption _shownOption = DefaultOption;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private CoinJoinStateViewModel? _state;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isCoinJoinUnderWay;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _name = GetName(CoinJoinOption.WabiSabi);
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _name = GetName(DefaultOption);
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _notice = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _noticeDetail = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _noPlayToolTip = "";
@@ -65,17 +79,9 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 
 		IsCoinJoinEnabled = walletModel.IsCoinJoinEnabled;
 
-		// A kind can be chosen while no coinjoin is under way. The one that the box is set to stays a choice, so that
-		// it does not look as if it were not to be had.
-		Options =
-		[
-			.. AllOptions.Select(option => new CoinJoinOptionViewModel(
-				option,
-				ReactiveCommand.Create(
-					() => Select(option),
-					this.WhenAnyValue(x => x.IsCoinJoinUnderWay, x => x.SelectedOption, (isUnderWay, selected) => !isUnderWay || selected == option))))
-		];
+		Options = [.. AllOptions.Select(option => new CoinJoinOptionViewModel(option, ReactiveCommand.Create(() => { SelectedOption = option; })))];
 
+		Payjoin = Options.Single(x => x.Option == CoinJoinOption.Payjoin);
 		WabiSabi = Options.Single(x => x.Option == CoinJoinOption.WabiSabi);
 		ZeroLink = Options.Single(x => x.Option == CoinJoinOption.ZeroLink);
 		Taker = Options.Single(x => x.Option == CoinJoinOption.Taker);
@@ -89,27 +95,21 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 		this.WhenAnyValue(x => x.SelectedOption)
 			.Subscribe(_ => Refresh());
 
-		// The settings only decide how the wallet coinjoins later, so they are open whatever the box is set to.
-		CoordinatorSettingsCommand = ReactiveCommand.CreateFromTask(async () =>
-		{
-			if (UiContext.MainViewModel is { } mainViewModel)
-			{
-				await mainViewModel.SettingsPage.ActivateCoordinatorTabAsync();
-			}
-		});
+		// An offer and a bond are about the coins of the wallet, not about the coordinator. What the wallet knows about
+		// its coins is not complete until it has processed the blocks of the node.
+		var isWalletLoaded = walletModel.WhenAnyValue(x => x.IsLoaded);
 
-		CoinJoinPaymentsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To().CoinJoinPayments(walletModel, wallet));
-
-		// An offer and a bond are about the coins of the wallet, not about the coordinator.
-		MakerCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().MakerOffer(walletModel, coins));
-		BondCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Bonds(walletModel, wallet, coins));
+		MakerCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().MakerOffer(walletModel, coins), isWalletLoaded);
+		BondCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Bonds(walletModel, wallet, coins), isWalletLoaded);
 	}
 
-	/// <summary>The kinds of coinjoin in the order of the menu.</summary>
-	public static IReadOnlyList<CoinJoinOption> AllOptions { get; } = [CoinJoinOption.WabiSabi, CoinJoinOption.ZeroLink, CoinJoinOption.Taker];
+	/// <summary>What there is to choose from, in the order of the menu.</summary>
+	public static IReadOnlyList<CoinJoinOption> AllOptions { get; } = [CoinJoinOption.Payjoin, CoinJoinOption.WabiSabi, CoinJoinOption.ZeroLink, CoinJoinOption.Taker];
 
-	/// <summary>The kinds of coinjoin as the menu lists them.</summary>
+	/// <summary>What there is to choose from, as the menu lists it.</summary>
 	public IReadOnlyList<CoinJoinOptionViewModel> Options { get; }
+
+	public CoinJoinOptionViewModel Payjoin { get; }
 
 	public CoinJoinOptionViewModel WabiSabi { get; }
 
@@ -120,22 +120,17 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 	/// <summary>Whether a coordinator is set. Without one there is no WabiSabi and no ZeroLink coinjoin, and the box says so.</summary>
 	public bool IsCoinJoinEnabled { get; }
 
-	/// <summary>Opens the settings of the coinjoins: the coordinator and the limits that the wallet keeps to.</summary>
-	public ICommand CoordinatorSettingsCommand { get; }
-
-	/// <summary>Opens the payments that are waiting for a WabiSabi round to make them.</summary>
-	public ICommand CoinJoinPaymentsCommand { get; }
-
 	/// <summary>Opens the offer of the wallet as a market maker. An offer offers the coins that are ticked.</summary>
 	public ICommand MakerCommand { get; }
 
 	/// <summary>Opens the fidelity bonds of the wallet. A new bond locks the coins that are ticked.</summary>
 	public ICommand BondCommand { get; }
 
-	/// <summary>What the box and its menu call a kind of coinjoin.</summary>
+	/// <summary>What the box and its menu call what is picked.</summary>
 	public static string GetName(CoinJoinOption option) =>
 		option switch
 		{
+			CoinJoinOption.Payjoin => "Payjoin",
 			CoinJoinOption.WabiSabi => "WabiSabi",
 			CoinJoinOption.ZeroLink => "ZeroLink",
 			CoinJoinOption.Taker => "Taker",
@@ -143,8 +138,8 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 		};
 
 	/// <summary>
-	/// The coinjoins of the coordinator that a kind stands for. Null for a kind that the coordinator has no part in:
-	/// a taker coinjoins with market makers.
+	/// The coinjoins of the coordinator that an option stands for. Null for one that the coordinator has no part in:
+	/// a payjoin is made with the payee, and a taker coinjoins with market makers.
 	/// </summary>
 	public static CoinJoinProtocol? GetProtocol(CoinJoinOption option) =>
 		option switch
@@ -155,15 +150,14 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 		};
 
 	/// <summary>
-	/// Tells which kind the box is set to. A coinjoin that is under way has the box, whatever was asked for: the wallet
-	/// has one coinjoin at a time, and the box is where it is watched and stopped. Without one, the box is set to what
-	/// was asked for, and stays as it is if nothing was.
+	/// Tells what the box shows. A coinjoin that is under way has the box, whatever is picked in the menu: the wallet
+	/// has one coinjoin at a time, and the box is where it is watched and stopped. Without one, the box shows what is
+	/// picked.
 	/// </summary>
-	/// <param name="current">The kind that the box is set to.</param>
-	/// <param name="requested">The kind that the user picked in the menu, if this is about a pick.</param>
+	/// <param name="selected">What is picked in the menu.</param>
 	/// <param name="underWay">The kind of the coinjoin that is under way, if one is.</param>
-	public static CoinJoinOption ChooseOption(CoinJoinOption current, CoinJoinOption? requested, CoinJoinOption? underWay) =>
-		underWay ?? requested ?? current;
+	public static CoinJoinOption ChooseShownOption(CoinJoinOption selected, CoinJoinOption? underWay) =>
+		underWay ?? selected;
 
 	/// <summary>
 	/// Tells the wallet's choice of coins for the round that Play starts: every coin of the list is named, the ticked
@@ -183,12 +177,18 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 	}
 
 	/// <summary>
-	/// What the box says in place of the state of a coinjoin, for a kind that has none to show: what is missing, in two
-	/// lines, and why there is no Play.
+	/// What the box says in place of the state of a coinjoin, for an option that has none to show: what is missing, in
+	/// two lines, and why there is no Play.
 	/// </summary>
 	/// <param name="isCoordinatorSet">Whether a coordinator is set. With one, the coinjoins of the coordinator are only missing until the wallet has processed the blocks of the node.</param>
 	public static (string Notice, string Detail, string NoPlayToolTip) DescribeUnavailable(CoinJoinOption option, bool isCoordinatorSet)
 	{
+		if (option == CoinJoinOption.Payjoin)
+		{
+			// Its main screen is not empty: the ordinary payment and Receive are there.
+			return (NotAvailableYetText, PayjoinDetail, "Payjoin is not available yet.");
+		}
+
 		if (GetProtocol(option) is null)
 		{
 			return (NotAvailableYetText, "", $"{GetName(option)} coinjoins are not available yet.");
@@ -196,7 +196,7 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 
 		if (!isCoordinatorSet)
 		{
-			return (NoCoordinatorText, NoCoordinatorDetail, "Set a coordinator in the Coordinator Settings first.");
+			return (NoCoordinatorText, NoCoordinatorDetail, "Set a coordinator first: the gear in the top right corner, then Coordinator.");
 		}
 
 		return (NotLoadedText, NotLoadedDetail, "The wallet is still processing the blocks of the node.");
@@ -239,31 +239,21 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 
 	/// <summary>
 	/// A coinjoin takes the box when it starts, whoever started it: a round that a payment interrupted starts again by
-	/// itself when the payment is done with.
+	/// itself when the payment is done with. When it is over, the box goes back to what is picked.
 	/// </summary>
-	private void OnCoinJoinStartedOrStopped()
-	{
-		var underWay = GetOptionUnderWay();
+	private void OnCoinJoinStartedOrStopped() => Refresh();
 
-		IsCoinJoinUnderWay = underWay is not null;
-		SelectedOption = ChooseOption(SelectedOption, requested: null, underWay);
-	}
-
-	private void Select(CoinJoinOption option)
-	{
-		SelectedOption = ChooseOption(SelectedOption, option, GetOptionUnderWay());
-	}
-
-	/// <summary>Shows the kind that the box is set to.</summary>
+	/// <summary>Marks what is picked in the menu, and shows in the box what it has to show.</summary>
 	private void Refresh()
 	{
-		var option = SelectedOption;
-
 		foreach (var item in Options)
 		{
-			item.IsSelected = item.Option == option;
+			item.IsSelected = item.Option == SelectedOption;
 		}
 
+		var option = ChooseShownOption(SelectedOption, GetOptionUnderWay());
+
+		ShownOption = option;
 		Name = GetName(option);
 		State = _states.GetValueOrDefault(option);
 
@@ -301,12 +291,12 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 	}
 }
 
-/// <summary>One of the kinds of coinjoin in the menu of the coinjoin box.</summary>
+/// <summary>One of the entries of the menu of the coinjoin box that can be picked.</summary>
 public partial class CoinJoinOptionViewModel : ReactiveObject
 {
 	[AutoNotify(SetterModifier = AccessModifier.Internal)] private bool _isSelected;
 
-	/// <param name="selectCommand">Sets the box to this kind.</param>
+	/// <param name="selectCommand">Picks this one.</param>
 	public CoinJoinOptionViewModel(CoinJoinOption option, ICommand selectCommand)
 	{
 		Option = option;
@@ -316,9 +306,9 @@ public partial class CoinJoinOptionViewModel : ReactiveObject
 
 	public CoinJoinOption Option { get; }
 
-	/// <summary>What the menu calls the kind.</summary>
+	/// <summary>What the menu calls it.</summary>
 	public string Name { get; }
 
-	/// <summary>Sets the box to this kind. Not to be had while a coinjoin of another kind is under way.</summary>
+	/// <summary>Picks this one: the dialog shows its main screen, and the box is set to it.</summary>
 	public ICommand SelectCommand { get; }
 }

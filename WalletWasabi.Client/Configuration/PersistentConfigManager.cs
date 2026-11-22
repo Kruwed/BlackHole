@@ -31,6 +31,7 @@ public static class PersistentConfigManager
 		AbsoluteMinInputCount : Constants.DefaultAbsoluteMinInputCount,
 		MaxDaysInMempool : Constants.DefaultMaxDaysInMempool,
 		ExperimentalFeatures: [],
+		NostrRelays : new (Constants.DefaultNostrRelays),
 		ConfigVersion : 4);
 
 	public static readonly PersistentConfig DefaultRegTestConfig = DefaultMainNetConfig with

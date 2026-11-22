@@ -52,7 +52,7 @@ public class Config
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = GetLongValue("MaxDaysInMempool", PersistentConfig.MaxDaysInMempool, cliArgs),
 			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs),
-			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", Constants.DefaultNostrRelays, cliArgs)
+			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", PersistentConfig.NostrRelays.ToArray(), cliArgs)
 		};
 
 		// Check if any setting is overridden (either by an environment value, or by a CLI argument).
@@ -77,8 +77,7 @@ public class Config
 		nameof(RpcOnionEnabled),
 		nameof(BlockOnlyMode),
 		nameof(LogLevel),
-		nameof(LogModes),
-		nameof(NostrRelays)
+		nameof(LogModes)
 	];
 
 	private static readonly Dictionary<string, string> Help =
@@ -107,7 +106,7 @@ public class Config
 			[nameof(AbsoluteMinInputCount)] = "Minimum number of inputs the client is willing to accept to participate into a round",
 			["MaxDaysInMempool"] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
-			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that the offer of the wallet as a market maker is posted to. Nothing is sent to them before an offer is posted",
+			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that Black Hole connects to: the offer of the wallet as a market maker is posted to them. Nothing is sent to them before an offer is posted",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }
@@ -138,7 +137,7 @@ public class Config
 
 	public string[] ExperimentalFeatures => GetEffectiveValue<string[]>(nameof(ExperimentalFeatures));
 
-	/// <summary>The Nostr relays that the offer of a market maker is posted to.</summary>
+	/// <summary>The Nostr relays that the application connects to: the offer of a market maker is posted to them. A setting, like the coordinator.</summary>
 	public string[] NostrRelays => GetEffectiveValue<string[]>(nameof(NostrRelays));
 
 	public ServiceConfiguration ServiceConfiguration { get; }

@@ -9,10 +9,10 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// The dialog that the Coinjoin button of the Coins tab opens: the payment, and one box for every kind of coinjoin
-/// whose menu lists the kinds. These are its rules that can be told without a window: what the payment says about its
-/// amounts and its fee rate, which kinds of coinjoin the menu lists and which one the box is set to, and which coins
-/// Play gives to a round.
+/// The dialog that the Coinjoin button of the Coins tab opens: one box whose menu lists what there is to choose from,
+/// and above it the main screen of what is picked, the payment on the one of Payjoin. These are its rules that can be
+/// told without a window: what the payment says about its amounts and its fee rate, what the menu lists, what the box
+/// shows and what the screens are for, and which coins Play gives to a round.
 /// </summary>
 public class CoinJoinDialogTests
 {
@@ -127,14 +127,20 @@ public class CoinJoinDialogTests
 		Assert.Equal("The wallet has no coins to spend", CoinJoinViewModel.DescribeSelectionHint(hasCoins: false));
 	}
 
+	/// <summary>
+	/// The menu of the box lists what there is to choose from, Payjoin first. The dialog opens with Payjoin, whose main
+	/// screen has the payment and Receive.
+	/// </summary>
 	[Fact]
-	public void MenuListsTheKindsOfCoinjoin()
+	public void MenuListsWhatThereIsToChooseFromWithPayjoinFirst()
 	{
 		Assert.Equal(
-			["WabiSabi", "ZeroLink", "Taker"],
+			["Payjoin", "WabiSabi", "ZeroLink", "Taker"],
 			CoinJoinBoxViewModel.AllOptions.Select(CoinJoinBoxViewModel.GetName));
 
-		// Every kind is listed once, and none is left out.
+		Assert.Equal(CoinJoinOption.Payjoin, CoinJoinBoxViewModel.DefaultOption);
+
+		// Every one is listed once, and none is left out.
 		Assert.Equal(Enum.GetValues<CoinJoinOption>().Order(), CoinJoinBoxViewModel.AllOptions.Order());
 	}
 
@@ -148,6 +154,27 @@ public class CoinJoinDialogTests
 		Assert.Equal(
 			Enum.GetValues<CoinJoinProtocol>().Order(),
 			CoinJoinBoxViewModel.AllOptions.Select(CoinJoinBoxViewModel.GetProtocol).OfType<CoinJoinProtocol>().Order());
+	}
+
+	/// <summary>
+	/// Payjoin holds its place: there is nothing to play. The box says that the payment and Receive of its main screen
+	/// work all the same.
+	/// </summary>
+	[Fact]
+	public void PayjoinHoldsItsPlaceWithSendAndReceive()
+	{
+		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinOption.Payjoin));
+
+		foreach (var isCoordinatorSet in new[] { true, false })
+		{
+			Assert.Equal(
+				("Not available yet", "Send and Receive work without it", "Payjoin is not available yet."),
+				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinOption.Payjoin, isCoordinatorSet));
+		}
+
+		Assert.Equal(
+			"A payment spends the coins that are ticked on the Coins tab. Payjoin is not available yet: Send and Receive work the regular way.",
+			CoinJoinViewModel.DescribeScreen(CoinJoinOption.Payjoin));
 	}
 
 	[Fact]
@@ -164,6 +191,8 @@ public class CoinJoinDialogTests
 			Assert.Equal("", detail);
 			Assert.Equal("Taker coinjoins are not available yet.", noPlayToolTip);
 		}
+
+		Assert.Contains("not available yet", CoinJoinViewModel.DescribeScreen(CoinJoinOption.Taker));
 	}
 
 	[Theory]
@@ -171,8 +200,9 @@ public class CoinJoinDialogTests
 	[InlineData(CoinJoinOption.ZeroLink)]
 	public void RoundsOfTheCoordinatorNeedACoordinatorAndTheLoadedWallet(CoinJoinOption option)
 	{
+		// The settings of the coordinator are behind the gear of the title bar: the menu of the box has no way there.
 		Assert.Equal(
-			("Coordinator not configured", "Coinjoin not available", "Set a coordinator in the Coordinator Settings first."),
+			("Coordinator not configured", "Coinjoin not available", "Set a coordinator first: the gear in the top right corner, then Coordinator."),
 			CoinJoinBoxViewModel.DescribeUnavailable(option, isCoordinatorSet: false));
 
 		// With a coordinator the controls are only missing while the wallet still processes the blocks of the node.
@@ -181,37 +211,46 @@ public class CoinJoinDialogTests
 			CoinJoinBoxViewModel.DescribeUnavailable(option, isCoordinatorSet: true));
 	}
 
+	/// <summary>Every entry of the menu that can be picked has a main screen, and the dialog says what it is for.</summary>
 	[Fact]
-	public void BoxIsSetToTheKindThatIsPickedInTheMenu()
+	public void EveryMainScreenSaysWhatItIsFor()
 	{
-		Assert.Equal(CoinJoinOption.ZeroLink, CoinJoinBoxViewModel.ChooseOption(current: CoinJoinOption.WabiSabi, requested: CoinJoinOption.ZeroLink, underWay: null));
-		Assert.Equal(CoinJoinOption.Taker, CoinJoinBoxViewModel.ChooseOption(current: CoinJoinOption.ZeroLink, requested: CoinJoinOption.Taker, underWay: null));
-		Assert.Equal(CoinJoinOption.WabiSabi, CoinJoinBoxViewModel.ChooseOption(current: CoinJoinOption.Taker, requested: CoinJoinOption.WabiSabi, underWay: null));
+		var captions = CoinJoinBoxViewModel.AllOptions.Select(CoinJoinViewModel.DescribeScreen).ToArray();
 
-		// Nothing was picked and nothing is under way: the box stays as it is.
-		Assert.Equal(CoinJoinOption.Taker, CoinJoinBoxViewModel.ChooseOption(current: CoinJoinOption.Taker, requested: null, underWay: null));
+		Assert.All(captions, caption => Assert.False(string.IsNullOrWhiteSpace(caption)));
+		Assert.Equal(captions.Length, captions.Distinct().Count());
+
+		// The payments that wait for a round are on the main screen of WabiSabi.
+		Assert.Contains("payments that are queued here", CoinJoinViewModel.DescribeScreen(CoinJoinOption.WabiSabi));
+		Assert.Contains("one coin", CoinJoinViewModel.DescribeScreen(CoinJoinOption.ZeroLink));
+	}
+
+	[Fact]
+	public void BoxShowsWhatIsPickedInTheMenu()
+	{
+		foreach (var option in CoinJoinBoxViewModel.AllOptions)
+		{
+			Assert.Equal(option, CoinJoinBoxViewModel.ChooseShownOption(selected: option, underWay: null));
+		}
 	}
 
 	/// <summary>
 	/// The wallet has one coinjoin at a time, and the box is where it is watched and stopped. So a coinjoin that is under
-	/// way has the box: no other kind can be picked meanwhile, and a round that starts by itself, after a payment
-	/// interrupted it, takes the box back from whatever it was set to.
+	/// way has the box, whatever is picked in the menu: the pick decides which main screen the dialog shows, so that a
+	/// payment can be made, or an address be had, while a round goes on.
 	/// </summary>
 	[Fact]
 	public void CoinjoinThatIsUnderWayHasTheBox()
 	{
-		foreach (var current in CoinJoinBoxViewModel.AllOptions)
+		foreach (var selected in CoinJoinBoxViewModel.AllOptions)
 		{
-			foreach (var requested in CoinJoinBoxViewModel.AllOptions.Cast<CoinJoinOption?>().Append(null))
-			{
-				Assert.Equal(CoinJoinOption.WabiSabi, CoinJoinBoxViewModel.ChooseOption(current, requested, underWay: CoinJoinOption.WabiSabi));
-				Assert.Equal(CoinJoinOption.ZeroLink, CoinJoinBoxViewModel.ChooseOption(current, requested, underWay: CoinJoinOption.ZeroLink));
-			}
+			Assert.Equal(CoinJoinOption.WabiSabi, CoinJoinBoxViewModel.ChooseShownOption(selected, underWay: CoinJoinOption.WabiSabi));
+			Assert.Equal(CoinJoinOption.ZeroLink, CoinJoinBoxViewModel.ChooseShownOption(selected, underWay: CoinJoinOption.ZeroLink));
 		}
 	}
 
 	[Fact]
-	public void EntryOfTheMenuIsCalledLikeItsKind()
+	public void EntryOfTheMenuIsCalledLikeWhatItPicks()
 	{
 		var picked = new List<CoinJoinOption>();
 
