@@ -113,6 +113,12 @@ public record WalletSyncStatusChanged(WalletSyncStatus Status);
 public record TorConnectionStateChanged(bool IsTorRunning);
 
 public record RpcStatusChanged(Result<ConnectedRpcStatus, string> Status);
+
+/// <summary>
+/// The application has what it takes to coinjoin with a coordinator from now on: its configuration names one, or the
+/// user has connected it to one while it runs.
+/// </summary>
+public record CoinJoinAvailable;
 public record Tick(DateTime DateTime);
 
 public record CpfpInfoArrived;

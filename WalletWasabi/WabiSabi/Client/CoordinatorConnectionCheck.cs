@@ -1,17 +1,50 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using WalletWasabi.Helpers;
+using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 using WalletWasabi.WabiSabi.Coordinator.PostRequests;
 using WalletWasabi.WabiSabi.Models;
 
 namespace WalletWasabi.WabiSabi.Client;
 
+/// <summary>What connecting the application to a coordinator does to the coordinator that it has.</summary>
+public enum CoordinatorChange
+{
+	/// <summary>The application has no coordinator yet: what coinjoins is set up and started with this one.</summary>
+	Start,
+
+	/// <summary>It is the coordinator that the application has: there is nothing to change.</summary>
+	Keep,
+
+	/// <summary>The application coinjoins with this coordinator from now on, in place of the one that it had.</summary>
+	Switch,
+
+	/// <summary>The application keeps the coordinator that it has, because a coinjoin with it is under way.</summary>
+	Refuse
+}
+
 /// <summary>
 /// Finds out whether the application can coinjoin with a coordinator: the coordinator must answer when it is asked for
-/// its rounds.
+/// its rounds. Also tells what connecting to a coordinator does to the one that the application has.
 /// </summary>
 public static class CoordinatorConnectionCheck
 {
+	/// <summary>
+	/// Tells what connecting to a coordinator that answers does. The coordinator is not changed while a coinjoin is
+	/// under way: the clients of its round would go on with a coordinator that knows nothing of that round.
+	/// </summary>
+	/// <param name="current">The coordinator that the application coinjoins with, if it has one.</param>
+	/// <param name="wanted">The coordinator that the user connects to.</param>
+	/// <param name="coinJoinState">How far the coinjoins of the application are, taken together.</param>
+	public static CoordinatorChange DecideChange(Uri? current, Uri wanted, CoinJoinClientState coinJoinState) =>
+		current switch
+		{
+			null => CoordinatorChange.Start,
+			_ when current == wanted => CoordinatorChange.Keep,
+			_ when coinJoinState != CoinJoinClientState.Idle => CoordinatorChange.Refuse,
+			_ => CoordinatorChange.Switch
+		};
+
 	/// <summary>How much is told of what went wrong on the way to a coordinator. What answers there can say anything.</summary>
 	private const int MaxReasonLength = 200;
 

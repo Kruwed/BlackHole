@@ -4,81 +4,221 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:v="using:WalletWasabi.Fluent.Views.Settings"
              xmlns:settings="using:WalletWasabi.Fluent.ViewModels.Settings"
-             xmlns:conv="using:WalletWasabi.Fluent.Converters"
-             mc:Ignorable="d" d:DesignWidth="428" d:DesignHeight="371"
+             xmlns:system="clr-namespace:System;assembly=System.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
              x:DataType="settings:SettingsPageViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Settings.SettingsPageView">
 
+  <!-- The settings, which are the welcome as long as there is no wallet. Only the settings can be put away, with "Done". -->
   <ContentArea Title="{Binding Title}"
-                 Caption="Tor, your node, Nostr, the coordinator and the wallet"
-                 EnableNext="True"
-                 NextContent="Done"
-                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+               Caption="{Binding Caption}"
+               EnableCancel="False"
+               EnableBack="False"
+               EnableNext="{Binding !IsWelcome}"
+               NextContent="Done"
+               IsBusy="{Binding IsBusy}"
+               ScrollViewer.VerticalScrollBarVisibility="Disabled">
     <DockPanel LastChildFill="True">
 
-      <InfoMessage Foreground="{DynamicResource WarningMessageForeground}"
-                     Margin="0,16,0,0"
-                     HorizontalAlignment="Center"
-                     Opacity="{Binding IsModified, Converter={x:Static conv:BoolOpacityConverters.BoolToOpacity}}"
-                     DockPanel.Dock="Bottom">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="Changes will be applied after restarting the application." />
-          <Button Content="Restart Black Hole" Classes="activeHyperLink plain" Margin="5 0 0 0" Command="{Binding RestartCommand}" />
-        </StackPanel>
-      </InfoMessage>
+      <v:RestartNotice DockPanel.Dock="Bottom" Margin="0 12 0 0" />
+
       <InfoMessage Foreground="{StaticResource WarningMessageForeground}"
-                     Margin="0,16,0,0"
-                     HorizontalAlignment="Center"
-                     IsVisible="{Binding IsReadOnly}"
-                     DockPanel.Dock="Bottom">
-        <TextBlock Text="Modifying settings is not possible, as certain parameters have been overridden during startup." />
+                   Margin="0 12 0 0"
+                   HorizontalAlignment="Center"
+                   IsVisible="{Binding IsReadOnly}"
+                   DockPanel.Dock="Bottom">
+        <TextBlock Text="Some settings cannot be changed, as they were given when Black Hole was started." TextWrapping="Wrap" />
       </InfoMessage>
 
-      <TabControl SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
-                  Classes="Settings">
-        <TabItem Header="Tor">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:TorSettingsTabView DataContext="{Binding TorSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
-          </ScrollViewer>
-        </TabItem>
+      <!-- Five columns. In each, the upper box connects to something that exists, or recovers the wallet, and the
+           lower one is for running, or creating, one's own. On the welcome they are set up from left to right. -->
+      <!-- The two rows of boxes share the height that there is, up to a limit: in a small window the boxes give way, so that all ten stay in sight. -->
+      <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,*,*"
+            MaxWidth="760" MaxHeight="322">
+        <Grid.Styles>
+          <Style Selector="TileButton">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width">
+              <Setter.Value>
+                <system:Double>NaN</system:Double>
+              </Setter.Value>
+            </Setter>
+            <Setter Property="Height">
+              <Setter.Value>
+                <system:Double>NaN</system:Double>
+              </Setter.Value>
+            </Setter>
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Template">
+              <ControlTemplate>
+                <Border x:Name="PART_Border"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="10">
+                  <Panel>
+                    <Grid RowDefinitions="*,Auto">
+                      <Panel Grid.Row="0">
+                        <PathIcon x:Name="PART_Icon"
+                                  Data="{TemplateBinding Icon}"
+                                  Width="{TemplateBinding IconSize}"
+                                  Height="{TemplateBinding IconSize}" />
+                      </Panel>
+                      <TextBlock Grid.Row="1" x:Name="PART_Text"
+                                 Text="{TemplateBinding Text}"
+                                 Foreground="{TemplateBinding Foreground}" />
+                    </Grid>
+                    <!-- The mark of the box, in its corner: see the styles below. -->
+                    <ContentPresenter x:Name="PART_Mark"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Right" VerticalAlignment="Top"
+                                      Margin="0 9 9 0" />
+                  </Panel>
+                </Border>
+              </ControlTemplate>
+            </Setter>
+          </Style>
+          <Style Selector="TileButton /template/ PathIcon#PART_Icon">
+            <Setter Property="Margin" Value="0 6 0 0" />
+          </Style>
+          <!-- Room for two lines, so that the icons of all the boxes stand at one height. -->
+          <Style Selector="TileButton /template/ TextBlock#PART_Text">
+            <Setter Property="Margin" Value="6 4 6 10" />
+            <Setter Property="MinHeight" Value="38" />
+          </Style>
+          <Style Selector="TileButton:disabled">
+            <Setter Property="Opacity" Value="0.4" />
+          </Style>
+          <Style Selector="TextBlock.header">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0 0 0 8" />
+          </Style>
+          <!-- What a box tells about what it stands for: a check mark if it is configured and works at the moment,
+               an X if it is configured and does not. Both are orange. -->
+          <Style Selector="PathIcon.mark">
+            <Setter Property="Foreground" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+          </Style>
+          <Style Selector="PathIcon.mark.working">
+            <Setter Property="Data" Value="{StaticResource mark_check}" />
+          </Style>
+          <!-- The X is as wide as it is high, so it is drawn a little smaller than the check mark to weigh the same. -->
+          <Style Selector="PathIcon.mark.notWorking">
+            <Setter Property="Data" Value="{StaticResource mark_cross}" />
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+          </Style>
+        </Grid.Styles>
 
-        <TabItem Header="Node">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:NodeSettingsTabView DataContext="{Binding NodeSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
-          </ScrollViewer>
-        </TabItem>
+        <!-- Tor -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Classes="header" Text="{Binding Tor.Title}" />
+        <TileButton Grid.Row="1" Grid.Column="0" Text="Connect to Tor"
+                    Classes="bottomtext"
+                    Classes.action="{Binding Tor.IsCurrent}"
+                    Icon="{StaticResource connector_regular}"
+                    IsDefault="{Binding Tor.IsCurrent}"
+                    Command="{Binding ConnectToTorCommand}">
+          <Panel>
+            <PathIcon Classes="mark working" IsVisible="{Binding Tor.IsWorking}" />
+            <PathIcon Classes="mark notWorking" IsVisible="{Binding Tor.IsNotWorking}" />
+          </Panel>
+        </TileButton>
+        <!-- A placeholder: it does nothing yet, so it cannot be used. The same goes for the three after it. -->
+        <TileButton Grid.Row="2" Grid.Column="0" Text="Run a Tor Relay"
+                    Classes="bottomtext"
+                    Icon="{StaticResource cube_multiple_regular}"
+                    IsEnabled="False" />
 
-        <TabItem Header="Nostr">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:NostrSettingsTabView DataContext="{Binding NostrSettingsTab}" IsEnabled="{Binding !IsReadOnly}" />
-          </ScrollViewer>
-        </TabItem>
+        <!-- Node -->
+        <TextBlock Grid.Row="0" Grid.Column="1" Classes="header" Text="{Binding Node.Title}" />
+        <TileButton Grid.Row="1" Grid.Column="1" Text="Connect to Node"
+                    Classes="bottomtext"
+                    Classes.action="{Binding Node.IsCurrent}"
+                    Icon="{StaticResource connector_regular}"
+                    IsDefault="{Binding Node.IsCurrent}"
+                    Command="{Binding ConnectToNodeCommand}">
+          <Panel>
+            <PathIcon Classes="mark working" IsVisible="{Binding Node.IsWorking}" />
+            <PathIcon Classes="mark notWorking" IsVisible="{Binding Node.IsNotWorking}" />
+          </Panel>
+        </TileButton>
+        <TileButton Grid.Row="2" Grid.Column="1" Text="Run a Bitcoin Node"
+                    Classes="bottomtext"
+                    Icon="{StaticResource cube_multiple_regular}"
+                    IsEnabled="False" />
 
-        <TabItem Header="Coordinator">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <v:CoordinatorTabSettingsView DataContext="{Binding CoordinatorTabSettings}" />
-          </ScrollViewer>
-        </TabItem>
+        <!-- Nostr -->
+        <TextBlock Grid.Row="0" Grid.Column="2" Classes="header" Text="{Binding Nostr.Title}" />
+        <TileButton Grid.Row="1" Grid.Column="2" Text="Connect to Nostr"
+                    Classes="bottomtext"
+                    Classes.action="{Binding Nostr.IsCurrent}"
+                    Icon="{StaticResource connector_regular}"
+                    IsDefault="{Binding Nostr.IsCurrent}"
+                    Command="{Binding ConnectToNostrCommand}">
+          <Panel>
+            <PathIcon Classes="mark working" IsVisible="{Binding Nostr.IsWorking}" />
+            <PathIcon Classes="mark notWorking" IsVisible="{Binding Nostr.IsNotWorking}" />
+          </Panel>
+        </TileButton>
+        <TileButton Grid.Row="2" Grid.Column="2" Text="Run a Nostr Relay"
+                    Classes="bottomtext"
+                    Icon="{StaticResource cube_multiple_regular}"
+                    IsEnabled="False" />
 
-        <!-- What is done with the wallet as a whole. These are not settings: they work while the settings are read-only
-             too. The tab comes with the wallet. -->
-        <TabItem Header="Wallet" IsVisible="{Binding HasWallet}">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel Classes="settingsLayout">
-              <DockPanel ToolTip.Tip="{Binding ResyncWalletToolTip}">
-                <TextBlock Text="Resync Wallet" />
-                <Button Theme="{StaticResource FunctionButton}" Command="{Binding ResyncWalletCommand}" Content="Open" DockPanel.Dock="Right" />
-              </DockPanel>
-              <DockPanel ToolTip.Tip="{Binding WalletKeysToolTip}">
-                <TextBlock Text="Wallet Keys" />
-                <Button Theme="{StaticResource FunctionButton}" Command="{Binding WalletKeysCommand}" Content="Open" DockPanel.Dock="Right" />
-              </DockPanel>
-            </StackPanel>
-          </ScrollViewer>
-        </TabItem>
+        <!-- Coordinator -->
+        <TextBlock Grid.Row="0" Grid.Column="3" Classes="header" Text="{Binding Coordinator.Title}" />
+        <TileButton Grid.Row="1" Grid.Column="3" Text="Connect to Coordinator"
+                    Classes="bottomtext"
+                    Classes.action="{Binding Coordinator.IsCurrent}"
+                    Icon="{StaticResource connector_regular}"
+                    IsDefault="{Binding Coordinator.IsCurrent}"
+                    Command="{Binding ConnectToCoordinatorCommand}">
+          <Panel>
+            <PathIcon Classes="mark working" IsVisible="{Binding Coordinator.IsWorking}" />
+            <PathIcon Classes="mark notWorking" IsVisible="{Binding Coordinator.IsNotWorking}" />
+          </Panel>
+        </TileButton>
+        <TileButton Grid.Row="2" Grid.Column="3" Text="Run a Coinjoin Coordinator"
+                    Classes="bottomtext"
+                    Icon="{StaticResource cube_multiple_regular}"
+                    IsEnabled="False" />
 
-      </TabControl>
+        <!-- Wallet. There is one wallet at most, so it is either recovered or created: once it is there, the box
+             that made it configures it, and the other one cannot be used any more. -->
+        <TextBlock Grid.Row="0" Grid.Column="4" Classes="header" Text="Wallet" />
+
+        <TileButton Grid.Row="1" Grid.Column="4" Text="Recover a Wallet"
+                    Classes="bottomtext"
+                    Classes.action="{Binding CanAddWallet}"
+                    Icon="{StaticResource recover_arrow_right_regular}"
+                    IsVisible="{Binding !IsConfigureTileUpper}"
+                    Command="{Binding RecoverWalletCommand}" />
+        <TileButton Grid.Row="1" Grid.Column="4" Text="Configure Wallet"
+                    Classes="bottomtext"
+                    Icon="{StaticResource nav_wallet_24_regular}"
+                    IsVisible="{Binding IsConfigureTileUpper}"
+                    Command="{Binding ConfigureWalletCommand}">
+          <PathIcon Classes="mark working" />
+        </TileButton>
+
+        <TileButton Grid.Row="2" Grid.Column="4" Text="Create a Wallet"
+                    Classes="bottomtext"
+                    Classes.action="{Binding CanAddWallet}"
+                    Icon="{StaticResource add_regular}"
+                    IsDefault="{Binding CanAddWallet}"
+                    IsVisible="{Binding !IsConfigureTileLower}"
+                    Command="{Binding CreateWalletCommand}" />
+        <TileButton Grid.Row="2" Grid.Column="4" Text="Configure Wallet"
+                    Classes="bottomtext"
+                    Icon="{StaticResource nav_wallet_24_regular}"
+                    IsVisible="{Binding IsConfigureTileLower}"
+                    Command="{Binding ConfigureWalletCommand}">
+          <PathIcon Classes="mark working" />
+        </TileButton>
+      </Grid>
     </DockPanel>
   </ContentArea>
 </UserControl>

@@ -175,6 +175,12 @@ public class KeyManager
 		set => field = Money.Min(Money.Max(value, Money.Zero), HighestMaxCoinjoinLeftover);
 	} = DefaultMaxCoinjoinLeftover;
 
+	/// <summary>
+	/// Whether the wallet was recovered from its backup, and not created with a fresh seed. The wallet file tells, and a
+	/// file from before it did is the file of a wallet that was created.
+	/// </summary>
+	public bool IsRecovered { get; private init; }
+
 	/// <summary>The coins that the user chose for coinjoins. Every other coin of the wallet is kept out of them.</summary>
 	public List<OutPoint> CoinsSelectedForCoinJoin { get; private set; } = new();
 
@@ -268,7 +274,10 @@ public class KeyManager
 		birthHeight ??= network.TaprootActivationHeight;
 		var blockchainState = new BlockchainState(network, birthHeight: birthHeight);
 		blockchainState.ScanFrom(birthHeight);
-		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, taprootAccountKeyPath);
+		var km = new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, taprootExtPubKey, silentPaymentScanExtPubKey, silentPaymentSpendExtPubKey, minGapLimit, blockchainState, filePath, taprootAccountKeyPath)
+		{
+			IsRecovered = true
+		};
 		km.AssertCleanKeysIndexedNoLock();
 
 		// The backup does not tell the unlock heights of the bonds of the wallet.
@@ -958,6 +967,7 @@ public class KeyManager
 			("MinGapLimit", Encode.Int(keyManager.GetEffectiveMinGapLimit())),
 			("TaprootAccountKeyPath", Encode.KeyPath(keyManager.TaprootAccountKeyPath)),
 			("BlockchainState", Encode.BlockchainState(keyManager._blockchainState)),
+			("IsRecovered", Encode.Bool(keyManager.IsRecovered)),
 			("MaxCoinjoinLeftover", Encode.MoneyBitcoins(keyManager.MaxCoinjoinLeftover)),
 			("CoinsSelectedForCoinJoin", Encode.Array(keyManager.CoinsSelectedForCoinJoin.Select(Encode.Outpoint))),
 			("CoinjoinCosts", Encode.Array(keyManager.CoinjoinCosts.Select(Encode.CoinjoinCosts))),
@@ -989,6 +999,7 @@ public class KeyManager
 				get.Optional("TaprootAccountKeyPath", Decode.KeyPath)
 			)
 			{
+				IsRecovered = get.Optional("IsRecovered", Decode.Bool, false),
 				MaxCoinjoinLeftover = get.Optional("MaxCoinjoinLeftover", Decode.MoneyBitcoins) ?? DefaultMaxCoinjoinLeftover,
 				CoinsSelectedForCoinJoin = get.Optional("CoinsSelectedForCoinJoin", Decode.Array(Decode.OutPoint))?.ToList() ?? [],
 				CoinjoinCosts = get.Optional("CoinjoinCosts", Decode.Array(Decode.CoinjoinCosts))?.ToDictionary() ?? [],

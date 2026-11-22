@@ -82,13 +82,22 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 		_walletModel = walletModel;
 		_coins = coins;
 
-		IsCoinJoinEnabled = walletModel.IsCoinJoinEnabled;
-
 		// The controls of the coordinator's coinjoins come with the loaded wallet: what the wallet knows about its coins
-		// is not complete until it has processed the blocks of the node. Nothing starts a round but their Play button.
-		walletModel.WhenAnyValue(x => x.IsLoaded)
-			.Where(isLoaded => isLoaded && _states.Count == 0 && walletModel.Coinjoin is not null)
-			.Subscribe(_ => CreateStates(walletModel.Coinjoin!));
+		// is not complete until it has processed the blocks of the node. They also take a coordinator, which the user
+		// may connect the application to while the wallet is open. Nothing starts a round but their Play button.
+		walletModel.WhenAnyValue(x => x.IsLoaded, x => x.Coinjoin)
+			.Subscribe(x =>
+			{
+				if (x.Item1 && _states.Count == 0 && x.Item2 is { } coinjoin)
+				{
+					CreateStates(coinjoin);
+				}
+				else
+				{
+					// What the box says is missing may have changed.
+					Refresh();
+				}
+			});
 
 		// The dialog tells which of its tabs is selected.
 		this.WhenAnyValue(x => x.SelectedTab)
@@ -99,7 +108,7 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 	public static IReadOnlyList<CoinJoinTab> AllTabs { get; } = [CoinJoinTab.Payjoin, CoinJoinTab.WabiSabi, CoinJoinTab.ZeroLink, CoinJoinTab.Taker, CoinJoinTab.Maker];
 
 	/// <summary>Whether a coordinator is set. Without one there is no WabiSabi and no ZeroLink coinjoin, and the box says so.</summary>
-	public bool IsCoinJoinEnabled { get; }
+	public bool IsCoinJoinEnabled => _walletModel.IsCoinJoinEnabled;
 
 	/// <summary>What a tab is called, on the tab itself and in the box.</summary>
 	public static string GetName(CoinJoinTab tab) =>
@@ -177,7 +186,7 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 
 		if (!isCoordinatorSet)
 		{
-			return (NoCoordinatorText, NoCoordinatorDetail, "Set a coordinator first: the gear in the top right corner, then Coordinator.");
+			return (NoCoordinatorText, NoCoordinatorDetail, "Set a coordinator first: the gear in the top right corner, then Connect to Coordinator.");
 		}
 
 		return (NotLoadedText, NotLoadedDetail, "The wallet is still processing the blocks of the node.");

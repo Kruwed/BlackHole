@@ -32,6 +32,7 @@ public static class PersistentConfigManager
 		MaxDaysInMempool : Constants.DefaultMaxDaysInMempool,
 		ExperimentalFeatures: [],
 		NostrRelays : new (Constants.DefaultNostrRelays),
+		ConfiguredConnections : [],
 		ConfigVersion : 4);
 
 	public static readonly PersistentConfig DefaultRegTestConfig = DefaultMainNetConfig with

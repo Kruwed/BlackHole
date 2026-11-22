@@ -87,24 +87,29 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new WalletInfoViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public void ConnectToTor(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToTor(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectToTorViewModel(UiContext, onConnected), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ConnectToTorViewModel(UiContext), navigationMode);
 	}
 
-	public void ConnectToNode(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToNode(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectToNodeViewModel(UiContext, onConnected), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ConnectToNodeViewModel(UiContext), navigationMode);
 	}
 
-	public void ConnectToNostr(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToNostr(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectToNostrViewModel(UiContext, onConnected), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ConnectToNostrViewModel(UiContext), navigationMode);
 	}
 
-	public void ConnectToCoordinator(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToCoordinator(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectToCoordinatorViewModel(UiContext, onConnected), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ConnectToCoordinatorViewModel(UiContext), navigationMode);
+	}
+
+	public void ConfigureWallet(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new ConfigureWalletViewModel(UiContext, wallet), navigationMode);
 	}
 
 	public FluentDialog<IEnumerable<SmartCoin>> SelectCoinsDialog(IWalletModel wallet, IList<CoinModel> selectedCoins, SendFlowModel sendFlow, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -186,11 +191,7 @@ public partial class FluentNavigate
 		return new FluentDialog<ResyncWalletDialogResult?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	public void NodeSettingsTab(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new NodeSettingsTabViewModel(UiContext, settings), navigationMode);
-	}
-
+	/// <summary>Shows the settings. As long as there is no wallet they are the welcome.</summary>
 	public FluentDialog<System.Reactive.Unit> SettingsPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new SettingsPageViewModel(UiContext);
@@ -278,15 +279,6 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new MultiShareOptionsViewModel(UiContext, options), navigationMode);
 	}
 
-	public FluentDialog<System.Reactive.Unit> WelcomePage(WelcomeProgress progress, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		var dialog = new WelcomePageViewModel(UiContext, progress);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<System.Reactive.Unit>(target.NavigateDialogAsync(dialog, navigationMode));
-	}
-
 	public void Wallet(IWalletModel walletModel, Wallet wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new WalletViewModel(UiContext, walletModel, wallet), navigationMode);
@@ -295,11 +287,6 @@ public partial class FluentNavigate
 	public void CoinJoinsDetails(IWalletModel wallet, CoinJoinTransactionGroupModel transaction, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new CoinJoinsDetailsViewModel(UiContext, wallet, transaction), navigationMode);
-	}
-
-	public void CoordinatorTabSettings(ApplicationSettings settings, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new CoordinatorTabSettingsViewModel(UiContext, settings), navigationMode);
 	}
 
 	public FluentDialog<FeeRate> SendFee(Wallet wallet, TransactionInfo transactionInfo, bool isSilent, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

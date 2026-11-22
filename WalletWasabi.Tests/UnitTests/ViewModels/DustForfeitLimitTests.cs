@@ -6,7 +6,7 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// The dust forfeit limit is typed on the Coordinator tab of the settings, as an amount in BTC. Only an amount that a
+/// The dust forfeit limit is typed on the Coordinator page of the settings, as an amount in BTC. Only an amount that a
 /// wallet can have as its limit is taken.
 /// </summary>
 public class DustForfeitLimitTests
@@ -19,7 +19,7 @@ public class DustForfeitLimitTests
 	[InlineData("0.0001", 10_000)]
 	public void AmountUpToTheHighestLimitIsTaken(string text, long satoshis)
 	{
-		Assert.True(CoordinatorTabSettingsViewModel.TryParseMaxCoinjoinLeftover(text, out var limit));
+		Assert.True(ConnectToCoordinatorViewModel.TryParseMaxCoinjoinLeftover(text, out var limit));
 		Assert.Equal(Money.Satoshis(satoshis), limit);
 	}
 
@@ -33,7 +33,7 @@ public class DustForfeitLimitTests
 	[InlineData("1")]
 	public void AnythingElseIsRefused(string? text)
 	{
-		Assert.False(CoordinatorTabSettingsViewModel.TryParseMaxCoinjoinLeftover(text, out var limit));
+		Assert.False(ConnectToCoordinatorViewModel.TryParseMaxCoinjoinLeftover(text, out var limit));
 		Assert.Null(limit);
 	}
 
@@ -42,8 +42,8 @@ public class DustForfeitLimitTests
 	{
 		var highest = KeyManager.HighestMaxCoinjoinLeftover;
 
-		Assert.True(CoordinatorTabSettingsViewModel.TryParseMaxCoinjoinLeftover(highest.ToString(), out var limit));
+		Assert.True(ConnectToCoordinatorViewModel.TryParseMaxCoinjoinLeftover(highest.ToString(), out var limit));
 		Assert.Equal(highest, limit);
-		Assert.False(CoordinatorTabSettingsViewModel.TryParseMaxCoinjoinLeftover((highest + Money.Satoshis(1)).ToString(), out _));
+		Assert.False(ConnectToCoordinatorViewModel.TryParseMaxCoinjoinLeftover((highest + Money.Satoshis(1)).ToString(), out _));
 	}
 }

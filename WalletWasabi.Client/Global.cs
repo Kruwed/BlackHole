@@ -119,6 +119,9 @@ public class Global
 	/// </summary>
 	private SwitchableHttpClientFactory? _coordinatorHttpClientFactory;
 
+	/// <summary>The coordinator that <see cref="_coordinatorHttpClientFactory"/> talks to.</summary>
+	private volatile Uri? _coordinatorUri;
+
 	/// <summary>Whether the computer is kept awake during coinjoins. That is asked for when the application is initialized.</summary>
 	private bool _initializeSleepInhibitor;
 	/// <summary>The user's node. Everything that needs the node holds this one client, so that <see cref="ConnectToBitcoinNodeAsync"/> can put another node behind it.</summary>
@@ -144,6 +147,12 @@ public class Global
 	public JsonRpcServer? RpcServer { get; private set; }
 	public Uri? OnionServiceUri { get; private set; }
 	public EventBus EventBus { get; }
+
+	/// <summary>The Nostr relays that the offers of the wallet are posted to now.</summary>
+	public IReadOnlyList<Uri> NostrRelays => _nostrPublisher.Relays;
+
+	/// <summary>The coordinator that the application coinjoins with now, if there is one.</summary>
+	public Uri? CoordinatorUri => _coordinatorUri ?? (Config.TryGetCoordinatorUri(out var coordinatorUri) ? coordinatorUri : null);
 
 	/// <summary>How long a node is given to answer when the user asks to be connected to it.</summary>
 	private static readonly TimeSpan NodeAnswerTimeout = TimeSpan.FromSeconds(30);
@@ -231,44 +240,17 @@ public class Global
 	/// <returns>Nothing if the application works with the node, otherwise the reason why it does not, in words for the user.</returns>
 	public async Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken)
 	{
-		if (!RpcSettings.TryParseUri(rpcUri, out var bitcoinRpcUri))
+		var answer = await AskBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken).ConfigureAwait(false);
+
+		if (!answer.IsOk)
 		{
-			return Result<string>.Fail("The address of the Bitcoin node is not an HTTP address.");
+			return Result<string>.Fail(answer.Error);
 		}
 
-		if (!RpcSettings.TryParseCredentials(rpcCredentialString, out var credentials))
-		{
-			return Result<string>.Fail("The RPC credentials are neither 'user:password' nor 'cookiefile=path'.");
-		}
-
-		var isOnion = RpcSettings.IsOnion(bitcoinRpcUri);
-
-		if (isOnion && Config.UseTor == TorMode.Disabled)
-		{
-			return Result<string>.Fail("The Bitcoin node is an onion service, and Tor is turned off.");
-		}
-
-		RPCClient rpcClient;
-
-		try
-		{
-			rpcClient = CreateBitcoinRpcClient(credentials, bitcoinRpcUri);
-		}
-		catch (ArgumentException ex)
-		{
-			return Result<string>.Fail($"The Bitcoin node cannot be asked with these settings ({ex.Message}).");
-		}
-
-		var timeout = isOnion ? OnionNodeAnswerTimeout : NodeAnswerTimeout;
-		var check = await RpcConnectionCheck.CheckAsync(new RpcClientBase(rpcClient), Network, timeout, cancellationToken).ConfigureAwait(false);
-
-		if (!check.IsOk)
-		{
-			return check;
-		}
+		var rpcClient = answer.Value;
 
 		_bitcoinRpcClient.SwitchTo(rpcClient);
-		Logger.LogInfo($"Bitcoin RPC uses {bitcoinRpcUri.Scheme}://{bitcoinRpcUri.Authority} from now on.");
+		Logger.LogInfo($"Bitcoin RPC uses {rpcClient.Address.Scheme}://{rpcClient.Address.Authority} from now on.");
 
 		// Everybody learns about the new node now, and not only when the monitor asks it the next time.
 		try
@@ -280,11 +262,66 @@ public class Global
 			Logger.LogDebug(ex);
 		}
 
-		return check;
+		return Result<string>.Ok();
+	}
+
+	/// <summary>
+	/// Asks a node whether the application could work with it, the way <see cref="ConnectToBitcoinNodeAsync"/> does,
+	/// and leaves it at that: the application keeps the node that it has.
+	/// </summary>
+	/// <returns>Nothing if the application could work with the node, otherwise the reason why it could not, in words for the user.</returns>
+	public async Task<Result<string>> VerifyBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken)
+	{
+		var answer = await AskBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken).ConfigureAwait(false);
+
+		return answer.IsOk ? Result<string>.Ok() : Result<string>.Fail(answer.Error);
+	}
+
+	/// <summary>
+	/// Asks the node at the given RPC interface: it has to answer, and it has to be on the network of the application.
+	/// </summary>
+	/// <returns>The client of the node if the application can work with it, otherwise the reason why it cannot, in words for the user.</returns>
+	private async Task<Result<RPCClient, string>> AskBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken)
+	{
+		if (!RpcSettings.TryParseUri(rpcUri, out var bitcoinRpcUri))
+		{
+			return "The address of the Bitcoin node is not an HTTP address.";
+		}
+
+		if (!RpcSettings.TryParseCredentials(rpcCredentialString, out var credentials))
+		{
+			return "The RPC credentials are neither 'user:password' nor 'cookiefile=path'.";
+		}
+
+		var isOnion = RpcSettings.IsOnion(bitcoinRpcUri);
+
+		if (isOnion && Config.UseTor == TorMode.Disabled)
+		{
+			return "The Bitcoin node is an onion service, and Tor is turned off.";
+		}
+
+		RPCClient rpcClient;
+
+		try
+		{
+			rpcClient = CreateBitcoinRpcClient(credentials, bitcoinRpcUri);
+		}
+		catch (ArgumentException ex)
+		{
+			return $"The Bitcoin node cannot be asked with these settings ({ex.Message}).";
+		}
+
+		var timeout = isOnion ? OnionNodeAnswerTimeout : NodeAnswerTimeout;
+		var check = await RpcConnectionCheck.CheckAsync(new RpcClientBase(rpcClient), Network, timeout, cancellationToken).ConfigureAwait(false);
+
+		return check.IsOk ? rpcClient : check.Error;
 	}
 
 	/// <summary>How long Tor is given to start and to connect to the Tor network when the user asks to be connected to it.</summary>
 	private static readonly TimeSpan TorStartTimeout = TimeSpan.FromSeconds(90);
+
+	/// <summary>How long Tor is given to tell whether it is connected, when it is asked and not waited for.</summary>
+	private static readonly TimeSpan TorAnswerTimeout = TimeSpan.FromSeconds(5);
 
 	/// <summary>How long a coordinator is given to answer when the user asks to be connected to it.</summary>
 	private static readonly TimeSpan CoordinatorAnswerTimeout = TimeSpan.FromSeconds(30);
@@ -293,11 +330,24 @@ public class Global
 	private static readonly TimeSpan CoordinatorAnswerThroughTorTimeout = TimeSpan.FromSeconds(90);
 
 	/// <summary>
-	/// Tells whether the application is connected to Tor: Tor has to run and to have connected to the Tor network. Tor
+	/// Sees to it that the application is connected to Tor: Tor has to run and to have connected to the Tor network. Tor
 	/// is started when the application starts, so this waits for it and starts nothing.
 	/// </summary>
 	/// <returns>Nothing if the application is connected to Tor, otherwise the reason why it is not, in words for the user.</returns>
-	public async Task<Result<string>> ConnectToTorAsync(CancellationToken cancellationToken)
+	public Task<Result<string>> ConnectToTorAsync(CancellationToken cancellationToken) =>
+		AskTorAsync(TorStartTimeout, "Tor has not started in time.", cancellationToken);
+
+	/// <summary>
+	/// Tells whether the application is connected to Tor right now. Unlike <see cref="ConnectToTorAsync"/>, it does not
+	/// wait for a Tor that is still starting.
+	/// </summary>
+	/// <returns>Nothing if the application is connected to Tor, otherwise the reason why it is not, in words for the user.</returns>
+	public Task<Result<string>> VerifyTorAsync(CancellationToken cancellationToken) =>
+		AskTorAsync(TorAnswerTimeout, "Tor is not running.", cancellationToken);
+
+	/// <param name="patience">How long Tor is given to be there and to answer.</param>
+	/// <param name="notRunningMessage">What to tell when the Tor that the application starts is not there in that time.</param>
+	private async Task<Result<string>> AskTorAsync(TimeSpan patience, string notRunningMessage, CancellationToken cancellationToken)
 	{
 		if (Config.UseTor == TorMode.Disabled)
 		{
@@ -305,7 +355,7 @@ public class Global
 		}
 
 		using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		timeoutCts.CancelAfter(TorStartTimeout);
+		timeoutCts.CancelAfter(patience);
 
 		try
 		{
@@ -335,7 +385,7 @@ public class Global
 		{
 			return Result<string>.Fail(Config.UseTor == TorMode.EnabledOnlyRunning
 				? $"No Tor answers on port {TorSettings.SocksPort} of this computer."
-				: "Tor has not started in time.");
+				: notRunningMessage);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
@@ -353,13 +403,7 @@ public class Global
 	/// <exception cref="ArgumentException">No relay was named.</exception>
 	public async Task<IReadOnlyList<RelayReachability>> ConnectToNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken)
 	{
-		var publisher = new NostrRelayPublisher(relays, Config.UseTor != TorMode.Disabled ? TorSettings.SocksEndpoint : null);
-
-		if (publisher.Relays.Count == 0)
-		{
-			throw new ArgumentException("There is no relay to connect to.", nameof(relays));
-		}
-
+		var publisher = CreateNostrPublisher(relays);
 		var reachabilities = await publisher.CheckAsync(cancellationToken).ConfigureAwait(false);
 
 		if (reachabilities.Any(relay => relay.IsReachable))
@@ -372,26 +416,113 @@ public class Global
 	}
 
 	/// <summary>
+	/// Finds out whether the given Nostr relays can be reached, the way <see cref="ConnectToNostrRelaysAsync"/> does,
+	/// and leaves it at that: the application keeps the relays that it has. Nothing is sent to a relay.
+	/// </summary>
+	/// <returns>Whether each of the relays could be reached.</returns>
+	/// <exception cref="ArgumentException">No relay was named.</exception>
+	public async Task<IReadOnlyList<RelayReachability>> VerifyNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
+		await CreateNostrPublisher(relays).CheckAsync(cancellationToken).ConfigureAwait(false);
+
+	/// <summary>Makes what posts to the given relays: through Tor, unless Tor is turned off.</summary>
+	/// <exception cref="ArgumentException">No relay was named.</exception>
+	private NostrRelayPublisher CreateNostrPublisher(IReadOnlyList<Uri> relays)
+	{
+		var publisher = new NostrRelayPublisher(relays, Config.UseTor != TorMode.Disabled ? TorSettings.SocksEndpoint : null);
+
+		if (publisher.Relays.Count == 0)
+		{
+			throw new ArgumentException("There is no relay to connect to.", nameof(relays));
+		}
+
+		return publisher;
+	}
+
+	/// <summary>
 	/// Makes the application coinjoin with the coordinator at the given address from now on, without a restart, provided
 	/// that the coordinator answers. Otherwise the application keeps the coordinator that it has, or none.
 	/// </summary>
 	/// <remarks>
-	/// This is meant for the time before there is a wallet. The list of the coins that a coordinator banned stays the
-	/// one of the coordinator that the application had first, until the application is started again.
+	/// The coordinator is not changed while a coinjoin is under way: its round is with the coordinator that the
+	/// application has. The list of the coins that a coordinator banned stays the one of the coordinator that the
+	/// application had first, until the application is started again.
 	/// </remarks>
 	/// <returns>Nothing if the application works with the coordinator, otherwise the reason why it does not, in words for the user.</returns>
 	public async Task<Result<string>> ConnectToCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken)
 	{
+		var answer = await AskCoordinatorAsync(coordinatorUri, cancellationToken).ConfigureAwait(false);
+
+		if (!answer.IsOk)
+		{
+			return Result<string>.Fail(answer.Error);
+		}
+
+		var uri = answer.Value;
+
+		using (await _initializationAsyncLock.LockAsync(cancellationToken).ConfigureAwait(false))
+		{
+			if (_disposeRequested)
+			{
+				return Result<string>.Fail($"{Constants.AppName} is shutting down.");
+			}
+
+			var coinJoinState = HostedServices.GetOrDefault<CoinJoinManager>()?.HighestCoinJoinClientState ?? CoinJoinClientState.Idle;
+
+			switch (CoordinatorConnectionCheck.DecideChange(_coordinatorUri, uri, coinJoinState))
+			{
+				case CoordinatorChange.Refuse:
+					return Result<string>.Fail($"A coinjoin is under way with the coordinator that {Constants.AppName} has. Stop it or wait for it to end, and connect then.");
+
+				case CoordinatorChange.Switch when _coordinatorHttpClientFactory is { } current:
+					current.SwitchTo(CreateCoordinatorHttpClientFactory(uri));
+					_coordinatorUri = uri;
+					break;
+
+				case CoordinatorChange.Start:
+					// The services live as long as the application, not as long as whoever asked for the connection waits.
+					await HostedServices.RegisterAndStartAsync<CoinJoinManager>(PrepareCoinJoinComponents(uri, CreateCoordinatorHttpClientFactory(uri)), "CoinJoin Manager", _stoppingCts.Token).ConfigureAwait(false);
+
+					if (_initializeSleepInhibitor)
+					{
+						await CreateSleepInhibitorAsync().ConfigureAwait(false);
+					}
+
+					// A wallet that is open already gets its coinjoins now.
+					EventBus.Publish(new CoinJoinAvailable());
+					break;
+			}
+		}
+
+		Logger.LogInfo($"Coinjoins use the coordinator {uri.Scheme}://{uri.Authority} from now on.");
+		return Result<string>.Ok();
+	}
+
+	/// <summary>
+	/// Asks the coordinator at the given address whether it answers, the way <see cref="ConnectToCoordinatorAsync"/>
+	/// does, and leaves it at that: the application keeps the coordinator that it has, or none.
+	/// </summary>
+	/// <returns>Nothing if the coordinator answers, otherwise the reason why it does not, in words for the user.</returns>
+	public async Task<Result<string>> VerifyCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken)
+	{
+		var answer = await AskCoordinatorAsync(coordinatorUri, cancellationToken).ConfigureAwait(false);
+
+		return answer.IsOk ? Result<string>.Ok() : Result<string>.Fail(answer.Error);
+	}
+
+	/// <summary>Asks the coordinator at the given address for its rounds.</summary>
+	/// <returns>The address of the coordinator if it answers, otherwise the reason why it does not, in words for the user.</returns>
+	private async Task<Result<Uri, string>> AskCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken)
+	{
 		if (!CoordinatorConnectionCheck.TryParseUri(coordinatorUri, out var uri))
 		{
-			return Result<string>.Fail("The address of the coordinator is not an HTTP address.");
+			return "The address of the coordinator is not an HTTP address.";
 		}
 
 		var usesTor = Config.UseTor != TorMode.Disabled;
 
 		if (!usesTor && CoordinatorConnectionCheck.IsOnion(uri))
 		{
-			return Result<string>.Fail("The coordinator is an onion service, and Tor is turned off.");
+			return "The coordinator is an onion service, and Tor is turned off.";
 		}
 
 		// The check tells what went wrong at once. The clients that coinjoin try many times instead.
@@ -404,38 +535,7 @@ public class Global
 		var timeout = usesTor ? CoordinatorAnswerThroughTorTimeout : CoordinatorAnswerTimeout;
 		var check = await CoordinatorConnectionCheck.CheckAsync(checkClient, timeout, cancellationToken).ConfigureAwait(false);
 
-		if (!check.IsOk)
-		{
-			return check;
-		}
-
-		using (await _initializationAsyncLock.LockAsync(cancellationToken).ConfigureAwait(false))
-		{
-			if (_disposeRequested)
-			{
-				return Result<string>.Fail($"{Constants.AppName} is shutting down.");
-			}
-
-			var httpClientFactory = CreateCoordinatorHttpClientFactory(uri);
-
-			if (_coordinatorHttpClientFactory is { } current)
-			{
-				current.SwitchTo(httpClientFactory);
-			}
-			else
-			{
-				// The services live as long as the application, not as long as whoever asked for the connection waits.
-				await HostedServices.RegisterAndStartAsync<CoinJoinManager>(PrepareCoinJoinComponents(uri, httpClientFactory), "CoinJoin Manager", _stoppingCts.Token).ConfigureAwait(false);
-
-				if (_initializeSleepInhibitor)
-				{
-					await CreateSleepInhibitorAsync().ConfigureAwait(false);
-				}
-			}
-		}
-
-		Logger.LogInfo($"Coinjoins use the coordinator {uri.Scheme}://{uri.Authority} from now on.");
-		return check;
+		return check.IsOk ? uri : check.Error;
 	}
 
 	private HttpClientFactory BuildHttpClientFactory(HttpClientHandlerConfiguration? config = null) =>
@@ -548,6 +648,9 @@ public class Global
 				if (_coordinatorHttpClientFactory is null && Config.TryGetCoordinatorUri(out var coordinatorUri))
 				{
 					HostedServices.Register<CoinJoinManager>(PrepareCoinJoinComponents(coordinatorUri, CreateCoordinatorHttpClientFactory(coordinatorUri)), "CoinJoin Manager");
+
+					// The wallet may have been opened while Tor was still starting.
+					EventBus.Publish(new CoinJoinAvailable());
 				}
 
 				if (_coordinatorHttpClientFactory is not null && initializeSleepInhibitor && HostedServices.GetOrDefault<SleepInhibitor>() is null)
@@ -667,6 +770,7 @@ public class Global
 
 		var coordinatorHttpClientFactory = new SwitchableHttpClientFactory(httpClientFactory);
 		_coordinatorHttpClientFactory = coordinatorHttpClientFactory;
+		_coordinatorUri = coordinatorUri;
 
 		var wabiSabiStatusProvider =  new WabiSabiHttpApiClient("satoshi-coordination", coordinatorHttpClientFactory);
 		var roundUpdater = Spawn("RoundUpdater",

@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:v="using:WalletWasabi.Fluent.Views.Settings"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="428" d:DesignHeight="371"
+             x:DataType="vm:ConnectToCoordinatorViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Settings.ConnectToCoordinatorView">
+  <UserControl.Styles>
+    <Style Selector="TextBox /template/ DataValidationErrors">
+      <Setter Property="MinHeight" Value="25" />
+    </Style>
+    <!-- The button that only asks stands next to the one that connects. -->
+    <Style Selector="ContentArea /template/ ContentPresenter#PART_BottomContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0 0 12 0" />
+    </Style>
+  </UserControl.Styles>
+  <ContentArea Title="{Binding Title}"
+               Caption="Tell where the coordinator of your coinjoins is."
+               EnableCancel="{Binding EnableCancel}"
+               EnableBack="{Binding EnableBack}"
+               EnableNext="True" NextContent="{Binding NextLabel}"
+               IsBusy="{Binding IsBusy}">
+    <ContentArea.BottomContent>
+      <Button Content="Verify Connection" Command="{Binding VerifyCommand}" />
+    </ContentArea.BottomContent>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
+      <Label Content="Coordinator address:" Target="TbCoordinatorUri" />
+      <TextBox Name="TbCoordinatorUri"
+               Text="{Binding CoordinatorUri}"
+               Watermark="{Binding ExampleUri}"
+               IsReadOnly="{Binding IsAsking}"
+               IsEnabled="{Binding !IsReadOnly}">
+        <Interaction.Behaviors>
+          <FocusOnAttachedBehavior />
+          <WhitespacePasteRemovalBehavior />
+          <WhitespaceInputRemovalBehavior />
+        </Interaction.Behaviors>
+      </TextBox>
+      <TextBlock Text="The coordinator holds the WabiSabi and the ZeroLink rounds. It is reached through Tor unless Tor is turned off, and it is asked for its rounds to find out whether it answers."
+                 TextWrapping="Wrap"
+                 Opacity="0.6" />
+
+      <!-- What the coordinator answered the last time. The room for it is always there, so that nothing moves when it appears. -->
+      <v:ConnectionStatus MinHeight="40" />
+
+      <InfoMessage Foreground="{StaticResource WarningMessageForeground}"
+                   IsVisible="{Binding IsReadOnly}">
+        <TextBlock Text="The coordinator was given on the command line or in the environment when Black Hole was started, so it cannot be changed here."
+                   TextWrapping="Wrap" />
+      </InfoMessage>
+
+      <!-- What the application accepts of a round. The two on the left are applied when the application starts. -->
+      <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0 10 0 0">
+        <Label Grid.Row="0" Grid.Column="0" Content="Max coinjoin mining fee rate:" Target="CoinJoinMiningFeeRateTextBox" Margin="0 0 0 10" />
+        <CurrencyEntryBox Grid.Row="1" Grid.Column="0" Classes="standalone" Name="CoinJoinMiningFeeRateTextBox"
+                          Text="{Binding MaxCoinJoinMiningFeeRate}" CurrencyCode="sat/vB"
+                          IsEnabled="{Binding !AreSettingsReadOnly}"
+                          ToolTip.Tip="The client will refuse to participate in rounds with a mining fee rate (sat/vB) higher than the value indicated here." />
+
+        <Label Grid.Row="0" Grid.Column="2" Content="Min input count:" Target="AbsoluteMinInputCountTextBox" Margin="0 0 0 10" />
+        <TextBox Grid.Row="1" Grid.Column="2" Classes="standalone" Name="AbsoluteMinInputCountTextBox"
+                 Text="{Binding AbsoluteMinInputCount}"
+                 IsEnabled="{Binding !AreSettingsReadOnly}"
+                 ToolTip.Tip="The client will refuse to participate in rounds with a minimum input count lower than the value indicated here.">
+          <Interaction.Behaviors>
+            <TextBoxAutoSelectTextBehavior />
+          </Interaction.Behaviors>
+        </TextBox>
+
+        <!-- The dust forfeit limit is kept with the wallet. It is there once there is a wallet, and it needs no restart. -->
+        <Label Grid.Row="2" Grid.Column="0" Content="Dust forfeit limit:" Target="MaxCoinjoinLeftoverTextBox" Margin="0 10 0 10"
+               IsVisible="{Binding HasWallet}" />
+        <CurrencyEntryBox Grid.Row="3" Grid.Column="0" Classes="standalone" Name="MaxCoinjoinLeftoverTextBox"
+                          Text="{Binding MaxCoinjoinLeftover}" CurrencyCode="BTC"
+                          IsVisible="{Binding HasWallet}"
+                          ToolTip.Tip="A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. If more than this limit would be left, it is added to one of your outputs instead: you keep it, but that output has a non-standard amount and gains less privacy. The limit is 0.0001 BTC at most." />
+      </Grid>
+
+      <v:RestartNotice />
+    </StackPanel>
+  </ContentArea>
+</UserControl>

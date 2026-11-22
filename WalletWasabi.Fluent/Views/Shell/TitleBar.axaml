@@ -41,7 +41,7 @@
         <PathIcon Data="{StaticResource folder_regular}" Width="18" Height="18" Opacity="0.6" />
       </Button>
       <Button Classes="transparentFunction" Padding="7" VerticalAlignment="Center"
-              Command="{Binding SettingsPage.OpenCommand}"
+              Command="{Binding OpenSettingsCommand}"
               ToolTip.Tip="Settings">
         <PathIcon Data="{StaticResource nav_settings_24_regular}" Width="18" Height="18" Opacity="0.6" />
       </Button>

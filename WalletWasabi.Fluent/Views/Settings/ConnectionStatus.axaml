@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="using:WalletWasabi.Fluent.ViewModels.Settings"
+             xmlns:converters="using:WalletWasabi.Fluent.Converters"
+             x:DataType="settings:ConnectionPageViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Settings.ConnectionStatus">
+  <UserControl.Resources>
+    <converters:ConnectionStatusBrushConverter x:Key="BoolToConnectionStatusBrush"
+                                               SuccessBrush="{StaticResource PositiveBrush}"
+                                               FailureBrush="{StaticResource DismissColor}" />
+  </UserControl.Resources>
+  <!-- What was answered the last time, or what the page is waiting for. While it waits the words have the colour of
+       the others; afterwards they tell by their colour how it went. -->
+  <Panel>
+    <TextBlock Text="{Binding StatusMessage}"
+               IsVisible="{Binding IsAsking}"
+               TextWrapping="Wrap" />
+    <TextBlock Text="{Binding StatusMessage}"
+               IsVisible="{Binding !IsAsking}"
+               Foreground="{Binding IsStatusGood, Converter={StaticResource BoolToConnectionStatusBrush}}"
+               TextWrapping="Wrap" />
+  </Panel>
+</UserControl>

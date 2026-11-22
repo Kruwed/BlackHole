@@ -242,7 +242,7 @@ public class CoinJoinDialogTests
 	{
 		// The settings of the coordinator are behind the gear of the title bar: the dialog has no way there.
 		Assert.Equal(
-			("Coordinator not configured", "Coinjoin not available", "Set a coordinator first: the gear in the top right corner, then Coordinator."),
+			("Coordinator not configured", "Coinjoin not available", "Set a coordinator first: the gear in the top right corner, then Connect to Coordinator."),
 			CoinJoinBoxViewModel.DescribeUnavailable(tab, isCoordinatorSet: false));
 
 		// With a coordinator the controls are only missing while the wallet still processes the blocks of the node.

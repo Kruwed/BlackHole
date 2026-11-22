@@ -48,6 +48,10 @@ public partial interface IWalletModel : INotifyPropertyChanged
 
 	WalletSettingsModel Settings { get; }
 
+	/// <summary>
+	/// The coinjoins of the wallet with the coordinator. There are none until the application has a coordinator, which
+	/// can be after the wallet is opened: whoever shows them has to look again when this changes.
+	/// </summary>
 	WalletCoinjoinModel? Coinjoin { get; }
 
 	/// <summary>The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height.</summary>
@@ -63,6 +67,9 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	/// it has nothing to resync until then.
 	/// </summary>
 	bool IsHeightKnown { get; }
+
+	/// <summary>Whether the wallet was recovered from its backup, and not created.</summary>
+	bool IsRecovered { get; }
 
 	/// <summary>Whether <see cref="Resync"/> was called: the wallet waits for the restart of the application and does not follow the node until then.</summary>
 	bool IsResyncRequested { get; }
@@ -80,8 +87,10 @@ public partial interface IWalletModel : INotifyPropertyChanged
 public partial class WalletModel : ReactiveObject, IWalletModel
 {
 	private readonly IServices _services;
-	private readonly Lazy<WalletCoinjoinModel?> _coinjoin;
 	private readonly Lazy<WalletCoinsModel> _coins;
+
+	/// <summary>See <see cref="IWalletModel.Coinjoin"/>.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private WalletCoinjoinModel? _coinjoin;
 
 	[AutoNotify] private bool _isLoggedIn;
 	[AutoNotify] private bool _isLoaded;
@@ -95,13 +104,13 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 		Loader = new WalletLoadWorkflow(services, Wallet);
 		Settings = new WalletSettingsModel(services, Wallet.KeyManager);
 
-		_coinjoin = new(() =>
-		{
-			var coinJoinManager = services.GetHostedService<CoinJoinManager>();
-			return coinJoinManager is not null
-				? new WalletCoinjoinModel(services, Wallet, coinJoinManager)
-				: null;
-		});
+		// The coinjoins take a coordinator. The application gets to one when it has started, or when the user connects
+		// it to one in the settings: both can be later than this.
+		UpdateCoinjoin();
+
+		services.EventBus.AsObservable<CoinJoinAvailable>()
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(_ => UpdateCoinjoin());
 
 		_coins = new(() => new WalletCoinsModel(wallet, this, services));
 
@@ -140,11 +149,17 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 			.BindTo(this, x => x.IsLoaded);
 	}
 
-	public IObservable<bool> IsCoinjoinRunning => _coinjoin.Value?.IsRunning ?? Observable.Return(false);
+	public IObservable<bool> IsCoinjoinRunning =>
+		this.WhenAnyValue(x => x.Coinjoin)
+			.Select(coinjoin => coinjoin?.IsRunning ?? Observable.Return(false))
+			.Switch();
 
-	public IObservable<bool> IsCoinjoinStarted => _coinjoin.Value?.IsStarted ?? Observable.Return(false);
+	public IObservable<bool> IsCoinjoinStarted =>
+		this.WhenAnyValue(x => x.Coinjoin)
+			.Select(coinjoin => coinjoin?.IsStarted ?? Observable.Return(false))
+			.Switch();
 
-	public bool IsCoinJoinEnabled => _coinjoin.Value is not null;
+	public bool IsCoinJoinEnabled => Coinjoin is not null;
 
 	public AddressesModel Addresses { get; }
 
@@ -168,7 +183,14 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 
 	public WalletSettingsModel Settings { get; }
 
-	public WalletCoinjoinModel? Coinjoin => _coinjoin.Value;
+	/// <summary>Makes the coinjoins of the wallet once the application has a coordinator.</summary>
+	private void UpdateCoinjoin()
+	{
+		if (Coinjoin is null && _services.GetHostedService<CoinJoinManager>() is { } coinJoinManager)
+		{
+			Coinjoin = new WalletCoinjoinModel(_services, Wallet, coinJoinManager);
+		}
+	}
 
 	public WalletBondsModel Bonds { get; }
 
@@ -177,6 +199,8 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public IObservable<bool> Loaded { get; }
 
 	public bool IsHeightKnown => Wallet.KeyManager.GetBestHeight() is not null;
+
+	public bool IsRecovered => Wallet.KeyManager.IsRecovered;
 
 	public bool IsResyncRequested => Wallet.Synchronizer.IsResyncRequested;
 

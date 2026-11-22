@@ -106,6 +106,7 @@ public class App : Application
 	{
 		var services = Services.Instance;
 		var applicationSettings = CreateApplicationSettings(services);
+		var walletRepository = CreateWalletRepository(services);
 
 		// This class (App) represents the actual Avalonia Application and it's sole presence means we're in the actual runtime context (as opposed to unit tests)
 		// Once all ViewModels have been refactored to receive UiContext as a constructor parameter, this static singleton property can be removed.
@@ -114,11 +115,12 @@ public class App : Application
 			new QrCodeGenerator(),
 			new QrCodeReader(),
 			new UiClipboard(),
-			CreateWalletRepository(services),
+			walletRepository,
 			new CoinjoinModel(services),
 			CreateFileSystem(),
 			CreateConfig(services),
 			applicationSettings,
+			new ConnectionsModel(services, applicationSettings, walletRepository),
 			new ReleaseHighlights());
 	}
 }

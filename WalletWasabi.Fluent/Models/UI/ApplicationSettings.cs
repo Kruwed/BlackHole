@@ -24,7 +24,7 @@ public partial class ApplicationSettings : ReactiveObject
 	private const int ThrottleTime = 500;
 
 	private readonly IServices _services;
-	private readonly Subject<bool> _isRestartNeeded = new();
+	private readonly BehaviorSubject<bool> _isRestartNeeded = new(false);
 	private readonly string _persistentConfigFilePath;
 	/// <summary>
 	/// What the running application works with: the configuration that it was started with, except for what was applied
@@ -60,6 +60,9 @@ public partial class ApplicationSettings : ReactiveObject
 	// Nostr
 	[AutoNotify] private string[] _nostrRelays;
 
+	// What the user has connected the application to: see SetConnectionConfigured.
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _configuredConnections;
+
 	public ApplicationSettings(IServices services, PersistentConfig persistentConfig, Config config, UiConfig uiConfig)
 	{
 		_services = services;
@@ -93,6 +96,8 @@ public partial class ApplicationSettings : ReactiveObject
 		// Nostr
 		_nostrRelays = persistentConfig.NostrRelays.ToArray();
 
+		_configuredConnections = persistentConfig.ConfiguredConnections.ToArray();
+
 		_oobe = uiConfig.Oobe;
 		_lastVersionHighlightsDisplayed = uiConfig.LastVersionHighlightsDisplayed;
 
@@ -118,7 +123,8 @@ public partial class ApplicationSettings : ReactiveObject
 					x => x.AbsoluteMinInputCount,
 					x => x.CoordinatorUri,
 					x => x.NostrRelays,
-					(_, _, _, _) => Unit.Default)
+					x => x.ConfiguredConnections,
+					(_, _, _, _, _) => Unit.Default)
 				.Skip(1);
 
 		Observable
@@ -153,6 +159,10 @@ public partial class ApplicationSettings : ReactiveObject
 	/// <summary>The same for the Nostr relays.</summary>
 	public bool IsNostrRelaysOverridden => _config.IsNostrRelaysOverridden;
 
+	/// <summary>
+	/// Whether the saved settings differ from what the application runs with, so that it takes a restart to apply them.
+	/// Whoever asks is told how it stands right away, and then whenever the settings were saved.
+	/// </summary>
 	public IObservable<bool> IsRestartNeeded => _isRestartNeeded;
 
 	public bool CheckIfRestartIsNeeded(PersistentConfig config)
@@ -198,6 +208,26 @@ public partial class ApplicationSettings : ReactiveObject
 		_runningConfig = _runningConfig with { CoordinatorUri = uri };
 
 		CoordinatorUri = uri;
+	}
+
+	/// <summary>
+	/// Takes note that the user has connected the application to Tor, to the node, to Nostr or to the coordinator. It
+	/// is saved with the settings, so that the application knows after a restart what was set up already. This asks
+	/// for no restart either.
+	/// </summary>
+	/// <param name="connection">The name of what the application was connected to.</param>
+	public void SetConnectionConfigured(string connection)
+	{
+		if (ConfiguredConnections.Contains(connection))
+		{
+			return;
+		}
+
+		string[] connections = [.. ConfiguredConnections, connection];
+
+		_runningConfig = _runningConfig with { ConfiguredConnections = new ValueList<string>(connections) };
+
+		ConfiguredConnections = connections;
 	}
 
 	private void Save()
@@ -261,6 +291,8 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Nostr
 		result = result with { NostrRelays = new ValueList<string>(NostrRelays) };
+
+		result = result with { ConfiguredConnections = new ValueList<string>(ConfiguredConnections) };
 
 		return result;
 	}

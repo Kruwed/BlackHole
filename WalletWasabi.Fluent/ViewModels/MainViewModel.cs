@@ -7,9 +7,9 @@ using Avalonia.Controls;
 using NBitcoin;
 using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Fluent.Extensions;
+using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
-using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -29,9 +29,6 @@ public partial class MainViewModel : ViewModelBase
 	private const string WaitingForNode = "Waiting for Bitcoin node";
 
 	private bool _isClosing;
-
-	/// <summary>How far the user is with the welcome. The welcome is shown anew when a dialog on top of it closed every page, and goes on where it was.</summary>
-	private readonly WelcomeProgress _welcomeProgress = new();
 
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
@@ -61,7 +58,7 @@ public partial class MainViewModel : ViewModelBase
 		ShowFeeRate();
 		ShowChainHeight();
 
-		SettingsPage = new SettingsPageViewModel(UiContext);
+		OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
 		OpenDataFolderCommand = ReactiveCommand.CreateFromTask(OpenDataFolderAsync);
 		Notifications = new WalletNotificationsViewModel(UiContext, () => WalletPage?.WalletViewModel);
 
@@ -111,14 +108,15 @@ public partial class MainViewModel : ViewModelBase
 				// A wallet that is there already needs no welcome.
 				while (!UiContext.WalletRepository.HasWallet)
 				{
-					await UiContext.Navigate().To().WelcomePage(_welcomeProgress).GetResultAsync();
+					// Without a wallet the settings are the welcome. How far the user got with it is kept with the settings.
+					await UiContext.Navigate().To().SettingsPage().GetResultAsync();
 
 					if (UiContext.WalletRepository.HasWallet || _isClosing)
 					{
 						break;
 					}
 
-					// The welcome was closed without a wallet: a dialog on top of it was dismissed, the settings for example, and that closes every page.
+					// The welcome was closed without a wallet: something on top of it closed every page.
 					// It comes back, as there would be no way to a wallet otherwise. The pages are still being closed at this point, so it waits a moment.
 					await Task.Yield();
 				}
@@ -140,6 +138,12 @@ public partial class MainViewModel : ViewModelBase
 					navigationMode: NavigationMode.Clear);
 			}
 		});
+
+		// The pages of the settings tell when a change takes a restart. Should it happen while none of them shows, a notification tells.
+		UiContext.ApplicationSettings.IsRestartNeeded
+			.Where(isRestartNeeded => isRestartNeeded && DialogScreen.CurrentPage is not ISettingsPage)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(_ => NotificationHelpers.Show(new RestartViewModel(UiContext, "To apply the new setting, Black Hole needs to be restarted")));
 
 		NetworkBadgeName =
 			UiContext.ApplicationSettings.Network == Network.Main
@@ -165,7 +169,8 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>The wallet, once it was created or recovered.</summary>
 	public WalletPageViewModel? WalletPage { get; private set; }
 
-	public SettingsPageViewModel SettingsPage { get; }
+	/// <summary>Shows the settings. This is what the gear in the title bar does.</summary>
+	public ICommand OpenSettingsCommand { get; }
 
 	/// <summary>Shows the data folder in the file manager. This is what the folder button in the title bar does.</summary>
 	public ICommand OpenDataFolderCommand { get; }
@@ -332,6 +337,26 @@ public partial class MainViewModel : ViewModelBase
 			.WhereNotNull()
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(feeRate => FeeRate = $"Fee Rate: {feeRate.SatoshiPerByte:0.##} sat/vB");
+	}
+
+	/// <summary>
+	/// As long as there is no wallet, the welcome is the settings: the gear brings the user back to it from the pages
+	/// that lie on top of it.
+	/// </summary>
+	private async Task OpenSettingsAsync()
+	{
+		if (!UiContext.WalletRepository.HasWallet)
+		{
+			if (DialogScreen.CurrentPage is not SettingsPageViewModel)
+			{
+				// Closing every page ends what the pages wait for, and the welcome is shown anew.
+				DialogScreen.Clear();
+			}
+
+			return;
+		}
+
+		await UiContext.Navigate().To().SettingsPage().GetResultAsync();
 	}
 
 	private async Task OpenDataFolderAsync()

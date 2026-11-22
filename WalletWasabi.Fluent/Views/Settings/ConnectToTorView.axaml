@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:v="using:WalletWasabi.Fluent.Views.Settings"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Settings"
+             xmlns:converters="using:WalletWasabi.Fluent.Converters"
+             xmlns:basemodels="using:WalletWasabi.Models"
+             mc:Ignorable="d" d:DesignWidth="428" d:DesignHeight="371"
+             x:DataType="vm:ConnectToTorViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Settings.ConnectToTorView">
+  <UserControl.Styles>
+    <!-- The button that only asks stands next to the one that connects. -->
+    <Style Selector="ContentArea /template/ ContentPresenter#PART_BottomContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0 0 12 0" />
+    </Style>
+  </UserControl.Styles>
+  <ContentArea Title="{Binding Title}"
+               Caption="See to it that Black Hole is connected to Tor."
+               EnableCancel="{Binding EnableCancel}"
+               EnableBack="{Binding EnableBack}"
+               EnableNext="True" NextContent="{Binding NextLabel}"
+               IsBusy="{Binding IsBusy}">
+    <ContentArea.BottomContent>
+      <Button Content="Verify Connection" Command="{Binding VerifyCommand}" />
+    </ContentArea.BottomContent>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
+      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+
+      <!-- How Tor is used. It is applied when the application starts. -->
+      <StackPanel Spacing="10" IsVisible="{Binding IsTorASetting}" IsEnabled="{Binding !AreSettingsReadOnly}" Margin="0 10 0 0">
+        <Label Content="Tor:" Target="CbTorMode" />
+        <ComboBox Name="CbTorMode"
+                  ItemsSource="{Binding TorModes}" SelectedItem="{Binding Settings.UseTor}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="basemodels:TorMode">
+              <TextBlock Text="{Binding Converter={x:Static converters:EnumConverters.ToFriendlyName}}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <DockPanel IsVisible="{Binding Settings.UseTor, ConverterParameter={x:Static basemodels:TorMode.Enabled}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+          <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding Settings.TerminateTorOnExit}"
+                        OnContent="{x:Null}" OffContent="{x:Null}" Margin="0 0 -12 0" />
+          <TextBlock Text="Terminate Tor when Black Hole shuts down" VerticalAlignment="Center" TextWrapping="Wrap" />
+        </DockPanel>
+        <TextBlock Text="A change of these takes a restart."
+                   TextWrapping="Wrap"
+                   Opacity="0.6" />
+      </StackPanel>
+
+      <!-- What Tor answered the last time. The room for it is always there, so that nothing moves when it appears. -->
+      <v:ConnectionStatus MinHeight="40" Margin="0 10 0 0" />
+
+      <v:RestartNotice />
+    </StackPanel>
+  </ContentArea>
+</UserControl>

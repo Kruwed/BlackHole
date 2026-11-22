@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using WalletWasabi.WabiSabi.Client;
+using WalletWasabi.WabiSabi.Client.CoinJoin.Client;
 using WalletWasabi.WabiSabi.Coordinator.PostRequests;
 using WalletWasabi.WabiSabi.Models;
 using Xunit;
@@ -130,6 +131,34 @@ public class CoordinatorConnectionCheckTests
 
 		Assert.Equal("The coordinator did not answer in time.", CoordinatorConnectionCheck.DescribeFailure(new TimeoutException()));
 		Assert.Equal("The coordinator did not answer in time.", CoordinatorConnectionCheck.DescribeFailure(new AggregateException(new OperationCanceledException())));
+	}
+
+	/// <summary>
+	/// Connecting to a coordinator that answers gives the application its first coordinator, or another one. The
+	/// coordinator is not changed while a coinjoin is under way: its round is with the one that the application has.
+	/// </summary>
+	[Fact]
+	public void CoordinatorIsNotChangedWhileACoinjoinIsUnderWay()
+	{
+		var one = new Uri("https://one.example/");
+		var two = new Uri("https://two.example/");
+
+		// The first coordinator of the application: nothing coinjoins yet.
+		Assert.Equal(CoordinatorChange.Start, CoordinatorConnectionCheck.DecideChange(current: null, one, CoinJoinClientState.Idle));
+
+		// Another one takes its place ...
+		Assert.Equal(CoordinatorChange.Switch, CoordinatorConnectionCheck.DecideChange(one, two, CoinJoinClientState.Idle));
+
+		// ... unless a coinjoin is under way, whether it waits for a round or is in the middle of one.
+		Assert.Equal(CoordinatorChange.Refuse, CoordinatorConnectionCheck.DecideChange(one, two, CoinJoinClientState.InProgress));
+		Assert.Equal(CoordinatorChange.Refuse, CoordinatorConnectionCheck.DecideChange(one, two, CoinJoinClientState.InCriticalPhase));
+
+		// Connecting to the coordinator that the application has changes nothing, whatever its coinjoins do.
+		foreach (var state in Enum.GetValues<CoinJoinClientState>())
+		{
+			Assert.Equal(CoordinatorChange.Keep, CoordinatorConnectionCheck.DecideChange(one, one, state));
+			Assert.Equal(CoordinatorChange.Keep, CoordinatorConnectionCheck.DecideChange(one, new Uri("https://ONE.example"), state));
+		}
 	}
 
 	private sealed class FakeCoordinator(Func<CancellationToken, Task<RoundStateResponse>> answer) : IWabiSabiApiRequestHandler

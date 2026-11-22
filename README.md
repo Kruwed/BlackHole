@@ -15,33 +15,45 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 - **Fidelity bonds**: coins that are locked until a block height that you name. See [Fidelity bonds](#fidelity-bonds).
 - **Offers as a market maker**: up to two coins and your prices for anonymity points, posted to Nostr relays over Tor. See [Maker offers](#maker-offers).
 
-## The first start
+## The settings
 
-As long as there is no wallet, Black Hole shows the welcome. It has five columns, and every column has two buttons: the upper one connects to something that exists, or recovers the wallet, and the lower one is for running, or creating, your own.
+The gear in the top right corner of the window opens the settings. They have five columns, and every column has two boxes: the upper one connects to something that exists, or recovers the wallet, and the lower one is for running, or creating, your own.
 
 | *Tor* | *Node* | *Nostr* | *Coordinator* | *Wallet* |
 | --- | --- | --- | --- | --- |
 | Connect to Tor | Connect to Node | Connect to Nostr | Connect to Coordinator | Recover a Wallet |
 | Run a Tor Relay | Run a Bitcoin Node | Run a Nostr Relay | Run a Coinjoin Coordinator | Create a Wallet |
 
-The columns are set up from left to right. The buttons of a column can be pressed once the column before it is done; a column that is done has a check mark next to its name, and it can be opened again. The wallet comes last. The four *Run a …* buttons hold their place and do nothing yet, so for now a column is done by connecting:
+The four *Run a …* boxes hold their place and do nothing yet. Each *Connect to …* box opens a page with two buttons:
 
-- **Connect to Tor** waits for Tor and is done once Tor has connected to the Tor network. Black Hole starts its Tor when it starts, so this usually takes a few seconds. If Tor is turned off in the settings, the page says so and that is all there is to it; the same goes for regtest, where Tor is not used. How Tor is used is chosen in *Settings → Tor* and takes a restart.
-- **Connect to Node** asks for the RPC endpoint and the RPC credentials of your node, see [Connect it to your node](#connect-it-to-your-node), and is done once the node answers and is on the right network.
-- **Connect to Nostr** asks for the relays, one address on a line. It opens a connection to each of them and closes it again; nothing is sent to a relay. It is done once one of them answers, and Black Hole posts to all the relays that you named, also to those that did not answer this time.
-- **Connect to Coordinator** asks for the address of the coordinator of your coinjoins and asks it for its rounds. It is done once the coordinator answers.
-- **Recover a Wallet** and **Create a Wallet** make the wallet, which ends the welcome.
+- **Verify Connection** asks what the page names whether it answers, and tells the answer. It changes nothing.
+- **Connect** does the same and, if it answers, makes Black Hole work with it from then on, without a restart, and saves it as the setting. Something that does not answer is not taken: the page tells why, and Black Hole keeps what it had.
 
-What a page connects to is used from then on, without a restart, and saved as the setting. Something that does not answer is not taken: the page tells why, and the column is not done. So there is no wallet before Tor is connected, your node answers, a relay answers and a coordinator answers. A node, relays or a coordinator that were given on the command line are shown and asked, and cannot be changed on the page.
+What the pages are about:
 
-The welcome does not keep how far you were. When Black Hole is started again without a wallet, it begins with Tor, and every page shows what was saved. The gear in the top right corner opens the settings during the welcome too.
+- **Connect to Tor** asks for nothing. Black Hole starts its Tor when it starts; *Verify Connection* tells whether that Tor has connected to the Tor network, and *Connect* waits until it has. The page also has how Tor is used (*Enabled*; *Connect Only*, which uses a Tor that runs on the computer already; *Disabled*) and whether Tor is stopped when Black Hole closes. These two take a restart. With Tor turned off, and on regtest, where Tor is not used, there is nothing to connect to, and the two buttons cannot be pressed.
+- **Connect to Node** asks for the RPC endpoint and the RPC credentials of your node, see [Connect it to your node](#connect-it-to-your-node). The node has to answer and to be on the right network. The page also has the network, which takes a restart.
+- **Connect to Nostr** asks for the relays, one address on a line. A connection is opened to each of them and closed again; nothing is sent to a relay. Nostr answers if one relay does, and after *Connect* Black Hole posts to all the relays that you named, also to those that did not answer this time.
+- **Connect to Coordinator** asks for the address of the coordinator of your coinjoins, and asks the coordinator for its rounds. While a coinjoin is under way the coordinator is not changed: stop the coinjoin first. The page also has the highest mining fee rate and the lowest number of inputs that you accept of a round, which take a restart, and the dust forfeit limit of the wallet, see [Coinjoin](#coinjoin).
+
+A node, relays or a coordinator that were given on the command line are shown and asked, and cannot be changed on the page. When a setting was changed that takes a restart, the settings say so and offer the restart.
+
+**The marks.** A *Connect to …* box has an orange check mark if you have connected Black Hole to it and it works at the moment, and an orange X if you have and it does not. A box without a mark is one that you have not connected to, or a Tor that is not used. Whether the connections work is found out while the settings are in sight, and not otherwise: Tor and the node are looked at every few seconds, and the relays and the coordinator are asked when the settings open and then once a minute, the way *Verify Connection* asks them. Right after the start, while Tor is still connecting, nothing is told yet about Tor and about what is reached through it.
+
+**The wallet.** There is one wallet at most, so it is either recovered or created. Once it is there, the box that made it is *Configure Wallet*, with a check mark: the lower one if the wallet was created, the upper one if it was recovered. The other box stays what it was and can no longer be pressed. *Configure Wallet* has *Resync Wallet* and *Wallet Keys*, the extended public keys of the wallet. The wallet file tells whether the wallet was recovered; a file from before it did counts as created.
+
+### The first start
+
+As long as there is no wallet, the settings are the welcome. They cannot be put away, and the columns are set up from left to right: the boxes of a column can be pressed once the columns before it are done, and the column whose turn it is stands out. A column is done once you have connected on its page, which takes that Tor has connected to the Tor network, that the node answered, that a relay answered, that the coordinator answered. A Tor that is not used is done as it is. The wallet comes last, so there is no wallet before the four were connected.
+
+Black Hole keeps note of what you have connected to (`ConfiguredConnections` in the config file), so a start without a wallet goes on where you were. A column stays done if what you connected to stops working: its box has the X then, and its page is where to connect again. A data folder that has a wallet needs no note: there, what the settings name counts as connected.
 
 ## The window
 
 The title bar lists the pages of the wallet as tabs, once the wallet is decrypted:
 
 - **History**: the transactions of the wallet. The wallet opens with it.
-- **Coins**: the coins of the wallet. Tick coins in the list and press *Coinjoin*: everything that is done with the ticked coins starts in the dialog that it opens, and so does receiving. The dialog has a tab for every protocol, like the settings have theirs, and it shows the main screen of the tab that is open:
+- **Coins**: the coins of the wallet. Tick coins in the list and press *Coinjoin*: everything that is done with the ticked coins starts in the dialog that it opens, and so does receiving. The dialog has a tab for every protocol, and it shows the main screen of the tab that is open:
   - *Payjoin*, which the dialog opens with. Payjoin itself holds its place and does nothing yet; its main screen has the ordinary payment and *Receive*. A payment takes the address, the amount and the fee rate, and *Send* shows the transaction; nothing is sent before you confirm it there. The fee rate starts as what your node estimates for a confirmation within two blocks, and you can type another one. What you typed is still there when you open the dialog again, until the payment is sent. *Receive* opens the addresses that were generated and have not been paid to yet, with *New Address* for another one; a right click on an address copies it.
   - *WabiSabi*: *Play* starts one round with the ticked coins, see [Coinjoin](#coinjoin). Its main screen has the payments that wait for a round to make them, and *Add Payment* queues one.
   - *ZeroLink*: *Play* starts one round with one ticked coin of a standard amount, see [ZeroLink rounds](#zerolink-rounds).
@@ -53,7 +65,7 @@ The title bar lists the pages of the wallet as tabs, once the wallet is decrypte
   No coin is ticked until you tick it, and the ticks are not kept: after a start of Black Hole none is ticked. A payment or a bond that was sent unticks what was ticked for it. While the wallet still processes the blocks of your node, *Receive* is all that works in the dialog.
 - **Order Book**: the market makers of JoinMarket-style coinjoins with what they offer. It shows the offer of this wallet while it has one, and nobody else's: the wallet does not look for makers yet.
 
-To the right of the tabs the title bar tells the fee rate, how many blocks the wallet has processed and the balance. In a window that is too narrow for all of it these give way, the fee rate first and the balance last, so that the tabs and the buttons stay. The gear at the right end opens the settings, which have the tabs *Tor*, *Node*, *Nostr*, *Coordinator* and *Wallet*. *Wallet Keys*, the extended public keys of the wallet, is in *Settings → Wallet*.
+To the right of the tabs the title bar tells the fee rate, how many blocks the wallet has processed and the balance. In a window that is too narrow for all of it these give way, the fee rate first and the balance last, so that the tabs and the buttons stay. The gear at the right end opens [the settings](#the-settings).
 
 ## What was removed from Wasabi Wallet
 
@@ -82,13 +94,13 @@ A Bitcoin Core on the same computer that uses its default data folder and its de
 - **the RPC endpoint**: the address of the RPC interface of the node. The defaults are the ones of Bitcoin Core, `http://localhost:8332` on mainnet.
 - **the RPC credentials**: `rpcuser:rpcpassword`, or `cookiefile=` followed by the path of the cookie file of the node. Left empty, the cookie file in the default data folder of Bitcoin Core (`~/.bitcoin`) is used.
 
-Before there is a wallet, *Connect to Node* of the welcome asks for the two, see [The first start](#the-first-start). It checks them with the node and, if the node answers and is on the right network, works with it right away. They are in *Settings → Node* too, where a change takes effect after a restart. The gear in the top right corner of the window opens the settings, also before there is a wallet.
+*Connect to Node* of [the settings](#the-settings) asks for the two. *Verify Connection* there checks them with the node. *Connect* does too and, if the node answers and is on the right network, works with it right away.
 
 The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `Config.json`.
 
 Recovering a wallet scans every block since the activation of Taproot unless you tell the height the wallet was created at (*Advanced Recovery Options*). On mainnet the full scan takes hours.
 
-A wallet watches 210 unused addresses after the last one that was paid to (its gap limit). A recovered wallet does not find a payment whose address follows more unused addresses than that until the gap limit is raised, in *Advanced Recovery Options* or later with *Resync Wallet* in *Settings → Wallet*. Addresses stay unused when they were generated with *New Address* and never paid to. Coinjoin rounds that fail leave change addresses unused too, but they do not take the wallet beyond its gap limit, see [Coinjoin](#coinjoin).
+A wallet watches 210 unused addresses after the last one that was paid to (its gap limit). A recovered wallet does not find a payment whose address follows more unused addresses than that until the gap limit is raised, in *Advanced Recovery Options* or later with *Resync Wallet*, which is behind *Configure Wallet* in the settings. Addresses stay unused when they were generated with *New Address* and never paid to. Coinjoin rounds that fail leave change addresses unused too, but they do not take the wallet beyond its gap limit, see [Coinjoin](#coinjoin).
 
 ## Private broadcast
 
@@ -111,7 +123,7 @@ Started with `--loglevel=debug`, Black Hole writes into `Logs.txt` what the wall
 
 ## Coinjoin
 
-*Connect to Coordinator* of the welcome sets the coordinator before there is a wallet, see [The first start](#the-first-start). Later it is in *Settings → Coordinator*, where a change takes effect after a restart. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
+*Connect to Coordinator* of [the settings](#the-settings) sets the coordinator, without a restart. The coordinator of this repository (`WalletWasabi.Coordinator`) speaks the same protocol as the wallet. The coordinators of Wasabi Wallet expect the "ready to sign" message that Black Hole does not send, so do not count on them.
 
 Coinjoins are started by hand. Tick coins on the *Coins* tab, press *Coinjoin* and open the *WabiSabi* tab: *Play* starts one round with the ticked coins, and when the round is over the coinjoin is stopped; the box tells how the round ended. The round gets the coins that are ticked at the moment you press *Play*, wherever they come from and however often they have been in a coinjoin, but ten at most: if more are ticked, the ten largest go into the round and the others stay ticked for a later one. A ticked coin also stays out if it cannot be registered at that time, for example because it is unconfirmed or banned by the coordinator, or if the round does not take its amount. While the round is under way its coins carry the coinjoin sign in the list, and the ticks are free for something else: what you tick or untick then does not change the round. The coins that a coinjoin gives you are new coins and unticked: tick them to submit them into another round. With no coin ticked, *Play* tells that no coin is ticked and nothing else happens. Nor does the wallet call a coin private, semi-private or non-private, and the preview of a transaction does not judge what the transaction gives away: which coins it spends together, how many payments it makes, how much of the balance it takes and whether it has change is yours to decide. The preview only has a sign, with what it means, when the transaction spends coins that are unconfirmed or in a coinjoin round, because of what that may do to the transaction.
 
@@ -123,7 +135,7 @@ The lists show every coin with its *anonymity points*. An output of a transactio
 
 Matched outputs are also what the wallet takes as unlinked. A coin that one of your transactions makes counts as linked to the coins that the transaction spent, unless it is a matched output of that transaction; change, whose amount occurs once, stays linked. When the wallet picks the coins of a payment out of the ticked ones, it takes confirmed coins before unconfirmed ones, then as few unlinked coins as the amount needs, then the coins closest to the amount. The preview of a payment does not warn about the coins that it spends together: they are among the ones that you ticked. The points of a coin do not make the wallet prefer it or hold it back.
 
-A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Dust forfeit limit* in *Settings → Coordinator* limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. The limit is 0.00005 BTC unless you change it, and it cannot be set above 0.0001 BTC. Because of this limit the wallet also joins rounds whose smallest output is large ("whale rounds"), which Wasabi Wallet refuses from 0.0001 BTC on: what such a round cannot put into an output is kept the same way. If a round cannot keep the limit at all, the wallet gives up that round instead of signing it.
+A coinjoin splits your coins into standard amounts. What is left and is too small for an output of its own goes to the miners. *Dust forfeit limit* on the *Connect to Coordinator* page of the settings limits that: if a coinjoin would leave more than the limit, the leftover is added to one of your outputs instead. You keep the money, but that output has a non-standard amount and gains less privacy than the others. The limit is 0.00005 BTC unless you change it, and it cannot be set above 0.0001 BTC. Because of this limit the wallet also joins rounds whose smallest output is large ("whale rounds"), which Wasabi Wallet refuses from 0.0001 BTC on: what such a round cannot put into an output is kept the same way. If a round cannot keep the limit at all, the wallet gives up that round instead of signing it.
 
 ## ZeroLink rounds
 
@@ -162,7 +174,7 @@ What the two prices are for: a coinjoin destroys the anonymity points of the coi
 
 Black Hole does nothing with an offer yet except post it: it does not look for the offers of others, and it does not answer a taker. No coinjoin of this kind exists so far: the *Taker* tab, next to *Maker*, holds its place and does nothing.
 
-- **Where it goes.** *Post* sends the offer to the Nostr relays of *Settings → Nostr*. You name them there, one address on a line, and a change takes effect after a restart. Before there is a wallet, *Connect to Nostr* of the welcome asks for them, see [The first start](#the-first-start). A new installation has `wss://relay.primal.net`, `wss://relay.damus.io` and `wss://nos.lol`; with no relay in the list no offer can be posted. Like the other settings they can be given at the start instead, with `--nostrrelays=wss://one.example;wss://two.example`. The relays are reached through Tor, unless Tor is turned off. Nothing is sent to a relay before you post an offer. This and the coordinator of your WabiSabi coinjoins are the only servers that Black Hole talks to besides your node.
+- **Where it goes.** *Post* sends the offer to the Nostr relays that you connected to with *Connect to Nostr* of [the settings](#the-settings). You name them there, one address on a line. A new installation has `wss://relay.primal.net`, `wss://relay.damus.io` and `wss://nos.lol`; with no relay in the list no offer can be posted. Like the other settings they can be given at the start instead, with `--nostrrelays=wss://one.example;wss://two.example`. The relays are reached through Tor, unless Tor is turned off. Nothing is sent to a relay before you post an offer. This and the coordinator of your WabiSabi coinjoins are the only servers that Black Hole talks to besides your node.
 - **What it tells.** The offer is an event of the kind for the discovery of coinjoins (15750, a [draft](https://github.com/nostr-protocol/nips/pull/384)) with the tags `type` = `BlackHoleJoinMarket` and `network` = `mainnet`, `signet` or `regtest`. Its content is JSON, for example `{"minFeeRate":2.5,"bid":100,"ask":150,"liquidity":50000000}`: the fee rate, the two prices, and what the ticked coins hold together, in sats. The third tag of that kind, `endpoint`, is left out: there is no place yet where a taker reaches a maker.
 - **What it does not tell.** Which coins they are, and what each of them holds. Whoever reads the relays can still search the chain for coins of that amount, most easily when the offer has one coin. Every offer is signed with a new key, so two offers cannot be told to come from the same wallet by their keys.
 - **How long it stands.** Until you take it back with *Withdraw offer*, until its coins are spent, or until you close Black Hole. Readers of that kind of event take one that is older than 15 minutes for gone, so a standing offer is posted again every 10 minutes. The kind is replaceable, which means that a relay keeps only the newest event of a key: an offer is changed by posting it again, and taken back by an event that tells nothing. An offer is not stored. After a restart there is none until you post one.

@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="using:WalletWasabi.Fluent.ViewModels.Settings"
+             x:DataType="settings:ISettingsPage"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Settings.RestartNotice"
+             IsVisible="{Binding Settings.IsRestartNeeded^}">
+  <!-- What a page of the settings tells once a setting was changed that the application applies when it starts.
+       Where the page is narrow, the link goes below the words. -->
+  <InfoMessage Foreground="{DynamicResource WarningMessageForeground}" HorizontalAlignment="Center">
+    <WrapPanel>
+      <TextBlock Text="Changes will be applied after restarting the application." Margin="0 0 5 0" />
+      <Button Content="Restart Black Hole" Classes="activeHyperLink plain" Command="{Binding RestartCommand}" />
+    </WrapPanel>
+  </InfoMessage>
+</UserControl>

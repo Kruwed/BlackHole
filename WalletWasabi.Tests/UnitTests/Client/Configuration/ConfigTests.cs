@@ -170,7 +170,7 @@ public class ConfigTests
 	}
 
 	/// <summary>
-	/// The same goes for the relays and the coordinator, which the welcome connects to like to the node: what was given
+	/// The same goes for the relays and the coordinator, which the settings connect to like to the node: what was given
 	/// at the start cannot be changed there, and what was not given can, whatever else was given.
 	/// </summary>
 	[Fact]

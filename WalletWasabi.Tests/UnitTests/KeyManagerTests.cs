@@ -198,6 +198,41 @@ public class KeyManagerTests
 		Assert.Equal(419, manager.GetKeys(isInternal: false).Last().Index);
 	}
 
+	/// <summary>
+	/// The wallet file tells whether the wallet was recovered from its backup or created. A file from before it did
+	/// is the file of a wallet that was created.
+	/// </summary>
+	[Fact]
+	public void WalletFileTellsWhetherTheWalletWasRecovered()
+	{
+		var createdFilePath = "wallet-that-was-created.json";
+		var recoveredFilePath = "wallet-that-was-recovered.json";
+		DeleteFileAndDirectoryIfExists(createdFilePath);
+		DeleteFileAndDirectoryIfExists(recoveredFilePath);
+
+		var created = KeyManager.CreateNew(out Share[] shares, "", Network.Main, createdFilePath);
+		created.ToFile();
+		var recovered = KeyManager.Recover(shares, "", Network.Main, recoveredFilePath);
+
+		Assert.False(created.IsRecovered);
+		Assert.True(recovered.IsRecovered);
+
+		// It is the same wallet either way, and the file keeps how it came about.
+		Assert.Equal(created.TaprootExtPubKey, recovered.TaprootExtPubKey);
+		Assert.False(KeyManager.FromFile(createdFilePath).IsRecovered);
+		Assert.True(KeyManager.FromFile(recoveredFilePath).IsRecovered);
+
+		// A file that does not say.
+		var json = JsonNode.Parse(File.ReadAllText(recoveredFilePath))!.AsObject();
+		Assert.True(json.Remove("IsRecovered"));
+		File.WriteAllText(recoveredFilePath, json.ToJsonString());
+
+		Assert.False(KeyManager.FromFile(recoveredFilePath).IsRecovered);
+
+		DeleteFileAndDirectoryIfExists(createdFilePath);
+		DeleteFileAndDirectoryIfExists(recoveredFilePath);
+	}
+
 	[Fact]
 	public void WalletFilesWithANarrowerGapLimitAreWidened()
 	{

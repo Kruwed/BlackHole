@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace WalletWasabi.Fluent.Views.AddWallet;
+namespace WalletWasabi.Fluent.Views.Settings;
 
-public class ConnectToNostrView : UserControl
+public class RestartNotice : UserControl
 {
-	public ConnectToNostrView()
+	public RestartNotice()
 	{
 		InitializeComponent();
 	}

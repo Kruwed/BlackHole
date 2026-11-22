@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace WalletWasabi.Fluent.Views.Settings;
 
-public class CoordinatorTabSettingsView : UserControl
+public class ConfigureWalletView : UserControl
 {
-	public CoordinatorTabSettingsView()
+	public ConfigureWalletView()
 	{
 		InitializeComponent();
 	}

@@ -1,145 +1,217 @@
+using System.Collections.Generic;
 using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using WalletWasabi.Fluent.Helpers;
-using WalletWasabi.Fluent.Infrastructure;
+using WalletWasabi.Fluent.Models;
+using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
+using WalletWasabi.Fluent.ViewModels.Navigation;
+using WalletWasabi.Helpers;
+using Unit = System.Reactive.Unit;
 
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
-[AppLifetime]
-[NavigationMetaData(Title = "Settings", NavigationTarget = NavigationTarget.DialogScreen)]
-public partial class SettingsPageViewModel : DialogViewModelBase<Unit>
+/// <summary>
+/// The settings of the application, which are also its welcome. They have five columns: Tor, Node, Nostr, Coordinator
+/// and Wallet, each with two boxes. The upper one connects to something that exists, or recovers the wallet; the
+/// lower one is for running, or creating, one's own.
+/// </summary>
+/// <remarks>
+/// <para>
+/// As long as there is no wallet this is the welcome: it cannot be closed, and the user sets the columns up from left
+/// to right, see <see cref="SettingsOrder"/>. Once there is a wallet it is what the gear of the title bar opens, every
+/// box can be used, and the Wallet column configures the wallet.
+/// </para>
+/// <para>
+/// The "Connect to" box of a connection that the user has configured tells whether it works at the moment: it has a
+/// check mark if it does and an X if it does not, see <see cref="ConnectionsModel"/>. Running a Tor relay, a Bitcoin
+/// node, a Nostr relay or a coordinator holds its place and does nothing yet, so these four boxes cannot be used.
+/// </para>
+/// </remarks>
+public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISettingsPage
 {
-	private const string ResyncWalletHint = "If your wallet is missing some confirmed transaction, try to resync.";
-	private const string ResyncLockedWalletHint = "Decrypt the wallet to resync it.";
-	private const string WalletKeysHint = "The extended public keys of the wallet and the paths that its keys are derived by. The password is asked for first.";
-	private const string LockedWalletKeysHint = "Decrypt the wallet to see its keys.";
+	public const string SettingsTitle = "Settings";
+	public const string SettingsCaption = "Tor, your node, Nostr, the coordinator and the wallet";
+	public const string WelcomeCaption = "Set up Tor, your node, Nostr and the coordinator, one after the other, and then the wallet.";
 
-	[AutoNotify] private bool _isModified;
-	[AutoNotify] private int _selectedTab;
+	public static readonly string WelcomeTitle = $"Welcome to {Constants.AppName}";
+
+	private string _title = SettingsTitle;
+
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _caption = SettingsCaption;
+
+	/// <summary>Whether this is the welcome: there is no wallet yet.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWelcome;
+
+	/// <summary>Whether a wallet can be recovered or created: there is none, and the four connections are done.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _canAddWallet;
+
+	/// <summary>Whether the wallet exists. Its box has a check mark then.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasWallet;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _resyncWalletToolTip = ResyncLockedWalletHint;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _walletKeysToolTip = LockedWalletKeysHint;
+
+	/// <summary>Whether the upper box of the Wallet column configures the wallet: the wallet was recovered.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConfigureTileUpper;
+
+	/// <summary>Whether the lower box of the Wallet column configures the wallet: the wallet was created.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConfigureTileLower;
 
 	public SettingsPageViewModel(UiContext uiContext) : base(uiContext)
 	{
-		_selectedTab = 0;
+		Settings = uiContext.ApplicationSettings;
 
-		SetupCancel(enableCancel: false, enableCancelOnEscape: true, enableCancelOnPressed: true);
+		Tor = new ConnectionColumnViewModel(Connection.Tor);
+		Node = new ConnectionColumnViewModel(Connection.Node);
+		Nostr = new ConnectionColumnViewModel(Connection.Nostr);
+		Coordinator = new ConnectionColumnViewModel(Connection.Coordinator);
+		Columns = [Tor, Node, Nostr, Coordinator];
 
-		TorSettingsTab = new TorSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
-		NodeSettingsTab = new NodeSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
-		NostrSettingsTab = new NostrSettingsTabViewModel(UiContext, UiContext.ApplicationSettings);
-		CoordinatorTabSettings = new CoordinatorTabSettingsViewModel(UiContext, UiContext.ApplicationSettings);
+		Update();
+
+		ConnectToTorCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToTor(), Tor.WhenAnyValue(x => x.IsOpen));
+		ConnectToNodeCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToNode(), Node.WhenAnyValue(x => x.IsOpen));
+		ConnectToNostrCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToNostr(), Nostr.WhenAnyValue(x => x.IsOpen));
+		ConnectToCoordinatorCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToCoordinator(), Coordinator.WhenAnyValue(x => x.IsOpen));
+
+		var canAddWallet = this.WhenAnyValue(x => x.CanAddWallet);
+
+		RecoverWalletCommand = ReactiveCommand.Create(OnRecoverWallet, canAddWallet);
+		CreateWalletCommand = ReactiveCommand.Create(OnCreateWallet, canAddWallet);
+		ConfigureWalletCommand = ReactiveCommand.Create(OnConfigureWallet, this.WhenAnyValue(x => x.HasWallet));
 
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 		NextCommand = ReactiveCommand.Create(() => Close());
-		OpenCommand = ReactiveCommand.CreateFromTask(Activate);
-
-		// The wallet appears when it is created or recovered. It can be resynchronized once it is decrypted.
-		var wallet = UiContext.WalletRepository.WhenAnyValue(x => x.Wallet);
-
-		var isWalletDecrypted = wallet
-			.Select(x => x?.WhenAnyValue(w => w.IsLoggedIn) ?? Observable.Return(false))
-			.Switch()
-			.ObserveOn(RxApp.MainThreadScheduler);
-
-		wallet
-			.Select(x => x is not null)
-			.ObserveOn(RxApp.MainThreadScheduler)
-			.BindTo(this, x => x.HasWallet);
-
-		isWalletDecrypted
-			.Select(isDecrypted => isDecrypted ? ResyncWalletHint : ResyncLockedWalletHint)
-			.BindTo(this, x => x.ResyncWalletToolTip);
-
-		ResyncWalletCommand = ReactiveCommand.CreateFromTask(ResyncWalletAsync, isWalletDecrypted);
-
-		isWalletDecrypted
-			.Select(isDecrypted => isDecrypted ? WalletKeysHint : LockedWalletKeysHint)
-			.BindTo(this, x => x.WalletKeysToolTip);
-
-		WalletKeysCommand = ReactiveCommand.CreateFromTask(ShowWalletKeysAsync, isWalletDecrypted);
-
-		// Show restart message when needed
-		UiContext.ApplicationSettings.IsRestartNeeded
-									 .BindTo(this, x => x.IsModified);
-
-		// Show restart notification when needed only if this page is not active.
-		UiContext.ApplicationSettings.IsRestartNeeded
-				 .Where(x => x && !IsActive)
-				 .Do(_ => NotificationHelpers.Show(new RestartViewModel(UiContext, "To apply the new setting, Black Hole needs to be restarted")))
-				 .Subscribe();
 	}
 
-	public bool IsReadOnly => UiContext.ApplicationSettings.IsOverridden;
+	public override string Title
+	{
+		get => _title;
+		protected set => this.RaiseAndSetIfChanged(ref _title, value);
+	}
+
+	public ApplicationSettings Settings { get; }
+
+	/// <summary>Whether settings cannot be changed, because something was given on the command line or in the environment when the application was started.</summary>
+	public bool IsReadOnly => Settings.IsOverridden;
+
+	public ConnectionColumnViewModel Tor { get; }
+
+	public ConnectionColumnViewModel Node { get; }
+
+	public ConnectionColumnViewModel Nostr { get; }
+
+	public ConnectionColumnViewModel Coordinator { get; }
+
+	/// <summary>The columns of the connections from left to right, which is the order in which they are set up. The Wallet column follows them.</summary>
+	public IReadOnlyList<ConnectionColumnViewModel> Columns { get; }
+
+	public ICommand ConnectToTorCommand { get; }
+
+	public ICommand ConnectToNodeCommand { get; }
+
+	public ICommand ConnectToNostrCommand { get; }
+
+	public ICommand ConnectToCoordinatorCommand { get; }
+
+	public ICommand RecoverWalletCommand { get; }
+
+	public ICommand CreateWalletCommand { get; }
+
+	public ICommand ConfigureWalletCommand { get; }
 
 	public ICommand RestartCommand { get; }
 
-	/// <summary>Opens the settings. This is what the button in the title bar does.</summary>
-	public ICommand OpenCommand { get; }
-
-	/// <summary>Asks from where to resynchronize the wallet and restarts the application to do it.</summary>
-	public ICommand ResyncWalletCommand { get; }
-
-	/// <summary>Shows the keys of the wallet, after its password was given.</summary>
-	public ICommand WalletKeysCommand { get; }
-
-	public TorSettingsTabViewModel TorSettingsTab { get; }
-
-	public NodeSettingsTabViewModel NodeSettingsTab { get; }
-
-	public NostrSettingsTabViewModel NostrSettingsTab { get; }
-
-	public CoordinatorTabSettingsViewModel CoordinatorTabSettings { get; }
-
-	public async Task Activate()
+	/// <summary>Brings the screen up to date with the connections and the wallet.</summary>
+	private void Update()
 	{
-		await NavigateDialogAsync(this);
+		var connections = UiContext.Connections;
+		var wallet = UiContext.WalletRepository.Wallet;
+		var hasWallet = wallet is not null;
+		var current = hasWallet ? null : SettingsOrder.GetCurrent(connections.IsDone);
+
+		foreach (var column in Columns)
+		{
+			column.Update(
+				connections.GetState(column.Connection),
+				isOpen: SettingsOrder.IsOpen(column.Connection, hasWallet, connections.IsDone),
+				isCurrent: current == column.Connection);
+		}
+
+		var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet, isRecovered: wallet?.IsRecovered ?? false);
+
+		IsConfigureTileUpper = upper == WalletTile.Configure;
+		IsConfigureTileLower = lower == WalletTile.Configure;
+		HasWallet = hasWallet;
+		CanAddWallet = SettingsOrder.CanAddWallet(hasWallet, connections.IsDone);
+
+		IsWelcome = !hasWallet;
+		Title = IsWelcome ? WelcomeTitle : SettingsTitle;
+		Caption = IsWelcome ? WelcomeCaption : SettingsCaption;
+
+		// The welcome stays until there is a wallet. The settings are put away like any dialog.
+		SetupCancel(enableCancel: false, enableCancelOnEscape: !IsWelcome, enableCancelOnPressed: !IsWelcome);
 	}
 
-	private async Task ShowWalletKeysAsync()
+	private void OnCreateWallet()
 	{
-		if (UiContext.WalletRepository.Wallet is not { } wallet)
+		if (CanAddWalletNow())
 		{
-			return;
+			Navigate().To().MultiShareOptions(new WalletCreationOptions.AddNewWallet().WithNewBackup());
 		}
-
-		if (wallet.Auth.HasPassword && !await UiContext.Navigate().To().PasswordAuthDialog(wallet).GetResultAsync())
-		{
-			return;
-		}
-
-		UiContext.Navigate().To().WalletInfo(wallet);
 	}
 
-	private async Task ResyncWalletAsync()
+	private void OnRecoverWallet()
 	{
-		if (UiContext.WalletRepository.Wallet is not { } wallet)
+		if (CanAddWalletNow())
 		{
-			return;
+			Navigate().To().RecoverMultiShareWallet(new WalletCreationOptions.RecoverWallet());
 		}
+	}
 
-		if (!wallet.IsHeightKnown)
+	private void OnConfigureWallet()
+	{
+		if (UiContext.WalletRepository.Wallet is { } wallet)
 		{
-			// The dialog would offer to start with the first block of the chain, which makes a wallet without a history read all of it.
-			await ShowErrorAsync(
-				"Resync Wallet",
-				"The wallet is new and has not reached your node yet. Its history starts with the block that the node is at when it does.",
-				"There is nothing to resync yet.",
-				NavigationTarget.CompactDialogScreen);
-			return;
+			Navigate().To().ConfigureWallet(wallet);
 		}
+	}
 
-		var result = await UiContext.Navigate().To().ResyncWallet(wallet.Settings.BirthHeight, wallet.Settings.MinGapLimit).GetResultAsync();
-
-		if (result is not null)
+	/// <summary>
+	/// Tells the user right away when a wallet cannot be added, e.g. because a wallet file that cannot be opened is in the way.
+	/// </summary>
+	private bool CanAddWalletNow()
+	{
+		try
 		{
-			wallet.Resync(result.StartingHeight, result.MinGapLimit);
-			UiContext.Navigate(MetaData.NavigationTarget).Clear();
-			AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true);
+			UiContext.Services.WalletManager.AssertWalletCanBeAdded();
+			return true;
 		}
+		catch (InvalidOperationException ex)
+		{
+			Navigate().To().ShowErrorDialog(ex.Message, "Add Wallet", "A wallet cannot be added.", NavigationTarget.CompactDialogScreen);
+			return false;
+		}
+	}
+
+	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
+	{
+		base.OnNavigatedTo(isInHistory, disposables);
+
+		var connections = UiContext.Connections;
+
+		// The pages of the connections report to the model, and the wallet appears when it is created or recovered.
+		// Both are looked at while this screen shows, also when it comes back from one of its pages.
+		connections.WhenAnyValue(x => x.Tor, x => x.Node, x => x.Nostr, x => x.Coordinator, (_, _, _, _) => Unit.Default)
+			.Merge(UiContext.WalletRepository.WhenAnyValue(x => x.Wallet).Select(_ => Unit.Default))
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(_ => Update())
+			.DisposeWith(disposables);
+
+		Update();
+
+		// The boxes tell whether the connections work at the moment, so that is found out while they are in sight.
+		disposables.Add(connections.Watch());
 	}
 }

@@ -71,6 +71,7 @@ public class PersistentConfigManagerTests
 			    "wss://relay.damus.io",
 			    "wss://nos.lol"
 			  ],
+			  "ConfiguredConnections": [],
 			  "ConfigVersion": 4
 			}
 			""";
@@ -161,6 +162,38 @@ public class PersistentConfigManagerTests
 		PersistentConfigManager.ToFile(configPath, config with { NostrRelays = [] });
 		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
 		Assert.Empty(config.NostrRelays);
+	}
+
+	/// <summary>
+	/// The config file keeps note of what the user has connected the application to: Tor, the node, Nostr and the
+	/// coordinator. A new installation has connected to nothing, and so has a file from before the note was taken.
+	/// </summary>
+	[Fact]
+	public async Task ConfiguredConnectionsAreKeptInTheConfigFileAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		Assert.Empty(PersistentConfigManager.DefaultMainNetConfig.ConfiguredConnections);
+		Assert.Empty(PersistentConfigManager.DefaultSignetConfig.ConfiguredConnections);
+		Assert.Empty(PersistentConfigManager.DefaultRegTestConfig.ConfiguredConnections);
+
+		// A file without the note: the one that the application writes, less the note.
+		var json = System.Text.Json.Nodes.JsonNode.Parse(PersistentConfigManager.ToFile(configPath, PersistentConfigManager.DefaultMainNetConfig))!.AsObject();
+		Assert.True(json.Remove("ConfiguredConnections"));
+		File.WriteAllText(configPath, json.ToJsonString());
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Empty(config.ConfiguredConnections);
+
+		// What the user has connected to, in the order in which they did.
+		PersistentConfigManager.ToFile(configPath, config with { ConfiguredConnections = new ValueList<string>(["Tor", "Node"]) });
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Equal(["Tor", "Node"], config.ConfiguredConnections);
+
+		// Two configurations that differ in it differ, and two that agree in it are the same.
+		Assert.NotEqual(config, config with { ConfiguredConnections = new ValueList<string>(["Tor", "Node", "Nostr"]) });
+		Assert.Equal(config, config with { ConfiguredConnections = new ValueList<string>(["Tor", "Node"]) });
 	}
 
 	/// <summary>

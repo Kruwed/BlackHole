@@ -69,15 +69,26 @@ public class Services : IServices
 	// Chain info
 	public uint GetNodeTipHeight() => _status.BestNetworkHeight;
 	public ConnectedRpcStatus? GetNodeStatus() => _status.BitcoinRpcStatus is { IsOk: true } status ? status.Value : null;
+	public bool? IsNodeAnswering() => _status.BitcoinRpcStatus?.IsOk;
 	public FeeRateEstimations? GetFeeRateEstimations() => _status.FeeRates;
 	public Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken) =>
 		_global.ConnectToBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken);
+	public Task<Result<string>> VerifyBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken) =>
+		_global.VerifyBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken);
 	public Task<Result<string>> ConnectToTorAsync(CancellationToken cancellationToken) =>
 		_global.ConnectToTorAsync(cancellationToken);
+	public Task<Result<string>> VerifyTorAsync(CancellationToken cancellationToken) =>
+		_global.VerifyTorAsync(cancellationToken);
 	public Task<IReadOnlyList<RelayReachability>> ConnectToNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
 		_global.ConnectToNostrRelaysAsync(relays, cancellationToken);
+	public Task<IReadOnlyList<RelayReachability>> VerifyNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
+		_global.VerifyNostrRelaysAsync(relays, cancellationToken);
+	public IReadOnlyList<Uri> GetNostrRelays() => _global.NostrRelays;
 	public Task<Result<string>> ConnectToCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken) =>
 		_global.ConnectToCoordinatorAsync(coordinatorUri, cancellationToken);
+	public Task<Result<string>> VerifyCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken) =>
+		_global.VerifyCoordinatorAsync(coordinatorUri, cancellationToken);
+	public Uri? GetCoordinatorUri() => _global.CoordinatorUri;
 	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
 	// WalletManager info

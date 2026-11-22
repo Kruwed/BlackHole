@@ -35,6 +35,7 @@ public static class PersistentConfigEncode
 			("MaxDaysInMempool", Int(cfg.MaxDaysInMempool)),
 			("ExperimentalFeatures", Array(cfg.ExperimentalFeatures.Select(String))),
 			("NostrRelays", Array(cfg.NostrRelays.Select(String))),
+			("ConfiguredConnections", Array(cfg.ConfiguredConnections.Select(String))),
 			("ConfigVersion", Int(4))
 		]);
 }
@@ -82,6 +83,10 @@ public static class PersistentConfigDecode
 					// A file from before the relays were a setting has none: the relays are the ones that the application knows.
 					NostrRelays: get.Optional("NostrRelays", ValueList(Decode.String)) ??
 					             new ValueList<string>(Constants.DefaultNostrRelays),
+
+					// A file from before the application took note of it names none.
+					ConfiguredConnections: get.Optional("ConfiguredConnections", ValueList(Decode.String)) ??
+					                       Helpers.ValueList<string>.Empty,
 					ConfigVersion: get.Required("ConfigVersion", Decode.Int)
 				);
 			}

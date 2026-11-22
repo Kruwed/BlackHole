@@ -21,6 +21,7 @@ public class UiContext
 		FileSystemModel fileSystem,
 		ClientConfigModel config,
 		ApplicationSettings applicationSettings,
+		ConnectionsModel connections,
 		ReleaseHighlights releaseHighlights)
 	{
 		Services = services ?? throw new ArgumentNullException(nameof(services));
@@ -32,6 +33,7 @@ public class UiContext
 		FileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
 		Config = config ?? throw new ArgumentNullException(nameof(config));
 		ApplicationSettings = applicationSettings ?? throw new ArgumentNullException(nameof(applicationSettings));
+		Connections = connections ?? throw new ArgumentNullException(nameof(connections));
 		ReleaseHighlights = releaseHighlights ?? throw new ArgumentNullException(nameof(releaseHighlights));
 	}
 
@@ -44,6 +46,9 @@ public class UiContext
 	public FileSystemModel FileSystem { get; }
 	public ClientConfigModel Config { get; }
 	public ApplicationSettings ApplicationSettings { get; }
+
+	/// <summary>Whether Tor, the node, Nostr and the coordinator are configured, and whether they work at the moment.</summary>
+	public ConnectionsModel Connections { get; }
 	public ReleaseHighlights ReleaseHighlights { get; }
 	public MainViewModel? MainViewModel { get; private set; }
 

@@ -252,7 +252,8 @@ public class WasabiApplication
 			MaxCoinJoinMiningFeeRate: oldConfig.MaxCoinJoinMiningFeeRate,
 			MaxDaysInMempool: oldConfig.MaxDaysInMempool,
 			ExperimentalFeatures: [],
-			NostrRelays: new(Constants.DefaultNostrRelays)
+			NostrRelays: new(Constants.DefaultNostrRelays),
+			ConfiguredConnections: []
 		);
 
 		static bool MustMigrate(PersistentConfig_2_6_0 cfg) =>
@@ -285,7 +286,8 @@ public class WasabiApplication
 			MaxCoinJoinMiningFeeRate : oldConfig.MaxCoinJoinMiningFeeRate,
 			MaxDaysInMempool: oldConfig.MaxDaysInMempool,
 			ExperimentalFeatures: [],
-			NostrRelays: new(Constants.DefaultNostrRelays)
+			NostrRelays: new(Constants.DefaultNostrRelays),
+			ConfiguredConnections: []
 		);
 
 		oldConfig = configs260.RegTest;
@@ -295,6 +297,7 @@ public class WasabiApplication
 			BitcoinRpcUri: MustMigrate(configs260.RegTest) ? string.Empty : oldConfig.BitcoinRpcUri,
 			ExperimentalFeatures: [],
 			NostrRelays: new(Constants.DefaultNostrRelays),
+			ConfiguredConnections: [],
 			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
 			ConfigVersion : 4,
 			CoordinatorUri : oldConfig.CoordinatorUri,
