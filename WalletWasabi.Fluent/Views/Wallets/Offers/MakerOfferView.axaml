@@ -17,60 +17,46 @@
     </Style>
   </UserControl.Styles>
 
-  <ContentArea Title="{Binding Title}"
-               Caption="Offer the coins that are ticked on the Coins tab, two at most, to the takers of coinjoins, and name your prices for anonymity points."
-               EnableBack="{Binding EnableBack}"
-               EnableCancel="{Binding EnableCancel}"
-               EnableNext="True" NextContent="Post"
-               EnableSkip="{Binding HasOffer}" SkipContent="Withdraw offer"
-               IsBusy="{Binding IsBusy}"
-               ScrollViewer.VerticalScrollBarVisibility="Auto"
-               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-    <ContentArea.BottomContent>
-      <!-- What the coins of the offer hold together: its liquidity. -->
-      <AmountControl Amount="{Binding OfferedAmount}" HorizontalAlignment="Center"
-                     IsVisible="{Binding OfferedAmount, Converter={x:Static ObjectConverters.IsNotNull}}" />
-    </ContentArea.BottomContent>
+  <!-- The main screen of the Maker tab of the Coinjoin dialog: the terms of the offer and what an offer means. The
+       dialog has its buttons, Bond among them. -->
+  <StackPanel>
 
-    <StackPanel Margin="0 0 20 0">
-
-      <!-- The terms of the offer. -->
-      <Grid ColumnDefinitions="*,16,*,16,*">
-        <StackPanel Grid.Column="0" Classes="field"
-                    ToolTip.Tip="The lowest mining fee rate of a coinjoin that your coins go into.">
-          <Label Content="Minimum _fee rate (sat/vB)" Target="FeeRateBox" />
-          <TextBox Name="FeeRateBox" Text="{Binding MinFeeRateText}" MaxLength="12">
-            <Interaction.Behaviors>
-              <FocusOnAttachedBehavior />
-            </Interaction.Behaviors>
-          </TextBox>
-        </StackPanel>
-
-        <StackPanel Grid.Column="2" Classes="field"
-                    ToolTip.Tip="What you pay the taker for every anonymity point that your coins gain in the coinjoin.">
-          <Label Content="_Bid (sats per point)" Target="BidBox" />
-          <TextBox Name="BidBox" Text="{Binding BidText}" MaxLength="20" />
-        </StackPanel>
-
-        <StackPanel Grid.Column="4" Classes="field"
-                    ToolTip.Tip="What the taker pays you for every anonymity point that your coins lose in the coinjoin.">
-          <Label Content="_Ask (sats per point)" Target="AskBox" />
-          <TextBox Name="AskBox" Text="{Binding AskText}" MaxLength="20" />
-        </StackPanel>
-      </Grid>
-
-      <!-- The coins of the offer: which ones they are, or what is to be done first. -->
-      <TextBlock TextWrapping="Wrap" Text="{Binding CoinsText}" Classes.complaint="{Binding HasNoCoinsToOffer}" />
-
-      <!-- What an offer means, and where it goes. -->
-      <StackPanel Spacing="6" Margin="0 16 0 0">
-        <TextBlock TextWrapping="Wrap" Classes="complaint"
-                   Text="{Binding ErrorMessage}"
-                   IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        <TextBlock TextWrapping="Wrap" Opacity="0.6"
-                   Text="A coinjoin destroys the anonymity points of the coins that go into it, and the coins that you get out of it have the points of the new transaction. If you have more points afterwards, you pay the taker the bid for each of them. If you have fewer, the taker pays you the ask for each." />
-        <TextBlock TextWrapping="Wrap" Opacity="0.6" Text="{Binding PostingText}" />
+    <!-- The terms of the offer. -->
+    <Grid ColumnDefinitions="*,16,*,16,*">
+      <StackPanel Grid.Column="0" Classes="field"
+                  ToolTip.Tip="The lowest mining fee rate of a coinjoin that your coins go into.">
+        <Label Content="Minimum _fee rate (sat/vB)" Target="FeeRateBox" />
+        <TextBox Name="FeeRateBox" Text="{Binding MinFeeRateText}" MaxLength="12">
+          <Interaction.Behaviors>
+            <FocusOnAttachedBehavior />
+          </Interaction.Behaviors>
+        </TextBox>
       </StackPanel>
+
+      <StackPanel Grid.Column="2" Classes="field"
+                  ToolTip.Tip="What you pay the taker for every anonymity point that your coins gain in the coinjoin.">
+        <Label Content="_Bid (sats per point)" Target="BidBox" />
+        <TextBox Name="BidBox" Text="{Binding BidText}" MaxLength="20" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="4" Classes="field"
+                  ToolTip.Tip="What the taker pays you for every anonymity point that your coins lose in the coinjoin.">
+        <Label Content="_Ask (sats per point)" Target="AskBox" />
+        <TextBox Name="AskBox" Text="{Binding AskText}" MaxLength="20" />
+      </StackPanel>
+    </Grid>
+
+    <!-- The coins of the offer: which ones they are, or what is to be done first. -->
+    <TextBlock TextWrapping="Wrap" Text="{Binding CoinsText}" Classes.complaint="{Binding HasNoCoinsToOffer}" />
+
+    <!-- What an offer means, and where it goes. -->
+    <StackPanel Spacing="6" Margin="0 16 0 0">
+      <TextBlock TextWrapping="Wrap" Classes="complaint"
+                 Text="{Binding ErrorMessage}"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <TextBlock TextWrapping="Wrap" Opacity="0.6"
+                 Text="A coinjoin destroys the anonymity points of the coins that go into it, and the coins that you get out of it have the points of the new transaction. If you have more points afterwards, you pay the taker the bid for each of them. If you have fewer, the taker pays you the ask for each." />
+      <TextBlock TextWrapping="Wrap" Opacity="0.6" Text="{Binding PostingText}" />
     </StackPanel>
-  </ContentArea>
+  </StackPanel>
 </UserControl>

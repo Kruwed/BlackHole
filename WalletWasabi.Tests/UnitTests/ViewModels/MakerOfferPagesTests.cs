@@ -8,8 +8,8 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// What the page of the offer takes as the terms of an offer, which coins it offers, and how the list of market makers
-/// shows the offer of the wallet.
+/// What the main screen of the Maker tab of the Coinjoin dialog takes as the terms of an offer, which coins it offers,
+/// and how the list of market makers shows the offer of the wallet.
 /// </summary>
 public class MakerOfferPagesTests
 {
@@ -141,7 +141,7 @@ public class MakerOfferPagesTests
 			"No coin is ticked on the Coins tab, so the offer keeps the 2 coins that it holds now.",
 			MakerOfferViewModel.DescribeCoins(tickedCount: 0, standingCount: 2));
 		Assert.Equal(
-			"No coin is ticked. Close this page, tick one or two coins on the Coins tab and come back.",
+			"No coin is ticked. Close this dialog, tick one or two coins on the Coins tab and come back.",
 			MakerOfferViewModel.DescribeCoins(tickedCount: 0, standingCount: 0));
 		Assert.Equal(
 			"An offer holds two coins at most, and 3 are ticked on the Coins tab. Coins on the same address are ticked together.",

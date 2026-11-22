@@ -18,9 +18,7 @@
     </Style>
   </UserControl.Styles>
 
-  <!-- The coinjoins: what the box shows, what its coinjoin is doing, and its controls. The menu lists what there is to
-       choose from: the first four are picked, and the dialog shows the main screen of the one that is. The last two
-       lead to the offer of the wallet as a market maker and to its fidelity bonds. -->
+  <!-- The coinjoins: which tab of the dialog the box shows, what its coinjoin is doing, and its controls. -->
   <Border Name="Box" ClipToBounds="True"
           TextElement.FontFamily="{StaticResource MonospacedFont}"
           CornerRadius="4"
@@ -30,50 +28,11 @@
       <Panel Background="{DynamicResource TileRegionColor}" Opacity="0.35" />
       <DockPanel Margin="10 8">
 
-        <!-- Which kind it is -->
+        <!-- Which tab it shows: the one that is selected, or the one of the round that is under way -->
         <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" Spacing="2" MinWidth="58" Margin="0 0 20 0">
           <Image Height="35" Width="35" HorizontalAlignment="Center" Source="{DynamicResource app_logo_dynamic}" />
           <TextBlock Text="{Binding Name}" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
         </StackPanel>
-
-        <!-- What there is to choose from. The box is at the bottom of its dialog, so the menu opens upwards. -->
-        <Button DockPanel.Dock="Right" Classes="plain" Margin="20 0 0 0" ToolTip.Tip="Payjoin, the coinjoins, Maker and Bond">
-          <Button.Flyout>
-            <MenuFlyout Placement="TopEdgeAlignedRight">
-              <MenuItem Header="{Binding Payjoin.Name}" Command="{Binding Payjoin.SelectCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding Payjoin.IsSelected}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="{Binding WabiSabi.Name}" Command="{Binding WabiSabi.SelectCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding WabiSabi.IsSelected}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="{Binding ZeroLink.Name}" Command="{Binding ZeroLink.SelectCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding ZeroLink.IsSelected}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="{Binding Taker.Name}" Command="{Binding Taker.SelectCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding Taker.IsSelected}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="Maker" Command="{Binding MakerCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource wallet_action_offer}" />
-                </MenuItem.Icon>
-              </MenuItem>
-              <MenuItem Header="Bond" Command="{Binding BondCommand}">
-                <MenuItem.Icon>
-                  <PathIcon Data="{StaticResource wallet_action_bond}" />
-                </MenuItem.Icon>
-              </MenuItem>
-            </MenuFlyout>
-          </Button.Flyout>
-          <PathIcon Data="{StaticResource more_regular}" Opacity="0.6" />
-        </Button>
 
         <!-- Play and Stop, in one place. A kind that has no coinjoin to start shows a Play that cannot be pressed,
              and its tool tip tells why. -->

@@ -24,6 +24,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
+using WalletWasabi.Fluent.ViewModels.Wallets.Offers;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
@@ -36,15 +37,17 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets;
 
 /// <summary>
 /// The dialog that the Coinjoin button of the Coins tab opens. What is done with the coins that are ticked on that tab
-/// starts here, and so does receiving. The box at the bottom of the dialog has a menu, and the dialog shows the main
-/// screen of what is picked there:
+/// starts here, and so does receiving. The dialog has a tab for every protocol, like the settings have theirs, and it
+/// shows the main screen of the tab that is selected:
 /// <list type="bullet">
 /// <item>Payjoin, which the dialog opens with: the ordinary payment with its Send button, and Receive. Payjoin itself
 /// holds its place and does nothing yet.</item>
 /// <item>WabiSabi: the payments that wait for a round to make them.</item>
-/// <item>ZeroLink and Taker: nothing but the box.</item>
+/// <item>ZeroLink and Taker: nothing but what the tab says about itself.</item>
+/// <item>Maker: the offer of the wallet as a market maker, which offers the ticked coins, and the Bond button, which
+/// leads to the fidelity bonds that lock them.</item>
 /// </list>
-/// The menu also leads to the offer that offers the ticked coins and to the fidelity bonds that lock them.
+/// The box of the coinjoins is at the bottom of the dialog, below every tab.
 /// </summary>
 /// <remarks>
 /// The dialog is the same one for as long as the wallet is open, so what was typed into the payment is still there
@@ -88,9 +91,8 @@ public partial class CoinJoinViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _selectionHint = DescribeSelectionHint(hasCoins: false);
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isFeeSubtractionNoteVisible;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isPayjoinScreen = true;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWabiSabiScreen;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _caption = DescribeScreen(CoinJoinBoxViewModel.DefaultOption);
+	[AutoNotify] private int _selectedTab = GetTabIndex(CoinJoinBoxViewModel.DefaultTab);
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _description = DescribeScreen(CoinJoinBoxViewModel.DefaultTab);
 
 	/// <param name="coins">The list of the Coins tab. The dialog works with the coins that are ticked in it.</param>
 	public CoinJoinViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, CoinListViewModel coins) : base(uiContext)
@@ -107,20 +109,27 @@ public partial class CoinJoinViewModel : RoutableViewModel
 		walletModel.WhenAnyValue(x => x.IsLoaded)
 			.BindTo(this, x => x.IsWalletLoaded);
 
-		// One box for everything. A round gets the coins that are ticked in the list.
-		Box = new CoinJoinBoxViewModel(uiContext, walletModel, wallet, coins);
+		// One box for all the tabs. A round gets the coins that are ticked in the list.
+		Box = new CoinJoinBoxViewModel(uiContext, walletModel, coins);
 
-		// The dialog shows the main screen of what is picked in the menu of the box.
-		Box.WhenAnyValue(x => x.SelectedOption)
-			.Subscribe(option =>
+		// The dialog shows the main screen of the tab that is selected, and the box is set to it.
+		this.WhenAnyValue(x => x.SelectedTab)
+			.Select(GetTab)
+			.Subscribe(tab =>
 			{
-				IsPayjoinScreen = option == CoinJoinOption.Payjoin;
-				IsWabiSabiScreen = option == CoinJoinOption.WabiSabi;
-				Caption = DescribeScreen(option);
+				Box.SelectedTab = tab;
+				Description = DescribeScreen(tab);
 			});
 
 		// The payments that wait for a WabiSabi round are a part of the main screen of WabiSabi.
 		Payments = new CoinJoinPaymentsViewModel(uiContext, walletModel, wallet);
+
+		// The offer of the wallet as a market maker is the main screen of Maker. An offer that was posted or taken back
+		// closes the dialog. While the relays are asked the dialog shows that it is busy.
+		Maker = new MakerOfferViewModel(uiContext, walletModel, wallet, coins, close: () => Navigate().Clear());
+
+		Maker.WhenAnyValue(x => x.IsBusy)
+			.Subscribe(isBusy => IsBusy = isBusy);
 
 		// Nothing that was typed is lost by closing the dialog, so a click beside it may close it.
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
@@ -198,15 +207,13 @@ public partial class CoinJoinViewModel : RoutableViewModel
 				x => x.FeeRateText,
 				x => x.IsPrimarySubtractFee,
 				x => x.SelectedAmount,
-				x => x.IsWalletLoaded,
-				x => x.IsPayjoinScreen)
+				x => x.IsWalletLoaded)
 			.ToSignal()
 			.Merge(_recipientsChanged);
 
 		var canSend = formChanged.Select(_ =>
 		{
-			// The payment is a part of the main screen of Payjoin: with another screen up, there is nothing to send.
-			if (!IsWalletLoaded || !IsPayjoinScreen || !SelectedAmount.HasBalance || string.IsNullOrEmpty(To) || AmountBtc is not > 0 || ParseFeeRate(FeeRateText) is null)
+			if (!IsWalletLoaded || !SelectedAmount.HasBalance || string.IsNullOrEmpty(To) || AmountBtc is not > 0 || ParseFeeRate(FeeRateText) is null)
 			{
 				return false;
 			}
@@ -232,13 +239,17 @@ public partial class CoinJoinViewModel : RoutableViewModel
 	}
 
 	/// <summary>
-	/// The box of the coinjoins. What is picked in its menu is what the dialog shows the main screen of. The menu also
-	/// leads to the offer of the wallet as a market maker and to its fidelity bonds.
+	/// The box of the coinjoins, below the tabs. It shows the tab that is selected, or the round that is under way.
 	/// </summary>
 	public CoinJoinBoxViewModel Box { get; }
 
 	/// <summary>The payments that wait for a WabiSabi round to make them. They are on the main screen of WabiSabi.</summary>
 	public CoinJoinPaymentsViewModel Payments { get; }
+
+	/// <summary>
+	/// The offer of the wallet as a market maker, with the way to its fidelity bonds. It is the main screen of Maker.
+	/// </summary>
+	public MakerOfferViewModel Maker { get; }
 
 	/// <summary>Shows the transaction that the payment describes. It is confirmed and sent from that page.</summary>
 	public ICommand SendCommand { get; }
@@ -277,18 +288,40 @@ public partial class CoinJoinViewModel : RoutableViewModel
 	public static bool ShowsFeeSubtractionNote(bool takesAll, decimal? amountBtc, bool hasAmountMessage) =>
 		takesAll && amountBtc > 0 && !hasAmountMessage;
 
-	/// <summary>What the dialog says below its title about the main screen that it shows.</summary>
-	public static string DescribeScreen(CoinJoinOption option) =>
-		option switch
+	/// <summary>The place of a tab in the row of the tabs.</summary>
+	public static int GetTabIndex(CoinJoinTab tab)
+	{
+		for (var index = 0; index < CoinJoinBoxViewModel.AllTabs.Count; index++)
 		{
-			CoinJoinOption.Payjoin =>
-				"A payment spends the coins that are ticked on the Coins tab. Payjoin is not available yet: Send and Receive work the regular way.",
-			CoinJoinOption.WabiSabi =>
-				"Play starts one round with the coins that are ticked on the Coins tab, ten at most. A round makes the payments that are queued here, four at most. The queue is cleared when you close Black Hole.",
-			CoinJoinOption.ZeroLink =>
-				"Play starts one round with one coin that is ticked on the Coins tab: a coin of a standard amount that the coordinator has a round of. The round gives one output of that amount less the fee.",
-			CoinJoinOption.Taker =>
+			if (CoinJoinBoxViewModel.AllTabs[index] == tab)
+			{
+				return index;
+			}
+		}
+
+		return 0;
+	}
+
+	/// <summary>The tab at a place in the row of the tabs. A place that the row does not have is the first tab's.</summary>
+	public static CoinJoinTab GetTab(int index) =>
+		index >= 0 && index < CoinJoinBoxViewModel.AllTabs.Count
+			? CoinJoinBoxViewModel.AllTabs[index]
+			: CoinJoinBoxViewModel.DefaultTab;
+
+	/// <summary>What the main screen of a tab says about itself, at its top.</summary>
+	public static string DescribeScreen(CoinJoinTab tab) =>
+		tab switch
+		{
+			CoinJoinTab.Payjoin =>
+				"A payment spends the ticked coins. Payjoin is not available yet: Send and Receive work the regular way.",
+			CoinJoinTab.WabiSabi =>
+				"Play starts one round with the ticked coins, ten at most. A round makes the payments that are queued here, four at most. The queue is cleared when you close Black Hole.",
+			CoinJoinTab.ZeroLink =>
+				"Play starts one round with one ticked coin: a coin of a standard amount that the coordinator has a round of. The round gives one output of that amount less the fee.",
+			CoinJoinTab.Taker =>
 				"A taker's coinjoin takes the offers of the market makers of the Order Book. It is not available yet.",
+			CoinJoinTab.Maker =>
+				"Offer the ticked coins, two at most, to the takers of coinjoins, and name your prices for anonymity points. A maker shows a fidelity bond: Bond opens the bonds of the wallet.",
 			_ => ""
 		};
 
@@ -349,6 +382,9 @@ public partial class CoinJoinViewModel : RoutableViewModel
 
 		// A round changes the payments that wait for it without telling: they are looked up for as long as the dialog shows.
 		Payments.Activate(disposables);
+
+		// The offer follows the coins that it holds, and the screen of the maker follows the offer.
+		Maker.Activate(disposables);
 	}
 
 	protected override void OnNavigatedFrom(bool isInHistory)

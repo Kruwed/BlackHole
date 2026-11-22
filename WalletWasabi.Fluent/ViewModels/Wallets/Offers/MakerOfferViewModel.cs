@@ -6,9 +6,11 @@ using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using NBitcoin;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Fluent.Extensions;
+using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.Validation;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -18,6 +20,7 @@ using WalletWasabi.Helpers;
 using WalletWasabi.JoinMarket;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
+using WalletWasabi.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Offers;
 
@@ -40,14 +43,19 @@ public enum OfferCoinsSource
 /// <summary>
 /// The offer of the wallet as a market maker: up to two coins, the lowest fee rate of a coinjoin that the coins may go
 /// into and the two prices of an anonymity point, posted to the Nostr relays. The coins are the ones that are ticked on
-/// the Coins tab. The offer that stands is shown here too, to be changed or taken back. "Maker" in the menu of the
-/// coinjoin box opens it, and the way back leads to the Coinjoin dialog.
+/// the Coins tab. The offer that stands is shown here too, to be changed or taken back. It is the main screen of the
+/// Maker tab of the Coinjoin dialog, and the fidelity bonds of the wallet are opened from here: a maker shows a bond.
 /// </summary>
-[NavigationMetaData(Title = "Offer", NavigationTarget = NavigationTarget.DialogScreen)]
-public partial class MakerOfferViewModel : RoutableViewModel
+/// <remarks>
+/// The screen is the same one for as long as the wallet is open, so the terms that were typed are still there when the
+/// dialog is opened again.
+/// </remarks>
+[AppLifetime]
+public partial class MakerOfferViewModel : ViewModelBase
 {
 	private readonly IWalletModel _walletModel;
 	private readonly CoinListViewModel _coins;
+	private readonly Action _close;
 
 	[AutoNotify] private string _minFeeRateText = "";
 	[AutoNotify] private string _bidText = "";
@@ -57,14 +65,17 @@ public partial class MakerOfferViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private Amount? _offeredAmount;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasOffer;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _errorMessage;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isBusy;
 
-	/// <param name="coins">The list of the Coins tab. An offer offers the coins that are ticked in it.</param>
-	public MakerOfferViewModel(UiContext uiContext, IWalletModel walletModel, CoinListViewModel coins) : base(uiContext)
+	/// <param name="coins">The list of the Coins tab. An offer offers the coins that are ticked in it, and a bond locks them.</param>
+	/// <param name="close">Closes the dialog. That is what follows an offer that was posted or taken back.</param>
+	public MakerOfferViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, CoinListViewModel coins, Action close) : base(uiContext)
 	{
 		_walletModel = walletModel;
 		_coins = coins;
+		_close = close;
 
-		// The terms of the offer that stands are what the page starts with.
+		// The terms of the offer that stands are what the screen starts with.
 		var standing = walletModel.MakerOffer.Current;
 
 		if (standing is not null)
@@ -76,10 +87,6 @@ public partial class MakerOfferViewModel : RoutableViewModel
 
 		HasOffer = standing is not null;
 		UpdateCoins();
-
-		// A click beside the page does not close it: what was typed would be gone.
-		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
-		EnableBack = true;
 
 		this.ValidateProperty(x => x.MinFeeRateText, ValidateMinFeeRate);
 		this.ValidateProperty(x => x.BidText, ValidateBid);
@@ -97,13 +104,32 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			x => x.CoinsSource,
 			(feeRate, bid, ask, source) => ParseTerms(feeRate, bid, ask) is not null && source is OfferCoinsSource.Ticked or OfferCoinsSource.StandingOffer);
 
-		NextCommand = ReactiveCommand.CreateFromTask(PostAsync, canPost);
-		SkipCommand = ReactiveCommand.CreateFromTask(WithdrawAsync, this.WhenAnyValue(x => x.HasOffer));
+		var postCommand = ReactiveCommand.CreateFromTask(PostAsync, canPost);
+		var withdrawCommand = ReactiveCommand.CreateFromTask(WithdrawAsync, this.WhenAnyValue(x => x.HasOffer));
 
-		EnableAutoBusyOn(NextCommand, SkipCommand);
+		PostCommand = postCommand;
+		WithdrawCommand = withdrawCommand;
+
+		// The relays take a moment, through Tor more than one.
+		postCommand.IsExecuting
+			.CombineLatest(withdrawCommand.IsExecuting, (isPosting, isWithdrawing) => isPosting || isWithdrawing)
+			.ObserveOn(RxApp.MainThreadScheduler)
+			.Subscribe(isBusy => IsBusy = isBusy);
+
+		// A maker shows a fidelity bond. A new bond locks the coins that are ticked.
+		BondCommand = ReactiveCommand.Create(() => UiContext.Navigate().To().Bonds(walletModel, wallet, coins));
 	}
 
-	/// <summary>Whether the page has no coins for an offer: none is ticked, or too many are. What it says about the coins is a complaint then.</summary>
+	/// <summary>Posts the offer with the terms of the screen. The dialog closes when a relay took it.</summary>
+	public ICommand PostCommand { get; }
+
+	/// <summary>Takes the offer that stands back, and closes the dialog.</summary>
+	public ICommand WithdrawCommand { get; }
+
+	/// <summary>Opens the fidelity bonds of the wallet. The way back from there leads to the dialog.</summary>
+	public ICommand BondCommand { get; }
+
+	/// <summary>Whether the screen has no coins for an offer: none is ticked, or too many are. What it says about the coins is a complaint then.</summary>
 	public bool HasNoCoinsToOffer => CoinsSource is OfferCoinsSource.None or OfferCoinsSource.TooMany;
 
 	/// <summary>Where the offer goes, and what it tells there.</summary>
@@ -158,7 +184,7 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			_ => OfferCoinsSource.None
 		};
 
-	/// <summary>What the page says about the coins of the offer: which ones they are, or what is to be done first.</summary>
+	/// <summary>What the screen says about the coins of the offer: which ones they are, or what is to be done first.</summary>
 	/// <param name="tickedCount">How many coins are ticked on the Coins tab.</param>
 	/// <param name="standingCount">How many coins the offer that stands holds: none without such an offer.</param>
 	public static string DescribeCoins(int tickedCount, int standingCount) =>
@@ -172,16 +198,18 @@ public partial class MakerOfferViewModel : RoutableViewModel
 				$"The offer holds the {Count(tickedCount, "coin that is", "coins that are")} ticked on the Coins tab.",
 			OfferCoinsSource.StandingOffer =>
 				$"No coin is ticked on the Coins tab, so the offer keeps the {Count(standingCount, "coin", "coins")} that it holds now.",
-			_ => "No coin is ticked. Close this page, tick one or two coins on the Coins tab and come back."
+			_ => "No coin is ticked. Close this dialog, tick one or two coins on the Coins tab and come back."
 		};
 
 	private static string Count(int count, string one, string many) => count == 1 ? one : $"{count} {many}";
 
-	protected override void OnNavigatedTo(bool isInHistory, CompositeDisposable disposables)
+	/// <summary>
+	/// Keeps what the screen says about the coins and the offer up to date until what is given is disposed of: for as
+	/// long as the dialog shows.
+	/// </summary>
+	public void Activate(CompositeDisposable disposables)
 	{
-		base.OnNavigatedTo(isInHistory, disposables);
-
-		// Nothing is ticked or unticked while this page covers the Coins tab, but a coin can be spent meanwhile, and
+		// Nothing is ticked or unticked while the dialog covers the Coins tab, but a coin can be spent meanwhile, and
 		// the offer follows the coins that it holds.
 		_coins.Selection
 			.ToObservableChangeSet()
@@ -237,7 +265,7 @@ public partial class MakerOfferViewModel : RoutableViewModel
 			return;
 		}
 
-		// The coins are taken now: a coin that was spent while the page was open is not among them.
+		// The coins are taken now: a coin that was spent while the dialog was open is not among them.
 		var coins = GetCoinsToOffer();
 
 		if (coins.Length == 0)
@@ -250,12 +278,12 @@ public partial class MakerOfferViewModel : RoutableViewModel
 
 		try
 		{
-			// The offer is not called back when the page is left meanwhile: what reached a relay is on the market.
+			// The offer is not called back when the dialog is left meanwhile: what reached a relay is on the market.
 			var answers = await _walletModel.MakerOffer.PostAsync(coins, terms.MinFeeRate, terms.Bid, terms.Ask, CancellationToken.None);
 
 			if (answers.Any(answer => answer.Accepted))
 			{
-				Navigate().Clear();
+				_close();
 			}
 			else
 			{
@@ -264,7 +292,7 @@ public partial class MakerOfferViewModel : RoutableViewModel
 		}
 		catch (ArgumentException ex)
 		{
-			// A coin was spent while the page was open, for instance.
+			// A coin was spent while the dialog was open, for instance.
 			ErrorMessage = ex.Message;
 		}
 		catch (Exception ex)
@@ -281,7 +309,7 @@ public partial class MakerOfferViewModel : RoutableViewModel
 		try
 		{
 			await _walletModel.MakerOffer.WithdrawAsync(CancellationToken.None);
-			Navigate().Clear();
+			_close();
 		}
 		catch (Exception ex)
 		{

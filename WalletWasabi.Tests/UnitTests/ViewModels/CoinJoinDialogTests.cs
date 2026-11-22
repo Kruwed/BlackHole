@@ -9,9 +9,9 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
 
 /// <summary>
-/// The dialog that the Coinjoin button of the Coins tab opens: one box whose menu lists what there is to choose from,
-/// and above it the main screen of what is picked, the payment on the one of Payjoin. These are its rules that can be
-/// told without a window: what the payment says about its amounts and its fee rate, what the menu lists, what the box
+/// The dialog that the Coinjoin button of the Coins tab opens: a tab for every protocol with its main screen, the
+/// payment on the one of Payjoin, and below the tabs the one box of the coinjoins. These are its rules that can be
+/// told without a window: what the payment says about its amounts and its fee rate, which tabs there are, what the box
 /// shows and what the screens are for, and which coins Play gives to a round.
 /// </summary>
 public class CoinJoinDialogTests
@@ -128,32 +128,50 @@ public class CoinJoinDialogTests
 	}
 
 	/// <summary>
-	/// The menu of the box lists what there is to choose from, Payjoin first. The dialog opens with Payjoin, whose main
-	/// screen has the payment and Receive.
+	/// The dialog has a tab for every protocol, Payjoin first. It opens with Payjoin, whose main screen has the payment
+	/// and Receive.
 	/// </summary>
 	[Fact]
-	public void MenuListsWhatThereIsToChooseFromWithPayjoinFirst()
+	public void DialogHasATabForEveryProtocolWithPayjoinFirst()
 	{
 		Assert.Equal(
-			["Payjoin", "WabiSabi", "ZeroLink", "Taker"],
-			CoinJoinBoxViewModel.AllOptions.Select(CoinJoinBoxViewModel.GetName));
+			["Payjoin", "WabiSabi", "ZeroLink", "Taker", "Maker"],
+			CoinJoinBoxViewModel.AllTabs.Select(CoinJoinBoxViewModel.GetName));
 
-		Assert.Equal(CoinJoinOption.Payjoin, CoinJoinBoxViewModel.DefaultOption);
+		Assert.Equal(CoinJoinTab.Payjoin, CoinJoinBoxViewModel.DefaultTab);
+		Assert.Equal(0, CoinJoinViewModel.GetTabIndex(CoinJoinBoxViewModel.DefaultTab));
 
-		// Every one is listed once, and none is left out.
-		Assert.Equal(Enum.GetValues<CoinJoinOption>().Order(), CoinJoinBoxViewModel.AllOptions.Order());
+		// Every one has its tab, and none has two.
+		Assert.Equal(Enum.GetValues<CoinJoinTab>().Order(), CoinJoinBoxViewModel.AllTabs.Order());
+	}
+
+	/// <summary>The row of the tabs tells the dialog a place, and the dialog knows which tab that is.</summary>
+	[Fact]
+	public void TabsAreKnownByTheirPlaceInTheRow()
+	{
+		for (var index = 0; index < CoinJoinBoxViewModel.AllTabs.Count; index++)
+		{
+			var tab = CoinJoinBoxViewModel.AllTabs[index];
+
+			Assert.Equal(tab, CoinJoinViewModel.GetTab(index));
+			Assert.Equal(index, CoinJoinViewModel.GetTabIndex(tab));
+		}
+
+		// A row that has nothing selected for a moment tells a place that it does not have.
+		Assert.Equal(CoinJoinTab.Payjoin, CoinJoinViewModel.GetTab(-1));
+		Assert.Equal(CoinJoinTab.Payjoin, CoinJoinViewModel.GetTab(CoinJoinBoxViewModel.AllTabs.Count));
 	}
 
 	[Fact]
-	public void KindsOfTheCoordinatorStartItsRounds()
+	public void TabsOfTheCoordinatorStartItsRounds()
 	{
-		Assert.Equal(CoinJoinProtocol.WabiSabi, CoinJoinBoxViewModel.GetProtocol(CoinJoinOption.WabiSabi));
-		Assert.Equal(CoinJoinProtocol.ZeroLink, CoinJoinBoxViewModel.GetProtocol(CoinJoinOption.ZeroLink));
+		Assert.Equal(CoinJoinProtocol.WabiSabi, CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.WabiSabi));
+		Assert.Equal(CoinJoinProtocol.ZeroLink, CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.ZeroLink));
 
-		// Every kind of round that the wallet can start has its entry in the menu.
+		// Every kind of round that the wallet can start has its tab.
 		Assert.Equal(
 			Enum.GetValues<CoinJoinProtocol>().Order(),
-			CoinJoinBoxViewModel.AllOptions.Select(CoinJoinBoxViewModel.GetProtocol).OfType<CoinJoinProtocol>().Order());
+			CoinJoinBoxViewModel.AllTabs.Select(CoinJoinBoxViewModel.GetProtocol).OfType<CoinJoinProtocol>().Order());
 	}
 
 	/// <summary>
@@ -163,110 +181,112 @@ public class CoinJoinDialogTests
 	[Fact]
 	public void PayjoinHoldsItsPlaceWithSendAndReceive()
 	{
-		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinOption.Payjoin));
+		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.Payjoin));
 
 		foreach (var isCoordinatorSet in new[] { true, false })
 		{
 			Assert.Equal(
 				("Not available yet", "Send and Receive work without it", "Payjoin is not available yet."),
-				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinOption.Payjoin, isCoordinatorSet));
+				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Payjoin, isCoordinatorSet));
 		}
 
 		Assert.Equal(
-			"A payment spends the coins that are ticked on the Coins tab. Payjoin is not available yet: Send and Receive work the regular way.",
-			CoinJoinViewModel.DescribeScreen(CoinJoinOption.Payjoin));
+			"A payment spends the ticked coins. Payjoin is not available yet: Send and Receive work the regular way.",
+			CoinJoinViewModel.DescribeScreen(CoinJoinTab.Payjoin));
 	}
 
 	[Fact]
 	public void TakerHoldsItsPlaceWithoutACoinjoinToStart()
 	{
-		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinOption.Taker));
+		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.Taker));
 
 		// It says so whether a coordinator is set or not: a taker coinjoins with market makers.
 		foreach (var isCoordinatorSet in new[] { true, false })
 		{
-			var (notice, detail, noPlayToolTip) = CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinOption.Taker, isCoordinatorSet);
+			var (notice, detail, noPlayToolTip) = CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Taker, isCoordinatorSet);
 
 			Assert.Equal("Not available yet", notice);
 			Assert.Equal("", detail);
 			Assert.Equal("Taker coinjoins are not available yet.", noPlayToolTip);
 		}
 
-		Assert.Contains("not available yet", CoinJoinViewModel.DescribeScreen(CoinJoinOption.Taker));
+		Assert.Contains("not available yet", CoinJoinViewModel.DescribeScreen(CoinJoinTab.Taker));
+	}
+
+	/// <summary>
+	/// The main screen of Maker posts the offer of the wallet, and its Bond button leads to the fidelity bonds. What
+	/// there is not yet is the coinjoin that takes an offer, so the box has nothing to play.
+	/// </summary>
+	[Fact]
+	public void MakerPostsItsOfferWithoutACoinjoinToStart()
+	{
+		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.Maker));
+
+		foreach (var isCoordinatorSet in new[] { true, false })
+		{
+			Assert.Equal(
+				("Not available yet", "An offer can be posted all the same", "Maker coinjoins are not available yet."),
+				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Maker, isCoordinatorSet));
+		}
+
+		var description = CoinJoinViewModel.DescribeScreen(CoinJoinTab.Maker);
+
+		Assert.Contains("two at most", description);
+		Assert.Contains("Bond opens the bonds of the wallet", description);
 	}
 
 	[Theory]
-	[InlineData(CoinJoinOption.WabiSabi)]
-	[InlineData(CoinJoinOption.ZeroLink)]
-	public void RoundsOfTheCoordinatorNeedACoordinatorAndTheLoadedWallet(CoinJoinOption option)
+	[InlineData(CoinJoinTab.WabiSabi)]
+	[InlineData(CoinJoinTab.ZeroLink)]
+	public void RoundsOfTheCoordinatorNeedACoordinatorAndTheLoadedWallet(CoinJoinTab tab)
 	{
-		// The settings of the coordinator are behind the gear of the title bar: the menu of the box has no way there.
+		// The settings of the coordinator are behind the gear of the title bar: the dialog has no way there.
 		Assert.Equal(
 			("Coordinator not configured", "Coinjoin not available", "Set a coordinator first: the gear in the top right corner, then Coordinator."),
-			CoinJoinBoxViewModel.DescribeUnavailable(option, isCoordinatorSet: false));
+			CoinJoinBoxViewModel.DescribeUnavailable(tab, isCoordinatorSet: false));
 
 		// With a coordinator the controls are only missing while the wallet still processes the blocks of the node.
 		Assert.Equal(
 			("Coinjoin waits for the wallet", "It is processing the blocks", "The wallet is still processing the blocks of the node."),
-			CoinJoinBoxViewModel.DescribeUnavailable(option, isCoordinatorSet: true));
+			CoinJoinBoxViewModel.DescribeUnavailable(tab, isCoordinatorSet: true));
 	}
 
-	/// <summary>Every entry of the menu that can be picked has a main screen, and the dialog says what it is for.</summary>
+	/// <summary>Every tab has a main screen, and the screen says at its top what it is for.</summary>
 	[Fact]
 	public void EveryMainScreenSaysWhatItIsFor()
 	{
-		var captions = CoinJoinBoxViewModel.AllOptions.Select(CoinJoinViewModel.DescribeScreen).ToArray();
+		var descriptions = CoinJoinBoxViewModel.AllTabs.Select(CoinJoinViewModel.DescribeScreen).ToArray();
 
-		Assert.All(captions, caption => Assert.False(string.IsNullOrWhiteSpace(caption)));
-		Assert.Equal(captions.Length, captions.Distinct().Count());
+		Assert.All(descriptions, description => Assert.False(string.IsNullOrWhiteSpace(description)));
+		Assert.Equal(descriptions.Length, descriptions.Distinct().Count());
 
 		// The payments that wait for a round are on the main screen of WabiSabi.
-		Assert.Contains("payments that are queued here", CoinJoinViewModel.DescribeScreen(CoinJoinOption.WabiSabi));
-		Assert.Contains("one coin", CoinJoinViewModel.DescribeScreen(CoinJoinOption.ZeroLink));
+		Assert.Contains("payments that are queued here", CoinJoinViewModel.DescribeScreen(CoinJoinTab.WabiSabi));
+		Assert.Contains("one ticked coin", CoinJoinViewModel.DescribeScreen(CoinJoinTab.ZeroLink));
 	}
 
 	[Fact]
-	public void BoxShowsWhatIsPickedInTheMenu()
+	public void BoxShowsTheTabThatIsSelected()
 	{
-		foreach (var option in CoinJoinBoxViewModel.AllOptions)
+		foreach (var tab in CoinJoinBoxViewModel.AllTabs)
 		{
-			Assert.Equal(option, CoinJoinBoxViewModel.ChooseShownOption(selected: option, underWay: null));
+			Assert.Equal(tab, CoinJoinBoxViewModel.ChooseShownTab(selected: tab, underWay: null));
 		}
 	}
 
 	/// <summary>
 	/// The wallet has one coinjoin at a time, and the box is where it is watched and stopped. So a coinjoin that is under
-	/// way has the box, whatever is picked in the menu: the pick decides which main screen the dialog shows, so that a
-	/// payment can be made, or an address be had, while a round goes on.
+	/// way has the box, whatever tab is selected: the tab decides which main screen the dialog shows, so that a payment
+	/// can be made, or an address be had, while a round goes on.
 	/// </summary>
 	[Fact]
 	public void CoinjoinThatIsUnderWayHasTheBox()
 	{
-		foreach (var selected in CoinJoinBoxViewModel.AllOptions)
+		foreach (var selected in CoinJoinBoxViewModel.AllTabs)
 		{
-			Assert.Equal(CoinJoinOption.WabiSabi, CoinJoinBoxViewModel.ChooseShownOption(selected, underWay: CoinJoinOption.WabiSabi));
-			Assert.Equal(CoinJoinOption.ZeroLink, CoinJoinBoxViewModel.ChooseShownOption(selected, underWay: CoinJoinOption.ZeroLink));
+			Assert.Equal(CoinJoinTab.WabiSabi, CoinJoinBoxViewModel.ChooseShownTab(selected, underWay: CoinJoinTab.WabiSabi));
+			Assert.Equal(CoinJoinTab.ZeroLink, CoinJoinBoxViewModel.ChooseShownTab(selected, underWay: CoinJoinTab.ZeroLink));
 		}
-	}
-
-	[Fact]
-	public void EntryOfTheMenuIsCalledLikeWhatItPicks()
-	{
-		var picked = new List<CoinJoinOption>();
-
-		foreach (var option in CoinJoinBoxViewModel.AllOptions)
-		{
-			using var pick = ReactiveUI.ReactiveCommand.Create(() => picked.Add(option));
-			var entry = new CoinJoinOptionViewModel(option, pick);
-
-			Assert.Equal(option, entry.Option);
-			Assert.Equal(CoinJoinBoxViewModel.GetName(option), entry.Name);
-			Assert.False(entry.IsSelected);
-
-			entry.SelectCommand.Execute(null);
-		}
-
-		Assert.Equal(CoinJoinBoxViewModel.AllOptions, picked);
 	}
 
 	/// <summary>
