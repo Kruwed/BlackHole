@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using WalletWasabi.Discoverability;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.UI;
@@ -31,6 +32,13 @@ public partial class NostrSettingsTabViewModel : ViewModelBase
 		_relays = FormatRelays(settings.NostrRelays);
 
 		this.ValidateProperty(x => x.Relays, ValidateRelays);
+
+		// The relays can change elsewhere: the welcome connects to the relays that the user names there. The box shows
+		// them then, unless it says the same already, in the user's own way of writing it.
+		this.WhenAnyValue(x => x.Settings.NostrRelays)
+			.Skip(1)
+			.Where(relays => !IsShown(relays))
+			.Subscribe(relays => Relays = FormatRelays(relays));
 	}
 
 	public bool IsReadOnly => Settings.IsOverridden;
@@ -51,6 +59,19 @@ public partial class NostrSettingsTabViewModel : ViewModelBase
 		var relays = NostrRelayPublisher.ParseRelays(addresses);
 
 		return [.. addresses.Zip(relays).DistinctBy(x => x.Second).Select(x => x.First)];
+	}
+
+	/// <summary>Whether the box names exactly these relays.</summary>
+	private bool IsShown(string[] relays)
+	{
+		try
+		{
+			return ParseRelays(Relays).SequenceEqual(relays);
+		}
+		catch (FormatException)
+		{
+			return false;
+		}
 	}
 
 	private void ValidateRelays(IValidationErrors errors)

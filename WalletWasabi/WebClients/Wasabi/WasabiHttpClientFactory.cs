@@ -147,6 +147,20 @@ public class CoordinatorHttpClientFactory : IHttpClientFactory
 	}
 }
 
+/// <summary>
+/// A factory of HTTP clients that can be exchanged for another one while the application runs: the one of another
+/// coordinator. Whoever was given this factory gets the clients of the new one from the next request on.
+/// </summary>
+public class SwitchableHttpClientFactory(IHttpClientFactory httpClientFactory) : IHttpClientFactory
+{
+	private volatile IHttpClientFactory _httpClientFactory = httpClientFactory;
+
+	public HttpClient CreateClient(string name) => _httpClientFactory.CreateClient(name);
+
+	/// <summary>Hands out the clients of another factory from now on. A request that is on its way is not affected.</summary>
+	public void SwitchTo(IHttpClientFactory httpClientFactory) => _httpClientFactory = httpClientFactory;
+}
+
 public class NotifyHttpClientHandler(string name, Action<string> disposedCallback) : HttpClientHandler
 {
 	protected override void Dispose(bool disposing)
@@ -179,6 +193,7 @@ public class RetryHttpClientHandler : NotifyHttpClientHandler
 		ObjectDisposedException.ThrowIf(_dispose, $"HTTP handler {_name} was already disposed.");
 
 		var attempt = 0;
+		Exception? lastException = null;
 
 		while (attempt < _config.MaxAttempts)
 		{
@@ -221,6 +236,7 @@ public class RetryHttpClientHandler : NotifyHttpClientHandler
 					throw;
 				}
 
+				lastException = e;
 				Logger.LogTrace($"Retrying {request.RequestUri} because {e.Message}");
 				await Task.Delay(_config.TimeBeforeRetryingAfterNetworkError, cancellationToken).ConfigureAwait(false);
 			}
@@ -230,7 +246,8 @@ public class RetryHttpClientHandler : NotifyHttpClientHandler
 			}
 		}
 
-		throw new HttpRequestException($"Failed to make http request '{request.RequestUri}' after {_config.MaxAttempts} attempts.");
+		// What went wrong the last time is kept, for whoever has to tell why the server cannot be reached.
+		throw new HttpRequestException($"Failed to make http request '{request.RequestUri}' after {_config.MaxAttempts} attempts.", lastException);
 	}
 
 	private async Task<HttpResponseMessage> SendCoreAsync(RetryHttpClientHandler handler, HttpRequestMessage request, CancellationToken cancellationToken)

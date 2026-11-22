@@ -166,6 +166,15 @@ public class Config
 	public bool IsBitcoinRpcOverridden =>
 		Data[nameof(BitcoinRpcUri)].Overridden || Data[nameof(BitcoinRpcCredentialString)].Overridden;
 
+	/// <summary>
+	/// Whether the coordinator that the application works with was given on the command line or in the environment.
+	/// What is saved about the coordinator then has no effect the next time the application is started the same way.
+	/// </summary>
+	public bool IsCoordinatorUriOverridden => Data[nameof(CoordinatorUri)].Overridden;
+
+	/// <summary>The same for the Nostr relays.</summary>
+	public bool IsNostrRelaysOverridden => Data[nameof(NostrRelays)].Overridden;
+
 	public bool TryGetCoordinatorUri([NotNullWhen(true)] out Uri? coordinatorUri)
 	{
 		try

@@ -163,6 +163,106 @@ public class NostrRelayPublisherTests
 		Assert.Empty(tor.Requests);
 	}
 
+	/// <summary>
+	/// Before the application takes the relays that the user names, it finds out which of them answer. It connects to
+	/// each of them and sends nothing.
+	/// </summary>
+	[Fact]
+	public async Task CheckTellsWhichRelaysCanBeReachedAsync()
+	{
+		await using var relay = new TestNostrRelay();
+		var nobody = new Uri($"ws://127.0.0.1:{TestNostrRelay.GetFreePort()}/");
+		var publisher = new NostrRelayPublisher([relay.Uri, nobody], torSocksEndPoint: null, TimeSpan.FromSeconds(20));
+
+		var reachabilities = await publisher.CheckAsync(CancellationToken.None);
+
+		Assert.Equal([relay.Uri, nobody], reachabilities.Select(x => x.Relay));
+
+		Assert.True(reachabilities[0].IsReachable);
+		Assert.Null(reachabilities[0].Problem);
+
+		// A relay that is not there is an answer like the other, with the reason.
+		Assert.False(reachabilities[1].IsReachable);
+		Assert.False(string.IsNullOrWhiteSpace(reachabilities[1].Problem));
+		Assert.DoesNotContain(reachabilities[1].Problem!, character => char.IsControl(character));
+
+		// The relay was connected to once, and it was sent nothing.
+		Assert.Equal(1, relay.ConnectionCount);
+		Assert.Empty(relay.Received);
+		Assert.Empty(relay.Stored);
+	}
+
+	[Fact]
+	public async Task CheckIsMadeThroughTorOnACircuitOfItsOwnAsync()
+	{
+		await using var relay = new TestNostrRelay();
+		await using var tor = new TestSocks5Proxy(relay.EndPoint);
+		var publisher = new NostrRelayPublisher([new Uri("ws://relay.invalid:7777/")], tor.EndPoint, TimeSpan.FromSeconds(20));
+
+		var first = await publisher.CheckAsync(CancellationToken.None);
+		var second = await publisher.CheckAsync(CancellationToken.None);
+
+		Assert.True(first.Single().IsReachable, first.Single().Problem);
+		Assert.True(second.Single().IsReachable, second.Single().Problem);
+
+		// The proxy is asked for the relay by its name, like for an event.
+		Assert.All(tor.Requests, request => Assert.True(request.IsHostName));
+		Assert.All(tor.Requests, request => Assert.Equal("relay.invalid", request.Host));
+
+		// Every check has a user name of its own, so Tor keeps it apart from everything else, the offers included.
+		var userNames = tor.Requests.Select(request => request.UserName).ToArray();
+		Assert.Equal(2, userNames.Length);
+		Assert.All(userNames, userName => Assert.False(string.IsNullOrEmpty(userName)));
+		Assert.NotEqual(userNames[0], userNames[1]);
+	}
+
+	[Fact]
+	public async Task CheckDoesNotWaitForeverAndCanBeGivenUpAsync()
+	{
+		// Something that takes the connection and never says a word, not even what a relay says first.
+		using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+		listener.Start();
+		var mute = new Uri($"ws://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}/");
+
+		var publisher = new NostrRelayPublisher([mute], torSocksEndPoint: null, TimeSpan.FromSeconds(1));
+		var reachability = (await publisher.CheckAsync(CancellationToken.None)).Single();
+
+		Assert.False(reachability.IsReachable);
+		Assert.Equal("The relay did not answer in time.", reachability.Problem);
+
+		var patient = new NostrRelayPublisher([mute], torSocksEndPoint: null, TimeSpan.FromSeconds(30));
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await patient.CheckAsync(cts.Token));
+	}
+
+	/// <summary>
+	/// The relays of the application can be exchanged while it runs. Whoever posts holds one publisher and posts to
+	/// the new relays from then on, without being told.
+	/// </summary>
+	[Fact]
+	public async Task SwitchablePublisherPostsToTheRelaysItWasSwitchedToAsync()
+	{
+		await using var first = new TestNostrRelay();
+		await using var second = new TestNostrRelay();
+
+		var publisher = new SwitchableNostrPublisher(new NostrRelayPublisher([first.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(20)));
+		INostrPublisher seenByOthers = publisher;
+
+		Assert.Equal([first.Uri], seenByOthers.Relays);
+		Assert.True((await seenByOthers.PublishAsync(await CreateEventAsync(), CancellationToken.None)).Single().Accepted);
+
+		publisher.SwitchTo(new NostrRelayPublisher([second.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(20)));
+
+		Assert.Equal([second.Uri], seenByOthers.Relays);
+		var answer = (await seenByOthers.PublishAsync(await CreateEventAsync(), CancellationToken.None)).Single();
+
+		Assert.True(answer.Accepted);
+		Assert.Equal(second.Uri, answer.Relay);
+		Assert.Single(first.Stored);
+		Assert.Single(second.Stored);
+	}
+
 	[Fact]
 	public void RelaysAreWebSocketAddresses()
 	{

@@ -5,9 +5,9 @@
              xmlns:vm="using:WalletWasabi.Fluent.ViewModels.AddWallet"
              xmlns:converters="using:WalletWasabi.Fluent.Converters"
              mc:Ignorable="d" d:DesignWidth="428" d:DesignHeight="371"
-             x:DataType="vm:ConnectToFullNodeViewModel"
+             x:DataType="vm:ConnectToCoordinatorViewModel"
              x:CompileBindings="True"
-             x:Class="WalletWasabi.Fluent.Views.AddWallet.ConnectToFullNodeView">
+             x:Class="WalletWasabi.Fluent.Views.AddWallet.ConnectToCoordinatorView">
   <UserControl.Resources>
     <converters:ConnectionStatusBrushConverter x:Key="BoolToConnectionStatusBrush"
                                                SuccessBrush="{StaticResource PositiveBrush}"
@@ -19,16 +19,16 @@
     </Style>
   </UserControl.Styles>
   <ContentArea Title="{Binding Title}"
-               Caption="Tell where the RPC interface of your Bitcoin node is."
+               Caption="Tell where the coordinator of your coinjoins is."
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}"
                EnableNext="True" NextContent="{Binding NextLabel}"
                IsBusy="{Binding IsBusy}">
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
-      <Label Content="RPC endpoint:" Target="TbRpcUri" />
-      <TextBox Name="TbRpcUri"
-               Text="{Binding BitcoinRpcUri}"
-               Watermark="{Binding DefaultRpcUri}"
+      <Label Content="Coordinator address:" Target="TbCoordinatorUri" />
+      <TextBox Name="TbCoordinatorUri"
+               Text="{Binding CoordinatorUri}"
+               Watermark="{Binding ExampleUri}"
                IsEnabled="{Binding !IsReadOnly}">
         <Interaction.Behaviors>
           <FocusOnAttachedBehavior />
@@ -36,17 +36,11 @@
           <WhitespaceInputRemovalBehavior />
         </Interaction.Behaviors>
       </TextBox>
-
-      <Label Content="RPC credentials:" Target="TbRpcCredentials" />
-      <TextBox Name="TbRpcCredentials"
-               Text="{Binding BitcoinRpcCredentialString}"
-               Watermark="rpcuser:rpcpassword or cookiefile=path"
-               IsEnabled="{Binding !IsReadOnly}" />
-      <TextBlock Text="Leave the credentials empty to use the cookie file of a Bitcoin Core that runs on this computer."
+      <TextBlock Text="The coordinator holds the WabiSabi and the ZeroLink rounds. It is reached through Tor unless Tor is turned off, and it is asked for its rounds to find out whether it answers."
                  TextWrapping="Wrap"
                  Opacity="0.6" />
 
-      <!-- What the node answered to the last attempt. The room for it is always there, so that nothing moves when it appears. -->
+      <!-- What the coordinator answered to the last attempt. The room for it is always there, so that nothing moves when it appears. -->
       <TextBlock Text="{Binding StatusMessage}"
                  Foreground="{Binding IsConnected, Converter={StaticResource BoolToConnectionStatusBrush}}"
                  TextWrapping="Wrap"
@@ -56,7 +50,7 @@
       <InfoMessage Foreground="{StaticResource WarningMessageForeground}"
                    IsVisible="{Binding IsReadOnly}"
                    Margin="0 10 0 0">
-        <TextBlock Text="The node was given on the command line or in the environment when Black Hole was started, so it cannot be changed here."
+        <TextBlock Text="The coordinator was given on the command line or in the environment when Black Hole was started, so it cannot be changed here."
                    TextWrapping="Wrap" />
       </InfoMessage>
     </StackPanel>

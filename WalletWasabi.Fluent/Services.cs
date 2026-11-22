@@ -11,6 +11,7 @@ using WalletWasabi.Blockchain.TransactionBroadcasting;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client;
 using WalletWasabi.Client.Configuration;
+using WalletWasabi.Discoverability;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Helpers;
@@ -71,6 +72,12 @@ public class Services : IServices
 	public FeeRateEstimations? GetFeeRateEstimations() => _status.FeeRates;
 	public Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken) =>
 		_global.ConnectToBitcoinNodeAsync(rpcUri, rpcCredentialString, cancellationToken);
+	public Task<Result<string>> ConnectToTorAsync(CancellationToken cancellationToken) =>
+		_global.ConnectToTorAsync(cancellationToken);
+	public Task<IReadOnlyList<RelayReachability>> ConnectToNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
+		_global.ConnectToNostrRelaysAsync(relays, cancellationToken);
+	public Task<Result<string>> ConnectToCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken) =>
+		_global.ConnectToCoordinatorAsync(coordinatorUri, cancellationToken);
 	public uint GetTipHeight() => WalletManager.GetBestHeight()?.Height ?? 0;
 
 	// WalletManager info

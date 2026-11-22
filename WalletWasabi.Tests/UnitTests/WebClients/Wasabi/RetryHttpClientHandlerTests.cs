@@ -79,6 +79,56 @@ public class RetryHttpClientHandlerTests
 		Assert.True(callbackCalled);
 	}
 
+	// Tests that what went wrong the last time is kept when every attempt failed, for whoever has to tell why the server cannot be reached.
+	[Fact]
+	public async Task SendAsync_LastErrorIsKeptAsync()
+	{
+		var requestsCount = 0;
+		var config = new HttpClientHandlerConfiguration { MaxAttempts = 3, TimeBeforeRetryingAfterNetworkError = TimeSpan.FromMilliseconds(10) };
+
+		var handler = new RetryHttpClientHandler("retry-handler", _ => { }, config,
+			(_, _, _) =>
+			{
+				requestsCount++;
+				throw new HttpRequestException(HttpRequestError.ConnectionError, $"Connection refused, attempt {requestsCount}.");
+			});
+
+		using (handler)
+		{
+			using var httpClient = new HttpClient(handler, disposeHandler: false);
+			using var request = new HttpRequestMessage(HttpMethod.Get, "http://test.dev");
+
+			var e = await Assert.ThrowsAsync<HttpRequestException>(async () => await httpClient.SendAsync(request).ConfigureAwait(false));
+
+			Assert.Equal("Failed to make http request 'http://test.dev/' after 3 attempts.", e.Message);
+			Assert.Equal("Connection refused, attempt 3.", Assert.IsType<HttpRequestException>(e.InnerException).Message);
+			Assert.Equal(3, requestsCount);
+		}
+	}
+
+	// Tests that whoever holds a switchable factory gets the clients of the factory that it was switched to, without being told.
+	[Fact]
+	public void SwitchableFactoryHandsOutTheClientsOfTheFactoryItWasSwitchedTo()
+	{
+		var first = new CoordinatorHttpClientFactory(new Uri("http://first.example/"), new HttpClientFactory());
+		var second = new CoordinatorHttpClientFactory(new Uri("http://second.example/"), new HttpClientFactory());
+
+		var factory = new SwitchableHttpClientFactory(first);
+		IHttpClientFactory seenByOthers = factory;
+
+		using (var client = seenByOthers.CreateClient("satoshi-test"))
+		{
+			Assert.Equal(new Uri("http://first.example/"), client.BaseAddress);
+		}
+
+		factory.SwitchTo(second);
+
+		using (var client = seenByOthers.CreateClient("satoshi-test"))
+		{
+			Assert.Equal(new Uri("http://second.example/"), client.BaseAddress);
+		}
+	}
+
 	// Tests that an ObjectDisposedException is thrown when the handler is disposed before sending an HTTP request.
 	[Fact]
 	public async Task SendAsync_DisposeExceptionIsThrownAsync()

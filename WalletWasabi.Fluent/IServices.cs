@@ -8,6 +8,7 @@ using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Client.Configuration;
+using WalletWasabi.Discoverability;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Fluent.Configuration;
 using WalletWasabi.Helpers;
@@ -41,6 +42,26 @@ public interface IServices
 	/// </summary>
 	/// <returns>Nothing if the application works with the node, otherwise the reason why it does not, in words for the user.</returns>
 	Task<Result<string>> ConnectToBitcoinNodeAsync(string rpcUri, string rpcCredentialString, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Tells whether the application is connected to Tor: Tor has to run and to have connected to the Tor network.
+	/// </summary>
+	/// <returns>Nothing if the application is connected to Tor, otherwise the reason why it is not, in words for the user.</returns>
+	Task<Result<string>> ConnectToTorAsync(CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Makes the application post to the given Nostr relays from now on, without a restart, provided that at least one
+	/// of them can be reached. Otherwise the application keeps the relays that it has. Nothing is sent to a relay.
+	/// </summary>
+	/// <returns>Whether each of the relays could be reached.</returns>
+	Task<IReadOnlyList<RelayReachability>> ConnectToNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Makes the application coinjoin with the coordinator at the given address from now on, without a restart, provided
+	/// that the coordinator answers. Otherwise the application keeps the coordinator that it has, or none.
+	/// </summary>
+	/// <returns>Nothing if the application works with the coordinator, otherwise the reason why it does not, in words for the user.</returns>
+	Task<Result<string>> ConnectToCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken);
 
 	/// <summary>Height of the last block that the wallet processed. The confirmations of its transactions are counted to there. Zero without a wallet.</summary>
 	uint GetTipHeight();

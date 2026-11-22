@@ -87,18 +87,24 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new WalletInfoViewModel(UiContext, wallet), navigationMode);
 	}
 
-	public FluentDialog<System.Reactive.Unit> AddWalletPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToTor(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new AddWalletPageViewModel(UiContext);
-		var target = UiContext.Navigate(navigationTarget);
-		target.To(dialog, navigationMode);
-
-		return new FluentDialog<System.Reactive.Unit>(target.NavigateDialogAsync(dialog, navigationMode));
+		UiContext.Navigate(navigationTarget).To(new ConnectToTorViewModel(UiContext, onConnected), navigationMode);
 	}
 
-	public void ConnectToFullNode(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public void ConnectToNode(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new ConnectToFullNodeViewModel(UiContext), navigationMode);
+		UiContext.Navigate(navigationTarget).To(new ConnectToNodeViewModel(UiContext, onConnected), navigationMode);
+	}
+
+	public void ConnectToNostr(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new ConnectToNostrViewModel(UiContext, onConnected), navigationMode);
+	}
+
+	public void ConnectToCoordinator(Action onConnected, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new ConnectToCoordinatorViewModel(UiContext, onConnected), navigationMode);
 	}
 
 	public FluentDialog<IEnumerable<SmartCoin>> SelectCoinsDialog(IWalletModel wallet, IList<CoinModel> selectedCoins, SendFlowModel sendFlow, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
@@ -272,9 +278,9 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new MultiShareOptionsViewModel(UiContext, options), navigationMode);
 	}
 
-	public FluentDialog<System.Reactive.Unit> WelcomePage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	public FluentDialog<System.Reactive.Unit> WelcomePage(WelcomeProgress progress, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		var dialog = new WelcomePageViewModel(UiContext);
+		var dialog = new WelcomePageViewModel(UiContext, progress);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 

@@ -3,127 +3,172 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:addWallet="clr-namespace:WalletWasabi.Fluent.ViewModels.AddWallet"
-             mc:Ignorable="d" d:DesignWidth="800"
+             xmlns:system="clr-namespace:System;assembly=System.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
              x:Class="WalletWasabi.Fluent.Views.AddWallet.WelcomePageView"
              x:DataType="addWallet:WelcomePageViewModel"
              x:CompileBindings="True">
-  <Interaction.Behaviors>
-    <FocusOnAttachedBehavior />
-  </Interaction.Behaviors>
+  <ContentArea Title="{Binding Title}"
+               Caption="Set up Tor, your node, Nostr and the coordinator, one after the other, and then the wallet."
+               EnableCancel="False"
+               EnableBack="False"
+               EnableNext="False"
+               IsBusy="{Binding IsBusy}"
+               ScrollViewer.VerticalScrollBarVisibility="Disabled">
+    <!-- Five columns, set up from left to right. In each, the upper button connects to something that exists, or
+         recovers the wallet, and the lower one is for running, or creating, one's own. -->
+    <!-- The two rows of buttons share the height that there is, up to a limit: in a small window the buttons give way, so that all ten stay in sight. -->
+    <Grid ColumnDefinitions="*,*,*,*,*" RowDefinitions="Auto,*,*"
+          MaxWidth="760" MaxHeight="322">
+      <Grid.Styles>
+        <Style Selector="TileButton">
+          <Setter Property="Cursor" Value="Hand" />
+          <Setter Property="Width">
+            <Setter.Value>
+              <system:Double>NaN</system:Double>
+            </Setter.Value>
+          </Setter>
+          <Setter Property="Height">
+            <Setter.Value>
+              <system:Double>NaN</system:Double>
+            </Setter.Value>
+          </Setter>
+          <Setter Property="Margin" Value="4" />
+          <Setter Property="Template">
+            <ControlTemplate>
+              <Border x:Name="PART_Border"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      Background="{TemplateBinding Background}"
+                      CornerRadius="10">
+                <Grid RowDefinitions="*,Auto">
+                  <Panel Grid.Row="0">
+                    <PathIcon x:Name="PART_Icon"
+                              Data="{TemplateBinding Icon}"
+                              Width="{TemplateBinding IconSize}"
+                              Height="{TemplateBinding IconSize}" />
+                  </Panel>
+                  <TextBlock Grid.Row="1" x:Name="PART_Text"
+                             Text="{TemplateBinding Text}"
+                             Foreground="{TemplateBinding Foreground}" />
+                </Grid>
+              </Border>
+            </ControlTemplate>
+          </Setter>
+        </Style>
+        <Style Selector="TileButton /template/ PathIcon#PART_Icon">
+          <Setter Property="Margin" Value="0 6 0 0" />
+        </Style>
+        <!-- Room for two lines, so that the icons of all the buttons stand at one height. -->
+        <Style Selector="TileButton /template/ TextBlock#PART_Text">
+          <Setter Property="Margin" Value="6 4 6 10" />
+          <Setter Property="MinHeight" Value="38" />
+        </Style>
+        <Style Selector="TileButton:disabled">
+          <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <!-- The name of a column stands in the middle of it, and the check mark of a column that is done stands next to
+             the name without moving it. -->
+        <Style Selector="Grid.header">
+          <Setter Property="Margin" Value="0 0 0 8" />
+        </Style>
+        <Style Selector="Grid.header > TextBlock">
+          <Setter Property="Grid.Column" Value="1" />
+          <Setter Property="FontSize" Value="16" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Grid.header > PathIcon">
+          <Setter Property="Grid.Column" Value="2" />
+          <Setter Property="Data" Value="{StaticResource checkmark_filled}" />
+          <Setter Property="Foreground" Value="{StaticResource PositiveBrush}" />
+          <Setter Property="Width" Value="13" />
+          <Setter Property="Height" Value="13" />
+          <Setter Property="Margin" Value="6 0 0 0" />
+          <Setter Property="HorizontalAlignment" Value="Left" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+      </Grid.Styles>
 
-  <UserControl.Styles>
-    <Style Selector="ContentArea /template/ StackPanel#PART_Header">
-      <Setter Property="Height" Value="32" />
-    </Style>
-  </UserControl.Styles>
+      <!-- Tor -->
+      <Grid Grid.Row="0" Grid.Column="0" Classes="header" ColumnDefinitions="*,Auto,*">
+        <TextBlock Text="{Binding Tor.Title}" />
+        <PathIcon IsVisible="{Binding Tor.IsDone}" />
+      </Grid>
+      <TileButton Grid.Row="1" Grid.Column="0" Text="Connect to Tor"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Tor.IsCurrent}"
+                  Icon="{StaticResource connector_regular}"
+                  IsDefault="{Binding Tor.IsCurrent}"
+                  Command="{Binding ConnectToTorCommand}" />
+      <!-- A placeholder: it does nothing yet, so it cannot be used. The same goes for the three after it. -->
+      <TileButton Grid.Row="2" Grid.Column="0" Text="Run a Tor Relay"
+                  Classes="bottomtext"
+                  Icon="{StaticResource cube_multiple_regular}"
+                  IsEnabled="False" />
 
-  <ContentArea EnableCancel="False"
-                        EnableBack="{Binding CanGoBack^}"
-                        EnableNext="True"
-                        ClipToBounds="False"
-                        NextContent="{Binding NextLabel}"
-                        ScrollViewer.VerticalScrollBarVisibility="Disabled">
+      <!-- Node -->
+      <Grid Grid.Row="0" Grid.Column="1" Classes="header" ColumnDefinitions="*,Auto,*">
+        <TextBlock Text="{Binding Node.Title}" />
+        <PathIcon IsVisible="{Binding Node.IsDone}" />
+      </Grid>
+      <TileButton Grid.Row="1" Grid.Column="1" Text="Connect to Node"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Node.IsCurrent}"
+                  Icon="{StaticResource connector_regular}"
+                  IsDefault="{Binding Node.IsCurrent}"
+                  Command="{Binding ConnectToNodeCommand}" />
+      <TileButton Grid.Row="2" Grid.Column="1" Text="Run a Bitcoin Node"
+                  Classes="bottomtext"
+                  Icon="{StaticResource cube_multiple_regular}"
+                  IsEnabled="False" />
 
-    <DockPanel LastChildFill="True">
+      <!-- Nostr -->
+      <Grid Grid.Row="0" Grid.Column="2" Classes="header" ColumnDefinitions="*,Auto,*">
+        <TextBlock Text="{Binding Nostr.Title}" />
+        <PathIcon IsVisible="{Binding Nostr.IsDone}" />
+      </Grid>
+      <TileButton Grid.Row="1" Grid.Column="2" Text="Connect to Nostr"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Nostr.IsCurrent}"
+                  Icon="{StaticResource connector_regular}"
+                  IsDefault="{Binding Nostr.IsCurrent}"
+                  Command="{Binding ConnectToNostrCommand}" />
+      <TileButton Grid.Row="2" Grid.Column="2" Text="Run a Nostr Relay"
+                  Classes="bottomtext"
+                  Icon="{StaticResource cube_multiple_regular}"
+                  IsEnabled="False" />
 
-      <!-- TODO: Uncomment in the case there is more than 1 welcome screen. -->
-      <!-- Indicator & Buttons -->
-      <!-- <ListBox HorizontalAlignment="Center" -->
-      <!--          SelectedIndex="{Binding SelectedIndex}" -->
-      <!--          Background="Transparent" -->
-      <!--          IsHitTestVisible="False" -->
-      <!--          DockPanel.Dock="Bottom"> -->
-      <!--   <ListBox.Styles> -->
-      <!--     <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter"> -->
-      <!--       <Setter Property="Background" Value="Transparent" /> -->
-      <!--     </Style> -->
-      <!--     <Style Selector="ListBoxItem:selected /template/ ContentPresenter"> -->
-      <!--       <Setter Property="TextBlock.Foreground" Value="{DynamicResource SystemChromeAltLowColor}" /> -->
-      <!--     </Style> -->
-      <!--     <Style Selector="ListBoxItem"> -->
-      <!--       <Setter Property="Opacity" Value="0.3" /> -->
-      <!--     </Style> -->
-      <!--     <Style Selector="ListBoxItem:selected"> -->
-      <!--       <Setter Property="Opacity" Value="1" /> -->
-      <!--     </Style> -->
-      <!--     <Style Selector="Ellipse"> -->
-      <!--       <Setter Property="Fill" Value="{DynamicResource SystemChromeAltLowColor}" /> -->
-      <!--       <Setter Property="Width" Value="9" /> -->
-      <!--       <Setter Property="Height" Value="9" /> -->
-      <!--     </Style> -->
-      <!--   </ListBox.Styles> -->
-      <!--   <ItemsControl.ItemsPanel> -->
-      <!--     <ItemsPanelTemplate> -->
-      <!--       <StackPanel Orientation="Horizontal" Spacing="5" /> -->
-      <!--     </ItemsPanelTemplate> -->
-      <!--   </ItemsControl.ItemsPanel> -->
-      <!--   <Ellipse /> -->
-      <!-- </ListBox> -->
+      <!-- Coordinator -->
+      <Grid Grid.Row="0" Grid.Column="3" Classes="header" ColumnDefinitions="*,Auto,*">
+        <TextBlock Text="{Binding Coordinator.Title}" />
+        <PathIcon IsVisible="{Binding Coordinator.IsDone}" />
+      </Grid>
+      <TileButton Grid.Row="1" Grid.Column="3" Text="Connect to Coordinator"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Coordinator.IsCurrent}"
+                  Icon="{StaticResource connector_regular}"
+                  IsDefault="{Binding Coordinator.IsCurrent}"
+                  Command="{Binding ConnectToCoordinatorCommand}" />
+      <TileButton Grid.Row="2" Grid.Column="3" Text="Run a Coinjoin Coordinator"
+                  Classes="bottomtext"
+                  Icon="{StaticResource cube_multiple_regular}"
+                  IsEnabled="False" />
 
-      <!-- Pages -->
-      <Carousel SelectedIndex="{Binding SelectedIndex}"
-                DockPanel.Dock="Top"
-                Margin="0 10">
-        <Interaction.Behaviors>
-          <ExecuteCommandOnKeyDownBehavior Command="{Binding BackCommand}"
-                                           IsEnabled="{Binding CanGoBack^}" Key="Left" />
-          <ExecuteCommandOnKeyDownBehavior Command="{Binding NextCommand}"
-                                           IsEnabled="{Binding EnableNextKey}" Key="Right" />
-        </Interaction.Behaviors>
-        <Carousel.Styles>
-          <Style Selector="TextBlock.text">
-            <Setter Property="Opacity" Value="0.5" />
-            <Setter Property="FontWeight" Value="Light" />
-            <Setter Property="FontSize" Value="14" />
-          </Style>
-
-          <Style Selector="TextBlock.title2">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Padding" Value="0 4 8 4" />
-          </Style>
-
-          <Style Selector="TextBlock.title1">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="31" />
-          </Style>
-
-          <Style Selector="Viewbox.icon">
-            <Setter Property="MaxHeight" Value="50" />
-            <Setter Property="DockPanel.Dock" Value="Bottom" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-          </Style>
-
-          <Style Selector="Grid TextBlock">
-            <Setter Property="TextAlignment" Value="Left" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-          </Style>
-
-          <Style Selector="Grid StackPanel">
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Width" Value="230" />
-          </Style>
-        </Carousel.Styles>
-        <Carousel.PageTransition>
-          <PageSlide Duration="0:0:0.5" SlideOutEasing="{StaticResource FluentEasing}"
-                     SlideInEasing="{StaticResource FluentEasing}" />
-        </Carousel.PageTransition>
-
-        <!-- Get started -->
-        <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-          <StackPanel DockPanel.Dock="Bottom" Spacing="10">
-            <TextBlock Text="Welcome to Black Hole" FontSize="30" HorizontalAlignment="Center" />
-
-            <TextBlock TextAlignment="Center" Text="An easy to use, privacy focused, open source Bitcoin wallet" FontWeight="Light" />
-          </StackPanel>
-          <Viewbox Height="120" HorizontalAlignment="Center" DockPanel.Dock="Bottom" Margin="0 0 0 20">
-            <Image Source="{DynamicResource app_logo_dynamic}" />
-          </Viewbox>
-        </DockPanel>
-      </Carousel>
-    </DockPanel>
+      <!-- Wallet: both buttons work. It is the last step, so its column has no check mark. -->
+      <Grid Grid.Row="0" Grid.Column="4" Classes="header" ColumnDefinitions="*,Auto,*">
+        <TextBlock Text="{Binding Wallet.Title}" />
+      </Grid>
+      <TileButton Grid.Row="1" Grid.Column="4" Text="Recover a Wallet"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Wallet.IsCurrent}"
+                  Icon="{StaticResource recover_arrow_right_regular}"
+                  Command="{Binding RecoverWalletCommand}" />
+      <TileButton Grid.Row="2" Grid.Column="4" Text="Create a Wallet"
+                  Classes="bottomtext"
+                  Classes.action="{Binding Wallet.IsCurrent}"
+                  Icon="{StaticResource add_regular}"
+                  IsDefault="{Binding Wallet.IsCurrent}"
+                  Command="{Binding CreateWalletCommand}" />
+    </Grid>
   </ContentArea>
 </UserControl>

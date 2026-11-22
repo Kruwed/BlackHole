@@ -170,6 +170,30 @@ public class ConfigTests
 	}
 
 	/// <summary>
+	/// The same goes for the relays and the coordinator, which the welcome connects to like to the node: what was given
+	/// at the start cannot be changed there, and what was not given can, whatever else was given.
+	/// </summary>
+	[Fact]
+	public void TellsWhetherTheRelaysAndTheCoordinatorWereGivenAtTheStart()
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.False(config.IsCoordinatorUriOverridden);
+		Assert.False(config.IsNostrRelaysOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--coordinatoruri=http://coordinator.example/"]);
+		Assert.True(config.IsOverridden);
+		Assert.True(config.IsCoordinatorUriOverridden);
+		Assert.False(config.IsNostrRelaysOverridden);
+		Assert.False(config.IsBitcoinRpcOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, ["--nostrrelays=wss://relay.example"]);
+		Assert.True(config.IsOverridden);
+		Assert.False(config.IsCoordinatorUriOverridden);
+		Assert.True(config.IsNostrRelaysOverridden);
+		Assert.False(config.IsBitcoinRpcOverridden);
+	}
+
+	/// <summary>
 	/// The default credentials are the cookie file that Bitcoin Core writes into its data folder. NBitcoin knows the place
 	/// of the file for every network of the application.
 	/// </summary>

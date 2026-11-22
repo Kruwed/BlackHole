@@ -147,6 +147,12 @@ public partial class ApplicationSettings : ReactiveObject
 	/// <summary>Whether the node was given on the command line or in the environment, so that saving another one would have no effect.</summary>
 	public bool IsBitcoinRpcOverridden => _config.IsBitcoinRpcOverridden;
 
+	/// <summary>The same for the coordinator.</summary>
+	public bool IsCoordinatorUriOverridden => _config.IsCoordinatorUriOverridden;
+
+	/// <summary>The same for the Nostr relays.</summary>
+	public bool IsNostrRelaysOverridden => _config.IsNostrRelaysOverridden;
+
 	public IObservable<bool> IsRestartNeeded => _isRestartNeeded;
 
 	public bool CheckIfRestartIsNeeded(PersistentConfig config)
@@ -167,6 +173,31 @@ public partial class ApplicationSettings : ReactiveObject
 
 		BitcoinRpcUri = uri;
 		BitcoinRpcCredentialString = rpcCredentialString;
+	}
+
+	/// <summary>
+	/// Stores the Nostr relays that the application has just been connected to. Like <see cref="SetConnectedBitcoinNode"/>,
+	/// this asks for no restart: the application posts to these relays already.
+	/// </summary>
+	public void SetConnectedNostrRelays(string[] relays)
+	{
+		_runningConfig = _runningConfig with { NostrRelays = new ValueList<string>(relays) };
+
+		NostrRelays = relays;
+	}
+
+	/// <summary>
+	/// Stores the coordinator that the application has just been connected to. Like <see cref="SetConnectedBitcoinNode"/>,
+	/// this asks for no restart: the application coinjoins with that coordinator already.
+	/// </summary>
+	public void SetConnectedCoordinator(Uri coordinatorUri)
+	{
+		// The address in the form in which it gets saved.
+		var uri = coordinatorUri.ToString();
+
+		_runningConfig = _runningConfig with { CoordinatorUri = uri };
+
+		CoordinatorUri = uri;
 	}
 
 	private void Save()

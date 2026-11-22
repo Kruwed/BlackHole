@@ -9,6 +9,7 @@ using WalletWasabi.BitcoinRpc;
 using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
+using WalletWasabi.Fluent.ViewModels.AddWallet;
 using WalletWasabi.Fluent.ViewModels.Dialogs.Base;
 using WalletWasabi.Fluent.ViewModels.Dialogs.ReleaseHighlights;
 using WalletWasabi.Fluent.ViewModels.Navigation;
@@ -28,6 +29,9 @@ public partial class MainViewModel : ViewModelBase
 	private const string WaitingForNode = "Waiting for Bitcoin node";
 
 	private bool _isClosing;
+
+	/// <summary>How far the user is with the welcome. The welcome is shown anew when a dialog on top of it closed every page, and goes on where it was.</summary>
+	private readonly WelcomeProgress _welcomeProgress = new();
 
 	[AutoNotify] private string _title = Constants.AppName;
 	[AutoNotify] private WindowState _windowState;
@@ -104,9 +108,10 @@ public partial class MainViewModel : ViewModelBase
 			{
 				IsOobeBackgroundVisible = true;
 
-				while (true)
+				// A wallet that is there already needs no welcome.
+				while (!UiContext.WalletRepository.HasWallet)
 				{
-					await UiContext.Navigate().To().WelcomePage().GetResultAsync();
+					await UiContext.Navigate().To().WelcomePage(_welcomeProgress).GetResultAsync();
 
 					if (UiContext.WalletRepository.HasWallet || _isClosing)
 					{

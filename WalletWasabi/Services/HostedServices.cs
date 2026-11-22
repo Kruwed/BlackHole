@@ -43,18 +43,59 @@ public class HostedServices : IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Registers a service after the others were started, and starts it. Until the others are started, it is registered
+	/// like any other and started with them.
+	/// </summary>
+	/// <exception cref="InvalidOperationException">A service of this kind is registered already.</exception>
+	public async Task RegisterAndStartAsync<T>(Func<IHostedService> serviceFactory, string friendlyName, CancellationToken token = default) where T : class, IHostedService
+	{
+		var service = serviceFactory();
+
+		if (typeof(T) != service.GetType())
+		{
+			throw new ArgumentException($"Type mismatch: {nameof(T)} is {typeof(T).Name}, but {nameof(service)} is {service.GetType()}.");
+		}
+
+		bool startNow;
+
+		lock (_servicesLock)
+		{
+			if (AnyNoLock<T>())
+			{
+				throw new InvalidOperationException($"{typeof(T).Name} is already registered.");
+			}
+
+			_services.Add(new HostedService(service, friendlyName));
+			startNow = IsStartAllAsyncStarted;
+		}
+
+		if (startNow)
+		{
+			await service.StartAsync(token).ConfigureAwait(false);
+			Logger.LogInfo($"Started {friendlyName}.");
+		}
+	}
+
 	public async Task StartAllAsync(CancellationToken token = default)
 	{
-		if (IsStartAllAsyncStarted)
+		HostedService[] services;
+
+		// A service that is registered from now on is started by whoever registers it, see RegisterAndStartAsync.
+		lock (_servicesLock)
 		{
-			throw new InvalidOperationException("Operation is already started.");
+			if (IsStartAllAsyncStarted)
+			{
+				throw new InvalidOperationException("Operation is already started.");
+			}
+			IsStartAllAsyncStarted = true;
+			services = _services.ToArray();
 		}
-		IsStartAllAsyncStarted = true;
 
 		var exceptions = new List<Exception>();
 		var exceptionsLock = new object();
 
-		var tasks = CloneServices().Select(x => x.Service.StartAsync(token).ContinueWith(y =>
+		var tasks = services.Select(x => x.Service.StartAsync(token).ContinueWith(y =>
 		{
 			if (y.Exception is null)
 			{

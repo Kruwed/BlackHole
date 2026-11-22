@@ -14,13 +14,15 @@ namespace WalletWasabi.Fluent.ViewModels.AddWallet;
 
 /// <summary>
 /// Where the user tells which Bitcoin node the application works with. The node is asked right away, and if it answers
-/// the application works with it from then on, without a restart.
+/// the application works with it from then on, without a restart. It is the second step of the welcome.
 /// </summary>
-[NavigationMetaData(Title = "Connect to a Full Node")]
-public partial class ConnectToFullNodeViewModel : RoutableViewModel
+[NavigationMetaData(Title = "Connect to Node")]
+public partial class ConnectToNodeViewModel : RoutableViewModel
 {
 	private const string ConnectLabel = "Connect";
 	private const string DoneLabel = "Done";
+
+	private readonly Action _onConnected;
 
 	[AutoNotify] private string _bitcoinRpcUri;
 	[AutoNotify] private string _bitcoinRpcCredentialString;
@@ -31,8 +33,11 @@ public partial class ConnectToFullNodeViewModel : RoutableViewModel
 	/// <summary>Gives up the attempt that is on its way when the page is left.</summary>
 	private CancellationTokenSource? _leaveCts;
 
-	public ConnectToFullNodeViewModel(UiContext uiContext) : base(uiContext)
+	/// <param name="onConnected">Is told when the application works with the node that the user named.</param>
+	public ConnectToNodeViewModel(UiContext uiContext, Action onConnected) : base(uiContext)
 	{
+		_onConnected = onConnected;
+
 		var settings = uiContext.ApplicationSettings;
 
 		DefaultRpcUri = RpcSettings.GetDefaultUri(settings.Network);
@@ -63,12 +68,13 @@ public partial class ConnectToFullNodeViewModel : RoutableViewModel
 		this.WhenAnyValue(x => x.IsConnected)
 			.Subscribe(isConnected => NextLabel = isConnected ? DoneLabel : ConnectLabel);
 
+		// A node that was given at the start cannot be changed here, but it is asked like any other.
 		var canGoOn = this.WhenAnyValue(
 			x => x.BitcoinRpcUri,
 			x => x.BitcoinRpcCredentialString,
 			x => x.IsConnected,
 			(uri, credentials, isConnected) =>
-				isConnected || (!IsReadOnly && RpcSettings.TryParseUri(uri, out _) && RpcSettings.TryParseCredentials(credentials, out _)));
+				isConnected || (RpcSettings.TryParseUri(uri, out _) && RpcSettings.TryParseCredentials(credentials, out _)));
 
 		NextCommand = ReactiveCommand.CreateFromTask(OnNextAsync, canGoOn);
 	}
@@ -121,10 +127,14 @@ public partial class ConnectToFullNodeViewModel : RoutableViewModel
 
 			if (result.IsOk)
 			{
-				UiContext.ApplicationSettings.SetConnectedBitcoinNode(rpcUri, credentialString);
+				if (!IsReadOnly)
+				{
+					UiContext.ApplicationSettings.SetConnectedBitcoinNode(rpcUri, credentialString);
+				}
 
 				IsConnected = true;
 				StatusMessage = $"Connected. {Constants.AppName} works with this node from now on.";
+				_onConnected();
 			}
 			else
 			{

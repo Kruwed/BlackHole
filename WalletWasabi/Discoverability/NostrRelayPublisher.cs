@@ -16,6 +16,13 @@ namespace WalletWasabi.Discoverability;
 /// <param name="Message">What the relay said about the event, or why it could not be asked.</param>
 public record RelayAnswer(Uri Relay, bool Accepted, string Message);
 
+/// <summary>Whether a relay could be reached when the application tried to connect to it.</summary>
+/// <param name="Problem">Why the relay could not be reached, or null if it answered.</param>
+public record RelayReachability(Uri Relay, string? Problem)
+{
+	public bool IsReachable => Problem is null;
+}
+
 /// <summary>Sends events to Nostr relays.</summary>
 public interface INostrPublisher
 {
@@ -71,6 +78,46 @@ public class NostrRelayPublisher : INostrPublisher
 				Uri.TryCreate(address, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeWs || uri.Scheme == Uri.UriSchemeWss)
 					? uri
 					: throw new FormatException($"'{address}' is not the address of a Nostr relay. It starts with wss:// or ws://."))];
+
+	/// <summary>
+	/// Finds out which of the relays can be reached: a connection is opened to each of them and closed again. Nothing is
+	/// sent to a relay, so it learns nothing but that somebody connected. A relay that cannot be reached is an answer
+	/// too, not an exception.
+	/// </summary>
+	public async Task<IReadOnlyList<RelayReachability>> CheckAsync(CancellationToken cancellationToken)
+	{
+		// The connections of the check are on circuits of their own, like those of every key that signs an offer.
+		var proxy = CreateProxy(Guid.NewGuid().ToString("N"));
+
+		return await Task.WhenAll(Relays.Select(relay => CheckAsync(relay, proxy, cancellationToken))).ConfigureAwait(false);
+	}
+
+	private async Task<RelayReachability> CheckAsync(Uri relay, IWebProxy? proxy, CancellationToken cancellationToken)
+	{
+		using var timeoutCts = new CancellationTokenSource(_timeout);
+		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+		try
+		{
+			using var socket = new ClientWebSocket();
+
+			// Without a proxy of ours the relay is reached directly, and not through a proxy that the system has.
+			socket.Options.Proxy = proxy;
+
+			await socket.ConnectAsync(relay, linkedCts.Token).ConfigureAwait(false);
+			await CloseAsync(socket).ConfigureAwait(false);
+
+			return new RelayReachability(relay, Problem: null);
+		}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+		{
+			return new RelayReachability(relay, "The relay did not answer in time.");
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			return new RelayReachability(relay, Tidy(ex.InnerException is { } inner ? $"{ex.Message} ({inner.Message})" : ex.Message));
+		}
+	}
 
 	public async Task<IReadOnlyList<RelayAnswer>> PublishAsync(NostrEvent nostrEvent, CancellationToken cancellationToken)
 	{
@@ -225,4 +272,26 @@ public class NostrRelayPublisher : INostrPublisher
 			Logger.LogTrace(ex);
 		}
 	}
+}
+
+/// <summary>
+/// What sends events to Nostr relays, with relays that can be exchanged for others while the application runs.
+/// Whoever was given this publisher sends to the new relays from the next event on.
+/// </summary>
+/// <remarks>
+/// An offer that stands on the previous relays when they are exchanged is not taken back there: the relays that it is
+/// posted to again, and taken back from, are the new ones. On the previous relays it counts as gone once it is older
+/// than <see cref="WalletWasabi.JoinMarket.MakerOfferEvent.MaxAge"/>.
+/// </remarks>
+public class SwitchableNostrPublisher(INostrPublisher publisher) : INostrPublisher
+{
+	private volatile INostrPublisher _publisher = publisher;
+
+	public IReadOnlyList<Uri> Relays => _publisher.Relays;
+
+	public Task<IReadOnlyList<RelayAnswer>> PublishAsync(NostrEvent nostrEvent, CancellationToken cancellationToken) =>
+		_publisher.PublishAsync(nostrEvent, cancellationToken);
+
+	/// <summary>Sends the events through another publisher from now on. An event that is on its way still goes to the previous relays.</summary>
+	public void SwitchTo(INostrPublisher publisher) => _publisher = publisher;
 }

@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace WalletWasabi.Fluent.Views.AddWallet;
 
-public class ConnectToFullNodeView : UserControl
+public class ConnectToTorView : UserControl
 {
-	public ConnectToFullNodeView()
+	public ConnectToTorView()
 	{
 		InitializeComponent();
 	}
