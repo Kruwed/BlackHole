@@ -4,7 +4,7 @@ using NBitcoin;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
-using WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
+using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
@@ -109,11 +109,12 @@ public class CoinsChosenForCoinJoinTests
 	}
 
 	/// <summary>
-	/// Play on the Coins tab names every coin of its list with its tick. So the round gets the coins that are ticked
-	/// then, and a coin that an earlier round was started with is taken out again unless it is ticked.
+	/// Play in the Coinjoin dialog names every coin of the list of the Coins tab with its tick. So the round gets the
+	/// coins that are ticked then, and a coin that an earlier round was started with is taken out again unless it is
+	/// ticked.
 	/// </summary>
 	[Fact]
-	public void RoundStartedOnTheCoinsTabGetsTheTickedCoinsAndNoOthers()
+	public void RoundStartedWithPlayGetsTheTickedCoinsAndNoOthers()
 	{
 		using var environment = new WalletWithCoins();
 		var (wallet, keyManager) = (environment.Wallet, environment.Wallet.KeyManager);
@@ -123,7 +124,7 @@ public class CoinsChosenForCoinJoinTests
 		var untouched = environment.GiveTheWalletCoin(Money.Coins(3m));
 		wallet.SelectCoinForCoinJoin(earlier.Outpoint);
 
-		wallet.SelectCoinsForCoinJoin(CoinsTabViewModel.GetRoundSelection(
+		wallet.SelectCoinsForCoinJoin(CoinJoinBoxViewModel.GetRoundSelection(
 		[
 			(earlier.Outpoint, false),
 			(ticked.Outpoint, true),
@@ -136,7 +137,7 @@ public class CoinsChosenForCoinJoinTests
 		Assert.Equal([ticked.Outpoint], keyManager.CoinsSelectedForCoinJoin);
 
 		// With nothing ticked, nothing is chosen: the round then tells that no coin is ticked.
-		wallet.SelectCoinsForCoinJoin(CoinsTabViewModel.GetRoundSelection(
+		wallet.SelectCoinsForCoinJoin(CoinJoinBoxViewModel.GetRoundSelection(
 		[
 			(earlier.Outpoint, false),
 			(ticked.Outpoint, false),

@@ -40,7 +40,8 @@ public enum OfferCoinsSource
 /// <summary>
 /// The offer of the wallet as a market maker: up to two coins, the lowest fee rate of a coinjoin that the coins may go
 /// into and the two prices of an anonymity point, posted to the Nostr relays. The coins are the ones that are ticked on
-/// the Coins tab. The offer that stands is shown here too, to be changed or taken back.
+/// the Coins tab. The offer that stands is shown here too, to be changed or taken back. "Maker" in the menu of the
+/// coinjoin box opens it, and the way back leads to the Coinjoin dialog.
 /// </summary>
 [NavigationMetaData(Title = "Offer", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class MakerOfferViewModel : RoutableViewModel
@@ -78,6 +79,7 @@ public partial class MakerOfferViewModel : RoutableViewModel
 
 		// A click beside the page does not close it: what was typed would be gone.
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: false);
+		EnableBack = true;
 
 		this.ValidateProperty(x => x.MinFeeRateText, ValidateMinFeeRate);
 		this.ValidateProperty(x => x.BidText, ValidateBid);

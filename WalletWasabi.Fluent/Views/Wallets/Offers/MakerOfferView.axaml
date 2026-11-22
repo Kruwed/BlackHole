@@ -19,6 +19,7 @@
 
   <ContentArea Title="{Binding Title}"
                Caption="Offer the coins that are ticked on the Coins tab, two at most, to the takers of coinjoins, and name your prices for anonymity points."
+               EnableBack="{Binding EnableBack}"
                EnableCancel="{Binding EnableCancel}"
                EnableNext="True" NextContent="Post"
                EnableSkip="{Binding HasOffer}" SkipContent="Withdraw offer"

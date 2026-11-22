@@ -47,8 +47,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	private const string NoStandardDenominationCoinsMessage = "No ticked coin holds a standard amount";
 	private const string CoordinatorLiedMessage = "Coordinator lied and might be malicious!";
 
-	private readonly IWalletModel _wallet;
-	private readonly Wallet _walletInstance;
 	private readonly StateMachine<State, Trigger> _stateMachine;
 	private readonly DispatcherTimer _countdownTimer;
 
@@ -76,14 +74,11 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 	/// <param name="startRound">
 	/// What Play does: it starts a round, and it decides before which coins the round gets. The coins are the ones that
-	/// are ticked in the list next to the controls, which these controls do not know.
+	/// are ticked in the list of the Coins tab, which these controls do not know.
 	/// </param>
 	/// <param name="protocol">The kind of coinjoin that the controls are for. What the wallet tells about coinjoins of another kind is not theirs to show.</param>
-	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, Wallet walletInstance, WalletCoinjoinModel walletCoinjoinModel, CoinJoinProtocol protocol, Func<Task> startRound) : base(uiContext)
+	public CoinJoinStateViewModel(UiContext uiContext, IWalletModel wallet, WalletCoinjoinModel walletCoinjoinModel, CoinJoinProtocol protocol, Func<Task> startRound) : base(uiContext)
 	{
-		_wallet = wallet;
-		_walletInstance = walletInstance;
-
 		Protocol = protocol;
 		PlayToolTip = protocol == CoinJoinProtocol.ZeroLink
 			? "Start a ZeroLink round with one ticked coin: a coin of a standard amount that the coordinator has a round of. The largest such amount goes first."
@@ -126,9 +121,7 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 
 		_stateMachine.Start();
 
-		CoinJoinPaymentsCommand = ReactiveCommand.Create(() => UiContext.Navigate(NavigationTarget.DialogScreen).To().CoinJoinPayments(_wallet, _walletInstance));
-
-		IsCoinjoinSupported = _wallet.Coinjoin is not null;
+		IsCoinjoinSupported = wallet.Coinjoin is not null;
 	}
 
 	private enum State
@@ -160,8 +153,6 @@ public partial class CoinJoinStateViewModel : ViewModelBase
 	public string PlayToolTip { get; }
 
 	public ICommand StopCommand { get; }
-
-	public ICommand CoinJoinPaymentsCommand { get; }
 
 	/// <summary>What the controls say about a round that came to its end and was not stopped.</summary>
 	public static string DescribeRoundEnd(EndRoundState endRoundState) =>

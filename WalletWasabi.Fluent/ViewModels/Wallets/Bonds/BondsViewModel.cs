@@ -17,7 +17,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 /// <summary>
 /// The fidelity bonds of the wallet: coins that are locked until the chain reaches a block height. New ones are created
 /// from here, out of the coins that are ticked on the Coins tab, and the ones whose unlock height the chain has reached
-/// are redeemed from here.
+/// are redeemed from here. The menu of the coinjoin box opens it, and the way back leads to the Coinjoin dialog.
 /// </summary>
 [NavigationMetaData(Title = "Fidelity Bonds", NavigationTarget = NavigationTarget.DialogScreen)]
 public partial class BondsViewModel : RoutableViewModel
@@ -35,6 +35,7 @@ public partial class BondsViewModel : RoutableViewModel
 		_walletModel = walletModel;
 
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
+		EnableBack = true;
 
 		NextCommand = ReactiveCommand.Create(() => Navigate().To().CreateBond(walletModel, wallet, coins));
 	}
