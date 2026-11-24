@@ -4,6 +4,17 @@
     <Setter Property="(TextElement.FontWeight)" Value="Regular" />
     <Setter Property="Margin" Value="0 7 0 10" />
   </Style>
+  <!-- A label that stands to the left of what it names, on one row with it: at the middle of the row. -->
+  <Style Selector="Label.beside">
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <!-- To the left of a box that text is typed into: at the height of the text in the box. A box that tells below
+       itself what is wrong with its text makes its row higher, and the label stays where the box is. -->
+  <Style Selector="Label.besideBox">
+    <Setter Property="Margin" Value="0 7 0 0" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
   <Style Selector="Label.wrap > AccessText">
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>

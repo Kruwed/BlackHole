@@ -26,12 +26,13 @@ public record ConnectionAnswer(bool IsGood, string Message);
 /// <summary>
 /// A page of the settings where the user connects the application to something: to Tor, to the node, to the Nostr
 /// relays or to the coordinator. It is the same page on the welcome and in the settings, and it has two buttons.
-/// "Verify Connection" finds out whether what the page names answers, and changes nothing. "Connect" does the same
-/// and, if it answers, makes the application work with it from then on, without a restart, and saves it.
+/// "Verify Connection" finds out whether what the page names answers, and changes nothing. "Done" does the same
+/// and, if it answers, makes the application work with it from then on, without a restart, saves it, and closes the
+/// page. If it does not answer, the page stays open and tells why.
 /// </summary>
 public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISettingsPage
 {
-	public const string ConnectLabel = "Connect";
+	/// <summary>What the button says that connects the application and closes the page.</summary>
 	public const string DoneLabel = "Done";
 
 	private readonly Connection _connection;
@@ -42,16 +43,20 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 	/// <summary>Whether the last answer was a good one. The words have the colour of it.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isStatusGood;
 
-	/// <summary>Whether the application was connected to what the page names. The button closes the page then.</summary>
+	/// <summary>Whether the application was connected to what the page names. The page closes then.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConnected;
 
 	/// <summary>Whether an answer is being waited for. Nothing else can be asked meanwhile, and what the page names cannot be changed.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isAsking;
 
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _nextLabel = ConnectLabel;
-
 	/// <summary>Gives up the answer that is being waited for when the page is left.</summary>
 	private CancellationTokenSource? _leaveCts;
+
+	/// <summary>Whether the page is the one that shows. A page that was left has nothing to close.</summary>
+	private bool _isShown;
+
+	/// <summary>Whether there is something that the page connects the application to. See <see cref="SetUpCommands"/>.</summary>
+	private bool _hasSomethingToConnectTo = true;
 
 	protected ConnectionPageViewModel(UiContext uiContext, Connection connection) : base(uiContext)
 	{
@@ -61,10 +66,10 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 
 		EnableBack = true;
-
-		this.WhenAnyValue(x => x.IsConnected)
-			.Subscribe(isConnected => NextLabel = isConnected ? DoneLabel : ConnectLabel);
 	}
+
+	/// <summary>What the button says that connects.</summary>
+	public string NextLabel => DoneLabel;
 
 	public ApplicationSettings Settings { get; }
 
@@ -80,11 +85,36 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 	public ICommand? VerifyCommand { get; private set; }
 
 	/// <summary>
+	/// Tells whether "Done" can be pressed: not while an answer is being waited for, and not while what the page names
+	/// cannot be asked, an address that is none for example, unless the application is connected already.
+	/// </summary>
+	/// <param name="hasSomethingToConnectTo">False on a page with nothing to connect to: "Done" only closes it.</param>
+	public static bool CanBeDone(bool canAsk, bool isAsking, bool isConnected, bool hasSomethingToConnectTo) =>
+		!isAsking && (canAsk || isConnected || !hasSomethingToConnectTo);
+
+	/// <summary>Tells whether a press of "Done" connects the application first: it does unless that was done, or there is nothing to connect to.</summary>
+	public static bool ConnectsFirst(bool isConnected, bool hasSomethingToConnectTo) =>
+		hasSomethingToConnectTo && !isConnected;
+
+	/// <summary>
+	/// Tells whether the page closes after a press of "Done": once the application is connected. What did not answer
+	/// keeps the page open, and a page that was left meanwhile is closed already.
+	/// </summary>
+	public static bool ClosesWhenDone(bool isConnected, bool hasSomethingToConnectTo, bool isShown) =>
+		isShown && (isConnected || !hasSomethingToConnectTo);
+
+	/// <summary>
 	/// Sets up the two buttons. A page calls it once it knows when there is something to ask.
 	/// </summary>
 	/// <param name="canAsk">Whether what the page names can be asked: an address has to be one, for example.</param>
-	protected void SetUpCommands(IObservable<bool> canAsk)
+	/// <param name="hasSomethingToConnectTo">
+	/// False if the application does not use what the page names, Tor that is turned off for example. There is nothing
+	/// to connect to then, and "Done" closes the page.
+	/// </param>
+	protected void SetUpCommands(IObservable<bool> canAsk, bool hasSomethingToConnectTo = true)
 	{
+		_hasSomethingToConnectTo = hasSomethingToConnectTo;
+
 		var isAsking = this.WhenAnyValue(x => x.IsAsking);
 		var isConnected = this.WhenAnyValue(x => x.IsConnected);
 
@@ -92,10 +122,10 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 			() => AskAsync(VerifyAsync, isConnecting: false),
 			canAsk.CombineLatest(isAsking, (can, asking) => can && !asking));
 
-		// Once the application is connected, the button closes the page.
+		// The button connects, and closes the page once the application is connected.
 		NextCommand = ReactiveCommand.CreateFromTask(
 			OnNextAsync,
-			canAsk.CombineLatest(isAsking, isConnected, (can, asking, connected) => !asking && (can || connected)));
+			canAsk.CombineLatest(isAsking, isConnected, (can, asking, connected) => CanBeDone(can, asking, connected, hasSomethingToConnectTo)));
 	}
 
 	/// <summary>Asks what the page names whether it answers.</summary>
@@ -119,15 +149,21 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 		StatusMessage = null;
 	}
 
+	/// <summary>
+	/// Done: the application is connected to what the page names, and then the page closes. What does not answer keeps
+	/// the page open, with the reason in sight.
+	/// </summary>
 	private async Task OnNextAsync()
 	{
-		if (IsConnected)
+		if (ConnectsFirst(IsConnected, _hasSomethingToConnectTo))
 		{
-			Navigate().Back();
-			return;
+			await AskAsync(ConnectAsync, isConnecting: true);
 		}
 
-		await AskAsync(ConnectAsync, isConnecting: true);
+		if (ClosesWhenDone(IsConnected, _hasSomethingToConnectTo, _isShown))
+		{
+			Navigate().Back();
+		}
 	}
 
 	private async Task AskAsync(Func<CancellationToken, Task<ConnectionAnswer>> ask, bool isConnecting)
@@ -182,9 +218,11 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 
 		var leaveCts = new CancellationTokenSource();
 		_leaveCts = leaveCts;
+		_isShown = true;
 
 		disposables.Add(Disposable.Create(() =>
 		{
+			_isShown = false;
 			leaveCts.Cancel();
 			leaveCts.Dispose();
 		}));

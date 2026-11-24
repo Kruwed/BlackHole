@@ -11,36 +11,40 @@
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Settings.ConnectToTorView">
   <UserControl.Styles>
-    <!-- The button that only asks stands next to the one that connects. -->
+    <!-- The button that only asks stands next to the one that connects and closes the page. -->
     <Style Selector="ContentArea /template/ ContentPresenter#PART_BottomContentPresenter">
       <Setter Property="HorizontalAlignment" Value="Right" />
       <Setter Property="Margin" Value="0 0 12 0" />
     </Style>
   </UserControl.Styles>
   <ContentArea Title="{Binding Title}"
-               Caption="See to it that Black Hole is connected to Tor."
                EnableCancel="{Binding EnableCancel}"
                EnableBack="{Binding EnableBack}"
                EnableNext="True" NextContent="{Binding NextLabel}"
                IsBusy="{Binding IsBusy}">
     <ContentArea.BottomContent>
-      <Button Content="Verify Connection" Command="{Binding VerifyCommand}" />
+      <!-- It answers with how many unique Tor IP addresses Tor is connected with. -->
+      <Button Classes="action" Content="Verify Connection" Command="{Binding VerifyCommand}" />
     </ContentArea.BottomContent>
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
-      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+      <!-- What there is to say while Tor is not used: why nothing can be asked here. -->
+      <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                 IsVisible="{Binding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- How Tor is used. It is applied when the application starts. -->
       <StackPanel Spacing="10" IsVisible="{Binding IsTorASetting}" IsEnabled="{Binding !AreSettingsReadOnly}" Margin="0 10 0 0">
-        <Label Content="Tor:" Target="CbTorMode" />
-        <ComboBox Name="CbTorMode"
-                  ItemsSource="{Binding TorModes}" SelectedItem="{Binding Settings.UseTor}"
-                  HorizontalAlignment="Stretch">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="basemodels:TorMode">
-              <TextBlock Text="{Binding Converter={x:Static converters:EnumConverters.ToFriendlyName}}" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
+        <Grid ColumnDefinitions="Auto,12,*">
+          <Label Grid.Column="0" Classes="beside" Content="Tor:" Target="CbTorMode" />
+          <ComboBox Grid.Column="2" Name="CbTorMode"
+                    ItemsSource="{Binding TorModes}" SelectedItem="{Binding Settings.UseTor}"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Center">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="basemodels:TorMode">
+                <TextBlock Text="{Binding Converter={x:Static converters:EnumConverters.ToFriendlyName}}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
         <DockPanel IsVisible="{Binding Settings.UseTor, ConverterParameter={x:Static basemodels:TorMode.Enabled}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
           <ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding Settings.TerminateTorOnExit}"
                         OnContent="{x:Null}" OffContent="{x:Null}" Margin="0 0 -12 0" />

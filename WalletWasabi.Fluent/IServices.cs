@@ -65,6 +65,13 @@ public interface IServices
 	Task<Result<string>> VerifyTorAsync(CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Tells how many different IP addresses the Tor relays have that the circuits of the application's Tor go through
+	/// right now: first hops, middle relays and exits.
+	/// </summary>
+	/// <returns>The number, or null if Tor cannot be asked for it.</returns>
+	Task<int?> CountTorRelayAddressesAsync(CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Makes the application post to the given Nostr relays from now on, without a restart, provided that at least one
 	/// of them can be reached. Otherwise the application keeps the relays that it has. Nothing is sent to a relay.
 	/// </summary>

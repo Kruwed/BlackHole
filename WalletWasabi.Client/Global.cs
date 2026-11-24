@@ -346,6 +346,48 @@ public class Global
 	public Task<Result<string>> VerifyTorAsync(CancellationToken cancellationToken) =>
 		AskTorAsync(TorAnswerTimeout, "Tor is not running.", cancellationToken);
 
+	/// <summary>
+	/// Tells how many different IP addresses the Tor relays have that the circuits of the application's Tor go through at
+	/// this moment: its first hops, the middle relays and the exits.
+	/// </summary>
+	/// <returns>
+	/// The number, or null if Tor cannot be asked for it: it is turned off or not there, or it is a Tor that the
+	/// application did not start, which has no control port that the application may use.
+	/// </returns>
+	public async Task<int?> CountTorRelayAddressesAsync(CancellationToken cancellationToken)
+	{
+		if (Config.UseTor == TorMode.Disabled || _torManager is not { } torManager)
+		{
+			return null;
+		}
+
+		using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		timeoutCts.CancelAfter(TorAnswerTimeout);
+
+		try
+		{
+			var (_, torControlClient) = await torManager.WaitForNextAttemptAsync(timeoutCts.Token).ConfigureAwait(false);
+
+			if (torControlClient is null)
+			{
+				return null;
+			}
+
+			var addresses = await torControlClient.GetCircuitRelayAddressesAsync(timeoutCts.Token).ConfigureAwait(false);
+
+			return addresses.Count;
+		}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+		{
+			return null;
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			Logger.LogDebug(ex);
+			return null;
+		}
+	}
+
 	/// <param name="patience">How long Tor is given to be there and to answer.</param>
 	/// <param name="notRunningMessage">What to tell when the Tor that the application starts is not there in that time.</param>
 	private async Task<Result<string>> AskTorAsync(TimeSpan patience, string notRunningMessage, CancellationToken cancellationToken)

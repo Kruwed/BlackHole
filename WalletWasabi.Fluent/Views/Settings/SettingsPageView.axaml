@@ -186,16 +186,17 @@
                     Icon="{StaticResource cube_multiple_regular}"
                     IsEnabled="False" />
 
-        <!-- Wallet. There is one wallet at most, so it is either recovered or created: once it is there, the box
-             that made it configures it, and the other one cannot be used any more. -->
+        <!-- Wallet. There is one wallet at most, so it is either created or recovered: once it is there, the box
+             that made it configures it, and the other one cannot be used any more. Creating comes first. -->
         <TextBlock Grid.Row="0" Grid.Column="4" Classes="header" Text="Wallet" />
 
-        <TileButton Grid.Row="1" Grid.Column="4" Text="Recover a Wallet"
+        <TileButton Grid.Row="1" Grid.Column="4" Text="Create a Wallet"
                     Classes="bottomtext"
                     Classes.action="{Binding CanAddWallet}"
-                    Icon="{StaticResource recover_arrow_right_regular}"
+                    Icon="{StaticResource add_regular}"
+                    IsDefault="{Binding CanAddWallet}"
                     IsVisible="{Binding !IsConfigureTileUpper}"
-                    Command="{Binding RecoverWalletCommand}" />
+                    Command="{Binding CreateWalletCommand}" />
         <TileButton Grid.Row="1" Grid.Column="4" Text="Configure Wallet"
                     Classes="bottomtext"
                     Icon="{StaticResource nav_wallet_24_regular}"
@@ -204,13 +205,12 @@
           <PathIcon Classes="mark working" />
         </TileButton>
 
-        <TileButton Grid.Row="2" Grid.Column="4" Text="Create a Wallet"
+        <TileButton Grid.Row="2" Grid.Column="4" Text="Recover a Wallet"
                     Classes="bottomtext"
                     Classes.action="{Binding CanAddWallet}"
-                    Icon="{StaticResource add_regular}"
-                    IsDefault="{Binding CanAddWallet}"
+                    Icon="{StaticResource recover_arrow_right_regular}"
                     IsVisible="{Binding !IsConfigureTileLower}"
-                    Command="{Binding CreateWalletCommand}" />
+                    Command="{Binding RecoverWalletCommand}" />
         <TileButton Grid.Row="2" Grid.Column="4" Text="Configure Wallet"
                     Classes="bottomtext"
                     Icon="{StaticResource nav_wallet_24_regular}"

@@ -17,30 +17,30 @@ Black Hole is a fork of [Wasabi Wallet](https://github.com/WalletWasabi/WalletWa
 
 ## The settings
 
-The gear in the top right corner of the window opens the settings. They have five columns, and every column has two boxes: the upper one connects to something that exists, or recovers the wallet, and the lower one is for running, or creating, your own.
+The gear in the top right corner of the window opens the settings. They have five columns, and every column has two boxes. In the first four the upper one connects to something that exists and the lower one is for running your own. In the last the upper one creates the wallet and the lower one recovers one.
 
 | *Tor* | *Node* | *Nostr* | *Coordinator* | *Wallet* |
 | --- | --- | --- | --- | --- |
-| Connect to Tor | Connect to Node | Connect to Nostr | Connect to Coordinator | Recover a Wallet |
-| Run a Tor Relay | Run a Bitcoin Node | Run a Nostr Relay | Run a Coinjoin Coordinator | Create a Wallet |
+| Connect to Tor | Connect to Node | Connect to Nostr | Connect to Coordinator | Create a Wallet |
+| Run a Tor Relay | Run a Bitcoin Node | Run a Nostr Relay | Run a Coinjoin Coordinator | Recover a Wallet |
 
 The four *Run a …* boxes hold their place and do nothing yet. Each *Connect to …* box opens a page with two buttons:
 
 - **Verify Connection** asks what the page names whether it answers, and tells the answer. It changes nothing.
-- **Connect** does the same and, if it answers, makes Black Hole work with it from then on, without a restart, and saves it as the setting. Something that does not answer is not taken: the page tells why, and Black Hole keeps what it had.
+- **Done** does the same and, if it answers, makes Black Hole work with it from then on, without a restart, saves it as the setting, and closes the page. Something that does not answer is not taken: the page stays open and tells why, and Black Hole keeps what it had.
 
 What the pages are about:
 
-- **Connect to Tor** asks for nothing. Black Hole starts its Tor when it starts; *Verify Connection* tells whether that Tor has connected to the Tor network, and *Connect* waits until it has. The page also has how Tor is used (*Enabled*; *Connect Only*, which uses a Tor that runs on the computer already; *Disabled*) and whether Tor is stopped when Black Hole closes. These two take a restart. With Tor turned off, and on regtest, where Tor is not used, there is nothing to connect to, and the two buttons cannot be pressed.
+- **Connect to Tor** asks for nothing. Black Hole starts its Tor when it starts; *Verify Connection* tells whether that Tor has connected to the Tor network and with how many unique Tor IP addresses, and *Done* waits until it has connected. The addresses are those of the relays that the circuits of Tor go through at that moment: first hops, middle relays and exits, every address once. The number changes as Tor opens and closes circuits. A Tor that Black Hole did not start (*Connect Only*) is not asked for its circuits, and the answer has no number then. The page also has how Tor is used (*Enabled*; *Connect Only*, which uses a Tor that runs on the computer already; *Disabled*) and whether Tor is stopped when Black Hole closes. These two take a restart. With Tor turned off, and on regtest, where Tor is not used, there is nothing to connect to: *Verify Connection* cannot be pressed, and *Done* closes the page.
 - **Connect to Node** asks for the RPC endpoint and the RPC credentials of your node, see [Connect it to your node](#connect-it-to-your-node). The node has to answer and to be on the right network. The page also has the network, which takes a restart.
-- **Connect to Nostr** asks for the relays, one address on a line. A connection is opened to each of them and closed again; nothing is sent to a relay. Nostr answers if one relay does, and after *Connect* Black Hole posts to and reads from all the relays that you named, also those that did not answer this time.
+- **Connect to Nostr** asks for the relays, one address on a line. A connection is opened to each of them and closed again; nothing is sent to a relay. Nostr answers if one relay does, and after *Done* Black Hole posts to and reads from all the relays that you named, also those that did not answer this time.
 - **Connect to Coordinator** asks for the address of the coordinator of your coinjoins, and asks the coordinator for its rounds. While a coinjoin is under way the coordinator is not changed: stop the coinjoin first. The page also has the highest mining fee rate and the lowest number of inputs that you accept of a round, which take a restart, and the dust forfeit limit of the wallet, see [Coinjoin](#coinjoin).
 
 A node, relays or a coordinator that were given on the command line are shown and asked, and cannot be changed on the page. When a setting was changed that takes a restart, the settings say so and offer the restart.
 
 **The marks.** A *Connect to …* box has an orange check mark if you have connected Black Hole to it and it works at the moment, and an orange X if you have and it does not. A box without a mark is one that you have not connected to, or a Tor that is not used. Whether the connections work is found out while the settings are in sight, and not otherwise: Tor and the node are looked at every few seconds, and the relays and the coordinator are asked when the settings open and then once a minute, the way *Verify Connection* asks them. Right after the start, while Tor is still connecting, nothing is told yet about Tor and about what is reached through it.
 
-**The wallet.** There is one wallet at most, so it is either recovered or created. Once it is there, the box that made it is *Configure Wallet*, with a check mark: the lower one if the wallet was created, the upper one if it was recovered. The other box stays what it was and can no longer be pressed. *Configure Wallet* has *Resync Wallet* and *Wallet Keys*, the extended public keys of the wallet. The wallet file tells whether the wallet was recovered; a file from before it did counts as created.
+**The wallet.** There is one wallet at most, so it is either created or recovered. Once it is there, the box that made it is *Configure Wallet*, with a check mark: the upper one if the wallet was created, the lower one if it was recovered. The other box stays what it was and can no longer be pressed. *Configure Wallet* has *Resync Wallet* and *Wallet Keys*, the extended public keys of the wallet. The wallet file tells whether the wallet was recovered; a file from before it did counts as created.
 
 ### The first start
 
@@ -96,7 +96,7 @@ A Bitcoin Core on the same computer that uses its default data folder and its de
 - **the RPC endpoint**: the address of the RPC interface of the node. The defaults are the ones of Bitcoin Core, `http://localhost:8332` on mainnet.
 - **the RPC credentials**: `rpcuser:rpcpassword`, or `cookiefile=` followed by the path of the cookie file of the node. Left empty, the cookie file in the default data folder of Bitcoin Core (`~/.bitcoin`) is used.
 
-*Connect to Node* of [the settings](#the-settings) asks for the two. *Verify Connection* there checks them with the node. *Connect* does too and, if the node answers and is on the right network, works with it right away.
+*Connect to Node* of [the settings](#the-settings) asks for the two. *Verify Connection* there checks them with the node. *Done* does too and, if the node answers and is on the right network, works with it right away.
 
 The same settings are `BitcoinRpcEndPoint` and `BitcoinRpcCredentialString` in `Config.json`.
 

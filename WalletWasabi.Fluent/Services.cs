@@ -79,6 +79,9 @@ public class Services : IServices
 		_global.ConnectToTorAsync(cancellationToken);
 	public Task<Result<string>> VerifyTorAsync(CancellationToken cancellationToken) =>
 		_global.VerifyTorAsync(cancellationToken);
+
+	public Task<int?> CountTorRelayAddressesAsync(CancellationToken cancellationToken) =>
+		_global.CountTorRelayAddressesAsync(cancellationToken);
 	public Task<IReadOnlyList<RelayReachability>> ConnectToNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
 		_global.ConnectToNostrRelaysAsync(relays, cancellationToken);
 	public Task<IReadOnlyList<RelayReachability>> VerifyNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>

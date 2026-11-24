@@ -1,6 +1,7 @@
 using Nito.AsyncEx;
 using System.IO;
 using System.IO.Pipelines;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
@@ -162,6 +163,32 @@ public class TorControlClient : IAsyncDisposable
 		}
 
 		return bootstrapEvent;
+	}
+
+	/// <summary>
+	/// Tells the IP addresses of the Tor relays that the circuits go through which Tor has built at this moment: first
+	/// hops, middle relays and exits, every address once.
+	/// </summary>
+	/// <remarks>
+	/// The circuits name their relays by fingerprint, and the directory that Tor has of the network tells the address of
+	/// a fingerprint. A relay that the directory does not have, a bridge for example, is left out.
+	/// </remarks>
+	public async Task<IReadOnlyCollection<IPAddress>> GetCircuitRelayAddressesAsync(CancellationToken cancellationToken)
+	{
+		var circuits = await SendCommandAsync("GETINFO circuit-status\r\n", cancellationToken).ConfigureAwait(false);
+		var addresses = new HashSet<IPAddress>();
+
+		foreach (var fingerprint in CircuitRelays.GetBuiltRelayFingerprints(circuits))
+		{
+			var entry = await SendCommandAsync($"GETINFO ns/id/{fingerprint}\r\n", cancellationToken).ConfigureAwait(false);
+
+			if (CircuitRelays.TryParseRelayAddress(entry, out var address))
+			{
+				addresses.Add(address);
+			}
+		}
+
+		return addresses;
 	}
 
 	/// <summary>

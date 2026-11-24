@@ -27,41 +27,46 @@
     <ContentArea.BottomContent>
       <Button Content="Verify Connection" Command="{Binding VerifyCommand}" />
     </ContentArea.BottomContent>
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="420">
-      <Label Content="RPC endpoint:" Target="TbRpcUri"
-             ToolTip.Tip="The RPC interface of your own full node. The wallet gets blocks, unconfirmed transactions and fee rates from it and broadcasts its transactions through it. Nobody else is asked." />
-      <TextBox Name="TbRpcUri"
-               Text="{Binding BitcoinRpcUri}"
-               Watermark="{Binding DefaultRpcUri}"
-               IsReadOnly="{Binding IsAsking}"
-               IsEnabled="{Binding !IsReadOnly}">
-        <Interaction.Behaviors>
-          <FocusOnAttachedBehavior />
-          <WhitespacePasteRemovalBehavior />
-          <WhitespaceInputRemovalBehavior />
-        </Interaction.Behaviors>
-      </TextBox>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="520">
+      <!-- Every name has what it names to its right, in one column. What explains a row is below the row, as wide as the page. -->
+      <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,10,Auto,10,Auto,20,Auto,10,Auto">
+        <Label Grid.Row="0" Grid.Column="0" Classes="besideBox" Content="RPC endpoint:" Target="TbRpcUri"
+               ToolTip.Tip="The RPC interface of your own full node. The wallet gets blocks, unconfirmed transactions and fee rates from it and broadcasts its transactions through it. Nobody else is asked." />
+        <TextBox Grid.Row="0" Grid.Column="2" Name="TbRpcUri"
+                 Text="{Binding BitcoinRpcUri}"
+                 Watermark="{Binding DefaultRpcUri}"
+                 IsReadOnly="{Binding IsAsking}"
+                 IsEnabled="{Binding !IsReadOnly}">
+          <Interaction.Behaviors>
+            <FocusOnAttachedBehavior />
+            <WhitespacePasteRemovalBehavior />
+            <WhitespaceInputRemovalBehavior />
+          </Interaction.Behaviors>
+        </TextBox>
 
-      <Label Content="RPC credentials:" Target="TbRpcCredentials" />
-      <TextBox Name="TbRpcCredentials"
-               Text="{Binding BitcoinRpcCredentialString}"
-               Watermark="rpcuser:rpcpassword or cookiefile=path"
-               IsReadOnly="{Binding IsAsking}"
-               IsEnabled="{Binding !IsReadOnly}" />
-      <TextBlock Text="Leave the credentials empty to use the cookie file of a Bitcoin Core that runs on this computer."
-                 TextWrapping="Wrap"
-                 Opacity="0.6" />
+        <Label Grid.Row="2" Grid.Column="0" Classes="besideBox" Content="RPC credentials:" Target="TbRpcCredentials" />
+        <TextBox Grid.Row="2" Grid.Column="2" Name="TbRpcCredentials"
+                 Text="{Binding BitcoinRpcCredentialString}"
+                 Watermark="rpcuser:rpcpassword or cookiefile=path"
+                 IsReadOnly="{Binding IsAsking}"
+                 IsEnabled="{Binding !IsReadOnly}" />
+        <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3"
+                   Text="Leave the credentials empty to use the cookie file of a Bitcoin Core that runs on this computer."
+                   TextWrapping="Wrap"
+                   Opacity="0.6" />
 
-      <!-- The network. It is applied when the application starts, and the node is asked on the network that the application runs on. -->
-      <Label Content="Network:" Target="CbNetwork" Margin="0 10 0 0" />
-      <ComboBox Name="CbNetwork"
-                ItemsSource="{Binding Networks}"
-                SelectedItem="{Binding Settings.Network}"
-                IsEnabled="{Binding !AreSettingsReadOnly}"
-                HorizontalAlignment="Stretch" />
-      <TextBlock Text="A change of the network takes a restart. Until then the node is asked on the network that Black Hole runs on."
-                 TextWrapping="Wrap"
-                 Opacity="0.6" />
+        <!-- The network. It is applied when the application starts, and the node is asked on the network that the application runs on. -->
+        <Label Grid.Row="6" Grid.Column="0" Classes="beside" Content="Network:" Target="CbNetwork" />
+        <ComboBox Grid.Row="6" Grid.Column="2" Name="CbNetwork"
+                  ItemsSource="{Binding Networks}"
+                  SelectedItem="{Binding Settings.Network}"
+                  IsEnabled="{Binding !AreSettingsReadOnly}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+        <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3"
+                   Text="A change of the network takes a restart. Until then the node is asked on the network that Black Hole runs on."
+                   TextWrapping="Wrap"
+                   Opacity="0.6" />
+      </Grid>
 
       <!-- What the node answered the last time. The room for it is always there, so that nothing moves when it appears. -->
       <v:ConnectionStatus MinHeight="40" Margin="0 10 0 0" />

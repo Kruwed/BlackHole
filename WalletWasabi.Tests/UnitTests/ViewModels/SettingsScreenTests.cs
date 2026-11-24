@@ -96,21 +96,22 @@ public class SettingsScreenTests
 		Assert.True(ConnectionsModel.IsDone(isConfigured: false, isUsed: false));
 	}
 
+	/// <summary>Creating a wallet is the upper box of the Wallet column, and recovering one the lower.</summary>
 	[Fact]
-	public void WalletColumnRecoversAndCreatesUntilThereIsAWallet()
+	public void WalletColumnCreatesAndRecoversUntilThereIsAWallet()
 	{
-		Assert.Equal((WalletTile.Recover, WalletTile.Create), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: false));
-		Assert.Equal((WalletTile.Recover, WalletTile.Create), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: true));
+		Assert.Equal((WalletTile.Create, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: false));
+		Assert.Equal((WalletTile.Create, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: true));
 	}
 
 	[Fact]
 	public void BoxThatMadeTheWalletConfiguresIt()
 	{
-		// A wallet that was created: the lower box, where "Create a Wallet" was.
-		Assert.Equal((WalletTile.Recover, WalletTile.Configure), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false));
+		// A wallet that was created: the upper box, where "Create a Wallet" was.
+		Assert.Equal((WalletTile.Configure, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false));
 
-		// A wallet that was recovered: the upper box, where "Recover a Wallet" was.
-		Assert.Equal((WalletTile.Configure, WalletTile.Create), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true));
+		// A wallet that was recovered: the lower box, where "Recover a Wallet" was.
+		Assert.Equal((WalletTile.Create, WalletTile.Configure), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true));
 	}
 
 	[Fact]
@@ -199,24 +200,85 @@ public class SettingsScreenTests
 		Assert.True(ConnectionsModel.IsCheckDue(now - TimeSpan.FromMinutes(5), now, maxAge));
 	}
 
+	/// <summary>The button that connects is called "Done" from the start: it connects, and the page closes when that worked.</summary>
 	[Fact]
-	public void PagesHaveAButtonThatOnlyAsksAndOneThatConnects()
+	public void PagesHaveAButtonThatOnlyAsksAndOneThatConnectsAndCloses()
 	{
-		// "Connect" turns into "Done" once the application is connected.
-		Assert.Equal("Connect", ConnectionPageViewModel.ConnectLabel);
 		Assert.Equal("Done", ConnectionPageViewModel.DoneLabel);
+
+		// One press connects first, unless the application is connected already.
+		Assert.True(ConnectionPageViewModel.ConnectsFirst(isConnected: false, hasSomethingToConnectTo: true));
+		Assert.False(ConnectionPageViewModel.ConnectsFirst(isConnected: true, hasSomethingToConnectTo: true));
+
+		// Then the page closes, if that worked.
+		Assert.True(ConnectionPageViewModel.ClosesWhenDone(isConnected: true, hasSomethingToConnectTo: true, isShown: true));
+	}
+
+	/// <summary>What does not answer keeps its page open: the page tells why, and the user can change what it names.</summary>
+	[Fact]
+	public void PageStaysOpenWhenConnectingDidNotWork()
+	{
+		Assert.False(ConnectionPageViewModel.ClosesWhenDone(isConnected: false, hasSomethingToConnectTo: true, isShown: true));
+	}
+
+	/// <summary>The user went back while the answer was awaited: the page is closed, and no other page is closed for it.</summary>
+	[Fact]
+	public void PageThatWasLeftClosesNothing()
+	{
+		Assert.False(ConnectionPageViewModel.ClosesWhenDone(isConnected: true, hasSomethingToConnectTo: true, isShown: false));
+		Assert.False(ConnectionPageViewModel.ClosesWhenDone(isConnected: false, hasSomethingToConnectTo: false, isShown: false));
+	}
+
+	/// <summary>Tor that is turned off, or regtest: there is nothing to connect to, and "Done" closes the page.</summary>
+	[Fact]
+	public void DoneOnlyClosesAPageWithNothingToConnectTo()
+	{
+		Assert.True(ConnectionPageViewModel.CanBeDone(canAsk: false, isAsking: false, isConnected: false, hasSomethingToConnectTo: false));
+		Assert.False(ConnectionPageViewModel.ConnectsFirst(isConnected: false, hasSomethingToConnectTo: false));
+		Assert.True(ConnectionPageViewModel.ClosesWhenDone(isConnected: false, hasSomethingToConnectTo: false, isShown: true));
 	}
 
 	[Fact]
-	public void TorPageTellsWhereTorComesFrom()
+	public void DoneCannotBePressedWhileThereIsNothingToAskOrAnAnswerIsAwaited()
 	{
-		var own = ConnectToTorViewModel.DescribeUse(TorMode.Enabled, isRegTest: false);
-		var running = ConnectToTorViewModel.DescribeUse(TorMode.EnabledOnlyRunning, isRegTest: false);
+		// An address that is none, or no address at all.
+		Assert.False(ConnectionPageViewModel.CanBeDone(canAsk: false, isAsking: false, isConnected: false, hasSomethingToConnectTo: true));
 
-		Assert.Contains("through Tor", own);
-		Assert.Contains("starts a Tor of its own", own);
-		Assert.Contains("through Tor", running);
-		Assert.Contains("starts none of its own", running);
+		// Something to ask.
+		Assert.True(ConnectionPageViewModel.CanBeDone(canAsk: true, isAsking: false, isConnected: false, hasSomethingToConnectTo: true));
+
+		// An answer is being waited for.
+		Assert.False(ConnectionPageViewModel.CanBeDone(canAsk: true, isAsking: true, isConnected: false, hasSomethingToConnectTo: true));
+		Assert.False(ConnectionPageViewModel.CanBeDone(canAsk: false, isAsking: true, isConnected: false, hasSomethingToConnectTo: false));
+
+		// Connected already: the press closes the page.
+		Assert.True(ConnectionPageViewModel.CanBeDone(canAsk: false, isAsking: false, isConnected: true, hasSomethingToConnectTo: true));
+	}
+
+	/// <summary>While Tor is used, the Tor page has the choice of how and its two buttons, and no text about it.</summary>
+	[Fact]
+	public void TorPageSaysNothingAboutATorThatIsUsed()
+	{
+		Assert.Null(ConnectToTorViewModel.DescribeUse(TorMode.Enabled, isRegTest: false));
+		Assert.Null(ConnectToTorViewModel.DescribeUse(TorMode.EnabledOnlyRunning, isRegTest: false));
+	}
+
+	/// <summary>
+	/// Verify Connection on the Tor page answers with the number of unique Tor IP addresses that Tor is connected with:
+	/// the addresses of the relays of its circuits.
+	/// </summary>
+	[Fact]
+	public void TorPageAnswersWithTheNumberOfUniqueTorAddresses()
+	{
+		Assert.Equal("Tor is connected with 14 unique Tor IP addresses.", ConnectToTorViewModel.DescribeConnection(14));
+		Assert.Equal("Tor is connected with 2 unique Tor IP addresses.", ConnectToTorViewModel.DescribeConnection(2));
+		Assert.Equal("Tor is connected with 1 unique Tor IP address.", ConnectToTorViewModel.DescribeConnection(1));
+
+		// Connected, and no circuit open at this moment.
+		Assert.Equal("Tor is connected with 0 unique Tor IP addresses: it has no circuit open at the moment.", ConnectToTorViewModel.DescribeConnection(0));
+
+		// A Tor that the application did not start tells nothing about its circuits.
+		Assert.Equal("Tor is connected.", ConnectToTorViewModel.DescribeConnection(null));
 	}
 
 	[Fact]

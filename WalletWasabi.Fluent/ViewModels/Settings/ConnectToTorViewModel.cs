@@ -30,8 +30,8 @@ public partial class ConnectToTorViewModel : ConnectionPageViewModel
 		IsTorASetting = !isRegTest;
 		Description = DescribeUse(mode, isRegTest);
 
-		// A Tor that is not used cannot be asked.
-		SetUpCommands(canAsk: Observable.Return(IsTorUsed));
+		// A Tor that is not used cannot be asked, and there is nothing to connect to: "Done" closes the page.
+		SetUpCommands(canAsk: Observable.Return(IsTorUsed), hasSomethingToConnectTo: IsTorUsed);
 	}
 
 	/// <summary>Whether the application uses Tor. If it does not, there is nothing to connect to.</summary>
@@ -40,19 +40,19 @@ public partial class ConnectToTorViewModel : ConnectionPageViewModel
 	/// <summary>Whether the settings decide how Tor is used. On regtest they do not: Tor is not used there.</summary>
 	public bool IsTorASetting { get; }
 
-	/// <summary>What Tor is for, and how the application gets to one.</summary>
-	public string Description { get; }
+	/// <summary>What the page says about Tor while Tor is not used. Null while it is used: there is nothing to say then.</summary>
+	public string? Description { get; }
 
 	public IReadOnlyList<TorMode> TorModes => Enum.GetValues<TorMode>();
 
-	/// <summary>Tells what Tor is used for and where it comes from, or that it is not used.</summary>
+	/// <summary>Tells that Tor is not used, and what follows from that. About a Tor that is used the page says nothing: null.</summary>
 	/// <param name="mode">How the application uses Tor since it started.</param>
 	/// <param name="isRegTest">On regtest the application does not use Tor, whatever the setting says.</param>
-	public static string DescribeUse(TorMode mode, bool isRegTest) =>
+	public static string? DescribeUse(TorMode mode, bool isRegTest) =>
 		mode switch
 		{
-			TorMode.Enabled => $"{Constants.AppName} reaches the Nostr relays and the coordinator through Tor, and your node too if it is an onion service. It starts a Tor of its own for that.",
-			TorMode.EnabledOnlyRunning => $"{Constants.AppName} reaches the Nostr relays and the coordinator through Tor, and your node too if it is an onion service. It uses the Tor that runs on this computer and starts none of its own.",
+			// With Tor in use the page has the choice of how, and the two buttons. That says it.
+			TorMode.Enabled or TorMode.EnabledOnlyRunning => null,
 			_ when isRegTest => $"Tor is not used on regtest: {Constants.AppName} reaches your node, the Nostr relays and the coordinator directly.",
 			_ => $"Tor is turned off: {Constants.AppName} reaches your node, the Nostr relays and the coordinator directly, and they see the address of this computer."
 		};
@@ -64,10 +64,27 @@ public partial class ConnectToTorViewModel : ConnectionPageViewModel
 	{
 		var result = await UiContext.Services.VerifyTorAsync(cancellationToken);
 
-		return result.IsOk
-			? new ConnectionAnswer(true, "Tor is connected.")
-			: new ConnectionAnswer(false, result.Error);
+		if (!result.IsOk)
+		{
+			return new ConnectionAnswer(false, result.Error);
+		}
+
+		return new ConnectionAnswer(true, DescribeConnection(await UiContext.Services.CountTorRelayAddressesAsync(cancellationToken)));
 	}
+
+	/// <summary>
+	/// What the page answers when Tor is connected: with how many unique Tor IP addresses. They are the addresses of the
+	/// relays that the circuits of Tor go through at that moment, first hops, middle relays and exits, every address once.
+	/// </summary>
+	/// <param name="relayAddressCount">The number, or null if Tor could not be asked for it: a Tor that the application did not start tells nothing about its circuits.</param>
+	public static string DescribeConnection(int? relayAddressCount) =>
+		relayAddressCount switch
+		{
+			null => "Tor is connected.",
+			0 => "Tor is connected with 0 unique Tor IP addresses: it has no circuit open at the moment.",
+			1 => "Tor is connected with 1 unique Tor IP address.",
+			var count => $"Tor is connected with {count} unique Tor IP addresses."
+		};
 
 	protected override async Task<ConnectionAnswer> ConnectAsync(CancellationToken cancellationToken)
 	{

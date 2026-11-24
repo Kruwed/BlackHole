@@ -44,9 +44,6 @@
           <FocusOnAttachedBehavior />
         </Interaction.Behaviors>
       </TextBox>
-      <TextBlock Text="Your offers as a maker are posted to these relays, and the offers of other makers are read from them, through Tor unless Tor is turned off. Asking a relay here sends it nothing: it only finds out whether the relay answers."
-                 TextWrapping="Wrap"
-                 Opacity="0.6" />
 
       <!-- What the relays answered the last time. The room for it is always there, so that nothing moves when it appears. -->
       <v:ConnectionStatus MinHeight="60" Margin="0 10 0 0" />

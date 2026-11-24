@@ -56,15 +56,15 @@ public static class SettingsOrder
 		!hasWallet && Connections.All(isDone);
 
 	/// <summary>
-	/// Tells what the two boxes of the Wallet column are. Without a wallet the upper one recovers a wallet and the
-	/// lower one creates one. Once there is a wallet, the box that made it configures it: the lower one if the wallet
-	/// was created, the upper one if it was recovered. The other box stays what it was, and can no longer be used.
+	/// Tells what the two boxes of the Wallet column are. Without a wallet the upper one creates a wallet and the
+	/// lower one recovers one. Once there is a wallet, the box that made it configures it: the upper one if the wallet
+	/// was created, the lower one if it was recovered. The other box stays what it was, and can no longer be used.
 	/// </summary>
 	public static (WalletTile Upper, WalletTile Lower) GetWalletTiles(bool hasWallet, bool isRecovered) =>
 		(hasWallet, isRecovered) switch
 		{
-			(false, _) => (WalletTile.Recover, WalletTile.Create),
-			(true, false) => (WalletTile.Recover, WalletTile.Configure),
-			(true, true) => (WalletTile.Configure, WalletTile.Create)
+			(false, _) => (WalletTile.Create, WalletTile.Recover),
+			(true, false) => (WalletTile.Configure, WalletTile.Recover),
+			(true, true) => (WalletTile.Create, WalletTile.Configure)
 		};
 }
