@@ -315,6 +315,7 @@ public class TakerScreenTests
 	{
 		var screenThread = Environment.CurrentManagedThreadId;
 		var planThreads = new List<int>();
+		using var started = new ManualResetEventSlim(false);
 		using var gate = new ManualResetEventSlim(false);
 
 		var screen = new TakerScreenViewModel(_market, selection =>
@@ -324,6 +325,7 @@ public class TakerScreenTests
 				planThreads.Add(Environment.CurrentManagedThreadId);
 			}
 
+			started.Set();
 			gate.Wait(TimeSpan.FromSeconds(30));
 			return TakerScreenViewModel.CreateReview(selection);
 		});
@@ -336,7 +338,10 @@ public class TakerScreenTests
 		screen.ToggleAllCommand.Execute(null);
 		Assert.Equal(48, screen.Rows.OfType<BookRowViewModel>().Count(row => row.IsSelected));
 
-		// The plan that was being made while this thread made the screen and ticked the makers was made on another one.
+		// The thread that makes the plan may not have got to it yet: on a busy computer it starts when it starts.
+		Assert.True(started.Wait(TimeSpan.FromSeconds(30)));
+
+		// The plan that is being made while this thread made the screen and ticked the makers is made on another one.
 		lock (planThreads)
 		{
 			Assert.NotEqual(screenThread, Assert.Single(planThreads));
