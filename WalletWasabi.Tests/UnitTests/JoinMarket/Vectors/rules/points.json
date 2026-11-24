@@ -1,0 +1,161 @@
+{
+ "about": "Hand-checkable cases for the point rule. An output on a value three or more outputs share mints 1 point; on a value exactly two share, half a point; alone, none. outputPoints is the sum over all outputs of the transaction; points = the lower of matchedInputs and outputPoints. Values are satoshis.",
+ "cases": [
+  {
+   "name": "nothing shared",
+   "why": "Three outputs, all different: no points.",
+   "matchedInputs": 3,
+   "outputValues": [
+    50000,
+    60000,
+    70000
+   ],
+   "outputPoints": 0,
+   "points": 0
+  },
+  {
+   "name": "one pair",
+   "why": "Two outputs share a value: half a point each, one point in all. The third is alone.",
+   "matchedInputs": 3,
+   "outputValues": [
+    50000,
+    50000,
+    70000
+   ],
+   "outputPoints": 1,
+   "points": 1
+  },
+  {
+   "name": "one set of three",
+   "why": "Three outputs share a value: a full point each.",
+   "matchedInputs": 3,
+   "outputValues": [
+    50000,
+    50000,
+    50000
+   ],
+   "outputPoints": 3,
+   "points": 3
+  },
+  {
+   "name": "three and a pair",
+   "why": "A set of three (3 points), a pair (1 point), one alone (0): 4 output points.",
+   "matchedInputs": 6,
+   "outputValues": [
+    50000,
+    50000,
+    50000,
+    70000,
+    70000,
+    90000
+   ],
+   "outputPoints": 4,
+   "points": 4
+  },
+  {
+   "name": "four of a kind",
+   "why": "Four outputs share a value: a full point each, 4 output points. Only 2 inputs are matched, so the transaction is worth 2.",
+   "matchedInputs": 2,
+   "outputValues": [
+    10000000,
+    10000000,
+    10000000,
+    10000000
+   ],
+   "outputPoints": 4,
+   "points": 2
+  },
+  {
+   "name": "two pairs",
+   "why": "Two pairs: one point per pair, 2 output points.",
+   "matchedInputs": 5,
+   "outputValues": [
+    100000,
+    100000,
+    250000,
+    250000
+   ],
+   "outputPoints": 2,
+   "points": 2
+  },
+  {
+   "name": "inputs are the lower number",
+   "why": "Six output points but a single matched input: 1 point.",
+   "matchedInputs": 1,
+   "outputValues": [
+    330,
+    330,
+    330,
+    5000,
+    5000,
+    5000
+   ],
+   "outputPoints": 6,
+   "points": 1
+  },
+  {
+   "name": "outputs are the lower number",
+   "why": "Nine matched inputs but 4 output points: 4 points.",
+   "matchedInputs": 9,
+   "outputValues": [
+    800000,
+    800000,
+    800000,
+    400000,
+    400000,
+    123456
+   ],
+   "outputPoints": 4,
+   "points": 4
+  },
+  {
+   "name": "no matched inputs",
+   "why": "Three output points, no matched input: 0 points.",
+   "matchedInputs": 0,
+   "outputValues": [
+    800000,
+    800000,
+    800000
+   ],
+   "outputPoints": 3,
+   "points": 0
+  },
+  {
+   "name": "pair turns into three",
+   "why": "Adding a third output to a pair lifts all three to a full point: 3 output points where the pair had 1.",
+   "matchedInputs": 4,
+   "outputValues": [
+    1500000,
+    1500000,
+    1500000,
+    42
+   ],
+   "outputPoints": 3,
+   "points": 3
+  },
+  {
+   "name": "mixed, larger",
+   "why": "Three sets of three (9), two pairs (2), two alone (0): 11 output points; with 12 matched inputs the transaction is worth 11.",
+   "matchedInputs": 12,
+   "outputValues": [
+    10000000,
+    10000000,
+    10000000,
+    5698909,
+    5698909,
+    5698909,
+    1214515,
+    1214515,
+    536216,
+    536216,
+    2215825,
+    2215825,
+    2215825,
+    64037,
+    99999999
+   ],
+   "outputPoints": 11,
+   "points": 11
+  }
+ ]
+}

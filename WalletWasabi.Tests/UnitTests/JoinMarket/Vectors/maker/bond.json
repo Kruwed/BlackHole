@@ -1,0 +1,134 @@
+{
+ "about": "Fidelity bond figures as the prototype shows them: size and fee of the bonding transaction, where a bond stands among the sample book's bonded Makers (rank 1 = largest; \"ranked\" counts this bond too), and how a lock time in blocks is worded.",
+ "bondTransaction": [
+  {
+   "selectedTotalBtc": 1.20382563,
+   "amountBtc": 1.2,
+   "inputs": 1,
+   "feeRate": 1,
+   "changeOutput": true,
+   "vbytes": 154,
+   "feeSats": 154
+  },
+  {
+   "selectedTotalBtc": 1.20382563,
+   "amountBtc": 1.20382563,
+   "inputs": 1,
+   "feeRate": 2.5,
+   "changeOutput": false,
+   "vbytes": 111,
+   "feeSats": 277.5
+  },
+  {
+   "selectedTotalBtc": 3.2014199,
+   "amountBtc": 2,
+   "inputs": 2,
+   "feeRate": 1,
+   "changeOutput": true,
+   "vbytes": 211,
+   "feeSats": 211
+  },
+  {
+   "selectedTotalBtc": 0.74256326,
+   "amountBtc": 0.74256,
+   "inputs": 1,
+   "feeRate": 0.3,
+   "changeOutput": false,
+   "vbytes": 111,
+   "feeSats": 33.3
+  },
+  {
+   "selectedTotalBtc": 0.5,
+   "amountBtc": 0.5,
+   "inputs": 3,
+   "feeRate": 12,
+   "changeOutput": false,
+   "vbytes": 225,
+   "feeSats": 2700
+  }
+ ],
+ "standing": [
+  {
+   "bondBtc": 0.05,
+   "rank": 202,
+   "ranked": 217,
+   "top": 94
+  },
+  {
+   "bondBtc": 0.3,
+   "rank": 150,
+   "ranked": 217,
+   "top": 70
+  },
+  {
+   "bondBtc": 0.63988617,
+   "rank": 118,
+   "ranked": 217,
+   "top": 55
+  },
+  {
+   "bondBtc": 1,
+   "rank": 86,
+   "ranked": 217,
+   "top": 40
+  },
+  {
+   "bondBtc": 2.5,
+   "rank": 19,
+   "ranked": 217,
+   "top": 9
+  },
+  {
+   "bondBtc": 10,
+   "rank": 1,
+   "ranked": 217,
+   "top": 1
+  }
+ ],
+ "durations": [
+  {
+   "blocks": 1,
+   "shown": "0.2 hours"
+  },
+  {
+   "blocks": 6,
+   "shown": "1 hour"
+  },
+  {
+   "blocks": 36,
+   "shown": "6 hours"
+  },
+  {
+   "blocks": 143,
+   "shown": "23.8 hours"
+  },
+  {
+   "blocks": 144,
+   "shown": "1 day"
+  },
+  {
+   "blocks": 432,
+   "shown": "3 days"
+  },
+  {
+   "blocks": 1008,
+   "shown": "7 days"
+  },
+  {
+   "blocks": 2015,
+   "shown": "14 days"
+  },
+  {
+   "blocks": 2016,
+   "shown": "2 weeks"
+  },
+  {
+   "blocks": 4320,
+   "shown": "4.3 weeks"
+  },
+  {
+   "blocks": 52560,
+   "shown": "52.1 weeks"
+  }
+ ]
+}

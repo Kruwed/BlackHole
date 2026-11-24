@@ -1,0 +1,391 @@
+{
+ "name": "plan-020-7-makers-1",
+ "about": "7 Makers picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "coral-salmon",
+    "minFee": 0.2,
+    "buy": 2,
+    "sell": 4,
+    "pts": 43,
+    "k": 3,
+    "liqSats": 384194914,
+    "paySats": []
+   },
+   {
+    "alias": "crisp-fox",
+    "minFee": 0.5,
+    "buy": 0.9,
+    "sell": 1.8,
+    "pts": 26,
+    "k": 1,
+    "liqSats": 13695486,
+    "paySats": []
+   },
+   {
+    "alias": "golden-noddy",
+    "minFee": 1.4,
+    "buy": 0.1,
+    "sell": 0.9,
+    "pts": 37,
+    "k": 1,
+    "liqSats": 168206545,
+    "paySats": []
+   },
+   {
+    "alias": "pale-tide",
+    "minFee": 1.5,
+    "buy": 0,
+    "sell": 0.7,
+    "pts": 8,
+    "k": 1,
+    "liqSats": 474569407,
+    "paySats": []
+   },
+   {
+    "alias": "rapid-willow",
+    "minFee": 1,
+    "buy": 1.5,
+    "sell": 2.1,
+    "pts": 9,
+    "k": 3,
+    "liqSats": 160076914,
+    "paySats": []
+   },
+   {
+    "alias": "rusty-ratel",
+    "minFee": 0.1,
+    "buy": 1.9,
+    "sell": 3.7,
+    "pts": 21,
+    "k": 3,
+    "liqSats": 64823128,
+    "paySats": []
+   },
+   {
+    "alias": "vivid-willow",
+    "minFee": 1,
+    "buy": 2,
+    "sell": 3.7,
+    "pts": 4,
+    "k": 3,
+    "liqSats": 155172250,
+    "paySats": []
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 1.5,
+  "matchedInputs": 15,
+  "outputPoints": 18,
+  "points": 15,
+  "participants": 8,
+  "makers": [
+   {
+    "alias": "coral-salmon",
+    "countedInputs": 3,
+    "amountSats": 384194914,
+    "picks": [
+     59257273
+    ],
+    "change": 324937641,
+    "forfeit": 0,
+    "pinned": [
+     59257273
+    ],
+    "payments": []
+   },
+   {
+    "alias": "crisp-fox",
+    "countedInputs": 1,
+    "amountSats": 13695486,
+    "picks": [
+     10000000
+    ],
+    "change": 3695486,
+    "forfeit": 0,
+    "pinned": [
+     10000000
+    ],
+    "payments": []
+   },
+   {
+    "alias": "golden-noddy",
+    "countedInputs": 1,
+    "amountSats": 168206545,
+    "picks": [
+     98974643,
+     9974629
+    ],
+    "change": 59257273,
+    "forfeit": 0,
+    "pinned": [
+     98974643,
+     9974629
+    ],
+    "payments": []
+   },
+   {
+    "alias": "pale-tide",
+    "countedInputs": 1,
+    "amountSats": 474569407,
+    "picks": [
+     324937641,
+     59257273
+    ],
+    "change": 90374493,
+    "forfeit": 0,
+    "pinned": [
+     324937641,
+     59257273
+    ],
+    "payments": []
+   },
+   {
+    "alias": "rapid-willow",
+    "countedInputs": 3,
+    "amountSats": 160076914,
+    "picks": [
+     9974629,
+     51127642
+    ],
+    "change": 98974643,
+    "forfeit": 0,
+    "pinned": [
+     9974629,
+     51127642
+    ],
+    "payments": []
+   },
+   {
+    "alias": "rusty-ratel",
+    "countedInputs": 3,
+    "amountSats": 64823128,
+    "picks": [
+     3695486,
+     10000000
+    ],
+    "change": 51127642,
+    "forfeit": 0,
+    "pinned": [
+     3695486,
+     10000000
+    ],
+    "payments": []
+   },
+   {
+    "alias": "vivid-willow",
+    "countedInputs": 3,
+    "amountSats": 155172250,
+    "picks": [
+     51127642,
+     3695486,
+     90374493
+    ],
+    "change": 9974629,
+    "forfeit": 0,
+    "pinned": [
+     51127642,
+     3695486
+    ],
+    "payments": []
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    10000000
+   ],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 10000000
+  },
+  "tally": [
+   [
+    324937641,
+    2
+   ],
+   [
+    98974643,
+    2
+   ],
+   [
+    90374493,
+    2
+   ],
+   [
+    59257273,
+    3
+   ],
+   [
+    51127642,
+    3
+   ],
+   [
+    10000000,
+    3
+   ],
+   [
+    9974629,
+    3
+   ],
+   [
+    3695486,
+    3
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 21,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 0,
+   "payments": 0,
+   "paymentsMatched": 0,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 0
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 16.5
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 171
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 15,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 855,
+     "sats": 1282.5
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 21,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 903,
+     "sats": 1354.5
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    }
+   ],
+   "totalVb": 1883,
+   "makerVb": 0,
+   "takerVb": 1883,
+   "forfeitSats": 0,
+   "takerFeeSats": 2824.5,
+   "makerFeeSats": 0,
+   "miningFeeSats": 2824.5,
+   "minerSats": 2824.5,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "coral-salmon",
+     "originPoints": 43,
+     "delta": -28,
+     "rate": 4,
+     "sats": -112
+    },
+    {
+     "alias": "crisp-fox",
+     "originPoints": 26,
+     "delta": -11,
+     "rate": 1.8,
+     "sats": -19.8
+    },
+    {
+     "alias": "golden-noddy",
+     "originPoints": 37,
+     "delta": -22,
+     "rate": 0.9,
+     "sats": -19.8
+    },
+    {
+     "alias": "pale-tide",
+     "originPoints": 8,
+     "delta": 7,
+     "rate": 0,
+     "sats": 0
+    },
+    {
+     "alias": "rapid-willow",
+     "originPoints": 9,
+     "delta": 6,
+     "rate": 1.5,
+     "sats": 9
+    },
+    {
+     "alias": "rusty-ratel",
+     "originPoints": 21,
+     "delta": -6,
+     "rate": 3.7,
+     "sats": -22.200000000000003
+    },
+    {
+     "alias": "vivid-willow",
+     "originPoints": 4,
+     "delta": 11,
+     "rate": 2,
+     "sats": 22
+    }
+   ],
+   "makersPaySats": 31,
+   "takerPaysSats": 173.8,
+   "netSats": -142.8
+  },
+  "takerCostSats": 2967.3,
+  "planning": {
+   "objective": -3145.5,
+   "chainOrder": [
+    1,
+    5,
+    6,
+    4,
+    2,
+    0,
+    3
+   ]
+  }
+ }
+}

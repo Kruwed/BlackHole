@@ -1,0 +1,164 @@
+{
+ "name": "plan-002-1-makers-1",
+ "about": "1 Maker picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "lucid-maple",
+    "minFee": 0.1,
+    "buy": 1.1,
+    "sell": 2.1,
+    "pts": 5,
+    "k": 1,
+    "liqSats": 250586237,
+    "paySats": []
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 0.1,
+  "matchedInputs": 1,
+  "outputPoints": 1,
+  "points": 1,
+  "participants": 2,
+  "makers": [
+   {
+    "alias": "lucid-maple",
+    "countedInputs": 1,
+    "amountSats": 250586237,
+    "picks": [
+     10000000
+    ],
+    "change": 240586237,
+    "forfeit": 0,
+    "pinned": [
+     10000000
+    ],
+    "payments": []
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    10000000
+   ],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 10000000
+  },
+  "tally": [
+   [
+    240586237,
+    1
+   ],
+   [
+    10000000,
+    2
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 2,
+   "makerUnmatchedOutputs": 1,
+   "takerUnmatchedOutputs": 0,
+   "payments": 0,
+   "paymentsMatched": 0,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 1
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 1.1
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 11.4
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 1,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 57,
+     "sats": 5.7
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 2,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 86,
+     "sats": 8.6
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 1,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 100,
+     "sats": 10
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    }
+   ],
+   "totalVb": 368,
+   "makerVb": 0,
+   "takerVb": 368,
+   "forfeitSats": 0,
+   "takerFeeSats": 36.800000000000004,
+   "makerFeeSats": 0,
+   "miningFeeSats": 36.800000000000004,
+   "minerSats": 31.1,
+   "makerCreditSats": 5.7
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "lucid-maple",
+     "originPoints": 5,
+     "delta": -4,
+     "rate": 2.1,
+     "sats": -8.4
+    }
+   ],
+   "makersPaySats": 0,
+   "takerPaysSats": 8.4,
+   "netSats": -8.4
+  },
+  "takerCostSats": 45.2,
+  "planning": {
+   "objective": 8.600000000000001,
+   "chainOrder": [
+    0
+   ]
+  }
+ }
+}

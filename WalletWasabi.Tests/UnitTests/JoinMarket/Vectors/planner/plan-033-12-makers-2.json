@@ -1,0 +1,610 @@
+{
+ "name": "plan-033-12-makers-2",
+ "about": "12 Makers picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "calm-loon",
+    "minFee": 0.6,
+    "buy": 2.6,
+    "sell": 4.5,
+    "pts": 22,
+    "k": 5,
+    "liqSats": 257584612,
+    "paySats": []
+   },
+   {
+    "alias": "candid-swift",
+    "minFee": 1,
+    "buy": 0,
+    "sell": 1.2,
+    "pts": 22,
+    "k": 2,
+    "liqSats": 236566347,
+    "paySats": []
+   },
+   {
+    "alias": "frosty-stoat",
+    "minFee": 0.1,
+    "buy": 2.9,
+    "sell": 4.6,
+    "pts": 15,
+    "k": 3,
+    "liqSats": 11043998,
+    "paySats": []
+   },
+   {
+    "alias": "humble-puffin",
+    "minFee": 1.2,
+    "buy": 0.9,
+    "sell": 2.2,
+    "pts": 14,
+    "k": 3,
+    "liqSats": 9665465,
+    "paySats": [
+     536216
+    ]
+   },
+   {
+    "alias": "iron-bison",
+    "minFee": 0.5,
+    "buy": 1.4,
+    "sell": 2,
+    "pts": 2,
+    "k": 2,
+    "liqSats": 337056394,
+    "paySats": []
+   },
+   {
+    "alias": "keen-lark",
+    "minFee": 0.7,
+    "buy": 2.1,
+    "sell": 2.8,
+    "pts": 11,
+    "k": 1,
+    "liqSats": 10193585,
+    "paySats": []
+   },
+   {
+    "alias": "mellow-wren",
+    "minFee": 0.5,
+    "buy": 1.3,
+    "sell": 1.9,
+    "pts": 19,
+    "k": 3,
+    "liqSats": 455813991,
+    "paySats": []
+   },
+   {
+    "alias": "rough-jackal",
+    "minFee": 0.5,
+    "buy": 0.3,
+    "sell": 2,
+    "pts": 11,
+    "k": 3,
+    "liqSats": 260221721,
+    "paySats": [
+     1214515
+    ]
+   },
+   {
+    "alias": "velvet-orchard",
+    "minFee": 0.8,
+    "buy": 1.4,
+    "sell": 2,
+    "pts": 28,
+    "k": 1,
+    "liqSats": 217819666,
+    "paySats": []
+   },
+   {
+    "alias": "vivid-egret",
+    "minFee": 0.7,
+    "buy": 0.9,
+    "sell": 2.4,
+    "pts": 28,
+    "k": 1,
+    "liqSats": 24240666,
+    "paySats": [
+     5698909
+    ]
+   },
+   {
+    "alias": "wry-loon",
+    "minFee": 1.2,
+    "buy": 2.5,
+    "sell": 4.2,
+    "pts": 13,
+    "k": 2,
+    "liqSats": 95555777,
+    "paySats": []
+   },
+   {
+    "alias": "wry-thrush",
+    "minFee": 0.2,
+    "buy": 2,
+    "sell": 4,
+    "pts": 50,
+    "k": 3,
+    "liqSats": 399254462,
+    "paySats": []
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 1.2,
+  "matchedInputs": 27,
+  "outputPoints": 31,
+  "points": 27,
+  "participants": 13,
+  "makers": [
+   {
+    "alias": "calm-loon",
+    "countedInputs": 3,
+    "amountSats": 257584612,
+    "picks": [
+     103685717
+    ],
+    "change": 153898895,
+    "forfeit": 0,
+    "pinned": [
+     103685717
+    ],
+    "payments": []
+   },
+   {
+    "alias": "candid-swift",
+    "countedInputs": 2,
+    "amountSats": 236566347,
+    "picks": [
+     132880630
+    ],
+    "change": 103685717,
+    "forfeit": 0,
+    "pinned": [
+     132880630
+    ],
+    "payments": []
+   },
+   {
+    "alias": "frosty-stoat",
+    "countedInputs": 3,
+    "amountSats": 11043998,
+    "picks": [
+     2215825,
+     536216,
+     193585
+    ],
+    "change": 8098372,
+    "forfeit": 0,
+    "pinned": [
+     2215825,
+     536216,
+     193585
+    ],
+    "payments": []
+   },
+   {
+    "alias": "humble-puffin",
+    "countedInputs": 3,
+    "amountSats": 9129249,
+    "picks": [
+     5698909,
+     1214515
+    ],
+    "change": 2215825,
+    "forfeit": 0,
+    "pinned": [
+     5698909,
+     1214515
+    ],
+    "payments": [
+     536216
+    ]
+   },
+   {
+    "alias": "iron-bison",
+    "countedInputs": 2,
+    "amountSats": 337056394,
+    "picks": [
+     100972314
+    ],
+    "change": 236084080,
+    "forfeit": 0,
+    "pinned": [
+     100972314
+    ],
+    "payments": []
+   },
+   {
+    "alias": "keen-lark",
+    "countedInputs": 1,
+    "amountSats": 10193585,
+    "picks": [
+     10000000
+    ],
+    "change": 193585,
+    "forfeit": 0,
+    "pinned": [
+     10000000
+    ],
+    "payments": []
+   },
+   {
+    "alias": "mellow-wren",
+    "countedInputs": 3,
+    "amountSats": 455813991,
+    "picks": [
+     163170382,
+     153898895,
+     132880630
+    ],
+    "change": 5864084,
+    "forfeit": 0,
+    "pinned": [
+     163170382
+    ],
+    "payments": []
+   },
+   {
+    "alias": "rough-jackal",
+    "countedInputs": 3,
+    "amountSats": 259007206,
+    "picks": [
+     153898895,
+     4135997
+    ],
+    "change": 100972314,
+    "forfeit": 0,
+    "pinned": [
+     153898895
+    ],
+    "payments": [
+     1214515
+    ]
+   },
+   {
+    "alias": "velvet-orchard",
+    "countedInputs": 1,
+    "amountSats": 217819666,
+    "picks": [
+     81508696,
+     2215825,
+     1214515
+    ],
+    "change": 132880630,
+    "forfeit": 0,
+    "pinned": [
+     81508696,
+     2215825,
+     1214515
+    ],
+    "payments": []
+   },
+   {
+    "alias": "vivid-egret",
+    "countedInputs": 1,
+    "amountSats": 18541757,
+    "picks": [
+     8098372,
+     10000000,
+     193585
+    ],
+    "change": 249800,
+    "forfeit": 0,
+    "pinned": [
+     8098372,
+     10000000,
+     193585
+    ],
+    "payments": [
+     5698909
+    ]
+   },
+   {
+    "alias": "wry-loon",
+    "countedInputs": 2,
+    "amountSats": 95555777,
+    "picks": [
+     249800,
+     8098372,
+     5698909
+    ],
+    "change": 81508696,
+    "forfeit": 0,
+    "pinned": [
+     249800,
+     8098372,
+     5698909
+    ],
+    "payments": []
+   },
+   {
+    "alias": "wry-thrush",
+    "countedInputs": 3,
+    "amountSats": 399254462,
+    "picks": [
+     236084080
+    ],
+    "change": 163170382,
+    "forfeit": 0,
+    "pinned": [
+     236084080
+    ],
+    "payments": []
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    5864084,
+    4135997
+   ],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 10000081
+  },
+  "tally": [
+   [
+    236084080,
+    2
+   ],
+   [
+    163170382,
+    2
+   ],
+   [
+    153898895,
+    3
+   ],
+   [
+    132880630,
+    3
+   ],
+   [
+    103685717,
+    2
+   ],
+   [
+    100972314,
+    2
+   ],
+   [
+    81508696,
+    2
+   ],
+   [
+    10000000,
+    2
+   ],
+   [
+    8098372,
+    3
+   ],
+   [
+    5864084,
+    2
+   ],
+   [
+    5698909,
+    3
+   ],
+   [
+    4135997,
+    2
+   ],
+   [
+    2215825,
+    3
+   ],
+   [
+    1214515,
+    3
+   ],
+   [
+    536216,
+    2
+   ],
+   [
+    249800,
+    2
+   ],
+   [
+    193585,
+    3
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 38,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 0,
+   "payments": 3,
+   "paymentsMatched": 3,
+   "extraMakerInputs": 2,
+   "unmatchedOutputsShown": 0
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 13.2
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 136.79999999999998
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 27,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 1539,
+     "sats": 1846.8
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 38,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 1634,
+     "sats": 1960.8
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 114,
+     "sats": 136.79999999999998
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 3,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 129,
+     "sats": 154.79999999999998
+    }
+   ],
+   "totalVb": 3541,
+   "makerVb": 243,
+   "takerVb": 3298,
+   "forfeitSats": 0,
+   "takerFeeSats": 3957.6,
+   "makerFeeSats": 291.59999999999997,
+   "miningFeeSats": 4249.2,
+   "minerSats": 3957.6,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "calm-loon",
+     "originPoints": 22,
+     "delta": 5,
+     "rate": 2.6,
+     "sats": 13
+    },
+    {
+     "alias": "candid-swift",
+     "originPoints": 22,
+     "delta": 5,
+     "rate": 0,
+     "sats": 0
+    },
+    {
+     "alias": "frosty-stoat",
+     "originPoints": 15,
+     "delta": 12,
+     "rate": 2.9,
+     "sats": 34.8
+    },
+    {
+     "alias": "humble-puffin",
+     "originPoints": 14,
+     "delta": 13,
+     "rate": 0.9,
+     "sats": 11.700000000000001
+    },
+    {
+     "alias": "iron-bison",
+     "originPoints": 2,
+     "delta": 25,
+     "rate": 1.4,
+     "sats": 35
+    },
+    {
+     "alias": "keen-lark",
+     "originPoints": 11,
+     "delta": 16,
+     "rate": 2.1,
+     "sats": 33.6
+    },
+    {
+     "alias": "mellow-wren",
+     "originPoints": 19,
+     "delta": 8,
+     "rate": 1.3,
+     "sats": 10.4
+    },
+    {
+     "alias": "rough-jackal",
+     "originPoints": 11,
+     "delta": 16,
+     "rate": 0.3,
+     "sats": 4.8
+    },
+    {
+     "alias": "velvet-orchard",
+     "originPoints": 28,
+     "delta": -1,
+     "rate": 2,
+     "sats": -2
+    },
+    {
+     "alias": "vivid-egret",
+     "originPoints": 28,
+     "delta": -1,
+     "rate": 2.4,
+     "sats": -2.4
+    },
+    {
+     "alias": "wry-loon",
+     "originPoints": 13,
+     "delta": 14,
+     "rate": 2.5,
+     "sats": 35
+    },
+    {
+     "alias": "wry-thrush",
+     "originPoints": 50,
+     "delta": -23,
+     "rate": 4,
+     "sats": -92
+    }
+   ],
+   "makersPaySats": 178.3,
+   "takerPaysSats": 96.4,
+   "netSats": 81.9
+  },
+  "takerCostSats": 3875.7,
+  "planning": {
+   "objective": -4519.2,
+   "chainOrder": [
+    3,
+    5,
+    2,
+    9,
+    10,
+    8,
+    1,
+    0,
+    7,
+    4,
+    11,
+    6
+   ]
+  }
+ }
+}

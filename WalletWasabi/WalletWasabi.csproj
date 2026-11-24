@@ -53,6 +53,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- The sample book and the sample wallet of the market for anonymity points. -->
+		<EmbeddedResource Include="JoinMarket\Sample\makers.json" LogicalName="WalletWasabi.JoinMarket.Sample.makers.json" />
+		<EmbeddedResource Include="JoinMarket\Sample\utxos.json" LogicalName="WalletWasabi.JoinMarket.Sample.utxos.json" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="true" />
 	</ItemGroup>
 </Project>

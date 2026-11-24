@@ -1,0 +1,215 @@
+{
+ "name": "plan-007-2-makers-3",
+ "about": "2 Makers picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "jumpy-asp",
+    "minFee": 0.8,
+    "buy": 0.8,
+    "sell": 1.9,
+    "pts": 22,
+    "k": 3,
+    "liqSats": 11078130,
+    "paySats": []
+   },
+   {
+    "alias": "silent-badger",
+    "minFee": 0.5,
+    "buy": 1.4,
+    "sell": 3.1,
+    "pts": 23,
+    "k": 2,
+    "liqSats": 15442568,
+    "paySats": []
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 0.8,
+  "matchedInputs": 5,
+  "outputPoints": 5,
+  "points": 5,
+  "participants": 3,
+  "makers": [
+   {
+    "alias": "jumpy-asp",
+    "countedInputs": 3,
+    "amountSats": 11078130,
+    "picks": [
+     10000000
+    ],
+    "change": 1078130,
+    "forfeit": 0,
+    "pinned": [
+     10000000
+    ],
+    "payments": []
+   },
+   {
+    "alias": "silent-badger",
+    "countedInputs": 2,
+    "amountSats": 15442568,
+    "picks": [
+     1078130,
+     10000000
+    ],
+    "change": 4364438,
+    "forfeit": 0,
+    "pinned": [
+     1078130,
+     10000000
+    ],
+    "payments": []
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    4364438,
+    1078130
+   ],
+   "change": 4557432,
+   "forfeit": 0,
+   "totalSats": 10000000
+  },
+  "tally": [
+   [
+    10000000,
+    2
+   ],
+   [
+    4557432,
+    1
+   ],
+   [
+    4364438,
+    2
+   ],
+   [
+    1078130,
+    3
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 7,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 1,
+   "payments": 0,
+   "paymentsMatched": 0,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 1
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 8.8
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 91.2
+    },
+    {
+     "rule": "Taker change",
+     "count": 1,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 100,
+     "sats": 80
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 5,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 285,
+     "sats": 228
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 7,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 301,
+     "sats": 240.8
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    }
+   ],
+   "totalVb": 811,
+   "makerVb": 0,
+   "takerVb": 811,
+   "forfeitSats": 0,
+   "takerFeeSats": 648.8000000000001,
+   "makerFeeSats": 0,
+   "miningFeeSats": 648.8000000000001,
+   "minerSats": 648.8000000000001,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "jumpy-asp",
+     "originPoints": 22,
+     "delta": -17,
+     "rate": 1.9,
+     "sats": -32.3
+    },
+    {
+     "alias": "silent-badger",
+     "originPoints": 23,
+     "delta": -18,
+     "rate": 3.1,
+     "sats": -55.800000000000004
+    }
+   ],
+   "makersPaySats": 0,
+   "takerPaysSats": 88.1,
+   "netSats": -88.1
+  },
+  "takerCostSats": 736.9000000000001,
+  "planning": {
+   "objective": -399.2,
+   "chainOrder": [
+    0,
+    1
+   ]
+  }
+ }
+}

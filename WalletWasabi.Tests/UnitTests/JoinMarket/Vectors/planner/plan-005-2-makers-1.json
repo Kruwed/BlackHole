@@ -1,0 +1,212 @@
+{
+ "name": "plan-005-2-makers-1",
+ "about": "2 Makers picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "golden-trout",
+    "minFee": 0.8,
+    "buy": 0.3,
+    "sell": 2.1,
+    "pts": 34,
+    "k": 3,
+    "liqSats": 34348483,
+    "paySats": []
+   },
+   {
+    "alias": "hollow-trout",
+    "minFee": 0.1,
+    "buy": 0.4,
+    "sell": 1.7,
+    "pts": 12,
+    "k": 2,
+    "liqSats": 81349409,
+    "paySats": [
+     476923
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 0.8,
+  "matchedInputs": 5,
+  "outputPoints": 5,
+  "points": 5,
+  "participants": 3,
+  "makers": [
+   {
+    "alias": "golden-trout",
+    "countedInputs": 3,
+    "amountSats": 34348483,
+    "picks": [
+     10000000,
+     476923
+    ],
+    "change": 23871560,
+    "forfeit": 0,
+    "pinned": [
+     10000000,
+     476923
+    ],
+    "payments": []
+   },
+   {
+    "alias": "hollow-trout",
+    "countedInputs": 2,
+    "amountSats": 80872486,
+    "picks": [
+     23871560,
+     10000000
+    ],
+    "change": 47000926,
+    "forfeit": 0,
+    "pinned": [
+     23871560,
+     10000000
+    ],
+    "payments": [
+     476923
+    ]
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    10000000
+   ],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 10000000
+  },
+  "tally": [
+   [
+    47000926,
+    1
+   ],
+   [
+    23871560,
+    2
+   ],
+   [
+    10000000,
+    3
+   ],
+   [
+    476923,
+    2
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 6,
+   "makerUnmatchedOutputs": 1,
+   "takerUnmatchedOutputs": 0,
+   "payments": 1,
+   "paymentsMatched": 1,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 1
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 8.8
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 91.2
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 5,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 285,
+     "sats": 228
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 6,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 258,
+     "sats": 206.4
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 1,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 100,
+     "sats": 80
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 1,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 43,
+     "sats": 34.4
+    }
+   ],
+   "totalVb": 811,
+   "makerVb": 43,
+   "takerVb": 768,
+   "forfeitSats": 0,
+   "takerFeeSats": 614.4000000000001,
+   "makerFeeSats": 34.4,
+   "miningFeeSats": 648.8000000000001,
+   "minerSats": 568.8000000000001,
+   "makerCreditSats": 45.6
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "golden-trout",
+     "originPoints": 34,
+     "delta": -29,
+     "rate": 2.1,
+     "sats": -60.900000000000006
+    },
+    {
+     "alias": "hollow-trout",
+     "originPoints": 12,
+     "delta": -7,
+     "rate": 1.7,
+     "sats": -11.9
+    }
+   ],
+   "makersPaySats": 0,
+   "takerPaysSats": 72.80000000000001,
+   "netSats": -72.80000000000001
+  },
+  "takerCostSats": 687.2,
+  "planning": {
+   "objective": -433.59999999999997,
+   "chainOrder": [
+    0,
+    1
+   ]
+  }
+ }
+}

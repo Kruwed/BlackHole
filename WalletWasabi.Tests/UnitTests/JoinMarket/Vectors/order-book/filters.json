@@ -1,0 +1,510 @@
+{
+ "about": "For the sample book: the cutoff value each filter position (tick) stands for, and the tick a typed value lands on. Tick 0 = Any (cutoff null).",
+ "cases": [
+  {
+   "criterion": "minFee",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "minFee",
+   "tick": 1,
+   "cutoff": 1.5
+  },
+  {
+   "criterion": "minFee",
+   "tick": 2,
+   "cutoff": 1.5
+  },
+  {
+   "criterion": "minFee",
+   "tick": 10,
+   "cutoff": 1.5
+  },
+  {
+   "criterion": "minFee",
+   "tick": 60,
+   "cutoff": 1
+  },
+  {
+   "criterion": "minFee",
+   "tick": 125,
+   "cutoff": 0.6
+  },
+  {
+   "criterion": "minFee",
+   "tick": 200,
+   "cutoff": 0.2
+  },
+  {
+   "criterion": "minFee",
+   "tick": 248,
+   "cutoff": 0.1
+  },
+  {
+   "criterion": "minFee",
+   "tick": 249,
+   "cutoff": 0.1
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 0.1,
+   "tick": 249
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 1.5,
+   "tick": 16
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 0.2,
+   "tick": 215
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 0.5,
+   "tick": 152
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 1.2,
+   "tick": 49
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 0.05,
+   "tick": 249
+  },
+  {
+   "criterion": "minFee",
+   "typedValue": 1.55,
+   "tick": 0
+  },
+  {
+   "criterion": "spread",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "spread",
+   "tick": 1,
+   "cutoff": 2
+  },
+  {
+   "criterion": "spread",
+   "tick": 2,
+   "cutoff": 2
+  },
+  {
+   "criterion": "spread",
+   "tick": 10,
+   "cutoff": 1.9
+  },
+  {
+   "criterion": "spread",
+   "tick": 60,
+   "cutoff": 1.6
+  },
+  {
+   "criterion": "spread",
+   "tick": 125,
+   "cutoff": 1.3
+  },
+  {
+   "criterion": "spread",
+   "tick": 200,
+   "cutoff": 0.8
+  },
+  {
+   "criterion": "spread",
+   "tick": 248,
+   "cutoff": 0.5
+  },
+  {
+   "criterion": "spread",
+   "tick": 249,
+   "cutoff": 0.5
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 0.5,
+   "tick": 249
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 2,
+   "tick": 9
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 0.8,
+   "tick": 209
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 1.2,
+   "tick": 142
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 1.7,
+   "tick": 57
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 0.45,
+   "tick": 249
+  },
+  {
+   "criterion": "spread",
+   "typedValue": 2.05,
+   "tick": 0
+  },
+  {
+   "criterion": "buy",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "buy",
+   "tick": 1,
+   "cutoff": 0
+  },
+  {
+   "criterion": "buy",
+   "tick": 2,
+   "cutoff": 0
+  },
+  {
+   "criterion": "buy",
+   "tick": 10,
+   "cutoff": 0
+  },
+  {
+   "criterion": "buy",
+   "tick": 60,
+   "cutoff": 0.6
+  },
+  {
+   "criterion": "buy",
+   "tick": 125,
+   "cutoff": 1.3
+  },
+  {
+   "criterion": "buy",
+   "tick": 200,
+   "cutoff": 2.3
+  },
+  {
+   "criterion": "buy",
+   "tick": 248,
+   "cutoff": 3
+  },
+  {
+   "criterion": "buy",
+   "tick": 249,
+   "cutoff": 3
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 3,
+   "tick": 249
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 0,
+   "tick": 20
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 2.5,
+   "tick": 217
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 1.4,
+   "tick": 131
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 0.4,
+   "tick": 49
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 2.45,
+   "tick": 208
+  },
+  {
+   "criterion": "buy",
+   "typedValue": 3.05,
+   "tick": 249
+  },
+  {
+   "criterion": "buy",
+   "typedValue": -0.05,
+   "tick": 0
+  },
+  {
+   "criterion": "sell",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "sell",
+   "tick": 1,
+   "cutoff": 4.7
+  },
+  {
+   "criterion": "sell",
+   "tick": 2,
+   "cutoff": 4.6
+  },
+  {
+   "criterion": "sell",
+   "tick": 10,
+   "cutoff": 4.4
+  },
+  {
+   "criterion": "sell",
+   "tick": 60,
+   "cutoff": 3.5
+  },
+  {
+   "criterion": "sell",
+   "tick": 125,
+   "cutoff": 2.6
+  },
+  {
+   "criterion": "sell",
+   "tick": 200,
+   "cutoff": 1.7
+  },
+  {
+   "criterion": "sell",
+   "tick": 248,
+   "cutoff": 0.6
+  },
+  {
+   "criterion": "sell",
+   "tick": 249,
+   "cutoff": 0.6
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 0.6,
+   "tick": 249
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 4.9,
+   "tick": 0
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 1.6,
+   "tick": 210
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 2.6,
+   "tick": 130
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 3.6,
+   "tick": 54
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 0.55,
+   "tick": 249
+  },
+  {
+   "criterion": "sell",
+   "typedValue": 4.95,
+   "tick": 0
+  },
+  {
+   "criterion": "bond",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "bond",
+   "tick": 1,
+   "cutoff": 0
+  },
+  {
+   "criterion": "bond",
+   "tick": 2,
+   "cutoff": 0
+  },
+  {
+   "criterion": "bond",
+   "tick": 10,
+   "cutoff": 0
+  },
+  {
+   "criterion": "bond",
+   "tick": 60,
+   "cutoff": 0.06134725
+  },
+  {
+   "criterion": "bond",
+   "tick": 125,
+   "cutoff": 0.57480754
+  },
+  {
+   "criterion": "bond",
+   "tick": 200,
+   "cutoff": 1.95495548
+  },
+  {
+   "criterion": "bond",
+   "tick": 248,
+   "cutoff": 2.98968522
+  },
+  {
+   "criterion": "bond",
+   "tick": 249,
+   "cutoff": 3.00465965
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 3.00465965,
+   "tick": 249
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 0,
+   "tick": 33
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 2.10283801,
+   "tick": 209
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 0.61432708,
+   "tick": 129
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 0.05374996,
+   "tick": 49
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 2.09076137,
+   "tick": 208
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 0.59597557,
+   "tick": 128
+  },
+  {
+   "criterion": "bond",
+   "typedValue": 3.05465965,
+   "tick": 249
+  },
+  {
+   "criterion": "bond",
+   "typedValue": -0.05,
+   "tick": 0
+  },
+  {
+   "criterion": "liq",
+   "tick": 0,
+   "cutoff": null
+  },
+  {
+   "criterion": "liq",
+   "tick": 1,
+   "cutoff": 0.09340182
+  },
+  {
+   "criterion": "liq",
+   "tick": 2,
+   "cutoff": 0.09603303
+  },
+  {
+   "criterion": "liq",
+   "tick": 10,
+   "cutoff": 0.10193585
+  },
+  {
+   "criterion": "liq",
+   "tick": 60,
+   "cutoff": 0.24623747
+  },
+  {
+   "criterion": "liq",
+   "tick": 125,
+   "cutoff": 1.16113694
+  },
+  {
+   "criterion": "liq",
+   "tick": 200,
+   "cutoff": 3.37056394
+  },
+  {
+   "criterion": "liq",
+   "tick": 248,
+   "cutoff": 4.90216022
+  },
+  {
+   "criterion": "liq",
+   "tick": 249,
+   "cutoff": 4.99013785
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 4.99013785,
+   "tick": 249
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 0.09156593,
+   "tick": 0
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 3.81973579,
+   "tick": 209
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 1.19934444,
+   "tick": 129
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 0.18268528,
+   "tick": 49
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 3.78855214,
+   "tick": 208
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 1.1927334,
+   "tick": 128
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 5.04013785,
+   "tick": 249
+  },
+  {
+   "criterion": "liq",
+   "typedValue": 0.04156593,
+   "tick": 0
+  }
+ ]
+}

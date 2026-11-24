@@ -1,0 +1,375 @@
+{
+ "name": "plan-061-taker-1in-0_05btc-6-makers",
+ "about": "6 Makers; the Taker brings 1 input worth 0.05 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 1,
+   "amountSats": 5000000
+  },
+  "makers": [
+   {
+    "alias": "gaunt-otter",
+    "minFee": 0.4,
+    "buy": 0.9,
+    "sell": 1.9,
+    "pts": 22,
+    "k": 3,
+    "liqSats": 490216022,
+    "paySats": []
+   },
+   {
+    "alias": "mellow-wren",
+    "minFee": 0.5,
+    "buy": 1.3,
+    "sell": 1.9,
+    "pts": 19,
+    "k": 3,
+    "liqSats": 455813991,
+    "paySats": []
+   },
+   {
+    "alias": "sable-isopod",
+    "minFee": 0.8,
+    "buy": 0,
+    "sell": 0.9,
+    "pts": 10,
+    "k": 1,
+    "liqSats": 144263829,
+    "paySats": [
+     6444947
+    ]
+   },
+   {
+    "alias": "tidy-carp",
+    "minFee": 1.4,
+    "buy": 0.9,
+    "sell": 2.1,
+    "pts": 45,
+    "k": 3,
+    "liqSats": 106667898,
+    "paySats": []
+   },
+   {
+    "alias": "tidy-fulmar",
+    "minFee": 1.4,
+    "buy": 1.5,
+    "sell": 3.3,
+    "pts": 49,
+    "k": 2,
+    "liqSats": 13228453,
+    "paySats": []
+   },
+   {
+    "alias": "velvet-nyala",
+    "minFee": 0.2,
+    "buy": 2.9,
+    "sell": 4.4,
+    "pts": 60,
+    "k": 4,
+    "liqSats": 203134729,
+    "paySats": [
+     3249363
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 1.4,
+  "matchedInputs": 15,
+  "outputPoints": 19,
+  "points": 15,
+  "participants": 7,
+  "makers": [
+   {
+    "alias": "gaunt-otter",
+    "countedInputs": 3,
+    "amountSats": 490216022,
+    "picks": [
+     387039568,
+     95190082,
+     6444947
+    ],
+    "change": 1541424,
+    "forfeit": 1,
+    "pinned": [
+     387039568
+    ],
+    "payments": []
+   },
+   {
+    "alias": "mellow-wren",
+    "countedInputs": 3,
+    "amountSats": 455813991,
+    "picks": [
+     68774423
+    ],
+    "change": 387039568,
+    "forfeit": 0,
+    "pinned": [
+     68774423
+    ],
+    "payments": []
+   },
+   {
+    "alias": "sable-isopod",
+    "countedInputs": 1,
+    "amountSats": 137818882,
+    "picks": [
+     95190082,
+     5000000,
+     3249363
+    ],
+    "change": 34379437,
+    "forfeit": 0,
+    "pinned": [
+     95190082,
+     5000000,
+     3249363
+    ],
+    "payments": [
+     6444947
+    ]
+   },
+   {
+    "alias": "tidy-carp",
+    "countedInputs": 3,
+    "amountSats": 106667898,
+    "picks": [
+     3249363,
+     1783506,
+     6444947
+    ],
+    "change": 95190082,
+    "forfeit": 0,
+    "pinned": [
+     3249363,
+     1783506,
+     6444947
+    ],
+    "payments": []
+   },
+   {
+    "alias": "tidy-fulmar",
+    "countedInputs": 2,
+    "amountSats": 13228453,
+    "picks": [
+     6444947,
+     5000000
+    ],
+    "change": 1783506,
+    "forfeit": 0,
+    "pinned": [
+     6444947,
+     5000000
+    ],
+    "payments": []
+   },
+   {
+    "alias": "velvet-nyala",
+    "countedInputs": 3,
+    "amountSats": 199885366,
+    "picks": [
+     34379437,
+     95190082,
+     1541424
+    ],
+    "change": 68774423,
+    "forfeit": 0,
+    "pinned": [
+     34379437,
+     95190082
+    ],
+    "payments": [
+     3249363
+    ]
+   }
+  ],
+  "taker": {
+   "inputs": 1,
+   "amountSats": 5000000,
+   "picks": [
+    5000000
+   ],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 5000000
+  },
+  "tally": [
+   [
+    387039568,
+    2
+   ],
+   [
+    95190082,
+    4
+   ],
+   [
+    68774423,
+    2
+   ],
+   [
+    34379437,
+    2
+   ],
+   [
+    6444947,
+    4
+   ],
+   [
+    5000000,
+    3
+   ],
+   [
+    3249363,
+    3
+   ],
+   [
+    1783506,
+    2
+   ],
+   [
+    1541424,
+    2
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 22,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 0,
+   "payments": 2,
+   "paymentsMatched": 2,
+   "extraMakerInputs": 1,
+   "unmatchedOutputsShown": 0
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 15.399999999999999
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 1,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 57,
+     "sats": 79.8
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 15,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 855,
+     "sats": 1197
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 22,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 946,
+     "sats": 1324.3999999999999
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 1,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 57,
+     "sats": 79.8
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 2,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 86,
+     "sats": 120.39999999999999
+    }
+   ],
+   "totalVb": 2012,
+   "makerVb": 143,
+   "takerVb": 1869,
+   "forfeitSats": 1,
+   "takerFeeSats": 2617.6,
+   "makerFeeSats": 200.2,
+   "miningFeeSats": 2817.7999999999997,
+   "minerSats": 2617.6,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "gaunt-otter",
+     "originPoints": 22,
+     "delta": -7,
+     "rate": 1.9,
+     "sats": -13.299999999999999
+    },
+    {
+     "alias": "mellow-wren",
+     "originPoints": 19,
+     "delta": -4,
+     "rate": 1.9,
+     "sats": -7.6
+    },
+    {
+     "alias": "sable-isopod",
+     "originPoints": 10,
+     "delta": 5,
+     "rate": 0,
+     "sats": 0
+    },
+    {
+     "alias": "tidy-carp",
+     "originPoints": 45,
+     "delta": -30,
+     "rate": 2.1,
+     "sats": -63
+    },
+    {
+     "alias": "tidy-fulmar",
+     "originPoints": 49,
+     "delta": -34,
+     "rate": 3.3,
+     "sats": -112.19999999999999
+    },
+    {
+     "alias": "velvet-nyala",
+     "originPoints": 60,
+     "delta": -45,
+     "rate": 4.4,
+     "sats": -198.00000000000003
+    }
+   ],
+   "makersPaySats": 0,
+   "takerPaysSats": 394.1,
+   "netSats": -394.1
+  },
+  "takerCostSats": 3011.7,
+  "planning": {
+   "objective": -2874.6000000000004,
+   "chainOrder": [
+    4,
+    3,
+    2,
+    5,
+    1,
+    0
+   ]
+  }
+ }
+}

@@ -1,0 +1,304 @@
+{
+ "about": "For a hand-made selection of sample-wallet coins on the List Offers tab: the points shown on the Offer button, the amount pre-filled, and which rows are flagged. A row takes the first flag that applies: yellow (no points), red (shares an origin transaction with a larger selected coin), orange (beyond the first three private coins).",
+ "cases": [
+  {
+   "selectedCoinIds": [
+    1,
+    13
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "4.0",
+   "offerAmountBtc": "1.99759426",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1
+   ],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    1,
+    13
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "4.0",
+   "offerAmountBtc": "1.99759426",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1
+   ],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    1,
+    13,
+    2,
+    9
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "4.3",
+   "offerAmountBtc": "2.49528261",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1,
+    9
+   ],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    1,
+    13,
+    2,
+    9
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "4.6",
+   "offerAmountBtc": "2.49528261",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1,
+    9
+   ],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    10,
+    2,
+    3,
+    4,
+    5
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "15.0",
+   "offerAmountBtc": "1.48791579",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": [
+    4,
+    5
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    10,
+    2,
+    3,
+    4,
+    5
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "19.5",
+   "offerAmountBtc": "1.48791579",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": [
+    2,
+    5
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    11,
+    16,
+    12
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "5.1",
+   "offerAmountBtc": "0.14334024",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    11,
+    16,
+    12
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "5.1",
+   "offerAmountBtc": "0.14334024",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    1,
+    2,
+    3,
+    10,
+    13,
+    9,
+    15
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "7.4",
+   "offerAmountBtc": "3.23784587",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1,
+    9
+   ],
+   "rowsOrangeBeyondThree": [
+    2,
+    3,
+    15
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    1,
+    2,
+    3,
+    10,
+    13,
+    9,
+    15
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "15.0",
+   "offerAmountBtc": "3.23784587",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [
+    1,
+    9
+   ],
+   "rowsOrangeBeyondThree": [
+    13,
+    15
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    4,
+    6,
+    8,
+    14
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "18.6",
+   "offerAmountBtc": "0.29772749",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": [
+    8
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    4,
+    6,
+    8,
+    14
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "20.2",
+   "offerAmountBtc": "0.29772749",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": [
+    6
+   ]
+  },
+  {
+   "selectedCoinIds": [
+    7
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "4.0",
+   "offerAmountBtc": "0.08693926",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    7
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "4.0",
+   "offerAmountBtc": "0.08693926",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    3,
+    5,
+    6
+   ],
+   "coinSort": [
+    "value",
+    "desc"
+   ],
+   "offerPointsShown": "11.8",
+   "offerAmountBtc": "0.44999220",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  },
+  {
+   "selectedCoinIds": [
+    3,
+    5,
+    6
+   ],
+   "coinSort": [
+    "ap",
+    "desc"
+   ],
+   "offerPointsShown": "11.8",
+   "offerAmountBtc": "0.44999220",
+   "rowsYellowNoPoints": [],
+   "rowsRedSharedOrigin": [],
+   "rowsOrangeBeyondThree": []
+  }
+ ]
+}

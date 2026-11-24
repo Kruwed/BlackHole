@@ -1,0 +1,276 @@
+{
+ "name": "plan-012-4-makers-2",
+ "about": "4 Makers picked at random from the sample book; the Taker brings 2 inputs worth 0.1 BTC.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": [
+   {
+    "alias": "amber-stoat",
+    "minFee": 0.2,
+    "buy": 0.1,
+    "sell": 1.2,
+    "pts": 13,
+    "k": 1,
+    "liqSats": 307002021,
+    "paySats": []
+   },
+   {
+    "alias": "cold-hoopoe",
+    "minFee": 0.6,
+    "buy": 0.6,
+    "sell": 1.9,
+    "pts": 40,
+    "k": 2,
+    "liqSats": 102344943,
+    "paySats": []
+   },
+   {
+    "alias": "hollow-egret",
+    "minFee": 0.2,
+    "buy": 1.7,
+    "sell": 3.4,
+    "pts": 5,
+    "k": 3,
+    "liqSats": 108845260,
+    "paySats": []
+   },
+   {
+    "alias": "rapid-cedar",
+    "minFee": 0.6,
+    "buy": 2.7,
+    "sell": 4.2,
+    "pts": 18,
+    "k": 3,
+    "liqSats": 312243400,
+    "paySats": []
+   }
+  ]
+ },
+ "expected": {
+  "feeRate": 0.6,
+  "matchedInputs": 9,
+  "outputPoints": 10,
+  "points": 9,
+  "participants": 5,
+  "makers": [
+   {
+    "alias": "amber-stoat",
+    "countedInputs": 1,
+    "amountSats": 307002021,
+    "picks": [
+     6500317,
+     102344943,
+     2379310
+    ],
+    "change": 195777451,
+    "forfeit": 0,
+    "pinned": [
+     6500317,
+     102344943
+    ],
+    "payments": []
+   },
+   {
+    "alias": "cold-hoopoe",
+    "countedInputs": 2,
+    "amountSats": 102344943,
+    "picks": [],
+    "change": 102344943,
+    "forfeit": 0,
+    "pinned": [],
+    "payments": []
+   },
+   {
+    "alias": "hollow-egret",
+    "countedInputs": 3,
+    "amountSats": 108845260,
+    "picks": [
+     102344943,
+     6500317
+    ],
+    "change": 0,
+    "forfeit": 0,
+    "pinned": [
+     102344943
+    ],
+    "payments": []
+   },
+   {
+    "alias": "rapid-cedar",
+    "countedInputs": 3,
+    "amountSats": 312243400,
+    "picks": [
+     195777451,
+     6500317,
+     102344943
+    ],
+    "change": 7620689,
+    "forfeit": 0,
+    "pinned": [
+     195777451,
+     6500317
+    ],
+    "payments": []
+   }
+  ],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [
+    7620689,
+    2379310
+   ],
+   "change": 0,
+   "forfeit": 1,
+   "totalSats": 10000000
+  },
+  "tally": [
+   [
+    195777451,
+    2
+   ],
+   [
+    102344943,
+    4
+   ],
+   [
+    7620689,
+    2
+   ],
+   [
+    6500317,
+    3
+   ],
+   [
+    2379310,
+    2
+   ]
+  ],
+  "counts": {
+   "matchedOutputs": 13,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 0,
+   "payments": 0,
+   "paymentsMatched": 0,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 0
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 6.6
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 68.39999999999999
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 9,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 513,
+     "sats": 307.8
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 13,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 559,
+     "sats": 335.4
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    }
+   ],
+   "totalVb": 1197,
+   "makerVb": 0,
+   "takerVb": 1197,
+   "forfeitSats": 1,
+   "takerFeeSats": 719.1999999999999,
+   "makerFeeSats": 0,
+   "miningFeeSats": 719.1999999999999,
+   "minerSats": 719.1999999999999,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [
+    {
+     "alias": "amber-stoat",
+     "originPoints": 13,
+     "delta": -4,
+     "rate": 1.2,
+     "sats": -4.8
+    },
+    {
+     "alias": "cold-hoopoe",
+     "originPoints": 40,
+     "delta": -31,
+     "rate": 1.9,
+     "sats": -58.9
+    },
+    {
+     "alias": "hollow-egret",
+     "originPoints": 5,
+     "delta": 4,
+     "rate": 1.7,
+     "sats": 6.8
+    },
+    {
+     "alias": "rapid-cedar",
+     "originPoints": 18,
+     "delta": -9,
+     "rate": 4.2,
+     "sats": -37.800000000000004
+    }
+   ],
+   "makersPaySats": 6.8,
+   "takerPaysSats": 101.5,
+   "netSats": -94.7
+  },
+  "takerCostSats": 813.9,
+  "planning": {
+   "objective": -743.6,
+   "chainOrder": [
+    1,
+    2,
+    0,
+    3
+   ]
+  }
+ }
+}

@@ -1,0 +1,117 @@
+{
+ "name": "plan-001-no-makers",
+ "about": "Nothing selected: the empty transaction.",
+ "input": {
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000
+  },
+  "makers": []
+ },
+ "expected": {
+  "feeRate": 0,
+  "matchedInputs": 0,
+  "outputPoints": 0,
+  "points": 0,
+  "participants": 1,
+  "makers": [],
+  "taker": {
+   "inputs": 2,
+   "amountSats": 10000000,
+   "picks": [],
+   "change": 0,
+   "forfeit": 0,
+   "totalSats": 0
+  },
+  "tally": [],
+  "counts": {
+   "matchedOutputs": 0,
+   "makerUnmatchedOutputs": 0,
+   "takerUnmatchedOutputs": 0,
+   "payments": 0,
+   "paymentsMatched": 0,
+   "extraMakerInputs": 0,
+   "unmatchedOutputsShown": 0
+  },
+  "fees": {
+   "rows": [
+    {
+     "rule": "Transaction overhead",
+     "count": 1,
+     "each": 11,
+     "paidBy": "taker",
+     "vb": 11,
+     "sats": 0
+    },
+    {
+     "rule": "Taker inputs",
+     "count": 2,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 114,
+     "sats": 0
+    },
+    {
+     "rule": "Matched inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Matched outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Unmatched outputs",
+     "count": 0,
+     "each": 100,
+     "paidBy": "taker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker inputs",
+     "count": 0,
+     "each": 57,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    },
+    {
+     "rule": "Extra Maker outputs",
+     "count": 0,
+     "each": 43,
+     "paidBy": "maker",
+     "vb": 0,
+     "sats": 0
+    }
+   ],
+   "totalVb": 125,
+   "makerVb": 0,
+   "takerVb": 125,
+   "forfeitSats": 0,
+   "takerFeeSats": 0,
+   "makerFeeSats": 0,
+   "miningFeeSats": 0,
+   "minerSats": 0,
+   "makerCreditSats": 0
+  },
+  "settlement": {
+   "rows": [],
+   "makersPaySats": 0,
+   "takerPaysSats": 0,
+   "netSats": 0
+  },
+  "takerCostSats": 0,
+  "planning": {
+   "objective": 0,
+   "chainOrder": []
+  }
+ }
+}
