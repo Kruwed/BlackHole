@@ -104,6 +104,20 @@ public class RpcTests
 		Assert.Equal(expectedResponse, response);
 	}
 
+	/// <summary>
+	/// The points of a coin are a whole number or half a point more. An answer tells whole points as a whole number,
+	/// as it did before there were half points.
+	/// </summary>
+	[Fact]
+	public void AnonymityPointsAreAnsweredAsWholeNumbersWhereTheyAreWhole()
+	{
+		Assert.Null(WasabiJsonRpcService.DescribeAnonymityPoints(null));
+		Assert.Equal(0L, WasabiJsonRpcService.DescribeAnonymityPoints(0m));
+		Assert.Equal(7L, WasabiJsonRpcService.DescribeAnonymityPoints(7.0m));
+		Assert.Equal(1.5m, WasabiJsonRpcService.DescribeAnonymityPoints(1.5m));
+		Assert.Equal(0.5m, WasabiJsonRpcService.DescribeAnonymityPoints(0.5m));
+	}
+
 	[Fact]
 	public void BuildTransactionWithFees()
 	{

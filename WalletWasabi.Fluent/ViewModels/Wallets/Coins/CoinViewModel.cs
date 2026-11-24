@@ -73,7 +73,7 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 	public string? BannedUntilUtcToolTip { get; }
 
 	/// <summary>The anonymity points of the coin, or null if the wallet has not found them out yet.</summary>
-	public int? AnonymityPoints { get; }
+	public decimal? AnonymityPoints { get; }
 
 	public string AnonymityPointsText => DescribeAnonymityPoints(AnonymityPoints);
 
@@ -92,9 +92,12 @@ public partial class CoinViewModel : ViewModelBase, IDisposable
 	public static string DescribeContent(SmartCoin coin) =>
 		FormattableString.Invariant($"{coin.Outpoint}:{coin.Amount.Satoshi}:{coin.Confirmed}:{coin.AnonymityPoints}:{coin.IsBanned}");
 
-	/// <summary>What a row shows as the anonymity points of its coin: the number, or a question mark while the wallet does not know it.</summary>
-	public static string DescribeAnonymityPoints(int? points) =>
-		points?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
+	/// <summary>
+	/// What a row shows as the anonymity points of its coin: the number, with its half point if it has one, or a
+	/// question mark while the wallet does not know it.
+	/// </summary>
+	public static string DescribeAnonymityPoints(decimal? points) =>
+		points?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) ?? "?";
 
 	public void Dispose() => _disposables.Dispose();
 }

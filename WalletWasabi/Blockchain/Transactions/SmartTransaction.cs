@@ -10,8 +10,8 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 {
 	private Lazy<long[]> _outputValues;
 
-	/// <summary>The anonymity points of the transaction, or a negative number while they are not known.</summary>
-	private volatile int _anonymityPoints = -1;
+	/// <summary>The anonymity points of the transaction in half points, or a negative number while they are not known.</summary>
+	private volatile int _anonymityHalfPoints = -1;
 
 	public SmartTransaction(
 		Transaction transaction,
@@ -48,14 +48,14 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	public long[] OutputValues => _outputValues.Value;
 
 	/// <summary>
-	/// The anonymity points of the transaction, see <see cref="Analysis.AnonymityPoints"/>. They are null until the
-	/// wallet found them out: they depend on the transactions that created the inputs, and the wallet has to ask the
-	/// node for the ones that are not its own.
+	/// The anonymity points of the transaction, see <see cref="Analysis.AnonymityPoints"/>: a whole number of points
+	/// or half a point more. They are null until the wallet found them out: they depend on the transactions that
+	/// created the inputs, and the wallet has to ask the node for the ones that are not its own.
 	/// </summary>
-	public int? AnonymityPoints
+	public decimal? AnonymityPoints
 	{
-		get => _anonymityPoints is var points and >= 0 ? points : null;
-		set => _anonymityPoints = value ?? -1;
+		get => _anonymityHalfPoints is var halfPoints and >= 0 ? Analysis.AnonymityPoints.FromHalfPoints(halfPoints) : null;
+		set => _anonymityHalfPoints = value is { } points ? Analysis.AnonymityPoints.ToHalfPoints(points) : -1;
 	}
 
 	/// <summary>Coins those are on the input side of the tx and belong to the wallet.</summary>

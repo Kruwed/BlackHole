@@ -55,7 +55,7 @@ public partial class CoinModel : ReactiveObject
 	public DateTimeOffset? BannedUntilUtc { get; }
 
 	/// <summary>The anonymity points of the coin when this model of it was made, or null if they were not known then.</summary>
-	public int? AnonymityPoints { get; }
+	public decimal? AnonymityPoints { get; }
 
 	/// <summary>Subscribes to property changes of underlying SmartCoin.</summary>
 	/// <remarks>This method is not thread safe. Make sure it's not called concurrently.</remarks>

@@ -7,10 +7,10 @@ namespace WalletWasabi.Blockchain.Analysis;
 /// <summary>
 /// Finds out the anonymity points of a transaction of the wallet, see <see cref="AnonymityPoints"/>.
 /// <para>
-/// The points depend on the transactions that created the inputs: was the output that an input spends a matched
-/// output there? The wallet has its own transactions. For the inputs of others, which are most of the inputs of a
-/// coinjoin, it asks the node. A node with an index of all transactions simply has them. Any other node is told in
-/// which block to look, and that block is found through the transaction that spends the output.
+/// The points depend on the transactions that created the inputs: what was the output that an input spends worth
+/// there, a point, half a point or nothing? The wallet has its own transactions. For the inputs of others, which are
+/// most of the inputs of a coinjoin, it asks the node. A node with an index of all transactions simply has them. Any
+/// other node is told in which block to look, and that block is found through the transaction that spends the output.
 /// </para>
 /// </summary>
 public class AnonymityPointsCalculator
@@ -28,11 +28,11 @@ public class AnonymityPointsCalculator
 	private readonly ITransactionStore _transactionStore;
 
 	/// <summary>
-	/// What the node told about transactions of others: which of their outputs are matched. The outputs of one coinjoin
-	/// are spent by many later transactions, and a calculation that the node did not answer completely is repeated, so
-	/// the node is asked for a transaction only once while the application runs.
+	/// What the node told about transactions of others: what each of their outputs is worth, in half points. The
+	/// outputs of one coinjoin are spent by many later transactions, and a calculation that the node did not answer
+	/// completely is repeated, so the node is asked for a transaction only once while the application runs.
 	/// </summary>
-	private readonly Dictionary<uint256, bool[]> _matchedOutputsOfOthers = [];
+	private readonly Dictionary<uint256, int[]> _outputWorthsOfOthers = [];
 
 	public AnonymityPointsCalculator(IRPCClient rpcClient, ITransactionStore transactionStore)
 	{
@@ -42,29 +42,31 @@ public class AnonymityPointsCalculator
 
 	/// <returns>The points of the transaction, or null if the node could not tell enough about its inputs.</returns>
 	/// <remarks>The method is not thread safe: one calculation at a time.</remarks>
-	public async Task<int?> CalculateAsync(SmartTransaction smartTransaction, CancellationToken cancellationToken)
+	public async Task<decimal?> CalculateAsync(SmartTransaction smartTransaction, CancellationToken cancellationToken)
 	{
 		var transaction = smartTransaction.Transaction;
-		var matchedOutputs = AnonymityPoints.CountMatchedOutputs(transaction);
+
+		// The sums are kept in half points, which are whole numbers.
+		var outputWorth = AnonymityPoints.SumHalfPointsOfOutputs(smartTransaction.OutputValues);
 
 		// Without matched outputs there are no points, and the input of a coinbase transaction was nobody's output.
-		if (matchedOutputs == 0 || transaction.IsCoinBase)
+		if (outputWorth == 0 || transaction.IsCoinBase)
 		{
 			return 0;
 		}
 
-		var matchedInputs = 0;
+		var inputWorth = 0;
 		var inputsToAskAbout = new List<OutPoint>();
 
 		foreach (var prevOut in transaction.Inputs.Select(input => input.PrevOut))
 		{
 			if (_transactionStore.TryGetTransaction(prevOut.Hash, out var parent))
 			{
-				matchedInputs += AnonymityPoints.IsMatchedOutput(parent.Transaction, prevOut.N) ? 1 : 0;
+				inputWorth += AnonymityPoints.GetHalfPointsOfOutput(parent.OutputValues, prevOut.N);
 			}
-			else if (_matchedOutputsOfOthers.TryGetValue(prevOut.Hash, out var matchedOutputsOfParent))
+			else if (_outputWorthsOfOthers.TryGetValue(prevOut.Hash, out var outputWorthsOfParent))
 			{
-				matchedInputs += WasMatchedOutput(matchedOutputsOfParent, prevOut) ? 1 : 0;
+				inputWorth += GetWorth(outputWorthsOfParent, prevOut);
 			}
 			else
 			{
@@ -77,20 +79,20 @@ public class AnonymityPointsCalculator
 
 		foreach (var prevOuts in inputsToAskAbout.Chunk(BatchSize))
 		{
-			// The points are never more than the matched outputs: from here on the other inputs change nothing.
-			if (matchedInputs >= matchedOutputs)
+			// The points are never more than what the outputs are worth: from here on the other inputs change nothing.
+			if (inputWorth >= outputWorth)
 			{
 				break;
 			}
 
 			// What is remembered is given up as a whole, and never in the middle of a batch.
-			if (_matchedOutputsOfOthers.Count > MaxRememberedTransactions - BatchSize)
+			if (_outputWorthsOfOthers.Count > MaxRememberedTransactions - BatchSize)
 			{
-				_matchedOutputsOfOthers.Clear();
+				_outputWorthsOfOthers.Clear();
 			}
 
 			// Inputs that spend outputs of one transaction may be in different batches: what was asked for before is known by now.
-			var unknownPrevOuts = prevOuts.Where(prevOut => !_matchedOutputsOfOthers.ContainsKey(prevOut.Hash)).ToArray();
+			var unknownPrevOuts = prevOuts.Where(prevOut => !_outputWorthsOfOthers.ContainsKey(prevOut.Hash)).ToArray();
 
 			if (unknownPrevOuts.Length > 0)
 			{
@@ -102,9 +104,9 @@ public class AnonymityPointsCalculator
 
 			foreach (var prevOut in prevOuts)
 			{
-				if (_matchedOutputsOfOthers.TryGetValue(prevOut.Hash, out var matchedOutputsOfParent))
+				if (_outputWorthsOfOthers.TryGetValue(prevOut.Hash, out var outputWorthsOfParent))
 				{
-					matchedInputs += WasMatchedOutput(matchedOutputsOfParent, prevOut) ? 1 : 0;
+					inputWorth += GetWorth(outputWorthsOfParent, prevOut);
 				}
 				else
 				{
@@ -113,26 +115,21 @@ public class AnonymityPointsCalculator
 			}
 		}
 
-		if (matchedInputs < matchedOutputs && unknownInputs > 0)
+		if (inputWorth < outputWorth && unknownInputs > 0)
 		{
 			return null;
 		}
 
-		return AnonymityPoints.Calculate(matchedInputs, matchedOutputs);
+		return AnonymityPoints.Calculate(AnonymityPoints.FromHalfPoints(inputWorth), AnonymityPoints.FromHalfPoints(outputWorth));
 	}
 
-	private static bool WasMatchedOutput(bool[] matchedOutputsOfParent, OutPoint prevOut) =>
-		prevOut.N < matchedOutputsOfParent.Length && matchedOutputsOfParent[prevOut.N];
+	/// <summary>What the output that an input spends was worth in the transaction that created it, in half points.</summary>
+	private static int GetWorth(int[] outputWorthsOfParent, OutPoint prevOut) =>
+		prevOut.N < outputWorthsOfParent.Length ? outputWorthsOfParent[prevOut.N] : 0;
 
-	private void Remember(Transaction transactionOfOthers)
-	{
-		var amounts = transactionOfOthers.Outputs.Select(output => output.Value.Satoshi).ToArray();
-
-		_matchedOutputsOfOthers[transactionOfOthers.GetHash()] = Enumerable
-			.Range(0, amounts.Length)
-			.Select(index => AnonymityPoints.IsMatched(amounts, (uint)index))
-			.ToArray();
-	}
+	private void Remember(Transaction transactionOfOthers) =>
+		_outputWorthsOfOthers[transactionOfOthers.GetHash()] =
+			AnonymityPoints.GetHalfPointsOfOutputs(transactionOfOthers.Outputs.Select(output => output.Value.Satoshi).ToArray());
 
 	/// <summary>
 	/// Looks for the transactions that created the outputs that one transaction spends.

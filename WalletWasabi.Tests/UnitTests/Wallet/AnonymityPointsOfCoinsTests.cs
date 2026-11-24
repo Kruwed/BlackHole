@@ -33,10 +33,10 @@ public class AnonymityPointsOfCoinsTests
 		using var environment = new WalletWithNode();
 		var wallet = environment.Wallet;
 
-		// A transaction with two inputs that were matched outputs before, three equal outputs and two others.
-		var coinjoin = environment.CreateForeignTransaction(0.5m, 0.5m, 0.2m);
+		// A transaction with two inputs that came out of a set of three before, three equal outputs and two others.
+		var coinjoin = environment.CreateForeignTransaction(0.5m, 0.5m, 0.5m, 0.2m);
 		var transaction = environment.CreateTransaction(
-			[new OutPoint(coinjoin, 0), new OutPoint(coinjoin, 1), new OutPoint(coinjoin, 2)],
+			[new OutPoint(coinjoin, 0), new OutPoint(coinjoin, 1), new OutPoint(coinjoin, 3)],
 			ownAmounts: [0.3m, 0.0721m],
 			foreignAmounts: [0.3m, 0.3m, 0.2278m]);
 
@@ -95,7 +95,7 @@ public class AnonymityPointsOfCoinsTests
 			foreignAmounts: [0.3m, 0.3m]);
 
 		// The wallet ran before and found the points out then.
-		wallet.KeyManager.SetAnonymityPoints(new Dictionary<uint256, int> { [transaction.GetHash()] = 1 });
+		wallet.KeyManager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [transaction.GetHash()] = 1 });
 		environment.Node.OnGetRawTransactionAsync = (_, _) => throw new InvalidOperationException("The node must not be asked.");
 
 		environment.Process(transaction);
@@ -129,8 +129,9 @@ public class AnonymityPointsOfCoinsTests
 		// The node is back.
 		environment.Node.OnGetRawTransactionAsync = knownTransactions;
 
+		// The input came out of a pair, so the transaction is worth half a point, and so is the coin: it is a matched output.
 		Assert.True(await wallet.FindOutAnonymityPointsAsync(TestContext.Current.CancellationToken));
-		Assert.Equal(1, coin.AnonymityPoints);
+		Assert.Equal(0.5m, coin.AnonymityPoints);
 	}
 
 	[Fact]
@@ -277,9 +278,10 @@ public class AnonymityPointsOfCoinsTests
 		environment.Process(transaction);
 		var coin = Assert.Single(wallet.Coins);
 
+		// Two inputs out of a pair are worth a point together, and so is the pair of outputs.
 		Assert.True(await wallet.FindOutAnonymityPointsAsync(TestContext.Current.CancellationToken));
-		Assert.Equal(2, coin.AnonymityPoints);
-		Assert.Equal(2, wallet.KeyManager.GetAnonymityPoints(transaction.GetHash()));
+		Assert.Equal(1, coin.AnonymityPoints);
+		Assert.Equal(1, wallet.KeyManager.GetAnonymityPoints(transaction.GetHash()));
 
 		// The coin is spent. Its points do not go anywhere: the payment that it funds has no matched outputs.
 		var payment = environment.CreateTransaction([coin.Outpoint], ownAmounts: [0.05m], foreignAmounts: [0.1499m]);
@@ -368,13 +370,13 @@ public class AnonymityPointsOfCoinsTests
 		}
 
 		/// <summary>
-		/// The wallet learns of a coinjoin that made a coin for it. One input of the coinjoin was a matched output of a
-		/// transaction that only the node knows, and two of its outputs are matched: it is worth one point.
+		/// The wallet learns of a coinjoin that made a coin for it. The input of the coinjoin came out of a set of three
+		/// equal outputs of a transaction that only the node knows, and three of its outputs are equal: it is worth one point.
 		/// </summary>
 		public Transaction ProcessCoinjoinWorthOnePoint()
 		{
-			var earlierCoinjoin = CreateForeignTransaction(0.5m, 0.5m);
-			var coinjoin = CreateTransaction([new OutPoint(earlierCoinjoin, 0)], ownAmounts: [0.2m], foreignAmounts: [0.2m, 0.0999m]);
+			var earlierCoinjoin = CreateForeignTransaction(0.5m, 0.5m, 0.5m);
+			var coinjoin = CreateTransaction([new OutPoint(earlierCoinjoin, 0)], ownAmounts: [0.2m], foreignAmounts: [0.2m, 0.2m, 0.0999m]);
 			Process(coinjoin);
 
 			return coinjoin;

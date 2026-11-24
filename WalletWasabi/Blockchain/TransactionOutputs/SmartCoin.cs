@@ -50,7 +50,13 @@ public class SmartCoin : NotifyPropertyChangedBase, IEquatable<SmartCoin>, IDest
 	/// The anonymity points of the coin: those of the transaction that created it if the coin is a matched output of
 	/// that transaction, and none otherwise. They are null while the points of the transaction are not known.
 	/// </summary>
-	public int? AnonymityPoints => IsMatchedOutput ? Transaction.AnonymityPoints : 0;
+	public decimal? AnonymityPoints => IsMatchedOutput ? Transaction.AnonymityPoints : 0;
+
+	/// <summary>
+	/// What the coin counts for as an input of the transaction that spends it: a point if it came out of a set of three
+	/// or more outputs of the same amount, half a point if it came out of a pair, and nothing otherwise.
+	/// </summary>
+	public decimal WorthAsInput => Analysis.AnonymityPoints.FromHalfPoints(Analysis.AnonymityPoints.GetHalfPointsOfOutput(Transaction.OutputValues, Index));
 
 	public Height Height
 	{

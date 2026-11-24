@@ -109,10 +109,10 @@ public static partial class Encode
 			("PaymentsTotal", MoneySatoshis(costs.Value.PaymentsTotal))
 		]);
 
-	public static JsonNode AnonymityPoints(KeyValuePair<uint256, int> points) =>
+	public static JsonNode AnonymityPoints(KeyValuePair<uint256, decimal> points) =>
 		Object([
 			("TransactionId", UInt256(points.Key)),
-			("Points", Int(points.Value))
+			("Points", Decimal(points.Value))
 		]);
 
 	public static JsonNode ClientPrison(IEnumerable<PrisonedCoinRecord> p) =>
@@ -194,10 +194,10 @@ public static partial class Decode
 			get.Required("BannedUntil", DateTimeOffset)
 		));
 
-	public static Decoder<KeyValuePair<uint256, int>> AnonymityPoints =>
+	public static Decoder<KeyValuePair<uint256, decimal>> AnonymityPoints =>
 		Object(get => KeyValuePair.Create(
 			get.Required("TransactionId", UInt256),
-			get.Required("Points", Int)
+			get.Required("Points", Decimal)
 		));
 
 	public static Decoder<KeyValuePair<uint256, CoinjoinCosts>> CoinjoinCosts =>

@@ -92,10 +92,11 @@ public class AnonymityPointsTests
 				() => wallet.Coins.Count() == 2 && wallet.Coins.All(coin => coin.AnonymityPoints is not null),
 				TimeSpan.FromSeconds(60));
 
-			// Both inputs were matched outputs, and two outputs are matched: two points for the matched coin, none for the change.
-			Assert.Equal(2, Assert.Single(wallet.Coins, coin => coin.ScriptPubKey == matchedScript).AnonymityPoints);
+			// Both inputs came out of a pair, which makes them worth one point together, and the two equal outputs are
+			// a pair too, worth one point: one point for the matched coin, none for the change.
+			Assert.Equal(1, Assert.Single(wallet.Coins, coin => coin.ScriptPubKey == matchedScript).AnonymityPoints);
 			Assert.Equal(0, Assert.Single(wallet.Coins, coin => coin.ScriptPubKey == changeScript).AnonymityPoints);
-			Assert.Equal(2, keyManager.GetAnonymityPoints(second.GetHash()));
+			Assert.Equal(1, keyManager.GetAnonymityPoints(second.GetHash()));
 		}
 		finally
 		{
@@ -112,8 +113,9 @@ public class AnonymityPointsTests
 		var foundByIdentifier = await rpc.GetRawTransactionAsync(first.GetHash(), throwIfNotFound: false, cancellationToken);
 		Assert.Equal(hasTransactionIndex, foundByIdentifier is not null);
 
-		// The second transaction spends all three outputs of the first: two of its inputs were matched outputs, the
-		// change was not. It has three equal outputs itself. Two points.
+		// The second transaction spends all three outputs of the first: two of its inputs came out of a pair, which
+		// makes them worth half a point each, and the change was worth nothing. Its own three equal outputs are worth
+		// three points. One point.
 		var second = await SendAsync(
 			rpc,
 			[new OutPoint(first, 0), new OutPoint(first, 1), new OutPoint(first, 2)],
@@ -126,13 +128,13 @@ public class AnonymityPointsTests
 
 		// While the second transaction is unconfirmed, the outputs that it spends are still in the set of unspent outputs.
 		var unconfirmed = new SmartTransaction(second, Height.Mempool);
-		Assert.Equal(2, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(unconfirmed, cancellationToken));
+		Assert.Equal(1, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(unconfirmed, cancellationToken));
 
 		// Once it is confirmed they are spent, and the node tells where they came from out of the data of the block.
 		var blockHash = (await rpc.GenerateAsync(1, cancellationToken)).Single();
 		var height = (uint)await rpc.GetBlockCountAsync(cancellationToken);
 		var confirmed = new SmartTransaction(second, new Height.ChainHeight(height), blockHash);
-		Assert.Equal(2, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(confirmed, cancellationToken));
+		Assert.Equal(1, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(confirmed, cancellationToken));
 
 		// A transaction that spends one matched output and has no equal outputs is worth nothing.
 		var third = await SendAsync(
@@ -144,7 +146,8 @@ public class AnonymityPointsTests
 			]);
 		Assert.Equal(0, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(new SmartTransaction(third, Height.Mempool), cancellationToken));
 
-		// One that spends the three matched outputs into two equal ones is worth two points: it has no more matched outputs.
+		// One that spends two outputs of the set of three, which are worth a point each, and the unmatched output of
+		// the third transaction into two equal outputs is worth one point: a pair of outputs is worth no more.
 		await rpc.GenerateAsync(1, cancellationToken);
 		var fourth = await SendAsync(
 			rpc,
@@ -157,8 +160,26 @@ public class AnonymityPointsTests
 		blockHash = (await rpc.GenerateAsync(1, cancellationToken)).Single();
 		height = (uint)await rpc.GetBlockCountAsync(cancellationToken);
 		Assert.Equal(
-			2,
+			1,
 			await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(new SmartTransaction(fourth, new Height.ChainHeight(height), blockHash), cancellationToken));
+
+		// One that spends an output of that pair into three equal outputs is worth half a point: its input counts half.
+		var fifth = await SendAsync(
+			rpc,
+			[new OutPoint(fourth, 0)],
+			[
+				new TxOut(Money.Coins(0.15m), (await rpc.GetNewAddressAsync(cancellationToken)).ScriptPubKey),
+				new TxOut(Money.Coins(0.15m), (await rpc.GetNewAddressAsync(cancellationToken)).ScriptPubKey),
+				new TxOut(Money.Coins(0.15m), (await rpc.GetNewAddressAsync(cancellationToken)).ScriptPubKey),
+				new TxOut(Money.Coins(0.15m) - Fee, (await rpc.GetNewAddressAsync(cancellationToken)).ScriptPubKey)
+			]);
+		Assert.Equal(0.5m, await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(new SmartTransaction(fifth, Height.Mempool), cancellationToken));
+
+		blockHash = (await rpc.GenerateAsync(1, cancellationToken)).Single();
+		height = (uint)await rpc.GetBlockCountAsync(cancellationToken);
+		Assert.Equal(
+			0.5m,
+			await new AnonymityPointsCalculator(rpc, new NoTransactions()).CalculateAsync(new SmartTransaction(fifth, new Height.ChainHeight(height), blockHash), cancellationToken));
 	}
 
 	/// <summary>Sends a transaction of the node's wallet with two outputs of 1 BTC and a third one for the rest.</summary>

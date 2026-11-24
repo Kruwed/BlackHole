@@ -79,7 +79,12 @@ public class CoinListRowTests
 		Assert.NotEqual(unknown, none);
 
 		smartTransaction.AnonymityPoints = 4;
-		Assert.NotEqual(none, CoinViewModel.DescribeContent(coin));
+		var four = CoinViewModel.DescribeContent(coin);
+		Assert.NotEqual(none, four);
+
+		// Half a point more is another number to show.
+		smartTransaction.AnonymityPoints = 4.5m;
+		Assert.NotEqual(four, CoinViewModel.DescribeContent(coin));
 	}
 
 	[Fact]
@@ -88,5 +93,14 @@ public class CoinListRowTests
 		Assert.Equal("?", CoinViewModel.DescribeAnonymityPoints(null));
 		Assert.Equal("0", CoinViewModel.DescribeAnonymityPoints(0));
 		Assert.Equal("12", CoinViewModel.DescribeAnonymityPoints(12));
+	}
+
+	/// <summary>A transaction can be worth half a point more than a whole number, and the row says so.</summary>
+	[Fact]
+	public void RowShowsHalfAPoint()
+	{
+		Assert.Equal("0.5", CoinViewModel.DescribeAnonymityPoints(0.5m));
+		Assert.Equal("7.5", CoinViewModel.DescribeAnonymityPoints(7.5m));
+		Assert.Equal("7", CoinViewModel.DescribeAnonymityPoints(7.0m));
 	}
 }

@@ -49,14 +49,14 @@ public class AnonymityPointsCalculatorTests
 	}
 
 	/// <summary>
-	/// Three inputs, two of which were matched outputs of the transactions that created them, and three equal outputs
-	/// plus two others: two points.
+	/// Three inputs, two of which came out of sets of three equal outputs of the transactions that created them, and
+	/// three equal outputs plus two others: two points.
 	/// </summary>
 	[Fact]
-	public async Task LowerOfMatchedInputsAndMatchedOutputsCountsAsync()
+	public async Task LowerOfWhatInputsAndOutputsAreWorthCountsAsync()
 	{
-		var coinjoin = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.5m, 0.5m, 0.2m);
-		var otherCoinjoin = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.7m, 0.3m, 0.3m);
+		var coinjoin = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.5m, 0.5m, 0.5m, 0.2m);
+		var otherCoinjoin = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.7m, 0.3m, 0.3m, 0.3m);
 		var payment = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.4m, 0.6m);
 
 		var transaction = CreateTransaction(
@@ -70,11 +70,11 @@ public class AnonymityPointsCalculatorTests
 	}
 
 	[Fact]
-	public async Task TransactionIsNotWorthMoreThanItsMatchedOutputsAsync()
+	public async Task TransactionIsNotWorthMoreThanItsOutputsAsync()
 	{
 		var coinjoin = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.5m, 0.5m, 0.5m);
 
-		// All three inputs were matched outputs, and only two outputs are matched.
+		// All three inputs came out of a set of three. The outputs are a pair, which is worth one point in all, and an output alone.
 		var transaction = CreateTransaction(
 			[new OutPoint(coinjoin, 0), new OutPoint(coinjoin, 1), new OutPoint(coinjoin, 2)],
 			0.7m, 0.7m, 0.0999m);
@@ -82,7 +82,47 @@ public class AnonymityPointsCalculatorTests
 		var node = new MockRpcClient { OnGetRawTransactionAsync = NodeWithIndexOf(coinjoin) };
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
+		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+	}
+
+	/// <summary>
+	/// An input counts what it was worth as an output. Four inputs that each came out of a pair are worth two points
+	/// together, so four equal outputs, which are worth four, make a transaction of two points.
+	/// </summary>
+	[Fact]
+	public async Task InputOutOfAPairCountsHalfAsync()
+	{
+		var pairs = Enumerable.Range(0, 4)
+			.Select(_ => CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.5m, 0.5m))
+			.ToArray();
+
+		var transaction = CreateTransaction(pairs.Select(pair => new OutPoint(pair, 0)), 0.4m, 0.4m, 0.4m, 0.4m, 0.3999m);
+
+		var node = new MockRpcClient { OnGetRawTransactionAsync = NodeWithIndexOf(pairs) };
+		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
+
 		Assert.Equal(2, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+	}
+
+	/// <summary>
+	/// An input out of a set of three counts one and an input out of a pair counts half: with outputs that are worth
+	/// more, the transaction is worth one and a half points.
+	/// </summary>
+	[Fact]
+	public async Task TransactionCanBeWorthHalfAPointMoreThanAWholeNumberAsync()
+	{
+		var setOfThree = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.5m, 0.5m, 0.5m);
+		var pair = CreateTransaction([BitcoinFactory.CreateOutPoint()], 0.8m, 0.8m, 0.1m);
+
+		// The third input was alone with its amount, and counts nothing.
+		var transaction = CreateTransaction(
+			[new OutPoint(setOfThree, 2), new OutPoint(pair, 1), new OutPoint(pair, 2)],
+			0.4m, 0.4m, 0.4m, 0.1999m);
+
+		var node = new MockRpcClient { OnGetRawTransactionAsync = NodeWithIndexOf(setOfThree, pair) };
+		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
+
+		Assert.Equal(1.5m, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -110,12 +150,13 @@ public class AnonymityPointsCalculatorTests
 		// A node without any answer: asking it fails the test.
 		var calculator = new AnonymityPointsCalculator(new MockRpcClient(), new TransactionsOfWallet(coinjoin));
 
-		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+		// One input came out of a pair and the other one was alone with its amount.
+		Assert.Equal(0.5m, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>
-	/// A coinjoin has many inputs, and the transaction of each has to come from the node. Once as many inputs turned out
-	/// to be matched outputs as the transaction has matched outputs, the other inputs change nothing any more.
+	/// A coinjoin has many inputs, and the transaction of each has to come from the node. Once the inputs that the
+	/// node told about are worth as much as the outputs of the transaction, the other inputs change nothing any more.
 	/// </summary>
 	[Fact]
 	public async Task NodeIsNotAskedAboutMoreInputsThanItTakesAsync()
@@ -139,7 +180,8 @@ public class AnonymityPointsCalculatorTests
 
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
-		Assert.Equal(2, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+		// The outputs are a pair, which is worth one point, and two inputs out of pairs are worth that already.
+		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 		Assert.Equal(AnonymityPointsCalculator.BatchSize, asked.Count);
 	}
 
@@ -167,7 +209,7 @@ public class AnonymityPointsCalculatorTests
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
 		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
-		Assert.Equal(2, await calculator.CalculateAsync(Confirmed(otherTransaction), TestContext.Current.CancellationToken));
+		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(otherTransaction), TestContext.Current.CancellationToken));
 		Assert.Equal([coinjoin.GetHash()], asked);
 	}
 
@@ -204,7 +246,8 @@ public class AnonymityPointsCalculatorTests
 
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
-		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+		// The input that the block of the coinjoin tells about came out of a pair.
+		Assert.Equal(0.5m, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>
@@ -247,7 +290,8 @@ public class AnonymityPointsCalculatorTests
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 		var unconfirmed = new SmartTransaction(transaction, Height.Mempool);
 
-		Assert.Equal(3, await calculator.CalculateAsync(unconfirmed, TestContext.Current.CancellationToken));
+		// Each of the three inputs came out of a pair.
+		Assert.Equal(1.5m, await calculator.CalculateAsync(unconfirmed, TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>
@@ -299,20 +343,20 @@ public class AnonymityPointsCalculatorTests
 
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
-		// One input was a matched output, the other one may have been one too: between one point and two.
+		// One input came out of a pair, the other one may be worth something too: between half a point and one and a half.
 		Assert.Null(await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 		Assert.Equal([coinjoin.GetHash(), oldCoinjoin.GetHash()], asked);
 
 		available.Add(oldCoinjoin);
 		asked.Clear();
 
-		Assert.Equal(2, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 		Assert.Equal([oldCoinjoin.GetHash()], asked);
 	}
 
 	/// <summary>
-	/// Inputs that the node cannot tell about do not matter once the transaction has as many inputs that were matched
-	/// outputs as it has matched outputs.
+	/// Inputs that the node cannot tell about do not matter once the inputs that it did tell about are worth as much
+	/// as the outputs of the transaction.
 	/// </summary>
 	[Fact]
 	public async Task PointsAreKnownWithoutTheMissingInputsIfTheOthersAreEnoughAsync()
@@ -331,7 +375,8 @@ public class AnonymityPointsCalculatorTests
 
 		var calculator = new AnonymityPointsCalculator(node, new TransactionsOfWallet());
 
-		Assert.Equal(2, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
+		// Two inputs out of a pair are worth one point together, and so is the pair of outputs.
+		Assert.Equal(1, await calculator.CalculateAsync(Confirmed(transaction), TestContext.Current.CancellationToken));
 	}
 
 	private static SmartTransaction Confirmed(Transaction transaction) =>

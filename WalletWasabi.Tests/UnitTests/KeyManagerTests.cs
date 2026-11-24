@@ -771,18 +771,90 @@ public class KeyManagerTests
 		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
 		Assert.Null(manager.GetAnonymityPoints(transactionId));
 
-		manager.SetAnonymityPoints(new Dictionary<uint256, int> { [transactionId] = 3, [otherTransactionId] = 0 });
+		// A transaction can be worth half a point more than a whole number.
+		manager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [transactionId] = 3.5m, [otherTransactionId] = 0 });
 
 		var sameManager = KeyManager.FromFile(filePath);
-		Assert.Equal(3, sameManager.GetAnonymityPoints(transactionId));
+		Assert.Equal(3.5m, sameManager.GetAnonymityPoints(transactionId));
 		Assert.Equal(0, sameManager.GetAnonymityPoints(otherTransactionId));
 
 		// Only the transactions that are named the last time are kept: the points of a coin are gone when it is spent.
-		sameManager.SetAnonymityPoints(new Dictionary<uint256, int> { [otherTransactionId] = 0 });
+		sameManager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [otherTransactionId] = 0 });
 
 		var thirdManager = KeyManager.FromFile(filePath);
 		Assert.Null(thirdManager.GetAnonymityPoints(transactionId));
 		Assert.Equal(0, thirdManager.GetAnonymityPoints(otherTransactionId));
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// A wallet file from before a pair of outputs was worth half a point each has the points of its transactions
+	/// under another name. They followed the rule of that time, so the wallet does not take them and works them out again.
+	/// </summary>
+	[Fact]
+	public void AnonymityPointsOfTheEarlierRuleAreNotTaken()
+	{
+		var filePath = "wallet-anonymity-points-of-the-earlier-rule.json";
+		var transactionId = new uint256(7);
+		var otherTransactionId = new uint256(8);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [otherTransactionId] = 4 });
+
+		var walletFile = JsonNode.Parse(File.ReadAllText(filePath))!.AsObject();
+		Assert.True(walletFile.ContainsKey("TransactionAnonymityPoints"));
+
+		walletFile["AnonymityPoints"] = new JsonArray(new JsonObject { ["TransactionId"] = transactionId.ToString(), ["Points"] = 3 });
+		File.WriteAllText(filePath, walletFile.ToJsonString());
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Null(sameManager.GetAnonymityPoints(transactionId));
+		Assert.Equal(4, sameManager.GetAnonymityPoints(otherTransactionId));
+
+		// The wallet does not write the earlier name again.
+		sameManager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [otherTransactionId] = 5 });
+		Assert.False(JsonNode.Parse(File.ReadAllText(filePath))!.AsObject().ContainsKey("AnonymityPoints"));
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>A number that cannot be the points of a transaction was not written by the wallet, and is not taken from its file.</summary>
+	[Fact]
+	public void NumbersThatCannotBeAnonymityPointsAreNotTakenFromTheWalletFile()
+	{
+		var filePath = "wallet-anonymity-points-that-are-none.json";
+		var transactionId = new uint256(7);
+		var otherTransactionId = new uint256(8);
+		var thirdTransactionId = new uint256(9);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+		manager.SetAnonymityPoints(new Dictionary<uint256, decimal> { [transactionId] = 2, [otherTransactionId] = 2, [thirdTransactionId] = 2.5m });
+
+		var text = File.ReadAllText(filePath);
+		var walletFile = JsonNode.Parse(text)!.AsObject();
+		var points = walletFile["TransactionAnonymityPoints"]!.AsArray();
+
+		foreach (var entry in points)
+		{
+			var id = entry!["TransactionId"]!.GetValue<string>();
+
+			if (id == transactionId.ToString())
+			{
+				entry["Points"] = 0.3;
+			}
+			else if (id == otherTransactionId.ToString())
+			{
+				entry["Points"] = -1;
+			}
+		}
+
+		File.WriteAllText(filePath, walletFile.ToJsonString());
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.Null(sameManager.GetAnonymityPoints(transactionId));
+		Assert.Null(sameManager.GetAnonymityPoints(otherTransactionId));
+		Assert.Equal(2.5m, sameManager.GetAnonymityPoints(thirdTransactionId));
 
 		DeleteFileAndDirectoryIfExists(filePath);
 	}

@@ -40,6 +40,18 @@ public class WasabiJsonRpcService : IJsonRpcService
 	/// <summary>The wallet of the application. It is set before every method that works with the wallet.</summary>
 	private Wallet? ActiveWallet { get; set; }
 
+	/// <summary>
+	/// Anonymity points as an answer tells them: a whole number where they are one, as they always were before a pair
+	/// of outputs was worth half a point each, and a number with a half otherwise. Null while they are not known.
+	/// </summary>
+	public static object? DescribeAnonymityPoints(decimal? points) =>
+		points switch
+		{
+			null => null,
+			{ } known when known == decimal.Truncate(known) => (long)known,
+			{ } known => known
+		};
+
 	[JsonRpcMethod("listunspentcoins")]
 	public JsonRpcResultList GetUnspentCoinList()
 	{
@@ -53,7 +65,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["txid"] = x.TransactionId.ToString(),
 				["index"] = x.Index,
 				["amount"] = x.Amount.Satoshi,
-				["anonymityPoints"] = x.AnonymityPoints,
+				["anonymityPoints"] = DescribeAnonymityPoints(x.AnonymityPoints),
 				["confirmed"] = x.Confirmed,
 				["confirmations"] = x.Transaction.GetConfirmations(tipHeight),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
@@ -79,7 +91,7 @@ public class WasabiJsonRpcService : IJsonRpcService
 				["txid"] = x.TransactionId.ToString(),
 				["index"] = x.Index,
 				["amount"] = x.Amount.Satoshi,
-				["anonymityPoints"] = x.IsSpent() ? null : x.AnonymityPoints,
+				["anonymityPoints"] = x.IsSpent() ? null : DescribeAnonymityPoints(x.AnonymityPoints),
 				["confirmed"] = x.Confirmed,
 				["confirmations"] = x.Transaction.GetConfirmations(tipHeight),
 				["keyPath"] = x.HdPubKey.FullKeyPath.ToString(),
