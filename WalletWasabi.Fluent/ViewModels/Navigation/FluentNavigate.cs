@@ -20,7 +20,8 @@ using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Features;
-using WalletWasabi.Fluent.ViewModels.Wallets.Offers;
+using WalletWasabi.Fluent.Models.Wallets.Market;
+using WalletWasabi.Fluent.ViewModels.Wallets.Market;
 using WalletWasabi.Fluent.ViewModels.Wallets.Receive;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
 using WalletWasabi.Fluent.ViewModels.Wallets.Settings;
@@ -249,19 +250,14 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new CoinJoinDetailsViewModel(UiContext, wallet, transaction), navigationMode);
 	}
 
-	public void Bonds(IWalletModel walletModel, Wallet wallet, CoinListViewModel coins, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	/// <summary>Asks whether to lock the fidelity bond that the question describes.</summary>
+	public FluentDialog<bool> ConfirmBond(BondQuote quote, NavigationTarget navigationTarget = NavigationTarget.CompactDialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
-		UiContext.Navigate(navigationTarget).To(new BondsViewModel(UiContext, walletModel, wallet, coins), navigationMode);
-	}
+		var dialog = new ConfirmBondViewModel(UiContext, quote);
+		var target = UiContext.Navigate(navigationTarget);
+		target.To(dialog, navigationMode);
 
-	public void CreateBond(IWalletModel walletModel, Wallet wallet, CoinListViewModel coins, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new CreateBondViewModel(UiContext, walletModel, wallet, coins), navigationMode);
-	}
-
-	public void BondAmount(IWalletModel walletModel, SendFlowModel parameters, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
-	{
-		UiContext.Navigate(navigationTarget).To(new BondAmountViewModel(UiContext, walletModel, parameters), navigationMode);
+		return new FluentDialog<bool>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
 	public void RedeemBond(IWalletModel walletModel, FidelityBondModel bond, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

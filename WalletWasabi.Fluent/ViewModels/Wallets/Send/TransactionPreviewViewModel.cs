@@ -48,9 +48,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 		_info = _sendFlow.TransactionInfo ?? throw new InvalidOperationException($"Missing required TransactionInfo.");
 
-		Notice = _sendFlow.BondUnlockHeight is { } unlockHeight
-			? $"This transaction creates a fidelity bond. {CreateBondViewModel.DescribeLock(_walletModel, unlockHeight)} Nothing can spend the coins before."
-			: "";
 		_currentTransactionInfo = _info.Clone();
 
 		Warnings = new TransactionWarningsViewModel(uiContext);
@@ -76,9 +73,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 		ChangeCoinsCommand = ReactiveCommand.CreateFromTask(OnChangeCoinsAsync);
 	}
-
-	/// <summary>What the user has to know before confirming, if the transaction is more than a payment.</summary>
-	public string Notice { get; }
 
 	public TransactionSummaryViewModel CurrentTransactionSummary { get; }
 
@@ -320,17 +314,6 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 
 	private async Task OnConfirmAsync()
 	{
-		// The chain may have reached the unlock height while these pages were open. Coins that are locked until a block
-		// that is there already are not locked, and getting them back costs a second fee.
-		if (_sendFlow.BondUnlockHeight is { } unlockHeight && !_walletModel.Bonds.CanLockUntil(unlockHeight))
-		{
-			await ShowErrorAsync(
-				"Fidelity Bond",
-				$"Block {BlockHeightText.Format(unlockHeight)} is not ahead of the chain any more, or the Bitcoin node does not tell how far the chain is. Choose a later block.",
-				"Black Hole did not create the fidelity bond.");
-			return;
-		}
-
 		try
 		{
 			var transaction = await Task.Run(() => TransactionHelpers.BuildTransaction(_wallet, _info));
@@ -343,14 +326,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 				await SendTransactionAsync(finalTransaction);
 				_sendFlow.Sent?.Invoke();
 
-				if (_sendFlow.BondUnlockHeight is not null)
-				{
-					Navigate().To().SendSuccess(finalTransaction, "Bond created", "The coins are on their way into the fidelity bond.");
-				}
-				else
-				{
-					Navigate().To().SendSuccess(finalTransaction);
-				}
+				Navigate().To().SendSuccess(finalTransaction);
 			}
 		}
 		catch (Exception ex)
@@ -374,7 +350,7 @@ public partial class TransactionPreviewViewModel : RoutableViewModel
 			return true;
 		}
 
-		var authDialog = new PasswordAuthDialogViewModel(UiContext, _walletModel, _sendFlow.BondUnlockHeight is null ? "Send" : "Lock Coins");
+		var authDialog = new PasswordAuthDialogViewModel(UiContext, _walletModel, "Send");
 		var authDialogResult = await NavigateDialogAsync(authDialog, authDialog.DefaultTarget, NavigationMode.Clear);
 
 		return authDialogResult.Result;

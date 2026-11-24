@@ -32,12 +32,6 @@ public record SendFlowModel
 
 	public TransactionInfo? TransactionInfo { get; init; } = null;
 
-	/// <summary>
-	/// The block height that the coins are locked until, if the flow does not pay anybody but creates a fidelity bond. The
-	/// destination of the transaction is the address of the bond then.
-	/// </summary>
-	public uint? BondUnlockHeight { get; init; } = null;
-
 	/// <summary>What is to happen once the transaction of the flow was sent, if anything. The form that started the flow empties itself with it.</summary>
 	public Action? Sent { get; init; } = null;
 

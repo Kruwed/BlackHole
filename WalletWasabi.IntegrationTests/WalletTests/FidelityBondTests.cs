@@ -242,6 +242,112 @@ public class FidelityBondTests
 		}
 	}
 
+	/// <summary>
+	/// A maker shows its bond with every offer: the proof names the bond, and the key of the bond signed the key of the
+	/// offer. The node of whoever reads the offer finds the bond by what the proof tells, and nothing else passes for it.
+	/// </summary>
+	[Fact(Timeout = 120_000)]
+	public async Task Wallet_ProvesItsBondToTheNodeOfWhoeverReadsItsOffer()
+	{
+		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
+		var keyManager = env.CreateKeyManager();
+		var wallet = env.CreateWallet(keyManager);
+		var verifier = new BondProofVerifier(env.RpcClient);
+		var offerKey = CreateOfferKey();
+		var otherOfferKey = CreateOfferKey();
+
+		var tip = await GetHeightAsync(env);
+		var soon = tip + 4;
+		var late = tip + 500;
+
+		// A bond in a block, which unlocks soon, and a larger one that no block has yet.
+		await env.FundAddressAsync(keyManager.GetFidelityBondAddress(soon), Money.Coins(0.2m), confirmations: 1);
+		await env.FundAddressAsync(keyManager.GetFidelityBondAddress(late), Money.Coins(0.5m), confirmations: 0);
+
+		await wallet.StartAsync(TestContext.Current.CancellationToken);
+		try
+		{
+			await env.WaitForConditionAsync(() => wallet.GetFidelityBonds().Count(bond => bond.IsConfirmed) == 1, TimeSpan.FromSeconds(30));
+			await env.WaitForWalletToCatchUpAsync(wallet, TimeSpan.FromSeconds(60));
+
+			// A wallet that is not open has no key to sign with.
+			Assert.Null(wallet.GetBondBacking(offerKey));
+			Assert.True(wallet.TryLogin(RegTestEnvironment.DefaultPassword));
+
+			// The bond that is in a block stands behind the offer. The larger one does not count before it is in one.
+			var backing = wallet.GetBondBacking(offerKey);
+			Assert.NotNull(backing);
+
+			var smallBond = Assert.Single(wallet.GetFidelityBonds(), bond => bond.UnlockHeight == soon);
+			Assert.Equal(smallBond.OutPoint, backing.Proof.OutPoint);
+			Assert.Equal(soon, backing.Proof.UnlockHeight);
+			Assert.Equal(20_000_000, backing.Amount);
+			Assert.True(backing.Proof.IsSignedFor(offerKey));
+			Assert.Equal(smallBond.TxOut.ScriptPubKey, backing.Proof.GetScriptPubKey());
+
+			// The node finds it, with what it holds.
+			var smallClaim = (Hex(offerKey), backing.Proof);
+			Assert.Equal(20_000_000, (await verifier.VerifyAsync([smallClaim], TestContext.Current.CancellationToken)).Single());
+
+			// Somebody else's offer cannot wear the proof.
+			Assert.Equal(0, (await verifier.VerifyAsync([(Hex(otherOfferKey), backing.Proof)], TestContext.Current.CancellationToken)).Single());
+
+			// With a block the larger bond counts, and it is the one that the wallet shows.
+			await env.RpcClient.GenerateAsync(1);
+			await env.WaitForConditionAsync(() => wallet.GetFidelityBonds().All(bond => bond.IsConfirmed), TimeSpan.FromSeconds(30));
+			await env.WaitForConditionAsync(() => wallet.GetBondBacking(offerKey)?.Amount == 50_000_000, TimeSpan.FromSeconds(30));
+
+			var largeBacking = wallet.GetBondBacking(offerKey)!;
+			var largeBond = Assert.Single(wallet.GetFidelityBonds(), bond => bond.UnlockHeight == late);
+			Assert.Equal(largeBond.OutPoint, largeBacking.Proof.OutPoint);
+			Assert.Equal(late, largeBacking.Proof.UnlockHeight);
+
+			// Every offer of the wallet has a proof of its own for the same bond.
+			var otherBacking = wallet.GetBondBacking(otherOfferKey)!;
+			Assert.Equal(largeBacking.Proof.OutPoint, otherBacking.Proof.OutPoint);
+			Assert.NotEqual(largeBacking.Proof.Signature, otherBacking.Proof.Signature);
+
+			long[] amounts = await verifier.VerifyAsync(
+				[(Hex(offerKey), largeBacking.Proof), (Hex(otherOfferKey), otherBacking.Proof), smallClaim],
+				TestContext.Current.CancellationToken);
+			Assert.Equal([50_000_000L, 50_000_000L, 20_000_000L], amounts);
+
+			// Whoever has the key of a bond can sign for a longer lock than the bond has. The script of the output tells otherwise.
+			using var bondKey = keyManager.GetFidelityBondSecret(RegTestEnvironment.DefaultPassword, late);
+			var longer = BondProof.Create(bondKey, largeBond.OutPoint, late + 50_000, offerKey);
+			Assert.True(longer.IsSignedFor(offerKey));
+			Assert.Equal(0, (await new BondProofVerifier(env.RpcClient).VerifyAsync([(Hex(offerKey), longer)], TestContext.Current.CancellationToken)).Single());
+
+			// And a coin that is no bond is none, whoever signs.
+			var coinAddress = keyManager.GetNextReceiveKey().GetAddress(env.Network);
+			var coinTransactionId = await env.FundAddressAsync(coinAddress, Money.Coins(1m), confirmations: 1);
+			var coinTransaction = await env.RpcClient.GetRawTransactionAsync(coinTransactionId, cancellationToken: TestContext.Current.CancellationToken);
+			var coinIndex = coinTransaction.Outputs.AsIndexedOutputs().Single(output => output.TxOut.ScriptPubKey == coinAddress.ScriptPubKey).N;
+			var notABond = BondProof.Create(bondKey, new OutPoint(coinTransactionId, coinIndex), late, offerKey);
+			Assert.Equal(0, (await verifier.VerifyAsync([(Hex(offerKey), notABond)], TestContext.Current.CancellationToken)).Single());
+
+			// When the chain reaches the height of the small bond, it is no bond any more: it can be spent.
+			var chainHeight = await GetHeightAsync(env);
+			await env.RpcClient.GenerateAsync((int)(soon - chainHeight));
+			Assert.Equal(soon, await GetHeightAsync(env));
+
+			amounts = await verifier.VerifyAsync([smallClaim, (Hex(offerKey), largeBacking.Proof)], TestContext.Current.CancellationToken);
+			Assert.Equal([0L, 50_000_000L], amounts);
+		}
+		finally
+		{
+			await wallet.StopAsync(CancellationToken.None);
+		}
+	}
+
+	private static byte[] CreateOfferKey()
+	{
+		using var key = new Key();
+		return key.PubKey.TaprootInternalKey.ToBytes();
+	}
+
+	private static string Hex(byte[] bytes) => NBitcoin.DataEncoders.Encoders.Hex.EncodeData(bytes);
+
 	private static async Task<uint> GetHeightAsync(RegTestEnvironment env) =>
 		(uint)await env.RpcClient.GetBlockCountAsync().ConfigureAwait(false);
 }

@@ -24,7 +24,7 @@ using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.CoinJoinPayment;
 using WalletWasabi.Fluent.ViewModels.Wallets.Coins;
-using WalletWasabi.Fluent.ViewModels.Wallets.Offers;
+using WalletWasabi.Fluent.ViewModels.Wallets.Market;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
@@ -43,9 +43,11 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets;
 /// <item>Payjoin, which the dialog opens with: the ordinary payment with its Send button, and Receive. Payjoin itself
 /// holds its place and does nothing yet.</item>
 /// <item>WabiSabi: the payments that wait for a round to make them.</item>
-/// <item>ZeroLink and Taker: nothing but what the tab says about itself.</item>
-/// <item>Maker: the offer of the wallet as a market maker, which offers the ticked coins, and the Bond button, which
-/// leads to the fidelity bonds that lock them.</item>
+/// <item>ZeroLink: nothing but what the tab says about itself.</item>
+/// <item>Taker: the order book of the market for anonymity points, with its filters, and the transaction that the
+/// picked makers would make with the ticked coins.</item>
+/// <item>Maker: the coins of the wallet, of which some are locked in a fidelity bond and others are offered to takers.
+/// The coins of a bond or of an offer are picked on that tab itself.</item>
 /// </list>
 /// The box of the coinjoins is at the bottom of the dialog, below every tab.
 /// </summary>
@@ -61,6 +63,11 @@ public partial class CoinJoinViewModel : RoutableViewModel
 {
 	/// <summary>The fee rate that the form starts with is the estimate for a confirmation within this many blocks, as in the title bar.</summary>
 	private const int SuggestedFeeRateTarget = 2;
+
+	/// <summary>How wide and how high the dialog may get while it shows a side of the market.</summary>
+	public const double MarketDialogMaxWidth = 1680;
+
+	public const double MarketDialogMaxHeight = 1300;
 
 	private readonly Wallet _wallet;
 	private readonly IWalletModel _walletModel;
@@ -93,6 +100,8 @@ public partial class CoinJoinViewModel : RoutableViewModel
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isWalletLoaded;
 	[AutoNotify] private int _selectedTab = GetTabIndex(CoinJoinBoxViewModel.DefaultTab);
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _description = DescribeScreen(CoinJoinBoxViewModel.DefaultTab);
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _caption = DescribeCoins(CoinJoinBoxViewModel.DefaultTab);
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isMarketTab;
 
 	/// <param name="coins">The list of the Coins tab. The dialog works with the coins that are ticked in it.</param>
 	public CoinJoinViewModel(UiContext uiContext, IWalletModel walletModel, Wallet wallet, CoinListViewModel coins) : base(uiContext)
@@ -119,17 +128,23 @@ public partial class CoinJoinViewModel : RoutableViewModel
 			{
 				Box.SelectedTab = tab;
 				Description = DescribeScreen(tab);
+				IsMarketTab = IsMarket(tab);
+
+				// The two sides of the market need more room than a form does: the dialog grows for them.
+				this.RaisePropertyChanged(nameof(DialogMaxWidth));
+				this.RaisePropertyChanged(nameof(DialogMaxHeight));
 			});
 
 		// The payments that wait for a WabiSabi round are a part of the main screen of WabiSabi.
 		Payments = new CoinJoinPaymentsViewModel(uiContext, walletModel, wallet);
 
-		// The offer of the wallet as a market maker is the main screen of Maker. An offer that was posted or taken back
-		// closes the dialog. While the relays are asked the dialog shows that it is busy.
-		Maker = new MakerOfferViewModel(uiContext, walletModel, wallet, coins, close: () => Navigate().Clear());
+		// The two sides of the market for anonymity points are the main screens of Taker and Maker.
+		Market = new MarketViewModel(uiContext, walletModel, wallet, coins);
 
-		Maker.WhenAnyValue(x => x.IsBusy)
-			.Subscribe(isBusy => IsBusy = isBusy);
+		// Under the title the dialog tells whose coins the tab works with: the ticked ones, the ones of the list on the
+		// tab, or the examples of the design.
+		this.WhenAnyValue(x => x.SelectedTab, x => x.Market.IsSample)
+			.Subscribe(x => Caption = DescribeCoins(GetTab(x.Item1), x.Item2));
 
 		// Nothing that was typed is lost by closing the dialog, so a click beside it may close it.
 		SetupCancel(enableCancel: true, enableCancelOnEscape: true, enableCancelOnPressed: true);
@@ -246,10 +261,14 @@ public partial class CoinJoinViewModel : RoutableViewModel
 	/// <summary>The payments that wait for a WabiSabi round to make them. They are on the main screen of WabiSabi.</summary>
 	public CoinJoinPaymentsViewModel Payments { get; }
 
-	/// <summary>
-	/// The offer of the wallet as a market maker, with the way to its fidelity bonds. It is the main screen of Maker.
-	/// </summary>
-	public MakerOfferViewModel Maker { get; }
+	/// <summary>The market for anonymity points. Its two sides are the main screens of Taker and Maker.</summary>
+	public MarketViewModel Market { get; }
+
+	/// <summary>How wide the dialog may get. The three columns of the market take more than a form does.</summary>
+	public override double DialogMaxWidth => IsMarket(GetTab(SelectedTab)) ? MarketDialogMaxWidth : base.DialogMaxWidth;
+
+	/// <summary>How high the dialog may get.</summary>
+	public override double DialogMaxHeight => IsMarket(GetTab(SelectedTab)) ? MarketDialogMaxHeight : base.DialogMaxHeight;
 
 	/// <summary>Shows the transaction that the payment describes. It is confirmed and sent from that page.</summary>
 	public ICommand SendCommand { get; }
@@ -308,6 +327,21 @@ public partial class CoinJoinViewModel : RoutableViewModel
 			? CoinJoinBoxViewModel.AllTabs[index]
 			: CoinJoinBoxViewModel.DefaultTab;
 
+	/// <summary>Whether a tab shows a side of the market for anonymity points.</summary>
+	public static bool IsMarket(CoinJoinTab tab) => tab is CoinJoinTab.Taker or CoinJoinTab.Maker;
+
+	/// <summary>
+	/// What the dialog says under its title about the coins that the tab works with: the ones that are ticked on the
+	/// Coins tab, except for a maker, whose coins are picked on its own tab. While the two sides of the market show
+	/// the examples of their design, they say that in its place.
+	/// </summary>
+	public static string DescribeCoins(CoinJoinTab tab, bool isSample = false) =>
+		IsMarket(tab) && isSample
+			? MarketViewModel.SampleNotice
+			: tab == CoinJoinTab.Maker
+				? "The coins of a bond or of an offer are ticked in the list on this tab."
+				: "Everything here works with the coins that are ticked on the Coins tab.";
+
 	/// <summary>What the main screen of a tab says about itself, at its top.</summary>
 	public static string DescribeScreen(CoinJoinTab tab) =>
 		tab switch
@@ -318,10 +352,7 @@ public partial class CoinJoinViewModel : RoutableViewModel
 				"Play starts one round with the ticked coins, ten at most. A round makes the payments that are queued here, four at most. The queue is cleared when you close Black Hole.",
 			CoinJoinTab.ZeroLink =>
 				"Play starts one round with one ticked coin: a coin of a standard amount that the coordinator has a round of. The round gives one output of that amount less the fee.",
-			CoinJoinTab.Taker =>
-				"A taker's coinjoin takes the offers of the market makers of the Order Book. It is not available yet.",
-			CoinJoinTab.Maker =>
-				"Offer the ticked coins, two at most, to the takers of coinjoins, and name your prices for anonymity points. A maker shows a fidelity bond: Bond opens the bonds of the wallet.",
+			// The two sides of the market say what they are by what they show.
 			_ => ""
 		};
 
@@ -383,8 +414,22 @@ public partial class CoinJoinViewModel : RoutableViewModel
 		// A round changes the payments that wait for it without telling: they are looked up for as long as the dialog shows.
 		Payments.Activate(disposables);
 
-		// The offer follows the coins that it holds, and the screen of the maker follows the offer.
-		Maker.Activate(disposables);
+		// The sides of the market follow the wallet and the relays while one of them shows, and not otherwise.
+		this.WhenAnyValue(x => x.IsMarketTab)
+			.Subscribe(isMarketTab =>
+			{
+				if (isMarketTab)
+				{
+					Market.Activate();
+				}
+				else
+				{
+					Market.Deactivate();
+				}
+			})
+			.DisposeWith(disposables);
+
+		disposables.Add(Disposable.Create(Market.Deactivate));
 	}
 
 	protected override void OnNavigatedFrom(bool isInHistory)

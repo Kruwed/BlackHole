@@ -21,6 +21,7 @@ using WalletWasabi.Extensions;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.Helpers;
 using WalletWasabi.Io;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.JoinMarket;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
@@ -796,14 +797,31 @@ public class Global
 	private void RegisterMakerOfferService()
 	{
 		HostedServices.Register<MakerOfferService>(
-			() => new MakerOfferService(Network, _nostrPublisher, () => WalletManager.Wallet?.Coins, EventBus),
+			() => new MakerOfferService(
+				Network,
+				_nostrPublisher,
+				() => WalletManager.Wallet?.Coins,
+				EventBus,
+				offerKey => WalletManager.Wallet?.GetBondBacking(offerKey)),
 			"Maker Offer");
 
 		// A transaction of the wallet may have spent a coin that is on offer.
 		var makerOfferService = HostedServices.Get<MakerOfferService>();
 		EventBus.Subscribe<WalletRelevantTransactionProcessed>(_ => makerOfferService.TriggerRound())
 			.DisposeUsing(_disposables);
+
+		// The offers of the other makers are read from the same relays, when somebody looks at the order book. The
+		// fidelity bonds that they name are looked up with the node.
+		OrderBook = new OrderBookService(
+			Network,
+			_nostrPublisher,
+			new BondProofVerifier(_bitcoinRpcClient),
+			() => [.. makerOfferService.Offers.Select(offer => offer.PublicKey)],
+			EventBus);
 	}
+
+	/// <summary>The offers of the other makers, as the Nostr relays tell them. The relays are asked when this is asked to.</summary>
+	public OrderBookService OrderBook { get; private set; } = null!;
 
 	/// <summary>
 	/// Makes what posts to the Nostr relays of the configuration. The relays are reached through Tor and in no other way,

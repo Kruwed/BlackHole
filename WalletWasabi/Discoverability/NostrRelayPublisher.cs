@@ -23,6 +23,27 @@ public record RelayReachability(Uri Relay, string? Problem)
 	public bool IsReachable => Problem is null;
 }
 
+/// <summary>What a relay sent when it was asked for events.</summary>
+/// <param name="Events">The events that the relay sent, as they came. Nothing about them is checked.</param>
+/// <param name="Problem">Why the relay could not be asked, or did not answer to the end. Null if it sent all that it has.</param>
+public record RelayEvents(Uri Relay, IReadOnlyList<NostrEvent> Events, string? Problem)
+{
+	public bool IsAnswered => Problem is null;
+}
+
+/// <summary>Reads events from Nostr relays.</summary>
+public interface INostrReader
+{
+	/// <summary>The relays that are asked.</summary>
+	IReadOnlyList<Uri> Relays { get; }
+
+	/// <summary>
+	/// Asks every relay for the events of a kind that are not older than the given moment, and tells what each of them
+	/// sent. A relay that cannot be reached is an answer too, not an exception.
+	/// </summary>
+	Task<IReadOnlyList<RelayEvents>> ReadAsync(int kind, DateTimeOffset since, CancellationToken cancellationToken);
+}
+
 /// <summary>Sends events to Nostr relays.</summary>
 public interface INostrPublisher
 {
@@ -42,7 +63,7 @@ public interface INostrPublisher
 /// the connections of different user names on circuits of their own, so that a relay cannot tell from the address it sees
 /// that two keys belong together.
 /// </remarks>
-public class NostrRelayPublisher : INostrPublisher
+public class NostrRelayPublisher : INostrPublisher, INostrReader
 {
 	/// <summary>How long a relay is given to be reached and to answer. Through Tor that takes its time.</summary>
 	public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
@@ -52,6 +73,9 @@ public class NostrRelayPublisher : INostrPublisher
 
 	/// <summary>How much is kept of what a relay says about an event.</summary>
 	private const int MaxReasonLength = 200;
+
+	/// <summary>How many events are taken from one relay that is asked for events. A relay that has more is not listened to any further.</summary>
+	public const int MaxEventsPerRelay = 2_000;
 
 	private readonly TimeSpan _timeout;
 
@@ -125,6 +149,138 @@ public class NostrRelayPublisher : INostrPublisher
 		var proxy = CreateProxy(nostrEvent.PublicKey);
 
 		return await Task.WhenAll(Relays.Select(relay => PublishAsync(relay, nostrEvent.Id, message, proxy, cancellationToken))).ConfigureAwait(false);
+	}
+
+	public async Task<IReadOnlyList<RelayEvents>> ReadAsync(int kind, DateTimeOffset since, CancellationToken cancellationToken)
+	{
+		// Whoever reads tells nothing about itself, and the reading of one time is not to be tied to that of another.
+		var proxy = CreateProxy(Guid.NewGuid().ToString("N"));
+		var subscription = Guid.NewGuid().ToString("N")[..16];
+		var request = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new object[]
+		{
+			"REQ",
+			subscription,
+			new Dictionary<string, object> { ["kinds"] = new[] { kind }, ["since"] = since.ToUnixTimeSeconds() }
+		}));
+
+		return await Task.WhenAll(Relays.Select(relay => ReadAsync(relay, subscription, request, proxy, cancellationToken))).ConfigureAwait(false);
+	}
+
+	private async Task<RelayEvents> ReadAsync(Uri relay, string subscription, byte[] request, IWebProxy? proxy, CancellationToken cancellationToken)
+	{
+		using var timeoutCts = new CancellationTokenSource(_timeout);
+		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+		var events = new List<NostrEvent>();
+
+		try
+		{
+			using var socket = new ClientWebSocket();
+
+			// Without a proxy of ours the relay is reached directly, and not through a proxy that the system has.
+			socket.Options.Proxy = proxy;
+
+			await socket.ConnectAsync(relay, linkedCts.Token).ConfigureAwait(false);
+			await socket.SendAsync(request, WebSocketMessageType.Text, endOfMessage: true, linkedCts.Token).ConfigureAwait(false);
+
+			string? problem = null;
+
+			while (true)
+			{
+				if (await ReceiveTextAsync(socket, linkedCts.Token).ConfigureAwait(false) is not { } text)
+				{
+					problem = "The relay closed the connection before it had sent everything.";
+					break;
+				}
+
+				var message = ReadMessage(text, subscription, out var nostrEvent, out var reason);
+
+				if (message == RelayMessage.Event && nostrEvent is not null)
+				{
+					events.Add(nostrEvent);
+
+					if (events.Count >= MaxEventsPerRelay)
+					{
+						break;
+					}
+				}
+				else if (message == RelayMessage.EndOfStoredEvents)
+				{
+					break;
+				}
+				else if (message == RelayMessage.Closed)
+				{
+					problem = string.IsNullOrWhiteSpace(reason) ? "The relay refused the request." : reason;
+					break;
+				}
+			}
+
+			await CloseAsync(socket).ConfigureAwait(false);
+			return new RelayEvents(relay, events, problem);
+		}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+		{
+			return new RelayEvents(relay, events, "The relay did not answer in time.");
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			return new RelayEvents(relay, events, Tidy(ex.InnerException is { } inner ? $"{ex.Message} ({inner.Message})" : ex.Message));
+		}
+	}
+
+	private enum RelayMessage
+	{
+		Other,
+		Event,
+		EndOfStoredEvents,
+		Closed
+	}
+
+	/// <summary>
+	/// Reads a message that a relay sends to somebody who asked for events: an event of the subscription, the notice
+	/// that everything that the relay has was sent, or the notice that the relay ended the subscription. Whatever
+	/// else a relay sends is not for us.
+	/// </summary>
+	private static RelayMessage ReadMessage(string text, string subscription, out NostrEvent? nostrEvent, out string reason)
+	{
+		nostrEvent = null;
+		reason = "";
+
+		try
+		{
+			using var json = JsonDocument.Parse(text);
+			var root = json.RootElement;
+
+			if (root.ValueKind != JsonValueKind.Array
+				|| root.GetArrayLength() < 2
+				|| root[0].ValueKind != JsonValueKind.String
+				|| root[1].ValueKind != JsonValueKind.String
+				|| root[1].GetString() != subscription)
+			{
+				return RelayMessage.Other;
+			}
+
+			switch (root[0].GetString()?.ToUpperInvariant())
+			{
+				case "EVENT" when root.GetArrayLength() >= 3 && root[2].ValueKind == JsonValueKind.Object:
+					nostrEvent = root[2].Deserialize<NostrEvent>();
+					return nostrEvent is null ? RelayMessage.Other : RelayMessage.Event;
+
+				case "EOSE":
+					return RelayMessage.EndOfStoredEvents;
+
+				case "CLOSED":
+					reason = Tidy(root.GetArrayLength() > 2 && root[2].ValueKind == JsonValueKind.String ? root[2].GetString() ?? "" : "");
+					return RelayMessage.Closed;
+
+				default:
+					return RelayMessage.Other;
+			}
+		}
+		catch (Exception ex) when (ex is JsonException or NotSupportedException or FormatException or InvalidOperationException)
+		{
+			// A relay can send anything. What cannot be read is not an event.
+			return RelayMessage.Other;
+		}
 	}
 
 	private IWebProxy? CreateProxy(string isolationId) =>
@@ -283,7 +439,7 @@ public class NostrRelayPublisher : INostrPublisher
 /// posted to again, and taken back from, are the new ones. On the previous relays it counts as gone once it is older
 /// than <see cref="WalletWasabi.JoinMarket.MakerOfferEvent.MaxAge"/>.
 /// </remarks>
-public class SwitchableNostrPublisher(INostrPublisher publisher) : INostrPublisher
+public class SwitchableNostrPublisher(INostrPublisher publisher) : INostrPublisher, INostrReader
 {
 	private volatile INostrPublisher _publisher = publisher;
 
@@ -291,6 +447,12 @@ public class SwitchableNostrPublisher(INostrPublisher publisher) : INostrPublish
 
 	public Task<IReadOnlyList<RelayAnswer>> PublishAsync(NostrEvent nostrEvent, CancellationToken cancellationToken) =>
 		_publisher.PublishAsync(nostrEvent, cancellationToken);
+
+	/// <summary>Reads from the relays that events are sent to at this moment. A publisher that cannot read has no relay to ask.</summary>
+	public Task<IReadOnlyList<RelayEvents>> ReadAsync(int kind, DateTimeOffset since, CancellationToken cancellationToken) =>
+		_publisher is INostrReader reader
+			? reader.ReadAsync(kind, since, cancellationToken)
+			: Task.FromResult<IReadOnlyList<RelayEvents>>([]);
 
 	/// <summary>Sends the events through another publisher from now on. An event that is on its way still goes to the previous relays.</summary>
 	public void SwitchTo(INostrPublisher publisher) => _publisher = publisher;

@@ -1,67 +1,137 @@
 using System.Collections.Generic;
-using System.Globalization;
+using System.Linq;
+using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
-using NBitcoin;
-using WalletWasabi.Fluent.Helpers;
+using WalletWasabi.Fluent.Extensions;
 using WalletWasabi.Fluent.Infrastructure;
 using WalletWasabi.Fluent.Models.Wallets;
+using WalletWasabi.Fluent.ViewModels.Wallets.Market;
 using WalletWasabi.JoinMarket;
+using WalletWasabi.JoinMarket.OrderBook;
+using WalletWasabi.Logging;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Tabs;
 
-/// <summary>A row of the list of market makers: who the maker is, and what it offers.</summary>
-/// <param name="Problem">Why the offer may not be on the market, or null if nothing is known against it.</param>
-public record MarketMakerRow(string Maker, string FeeRate, string Spread, string Bid, string Ask, string Liquidity, string Bond, string? Problem)
-{
-	public bool HasProblem => Problem is not null;
-}
-
 /// <summary>
-/// The tab of the order book: the market makers of the JoinMarket-style coinjoins with what they offer. It shows the
-/// offer of this wallet and nobody else's: the wallet does not look for makers yet. The offer of the wallet and its
-/// fidelity bonds are made on the Coins tab, out of the coins that are ticked there.
+/// The tab of the order book: the makers of the market for anonymity points with what they offer, as the Nostr relays
+/// tell it, and the offers of this wallet among them. It is the book to look at. Makers are picked from it on the
+/// Taker tab of the Coinjoin dialog, which has the same book with its filters.
 /// </summary>
 [AppLifetime]
 public partial class OrderBookTabViewModel : WalletTabViewModel
 {
 	public const string TabTitle = "Order Book";
 
-	/// <summary>What the list calls the maker that this wallet is.</summary>
-	public const string OwnMakerName = "This wallet";
+	/// <summary>How often the relays are asked for the book while the tab shows.</summary>
+	public static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(60);
 
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private IReadOnlyList<MarketMakerRow> _marketMakers = [];
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private IReadOnlyList<object> _rows = [];
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _notice;
 
 	public OrderBookTabViewModel(UiContext uiContext, IWalletModel walletModel, Action<WalletTabViewModel> select) : base(uiContext, TabTitle, select)
 	{
-		walletModel.MakerOffer.Changed
-			.StartWith(walletModel.MakerOffer.Current)
+		var market = walletModel.Market;
+
+		market.BookChanged.ToSignal()
+			.Merge(market.OffersChanged.ToSignal())
+			.StartWith(System.Reactive.Unit.Default)
 			.ObserveOn(RxApp.MainThreadScheduler)
-			.Subscribe(offer => MarketMakers = offer is null ? [] : [CreateRow(offer)]);
+			.Subscribe(_ =>
+			{
+				Rows = CreateRows(market.Book, market.Offers, GetOwnBond(walletModel));
+				Notice = DescribeBook(market.Book);
+			});
+
+		// The relays are asked while the tab shows, at once and then every minute, and not otherwise.
+		this.WhenAnyValue(x => x.IsSelected)
+			.Select(isSelected => isSelected
+				? Observable.Timer(TimeSpan.Zero, RefreshPeriod)
+					.Select(_ => Observable.FromAsync(async cancellationToken =>
+					{
+						try
+						{
+							await market.RefreshBookAsync(cancellationToken);
+						}
+						catch (Exception ex) when (ex is not OperationCanceledException)
+						{
+							Logger.LogDebug(ex);
+						}
+					}))
+					.Concat()
+				: Observable.Empty<System.Reactive.Unit>())
+			.Switch()
+			.Subscribe();
 	}
 
-	/// <summary>
-	/// The columns of the list of market makers. The first one names the maker, the others tell what it offers.
-	/// </summary>
-	public static IReadOnlyList<string> Columns { get; } = ["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"];
+	/// <summary>The columns of the book. The first one names the maker, the others tell what it offers.</summary>
+	public static IReadOnlyList<string> Columns { get; } = ["Maker", "Fee rate", "Spread", "Sell rate", "Buy rate", "Liquidity", "Bond"];
 
 	public IReadOnlyList<string> MarketMakerColumns => Columns;
 
-	/// <summary>The row of the offer that this wallet has on the market. An offer names no bond yet, so that column is empty.</summary>
-	public static MarketMakerRow CreateRow(MakerOfferState state) =>
-		new(
-			OwnMakerName,
-			FormatFeeRate(state.Offer.MinFeeRate),
-			FormatPrice(state.Offer.Spread),
-			FormatPrice(state.Offer.Bid),
-			FormatPrice(state.Offer.Ask),
-			$"{state.Offer.Liquidity.ToFormattedString()} BTC",
-			Bond: "",
-			state.Problem);
+	/// <summary>
+	/// The rows of the book: the makers with a fidelity bond first, then a line that counts the others, then the
+	/// others. Within each part the lowest fee rate comes first. The offers of this wallet are among them.
+	/// </summary>
+	/// <param name="ownBond">What the fidelity bond of this wallet holds, in sats.</param>
+	public static IReadOnlyList<object> CreateRows(OrderBookSnapshot book, IReadOnlyList<PostedOffer> ownOffers, long ownBond)
+	{
+		var aliases = MakerAlias.Disambiguate(book.Entries.Select(entry => entry.PublicKey).Concat(ownOffers.Select(offer => offer.PublicKey)));
 
-	public static string FormatFeeRate(FeeRate feeRate) =>
-		$"{feeRate.SatoshiPerByte.ToString("0.###", CultureInfo.InvariantCulture)} sat/vB";
+		var others = book.Entries.Select((entry, index) => new BookMaker(
+			index + 1,
+			aliases[entry.PublicKey],
+			entry.Offer.MinFeeRate,
+			entry.Offer.BuyRate,
+			entry.Offer.SellRate,
+			entry.Offer.Spread,
+			entry.Bond,
+			entry.Offer.Liquidity,
+			entry.Offer.MatchedInputs,
+			entry.Offer.ExtraInputs,
+			entry.Offer.Points,
+			[]));
 
-	/// <summary>A price of an anonymity point, in sats.</summary>
-	public static string FormatPrice(Money price) =>
-		price.Satoshi == 1 ? "1 sat" : $"{price.Satoshi.ToString("#,0", CultureInfo.InvariantCulture)} sats";
+		var own = ownOffers.Select(offer => new BookMaker(
+			1_000_000_000L + offer.Id,
+			aliases[offer.PublicKey],
+			offer.Offer.MinFeeRate,
+			offer.Offer.BuyRate,
+			offer.Offer.SellRate,
+			offer.Offer.Spread,
+			ownBond,
+			offer.Offer.Liquidity,
+			offer.Offer.MatchedInputs,
+			offer.Offer.ExtraInputs,
+			offer.Offer.Points,
+			[],
+			IsOwn: true));
+
+		var desk = new TakerDesk([.. others], [.. own]);
+		var view = desk.GetView(new TakerDeskState());
+		var rows = new List<object>();
+
+		rows.AddRange(view.Bonded.Select(row => new BookRowViewModel(row, toggleCommand: null)));
+
+		if (view.Unbonded.Count > 0)
+		{
+			rows.Add(new BookCaptionViewModel(TakerScreenViewModel.DescribeUnbonded(view.Unbonded.Count)));
+			rows.AddRange(view.Unbonded.Select(row => new BookRowViewModel(row, toggleCommand: null)));
+		}
+
+		return rows;
+	}
+
+	/// <summary>What the tab says about the book besides its rows, if there is anything to say.</summary>
+	public static string? DescribeBook(OrderBookSnapshot book) =>
+		book.ReadAt is null
+			? "Asking your Nostr relays for offers…"
+			: book.Problem ?? (book.Entries.Length == 0 ? "Your Nostr relays have no offers of other Makers." : book.BondProblem);
+
+	private static long GetOwnBond(IWalletModel walletModel) =>
+		walletModel.Bonds.GetBonds().Bonds
+			.Where(bond => bond.State == FidelityBondState.Locked)
+			.Select(bond => bond.Bond.Amount.Satoshi)
+			.DefaultIfEmpty(0)
+			.Max();
 }

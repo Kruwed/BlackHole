@@ -30,12 +30,15 @@ public enum CoinJoinTab
 	/// <summary>Rounds of the coordinator with one ticked coin of a standard amount.</summary>
 	ZeroLink,
 
-	/// <summary>Coinjoins with the offers of market makers. There is none yet: the tab holds its place.</summary>
+	/// <summary>
+	/// Coinjoins with the offers of makers. The main screen of the tab is the order book with the plan of the
+	/// transaction; the transaction itself cannot be made yet.
+	/// </summary>
 	Taker,
 
 	/// <summary>
-	/// The offer of the wallet as a market maker, with the way to its fidelity bonds. An offer is posted from the main
-	/// screen of the tab; a coinjoin that takes it does not exist yet.
+	/// The wallet as a maker. The main screen of the tab locks coins in a fidelity bond and posts offers; a coinjoin
+	/// that takes an offer does not exist yet.
 	/// </summary>
 	Maker
 }
@@ -62,7 +65,8 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 	private const string NotLoadedDetail = "It is processing the blocks";
 	private const string NotAvailableYetText = "Not available yet";
 	private const string PayjoinDetail = "Send and Receive work without it";
-	private const string MakerDetail = "An offer can be posted all the same";
+	private const string MakerDetail = "Offers and bonds work all the same";
+	private const string TakerDetail = "A transaction can be planned all the same";
 
 	private readonly IWalletModel _walletModel;
 	private readonly CoinListViewModel _coins;
@@ -175,8 +179,12 @@ public partial class CoinJoinBoxViewModel : ViewModelBase
 				return (NotAvailableYetText, PayjoinDetail, "Payjoin is not available yet.");
 
 			case CoinJoinTab.Maker:
-				// Its main screen posts the offer. What is missing is the coinjoin that takes it.
+				// Its main screen locks bonds and posts offers. What is missing is the coinjoin that takes an offer.
 				return (NotAvailableYetText, MakerDetail, "Maker coinjoins are not available yet.");
+
+			case CoinJoinTab.Taker:
+				// Its main screen plans the transaction. What is missing is the way to the makers that sign it.
+				return (NotAvailableYetText, TakerDetail, "Taker coinjoins are not available yet.");
 		}
 
 		if (GetProtocol(tab) is null)

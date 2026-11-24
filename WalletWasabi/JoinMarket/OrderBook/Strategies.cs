@@ -81,6 +81,31 @@ public static class StrategyTriangle
 			BookRules.RoundHalfUp(right / sum * 100) / 100);
 	}
 
+	/// <summary>
+	/// How the field lies in an area of the given size: as large as fits, in the middle of the area. The triangle is
+	/// drawn as large as its column lets it be.
+	/// </summary>
+	/// <returns>By how much the field is enlarged, and where its upper left corner is in the area.</returns>
+	public static (double Scale, double OffsetX, double OffsetY) Fit(double width, double height)
+	{
+		var scale = Math.Min(width / FieldWidth, height / FieldHeight);
+
+		if (scale <= 0 || double.IsNaN(scale) || double.IsInfinity(scale))
+		{
+			scale = 1;
+		}
+
+		return (scale, (width - FieldWidth * scale) / 2, (height - FieldHeight * scale) / 2);
+	}
+
+	/// <summary>The weights of a point of an area of the given size that the field is drawn in: what a click there means.</summary>
+	public static TriangleWeights GetWeights(double x, double y, double width, double height)
+	{
+		var (scale, offsetX, offsetY) = Fit(width, height);
+
+		return GetWeights((x - offsetX) / scale + FieldLeft, (y - offsetY) / scale);
+	}
+
 	/// <summary>Where the marker of the given weights is drawn.</summary>
 	public static (double X, double Y) GetPosition(TriangleWeights weights) =>
 		(weights.Top * Top.X + weights.Left * Left.X + weights.Right * Right.X,

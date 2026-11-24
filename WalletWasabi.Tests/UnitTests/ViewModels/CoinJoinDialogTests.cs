@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NBitcoin;
 using WalletWasabi.FeeRateEstimation;
+using WalletWasabi.Fluent.ViewModels.Navigation;
 using WalletWasabi.Fluent.ViewModels.Wallets;
 using WalletWasabi.WabiSabi.Client.CoinJoin.Manager;
 using Xunit;
@@ -195,44 +196,82 @@ public class CoinJoinDialogTests
 			CoinJoinViewModel.DescribeScreen(CoinJoinTab.Payjoin));
 	}
 
+	/// <summary>
+	/// The main screen of Taker is the order book with the plan of the transaction. What there is not yet is the way
+	/// to the makers that sign it, so the box has nothing to play, whether a coordinator is set or not: a taker
+	/// coinjoins with makers.
+	/// </summary>
 	[Fact]
-	public void TakerHoldsItsPlaceWithoutACoinjoinToStart()
+	public void TakerPlansItsTransactionWithoutACoinjoinToStart()
 	{
 		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.Taker));
 
-		// It says so whether a coordinator is set or not: a taker coinjoins with market makers.
 		foreach (var isCoordinatorSet in new[] { true, false })
 		{
-			var (notice, detail, noPlayToolTip) = CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Taker, isCoordinatorSet);
-
-			Assert.Equal("Not available yet", notice);
-			Assert.Equal("", detail);
-			Assert.Equal("Taker coinjoins are not available yet.", noPlayToolTip);
+			Assert.Equal(
+				("Not available yet", "A transaction can be planned all the same", "Taker coinjoins are not available yet."),
+				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Taker, isCoordinatorSet));
 		}
-
-		Assert.Contains("not available yet", CoinJoinViewModel.DescribeScreen(CoinJoinTab.Taker));
 	}
 
 	/// <summary>
-	/// The main screen of Maker posts the offer of the wallet, and its Bond button leads to the fidelity bonds. What
-	/// there is not yet is the coinjoin that takes an offer, so the box has nothing to play.
+	/// The main screen of Maker locks coins in a fidelity bond and posts offers. What there is not yet is the coinjoin
+	/// that takes an offer, so the box has nothing to play.
 	/// </summary>
 	[Fact]
-	public void MakerPostsItsOfferWithoutACoinjoinToStart()
+	public void MakerLocksAndOffersWithoutACoinjoinToStart()
 	{
 		Assert.Null(CoinJoinBoxViewModel.GetProtocol(CoinJoinTab.Maker));
 
 		foreach (var isCoordinatorSet in new[] { true, false })
 		{
 			Assert.Equal(
-				("Not available yet", "An offer can be posted all the same", "Maker coinjoins are not available yet."),
+				("Not available yet", "Offers and bonds work all the same", "Maker coinjoins are not available yet."),
 				CoinJoinBoxViewModel.DescribeUnavailable(CoinJoinTab.Maker, isCoordinatorSet));
 		}
+	}
 
-		var description = CoinJoinViewModel.DescribeScreen(CoinJoinTab.Maker);
+	/// <summary>The two sides of the market for anonymity points are the main screens of Taker and Maker, and of no other tab.</summary>
+	[Fact]
+	public void TakerAndMakerAreTheTwoSidesOfTheMarket()
+	{
+		Assert.Equal(
+			[CoinJoinTab.Taker, CoinJoinTab.Maker],
+			CoinJoinBoxViewModel.AllTabs.Where(CoinJoinViewModel.IsMarket));
+	}
 
-		Assert.Contains("two at most", description);
-		Assert.Contains("Bond opens the bonds of the wallet", description);
+	/// <summary>
+	/// Under its title the dialog tells whose coins the tab works with. A maker picks its coins in the list of its own
+	/// tab. While the market shows the examples of its design, the dialog says that in its place, on the two tabs of
+	/// the market and on no other.
+	/// </summary>
+	[Fact]
+	public void DialogTellsWhoseCoinsTheTabWorksWith()
+	{
+		const string Ticked = "Everything here works with the coins that are ticked on the Coins tab.";
+
+		Assert.All(
+			new[] { CoinJoinTab.Payjoin, CoinJoinTab.WabiSabi, CoinJoinTab.ZeroLink, CoinJoinTab.Taker },
+			tab => Assert.Equal(Ticked, CoinJoinViewModel.DescribeCoins(tab)));
+
+		Assert.Equal("The coins of a bond or of an offer are ticked in the list on this tab.", CoinJoinViewModel.DescribeCoins(CoinJoinTab.Maker));
+
+		Assert.All(
+			new[] { CoinJoinTab.Taker, CoinJoinTab.Maker },
+			tab => Assert.StartsWith("Sample data: the 250 Makers and the 16 coins", CoinJoinViewModel.DescribeCoins(tab, isSample: true)));
+
+		Assert.All(
+			new[] { CoinJoinTab.Payjoin, CoinJoinTab.WabiSabi, CoinJoinTab.ZeroLink },
+			tab => Assert.Equal(Ticked, CoinJoinViewModel.DescribeCoins(tab, isSample: true)));
+	}
+
+	/// <summary>The three columns of the market take more room than a form does: the dialog may grow for them.</summary>
+	[Fact]
+	public void DialogMayGrowForTheMarket()
+	{
+		Assert.True(CoinJoinViewModel.MarketDialogMaxWidth > RoutableViewModel.DefaultDialogMaxWidth);
+		Assert.True(CoinJoinViewModel.MarketDialogMaxHeight > RoutableViewModel.DefaultDialogMaxHeight);
+		Assert.Equal((800d, 700d), (RoutableViewModel.DefaultDialogMaxWidth, RoutableViewModel.DefaultDialogMaxHeight));
 	}
 
 	[Theory]
@@ -251,14 +290,19 @@ public class CoinJoinDialogTests
 			CoinJoinBoxViewModel.DescribeUnavailable(tab, isCoordinatorSet: true));
 	}
 
-	/// <summary>Every tab has a main screen, and the screen says at its top what it is for.</summary>
+	/// <summary>
+	/// Every tab has a main screen, and the screen says at its top what it is for. The two sides of the market say it
+	/// by what they show.
+	/// </summary>
 	[Fact]
 	public void EveryMainScreenSaysWhatItIsFor()
 	{
-		var descriptions = CoinJoinBoxViewModel.AllTabs.Select(CoinJoinViewModel.DescribeScreen).ToArray();
+		var descriptions = CoinJoinBoxViewModel.AllTabs.Where(tab => !CoinJoinViewModel.IsMarket(tab)).Select(CoinJoinViewModel.DescribeScreen).ToArray();
 
+		Assert.Equal(3, descriptions.Length);
 		Assert.All(descriptions, description => Assert.False(string.IsNullOrWhiteSpace(description)));
 		Assert.Equal(descriptions.Length, descriptions.Distinct().Count());
+		Assert.All(CoinJoinBoxViewModel.AllTabs.Where(CoinJoinViewModel.IsMarket), tab => Assert.Equal("", CoinJoinViewModel.DescribeScreen(tab)));
 
 		// The payments that wait for a round are on the main screen of WabiSabi.
 		Assert.Contains("payments that are queued here", CoinJoinViewModel.DescribeScreen(CoinJoinTab.WabiSabi));

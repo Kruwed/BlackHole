@@ -7,6 +7,7 @@ using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.Crypto.Randomness;
 using WalletWasabi.FeeRateEstimation;
 using WalletWasabi.FidelityBonds;
+using WalletWasabi.JoinMarket;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
 using WalletWasabi.Userfacing;
@@ -222,6 +223,34 @@ public class Wallet : BackgroundService
 		var transaction = BondRedemption.Create(bond, key, destination, feeRate, chainHeight, Network);
 
 		return new SmartTransaction(transaction, Height.Unknown);
+	}
+
+	/// <summary>
+	/// The fidelity bond that stands behind the offers of the wallet, with the proof of it for the offer of the given
+	/// key: the largest bond that is confirmed and still locked. Null if the wallet has no such bond, or is not open.
+	/// </summary>
+	/// <param name="offerKey">The public key that signs the offer, by its x coordinate: 32 bytes.</param>
+	public BondBacking? GetBondBacking(byte[] offerKey)
+	{
+		if (!IsLoggedIn || KeyManager.GetBestHeight() is not { } bestHeight)
+		{
+			return null;
+		}
+
+		var bond = GetFidelityBonds()
+			.Where(bond => !bond.IsSpent && bond.IsConfirmed && !bond.IsUnlocked(bestHeight.Height))
+			.OrderByDescending(bond => bond.Amount)
+			.ThenBy(bond => bond.OutPoint.ToString(), StringComparer.Ordinal)
+			.FirstOrDefault();
+
+		if (bond is null)
+		{
+			return null;
+		}
+
+		using var key = KeyManager.GetFidelityBondSecret(Password, bond.UnlockHeight);
+
+		return new BondBacking(BondProof.Create(key, bond.OutPoint, bond.UnlockHeight, offerKey), bond.Amount.Satoshi);
 	}
 
 	public bool TryLogin(string password)

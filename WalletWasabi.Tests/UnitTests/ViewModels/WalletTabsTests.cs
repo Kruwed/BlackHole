@@ -32,13 +32,5 @@ public class WalletTabsTests
 		Assert.Same(tab, asked);
 	}
 
-	[Fact]
-	public void MarketMakersAreListedWithWhatTheyOffer()
-	{
-		Assert.Equal(
-			["Market Maker", "Fee Rate", "Spread", "Bid", "Ask", "Liquidity", "Bond"],
-			OrderBookTabViewModel.Columns);
-	}
-
 	private class TestTab(string title, Action<WalletTabViewModel> select) : WalletTabViewModel(null!, title, select);
 }

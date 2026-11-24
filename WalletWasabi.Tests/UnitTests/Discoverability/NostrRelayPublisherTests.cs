@@ -18,7 +18,7 @@ namespace WalletWasabi.Tests.UnitTests.Discoverability;
 /// </summary>
 public class NostrRelayPublisherTests
 {
-	private static readonly MakerOffer Offer = new(new FeeRate(2m), Money.Satoshis(100), Money.Satoshis(150), Money.Coins(1));
+	private static readonly MakerOffer Offer = new(MinFeeRate: 2m, BuyRate: 100m, SellRate: 150m, Liquidity: 100_000_000, Points: 1m, MatchedInputs: 1, ExtraInputs: 0);
 
 	[Fact]
 	public async Task EveryRelayTellsWhatItMadeOfTheEventAsync()
@@ -261,6 +261,142 @@ public class NostrRelayPublisherTests
 		Assert.Equal(second.Uri, answer.Relay);
 		Assert.Single(first.Stored);
 		Assert.Single(second.Stored);
+	}
+
+	/// <summary>
+	/// The relays are asked for the events of a kind since a moment, and each of them tells what it has. What they
+	/// send is handed on as it came: whoever asked checks it.
+	/// </summary>
+	[Fact]
+	public async Task EveryRelayTellsTheEventsThatItHasOfAKindSinceAMomentAsync()
+	{
+		await using var first = new TestNostrRelay();
+		await using var second = new TestNostrRelay();
+		var nobody = new Uri($"ws://127.0.0.1:{TestNostrRelay.GetFreePort()}/");
+		var publisher = new NostrRelayPublisher([first.Uri, second.Uri, nobody], torSocksEndPoint: null, TimeSpan.FromSeconds(20));
+
+		using var oldKey = CreateKey();
+		using var newKey = CreateKey();
+		using var noteKey = CreateKey();
+		var old = await CreateEventAsync(oldKey, 1_800_000_000);
+		var recent = await CreateEventAsync(newKey, 1_800_000_600);
+		var note = await new NostrEvent { Kind = 1, Content = "hello", CreatedAt = DateTimeOffset.FromUnixTimeSeconds(1_800_000_600), Tags = [] }.ComputeIdAndSignAsync(noteKey);
+
+		foreach (var nostrEvent in new[] { old, recent, note })
+		{
+			await publisher.PublishAsync(nostrEvent, CancellationToken.None);
+		}
+
+		var answers = await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(1_800_000_300), CancellationToken.None);
+
+		Assert.Equal([first.Uri, second.Uri, nobody], answers.Select(answer => answer.Relay));
+
+		foreach (var answer in answers.Take(2))
+		{
+			Assert.True(answer.IsAnswered, answer.Problem);
+
+			var sent = Assert.Single(answer.Events);
+			Assert.Equal(recent.Id, sent.Id);
+			Assert.Equal(recent.Content, sent.Content);
+			Assert.True(sent.Verify());
+		}
+
+		// A relay that is not there is an answer like the others, with the reason.
+		Assert.False(answers[2].IsAnswered);
+		Assert.Empty(answers[2].Events);
+		Assert.False(string.IsNullOrWhiteSpace(answers[2].Problem));
+
+		// Everything since the beginning.
+		answers = await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None);
+		Assert.Equal(new[] { old.Id, recent.Id }.Order(), answers[0].Events.Select(e => e.Id).Order());
+	}
+
+	[Fact]
+	public async Task RelayWithoutEventsAnswersWithNoneAsync()
+	{
+		await using var relay = new TestNostrRelay();
+		var publisher = new NostrRelayPublisher([relay.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(20));
+
+		var answer = (await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None)).Single();
+
+		Assert.True(answer.IsAnswered);
+		Assert.Empty(answer.Events);
+	}
+
+	[Fact]
+	public async Task RelayThatDoesNotAnswerARequestIsNotWaitedForForeverAsync()
+	{
+		await using var silent = new TestNostrRelay { IsSilent = true };
+		await using var open = new TestNostrRelay();
+
+		// Long enough for the relay that answers, also on a busy machine.
+		var publisher = new NostrRelayPublisher([silent.Uri, open.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(6));
+
+		var answers = await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None);
+
+		Assert.False(answers[0].IsAnswered);
+		Assert.Equal("The relay did not answer in time.", answers[0].Problem);
+		Assert.True(answers[1].IsAnswered);
+	}
+
+	[Fact]
+	public async Task ReaderCanGiveUpAsync()
+	{
+		await using var silent = new TestNostrRelay { IsSilent = true };
+		var publisher = new NostrRelayPublisher([silent.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(30));
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), cts.Token));
+	}
+
+	/// <summary>
+	/// With Tor, the relays are read through the SOCKS port, by their names. Whoever reads has no key to tell: every
+	/// reading has circuits of its own, so that two readings cannot be told to come from one place, and neither can
+	/// a reading and a posting.
+	/// </summary>
+	[Fact]
+	public async Task WithTorEveryReadingHasCircuitsOfItsOwnAsync()
+	{
+		await using var relay = new TestNostrRelay();
+		await using var tor = new TestSocks5Proxy(relay.EndPoint);
+		var publisher = new NostrRelayPublisher([new Uri("ws://relay.invalid:7777/")], tor.EndPoint, TimeSpan.FromSeconds(20));
+		var posted = await CreateEventAsync();
+
+		await publisher.PublishAsync(posted, CancellationToken.None);
+		var first = (await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None)).Single();
+		var second = (await publisher.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None)).Single();
+
+		Assert.True(first.IsAnswered, first.Problem);
+		Assert.Equal(posted.Id, Assert.Single(first.Events).Id);
+		Assert.Equal(posted.Id, Assert.Single(second.Events).Id);
+
+		Assert.Equal(3, tor.Requests.Count);
+		Assert.All(tor.Requests, request => Assert.True(request.IsHostName));
+		Assert.All(tor.Requests, request => Assert.Equal("relay.invalid", request.Host));
+		Assert.All(tor.Requests, request => Assert.False(string.IsNullOrEmpty(request.UserName)));
+		Assert.Equal(3, tor.Requests.Select(request => request.UserName).Distinct().Count());
+	}
+
+	/// <summary>Whoever reads holds one reader, and reads from the new relays once the relays of the application were exchanged.</summary>
+	[Fact]
+	public async Task SwitchableReaderReadsFromTheRelaysItWasSwitchedToAsync()
+	{
+		await using var first = new TestNostrRelay();
+		await using var second = new TestNostrRelay();
+		var toFirst = new NostrRelayPublisher([first.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(20));
+		var toSecond = new NostrRelayPublisher([second.Uri], torSocksEndPoint: null, TimeSpan.FromSeconds(20));
+		await toSecond.PublishAsync(await CreateEventAsync(), CancellationToken.None);
+
+		var publisher = new SwitchableNostrPublisher(toFirst);
+		INostrReader reader = publisher;
+
+		Assert.Equal([first.Uri], reader.Relays);
+		Assert.Empty((await reader.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None)).Single().Events);
+
+		publisher.SwitchTo(toSecond);
+
+		Assert.Equal([second.Uri], reader.Relays);
+		Assert.Single((await reader.ReadAsync(MakerOfferEvent.Kind, DateTimeOffset.FromUnixTimeSeconds(0), CancellationToken.None)).Single().Events);
 	}
 
 	[Fact]

@@ -117,6 +117,9 @@ public interface IServices
 
 	T? GetHostedService<T>() where T : class, Microsoft.Extensions.Hosting.IHostedService;
 
+	/// <summary>The offers of the other makers, as the Nostr relays tell them. The relays are asked when the order book is asked to.</summary>
+	WalletWasabi.JoinMarket.OrderBookService GetOrderBook();
+
 	Task SendTransactionAsync(SmartTransaction transaction);
 
 	HttpClient CreateHttpClient(string name);

@@ -45,7 +45,7 @@ public sealed class TestNostrRelay : IAsyncDisposable
 	/// <summary>Says whether an event is taken, and what the relay tells about that. Every event is taken unless this says otherwise.</summary>
 	public Func<NostrEvent, (bool Accepted, string Message)>? Judge { get; set; }
 
-	/// <summary>A relay that is silent takes connections and events and never answers.</summary>
+	/// <summary>A relay that is silent takes connections, events and requests and never answers.</summary>
 	public bool IsSilent { get; set; }
 
 	/// <summary>Every event that was sent to the relay, in the order of arrival, taken or not.</summary>
@@ -161,7 +161,7 @@ public sealed class TestNostrRelay : IAsyncDisposable
 						await TakeEventAsync(socket, message[1].Deserialize<NostrEvent>()!);
 						break;
 
-					case "REQ":
+					case "REQ" when !IsSilent:
 						await ServeRequestAsync(socket, message[1].GetString()!, message.EnumerateArray().Skip(2).Select(filter => filter.Deserialize<NostrSubscriptionFilter>()!).ToArray());
 						break;
 				}

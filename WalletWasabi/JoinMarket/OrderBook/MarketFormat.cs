@@ -43,6 +43,23 @@ public static class MarketFormat
 	public static string Signed(decimal number) =>
 		(number > 0 ? "+" : number < 0 ? Minus : "") + Whole(Math.Abs(number));
 
+	/// <summary>A number as it stands in a box that takes a typed one: with the decimals that it has, eight at most, and no more.</summary>
+	/// <summary>
+	/// A difference of anonymity points with its sign: "+56", "−0.5". Points are counted in halves, and the points of
+	/// an offer are a mean, so a difference need not be whole. Where it is, it reads as the design writes it.
+	/// </summary>
+	public static string SignedPoints(decimal points)
+	{
+		var rounded = Math.Floor(Math.Abs(points) * 10 + 0.5m) / 10;
+
+		return (rounded == 0 ? "" : points > 0 ? "+" : Minus) + rounded.ToString("#,0.#", CultureInfo.InvariantCulture);
+	}
+
+	public static string Plain(decimal number) => number.ToString("0.########", CultureInfo.InvariantCulture);
+
+	/// <summary>Anonymity points: a whole number where they are one, and one decimal otherwise.</summary>
+	public static string Points(decimal points) => (Math.Floor(points * 10 + 0.5m) / 10).ToString("0.#", CultureInfo.InvariantCulture);
+
 	/// <summary>A value of a criterion with its unit, as a filter of the book shows it.</summary>
 	/// <param name="value">The value in the unit of the criterion: rates in their own, the bond and the liquidity in BTC.</param>
 	public static string Criterion(BookCriterion criterion, decimal value)

@@ -112,6 +112,8 @@ public class Services : IServices
 	public T? GetHostedService<T>() where T : class, Microsoft.Extensions.Hosting.IHostedService => _hostedServices.GetOrDefault<T>();
 
 	// Transaction
+	public WalletWasabi.JoinMarket.OrderBookService GetOrderBook() => _global.OrderBook;
+
 	public Task SendTransactionAsync(SmartTransaction transaction) => _transactionBroadcaster.SendTransactionAsync(transaction);
 
 	// HttpClientFactory wrapper functions

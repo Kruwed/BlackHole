@@ -12,8 +12,8 @@ using WalletWasabi.Helpers;
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 /// <summary>
-/// Where the user names the Nostr relays that the application connects to, one on a line. The offer of the wallet as
-/// a market maker is posted to them. It comes third on the welcome.
+/// Where the user names the Nostr relays that the application connects to, one on a line. The offers of the wallet as
+/// a maker are posted to them, and the offers of other makers are read from them. It comes third on the welcome.
 /// </summary>
 /// <remarks>A relay is asked by opening a connection to it and closing it again: nothing is sent to it.</remarks>
 [NavigationMetaData(Title = "Connect to Nostr")]

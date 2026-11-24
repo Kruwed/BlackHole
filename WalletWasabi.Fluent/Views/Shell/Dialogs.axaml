@@ -57,7 +57,8 @@
               EnableCancelOnEscape="{Binding CurrentPage.EnableCancelOnEscape, FallbackValue=True}"
               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
               HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-              MaxContentWidth="800" MaxContentHeight="700"
+              MaxContentWidth="{Binding CurrentPage.DialogMaxWidth, FallbackValue=800}"
+              MaxContentHeight="{Binding CurrentPage.DialogMaxHeight, FallbackValue=700}"
               IncreasedWidthThreshold="840" IncreasedHeightThreshold="580" FullScreenHeightThreshold="580">
       <ContentControl Content="{Binding CurrentPage}" />
     </Dialog>

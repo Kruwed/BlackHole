@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace WalletWasabi.Fluent.Views.Wallets.Bonds;
+namespace WalletWasabi.Fluent.Views.Wallets.Market;
 
-public class CreateBondView : UserControl
+public class BarRowView : UserControl
 {
-	public CreateBondView()
+	public BarRowView()
 	{
 		InitializeComponent();
 	}

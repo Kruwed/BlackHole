@@ -1,97 +1,115 @@
 using NBitcoin;
+using WalletWasabi.FidelityBonds;
 using WalletWasabi.JoinMarket;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.JoinMarket;
 
 /// <summary>
-/// The offer of a market maker: coins that a taker may put into its coinjoin, and the two prices of an anonymity point.
+/// The offer of a maker: coins that a taker may put into its coinjoin, a fee rate that the transaction has to pay at
+/// least, and the two rates of an anonymity point.
 /// </summary>
 public class MakerOfferTests
 {
-	private static readonly MakerOffer Offer = new(new FeeRate(2m), Bid: Money.Satoshis(100), Ask: Money.Satoshis(150), Liquidity: Money.Coins(0.5m));
+	private static readonly MakerOffer Offer = new(MinFeeRate: 2m, BuyRate: 100m, SellRate: 150m, Liquidity: 50_000_000, Points: 2.5m, MatchedInputs: 3, ExtraInputs: 1);
 
-	/// <summary>
-	/// The coinjoin of a taker destroys the points of the coins that the maker puts in, and what the maker gets out has
-	/// the points of the new transaction. For every point that the maker has more afterwards it pays the bid.
-	/// </summary>
-	[Theory]
-	[InlineData(0, 1, -100)]
-	[InlineData(0, 5, -500)]
-	[InlineData(3, 4, -100)]
-	[InlineData(2, 10, -800)]
-	public void MakerPaysTheBidForThePointsThatItGains(int pointsBefore, int pointsAfter, long expectedSats)
+	[Fact]
+	public void SpreadIsWhatLiesBetweenTheTwoRates()
 	{
-		Assert.Equal(Money.Satoshis(expectedSats), Offer.GetCompensation(pointsBefore, pointsAfter));
-	}
-
-	/// <summary>For every point that the maker has less afterwards, the taker pays the ask.</summary>
-	[Theory]
-	[InlineData(1, 0, 150)]
-	[InlineData(5, 0, 750)]
-	[InlineData(4, 3, 150)]
-	[InlineData(10, 2, 1200)]
-	public void TakerPaysTheAskForThePointsThatTheMakerLoses(int pointsBefore, int pointsAfter, long expectedSats)
-	{
-		Assert.Equal(Money.Satoshis(expectedSats), Offer.GetCompensation(pointsBefore, pointsAfter));
-	}
-
-	[Theory]
-	[InlineData(0, 0)]
-	[InlineData(7, 7)]
-	public void NobodyPaysWhenThePointsStayTheSame(int pointsBefore, int pointsAfter)
-	{
-		Assert.Equal(Money.Zero, Offer.GetCompensation(pointsBefore, pointsAfter));
+		Assert.Equal(50m, Offer.Spread);
+		Assert.Equal(0m, (Offer with { SellRate = 100m }).Spread);
+		Assert.Equal(0.5m, (Offer with { BuyRate = 149.5m }).Spread);
 	}
 
 	[Fact]
-	public void PointsAreNotNegative()
+	public void CoinsOfAnOfferAreTheOnesThatCountAsMatchedAndTheOthers()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Offer.GetCompensation(-1, 0));
-		Assert.Throws<ArgumentOutOfRangeException>(() => Offer.GetCompensation(0, -1));
-	}
-
-	[Fact]
-	public void SpreadIsWhatLiesBetweenTheTwoPrices()
-	{
-		Assert.Equal(Money.Satoshis(50), Offer.Spread);
-		Assert.Equal(Money.Zero, (Offer with { Ask = Money.Satoshis(100) }).Spread);
+		Assert.Equal(4, Offer.CoinCount);
+		Assert.Equal(1, (Offer with { MatchedInputs = 1, ExtraInputs = 0 }).CoinCount);
 	}
 
 	/// <summary>
-	/// A maker that bids more for a point than it asks for one would pay a taker for giving it points and taking
+	/// A maker that pays more for a point than it sells one for would pay a taker for giving it points and taking
 	/// them back again. Such an offer is not made.
 	/// </summary>
 	[Fact]
-	public void AskIsNotBelowTheBid()
+	public void SellRateIsNotBelowTheBuyRate()
 	{
-		Assert.Null(MakerOffer.ValidateTerms(new FeeRate(1m), Money.Satoshis(100), Money.Satoshis(100)));
-		Assert.Null(MakerOffer.ValidateTerms(new FeeRate(1m), Money.Zero, Money.Zero));
-		Assert.Equal("The ask cannot be lower than the bid.", MakerOffer.ValidateTerms(new FeeRate(1m), Money.Satoshis(100), Money.Satoshis(99)));
+		Assert.Null(MakerOffer.ValidateTerms(1m, buyRate: 100m, sellRate: 100m));
+		Assert.Null(MakerOffer.ValidateTerms(1m, buyRate: 0m, sellRate: 0m));
+		Assert.Equal("The sell rate cannot be lower than the buy rate.", MakerOffer.ValidateTerms(1m, buyRate: 100m, sellRate: 99.9m));
 	}
 
 	[Theory]
-	[InlineData("0.1", 0, 0, true)]
-	[InlineData("10000", 0, 0, true)]
-	[InlineData("0.099", 0, 0, false)] // Below what nodes relay
-	[InlineData("10000.1", 0, 0, false)]
-	[InlineData("1", -1, 0, false)]
-	[InlineData("1", 0, -1, false)]
-	[InlineData("1", 5, 2_099_999_997_690_000, true)] // Every bitcoin there is
-	[InlineData("1", 5, 2_099_999_997_690_001, false)]
-	public void TermsHaveTheirLimits(string satsPerVirtualByte, long bid, long ask, bool isValid)
+	[InlineData("0.1", "0", "0", true)]
+	[InlineData("10000", "0", "0", true)]
+	[InlineData("0.099", "0", "0", false)] // Below what nodes relay
+	[InlineData("10000.1", "0", "0", false)]
+	[InlineData("1", "-1", "0", false)]
+	[InlineData("1", "0", "-0.1", false)]
+	[InlineData("1", "0.5", "0.5", true)] // A rate is not a whole number of sats
+	[InlineData("1", "5", "100000000", true)]
+	[InlineData("1", "5", "100000000.1", false)]
+	public void TermsHaveTheirLimits(string feeRate, string buyRate, string sellRate, bool isValid)
 	{
-		var feeRate = new FeeRate(decimal.Parse(satsPerVirtualByte, System.Globalization.CultureInfo.InvariantCulture));
-
-		Assert.Equal(isValid, MakerOffer.ValidateTerms(feeRate, Money.Satoshis(bid), Money.Satoshis(ask)) is null);
+		Assert.Equal(isValid, MakerOffer.ValidateTerms(Parse(feeRate), Parse(buyRate), Parse(sellRate)) is null);
 	}
 
 	[Fact]
 	public void OfferHasCoinsInIt()
 	{
 		Assert.Null(Offer.Validate());
-		Assert.NotNull((Offer with { Liquidity = Money.Zero }).Validate());
-		Assert.NotNull((Offer with { Liquidity = Money.Satoshis(-1) }).Validate());
-		Assert.NotNull((Offer with { Ask = Money.Satoshis(99) }).Validate());
+
+		// What an output cannot hold is no liquidity.
+		Assert.Null((Offer with { Liquidity = 330 }).Validate());
+		Assert.NotNull((Offer with { Liquidity = 329 }).Validate());
+		Assert.NotNull((Offer with { Liquidity = 0 }).Validate());
+		Assert.NotNull((Offer with { Liquidity = -1 }).Validate());
+
+		// Every bitcoin there is, and no more.
+		Assert.Null((Offer with { Liquidity = 2_099_999_997_690_000 }).Validate());
+		Assert.NotNull((Offer with { Liquidity = 2_099_999_997_690_001 }).Validate());
+
+		Assert.NotNull((Offer with { SellRate = 99m }).Validate());
 	}
+
+	[Theory]
+	[InlineData(1, 0, true)]
+	[InlineData(3, 0, true)]
+	[InlineData(3, 17, true)] // Twenty coins in all
+	[InlineData(0, 1, true)] // Coins that are not private count for nothing, and can be offered all the same
+	[InlineData(0, 0, false)]
+	[InlineData(4, 0, false)] // Three coins of a maker count as matched, and no more
+	[InlineData(3, 18, false)]
+	[InlineData(-1, 2, false)]
+	[InlineData(1, -1, false)]
+	public void OfferHasOneToTwentyCoinsOfWhichThreeCountAtMost(int matched, int extra, bool isValid)
+	{
+		Assert.Equal(isValid, (Offer with { MatchedInputs = matched, ExtraInputs = extra }).Validate() is null);
+	}
+
+	[Theory]
+	[InlineData("0", true)]
+	[InlineData("0.5", true)]
+	[InlineData("1000000", true)]
+	[InlineData("-0.5", false)]
+	[InlineData("1000000.5", false)]
+	public void PointsOfAnOfferAreZeroOrMore(string points, bool isValid)
+	{
+		Assert.Equal(isValid, (Offer with { Points = Parse(points) }).Validate() is null);
+	}
+
+	[Fact]
+	public void ProofOfABondIsWellFormedOrTheOfferIsNone()
+	{
+		using var bondKey = new Key();
+		var proof = BondProof.Create(bondKey, new OutPoint(uint256.One, 0), 900_000, new byte[32]);
+
+		Assert.Null((Offer with { Bond = proof }).Validate());
+		Assert.NotNull((Offer with { Bond = proof with { Signature = "00" } }).Validate());
+		Assert.NotNull((Offer with { Bond = proof with { Key = "not a key" } }).Validate());
+		Assert.NotNull((Offer with { Bond = proof with { UnlockHeight = 0 } }).Validate());
+	}
+
+	private static decimal Parse(string number) => decimal.Parse(number, System.Globalization.CultureInfo.InvariantCulture);
 }

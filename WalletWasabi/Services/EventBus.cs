@@ -134,7 +134,10 @@ public record AnonymityPointsChanged;
 /// <summary>The wallet processed a transaction that creates or spends a fidelity bond of it.</summary>
 public record FidelityBondTransactionProcessed(SmartTransaction Transaction);
 
-/// <summary>The offer that the wallet has on the market changed: there is one now, it is another one, or it is gone.</summary>
-public record MakerOfferChanged(MakerOfferState? Offer);
+/// <summary>The offers that the wallet has on the market changed: one was posted, posted again or taken back.</summary>
+public record MakerOffersChanged(IReadOnlyList<PostedOffer> Offers);
+
+/// <summary>The relays were asked for the offers of the makers again, and this is what the order book holds now.</summary>
+public record OrderBookChanged(OrderBookSnapshot Book);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);
 public record CoinjoinCostsAdded(uint256 TransactionId, CoinjoinCosts Costs);

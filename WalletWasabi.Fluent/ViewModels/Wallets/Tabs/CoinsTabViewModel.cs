@@ -71,7 +71,7 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 
 	/// <summary>
 	/// The dialog of what is done with the ticked coins, and of receiving: the payment and Receive, the box of the
-	/// coinjoins, and through its menu the offer of the wallet as a market maker and its fidelity bonds.
+	/// coinjoins, and the two sides of the market for anonymity points.
 	/// </summary>
 	public CoinJoinViewModel CoinJoin { get; }
 

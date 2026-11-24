@@ -1,0 +1,393 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:market="using:WalletWasabi.Fluent.ViewModels.Wallets.Market"
+             xmlns:book="using:WalletWasabi.JoinMarket.OrderBook"
+             xmlns:converters="using:WalletWasabi.Fluent.Converters"
+             xmlns:v="using:WalletWasabi.Fluent.Views.Wallets.Market"
+             x:DataType="market:TakerScreenViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Market.TakerScreenView">
+
+  <!-- The accent of the taker's side is orange. -->
+  <UserControl.Resources>
+    <SolidColorBrush x:Key="MarketAccentBrush" Color="#f2a325" />
+    <SolidColorBrush x:Key="MarketAccentFillBrush" Color="#4d3008" />
+    <SolidColorBrush x:Key="MarketDividerBrush" Color="#52f2a325" />
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <StyleInclude Source="avares://WalletWasabi.Fluent/Views/Wallets/Market/MarketStyles.axaml" />
+    <!-- A row of the book takes its place in the list and nothing else of it: no padding, and no colour of its own when it is clicked. -->
+    <Style Selector="ListBox.marketList ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="ListBox.marketList ListBoxItem /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- Three columns: the strategy and the filters, the order book, and the transaction that the picked makers make
+       with the taker. Below a width that the three need, the screen scrolls sideways. -->
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+    <!-- The grid is as wide as the place that it has, and not narrower than its columns need. Its width is said
+         outright: what scrolls sideways would otherwise be laid out as if it had all the room in the world, and
+         a text that wraps would be given the height of one line. -->
+    <Grid MinWidth="1302" Width="{Binding $parent[ScrollViewer].Bounds.Width}">
+      <!-- The side columns are as wide as their design where there is room, and give some of it up where there is not. -->
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="340" MaxWidth="380" />
+        <ColumnDefinition Width="1" />
+        <ColumnDefinition Width="2*" MinWidth="620" />
+        <ColumnDefinition Width="1" />
+        <ColumnDefinition Width="*" MinWidth="340" MaxWidth="380" />
+      </Grid.ColumnDefinitions>
+
+      <!-- The strategy triangle and the six filters. The counts of what the filters leave are below them. -->
+      <DockPanel Grid.Column="0">
+        <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="0 4 0 0">
+          <StrategyTriangleControl Weights="{Binding Strategy, Mode=TwoWay}"
+                                   TopLabel="{Binding TopName}" LeftLabel="{Binding LeftName}" RightLabel="{Binding RightName}"
+                                   Accent="{DynamicResource MarketAccentBrush}"
+                                   Stroke="{DynamicResource MarketDividerBrush}"
+                                   Fill="{DynamicResource Layer1BackgroundBrush}"
+                                   Foreground="{DynamicResource TextControlForeground}"
+                                   DimForeground="#818899"
+                                   MaxWidth="340" HorizontalAlignment="Center"
+                                   ToolTip.Tip="Click or drag to set the filters by a strategy. The arrow keys move the marker as well." />
+          <TextBlock Text="{Binding StrategyText}" FontSize="11" Opacity="0.5" MinHeight="16" HorizontalAlignment="Center" FontFeatures="+tnum" />
+        </StackPanel>
+
+        <Border DockPanel.Dock="Bottom" Height="36" BorderThickness="0 1 0 0" BorderBrush="{DynamicResource MarketDividerBrush}">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18">
+            <TextBlock Classes="marketMuted" FontSize="12.5" Text="{Binding CountText}" FontFeatures="+tnum" />
+            <TextBlock Classes="marketMuted" FontSize="12.5" Text="{Binding LiquidityText}" FontFeatures="+tnum" />
+          </StackPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Filters}" Margin="20 14 20 18">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="14" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="market:BarRowViewModel">
+                <v:BarRowView />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+
+      <Border Grid.Column="1" Classes="marketDivider" />
+
+      <!-- The order book. Makers with a bond come first, and the ones that the filters cut are greyed out. -->
+      <DockPanel Grid.Column="2">
+        <Border DockPanel.Dock="Top" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource MarketDividerBrush}">
+          <Grid ColumnDefinitions="40,1.7*,1.25*,*,*,*,1.5*,1.5*" Height="36" Margin="14 0 14 0">
+            <Button Grid.Column="0" Theme="{StaticResource MarketHeaderButton}" Classes="active" Command="{Binding ToggleAllCommand}" HorizontalContentAlignment="Left"
+                    ToolTip.Tip="Select all / none">
+              <Border Classes="marketTick" Classes.ticked="{Binding IsAnySelected}">
+                <Panel>
+                  <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding IsAllSelected}" />
+                  <PathIcon Data="{StaticResource market_dash}" IsVisible="{Binding IsSomeSelected}" />
+                </Panel>
+              </Border>
+            </Button>
+            <TextBlock Grid.Column="1" Text="Maker" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.FeeRate}"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.FeeRate}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Fee rate" />
+                <TextBlock Classes="marketUnit" Text="sat/vB" FontSize="10" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.Spread}" Content="Spread"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.Spread}, Converter={x:Static converters:EnumToBoolConverter.Instance}}" />
+            <Button Grid.Column="4" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.SellRate}" Content="Sell rate"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.SellRate}, Converter={x:Static converters:EnumToBoolConverter.Instance}}" />
+            <Button Grid.Column="5" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.BuyRate}" Content="Buy rate"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.BuyRate}, Converter={x:Static converters:EnumToBoolConverter.Instance}}" />
+            <Button Grid.Column="6" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.Liquidity}"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.Liquidity}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Liquidity" />
+                <TextBlock Classes="marketUnit" Text="BTC" FontSize="10" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="7" Theme="{StaticResource MarketHeaderButton}" Command="{Binding SortCommand}" CommandParameter="{x:Static book:BookCriterion.Bond}"
+                    Classes.active="{Binding SortKey, ConverterParameter={x:Static book:BookCriterion.Bond}, Converter={x:Static converters:EnumToBoolConverter.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Bond" />
+                <TextBlock Classes="marketUnit" Text="BTC" FontSize="10" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- What there is to say about the book besides its offers: that the relays did not answer, for instance. -->
+        <TextBlock DockPanel.Dock="Top" Classes="marketMuted" Margin="14 12 14 4" FontSize="12.5" TextWrapping="Wrap"
+                   Text="{Binding BookNotice}"
+                   IsVisible="{Binding BookNotice, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+        <ListBox Classes="marketList" ItemsSource="{Binding Rows}" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.DataTemplates>
+            <DataTemplate x:DataType="market:BookRowViewModel">
+              <Button Theme="{StaticResource MarketRowButton}" Command="{Binding ToggleCommand}" CommandParameter="{Binding Id}"
+                      Classes.selected="{Binding IsSelected}" Classes.barred="{Binding !IsAvailable}">
+                <Grid ColumnDefinitions="40,1.7*,1.25*,*,*,*,1.5*,1.5*" Height="38" Margin="14 0 14 0">
+                  <Border Grid.Column="0" Classes="marketTick" Classes.ticked="{Binding IsSelected}" Classes.dim="{Binding !IsAvailable}">
+                    <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding IsSelected}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Alias}" FontSize="12.5" Classes.dim="{Binding !IsAvailable}" />
+                    <Border Classes="marketTag" IsVisible="{Binding IsOwn}">
+                      <TextBlock Text="you" />
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Classes="marketCell" Classes.dim="{Binding FeeRateFails}" Text="{Binding FeeRate}" />
+                  <TextBlock Grid.Column="3" Classes="marketCell" Classes.dim="{Binding SpreadFails}" Text="{Binding Spread}" />
+                  <TextBlock Grid.Column="4" Classes="marketCell" Classes.dim="{Binding SellRateFails}" Text="{Binding SellRate}" Foreground="{StaticResource MarketSellBrush}" />
+                  <TextBlock Grid.Column="5" Classes="marketCell" Classes.dim="{Binding BuyRateFails}" Text="{Binding BuyRate}" Foreground="{StaticResource MarketBuyBrush}" />
+                  <TextBlock Grid.Column="6" Classes="marketCell" Classes.dim="{Binding LiquidityFails}" Text="{Binding Liquidity}" />
+                  <TextBlock Grid.Column="7" Classes="marketCell" Classes.dim="{Binding BondFails}" Text="{Binding Bond}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+            <DataTemplate x:DataType="market:BookCaptionViewModel">
+              <TextBlock Classes="marketLabel" Text="{Binding Text}" Margin="14 22 14 8" />
+            </DataTemplate>
+          </ListBox.DataTemplates>
+        </ListBox>
+      </DockPanel>
+
+      <Border Grid.Column="3" Classes="marketDivider" />
+
+      <!-- The transaction that the picked makers make with the taker: what it is, and what it costs. -->
+      <DockPanel Grid.Column="4">
+        <Border DockPanel.Dock="Top" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource MarketDividerBrush}">
+          <Grid ColumnDefinitions="*,*">
+            <Button Grid.Column="0" Theme="{StaticResource MarketTabButton}" Content="Transaction Builder"
+                    Command="{Binding ShowBuilderCommand}" Classes.active="{Binding IsBuilderShown}" />
+            <Button Grid.Column="1" Theme="{StaticResource MarketTabButton}" Content="Price Calculator"
+                    Command="{Binding ShowCalculatorCommand}" Classes.active="{Binding IsCalculatorShown}" />
+          </Grid>
+        </Border>
+
+        <!-- Signing is not there yet, and the screen says why. -->
+        <Border DockPanel.Dock="Bottom" BorderThickness="0 1 0 0" BorderBrush="{DynamicResource MarketDividerBrush}" Padding="20 12 20 14">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Theme="{StaticResource MarketPrimaryButton}" Content="Sign &amp; broadcast"
+                    Command="{Binding SignCommand}" Margin="12 0 0 0" VerticalAlignment="Center" />
+            <TextBlock Classes="marketMuted" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding SignNotice}" />
+          </DockPanel>
+        </Border>
+
+        <!-- What the taker brings, or what is to be done to bring something. -->
+        <TextBlock DockPanel.Dock="Top" Classes="marketMuted" Margin="20 12 20 0" FontSize="11.5" TextWrapping="Wrap" Text="{Binding TakerNotice}" />
+
+        <Panel>
+          <!-- Transaction Builder: six figures, and the values of the outputs with who has them. -->
+          <ScrollViewer IsVisible="{Binding IsBuilderShown}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="20 16 20 18" Spacing="22" IsVisible="{Binding Review, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <!-- The first column is as wide as its longest name, and the other two share what is left. -->
+              <Grid ColumnDefinitions="Auto,12,*,12,*" RowDefinitions="Auto,20,Auto">
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                  <TextBlock Classes="marketLabel small" Text="ANONYMITY POINTS" />
+                  <TextBlock Classes="marketFigure" Text="{Binding Review.Points}" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2">
+                  <TextBlock Classes="marketLabel small" Text="PARTICIPANTS" />
+                  <TextBlock Classes="marketFigure" Text="{Binding Review.Participants}" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="4">
+                  <TextBlock Classes="marketLabel small" Text="LIQUIDITY" />
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Classes="marketFigure" Text="{Binding Review.Liquidity}" />
+                    <TextBlock Classes="marketUnit" Text="BTC" VerticalAlignment="Bottom" Margin="0 0 0 4" />
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0">
+                  <TextBlock Classes="marketLabel small" Text="MATCHED IN" />
+                  <TextBlock Classes="marketFigure" Text="{Binding Review.MatchedIn}" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2">
+                  <TextBlock Classes="marketLabel small" Text="MATCHED OUT" />
+                  <TextBlock Classes="marketFigure" Text="{Binding Review.MatchedOut}" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="4">
+                  <TextBlock Classes="marketLabel small" Text="UNMATCHED OUT" />
+                  <TextBlock Classes="marketFigure" Text="{Binding Review.UnmatchedOut}" />
+                </StackPanel>
+              </Grid>
+
+              <!-- A value is white when three or more outputs have it, yellow for a pair and red when one output is alone with it. -->
+              <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="104,44,*">
+                  <TextBlock Grid.Column="0" Classes="marketLabel small" Text="OUTPUT VALUE" />
+                  <TextBlock Grid.Column="1" Classes="marketLabel small" Text="COUNT" TextAlignment="Right" />
+                  <TextBlock Grid.Column="2" Classes="marketLabel small" Text="OWNERS" Margin="12 0 0 0" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Review.Outputs}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="4" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="book:PlanOutputRow">
+                      <Grid ColumnDefinitions="104,44,*">
+                        <TextBlock Grid.Column="0" Classes="monoSpaced" FontSize="12.5" Text="{Binding ValueText}"
+                                   Classes.pair="{Binding IsPair}" Classes.alone="{Binding IsAlone}">
+                          <TextBlock.Styles>
+                            <Style Selector="TextBlock.pair">
+                              <Setter Property="Foreground" Value="{StaticResource MarketWarnBrush}" />
+                            </Style>
+                            <Style Selector="TextBlock.alone">
+                              <Setter Property="Foreground" Value="{StaticResource MarketSellBrush}" />
+                            </Style>
+                          </TextBlock.Styles>
+                        </TextBlock>
+                        <TextBlock Grid.Column="1" Classes="marketMuted" FontSize="12.5" Text="{Binding CountText}" TextAlignment="Right" />
+                        <TextBlock Grid.Column="2" Classes="marketMuted" FontSize="12.5" Text="{Binding Owners}" Margin="12 0 0 0" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- Price Calculator: what is billed and to whom, what is settled for points, and what the taker pays in all. -->
+          <ScrollViewer IsVisible="{Binding IsCalculatorShown}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="20 16 20 18" Spacing="20" IsVisible="{Binding Review, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <StackPanel Spacing="6">
+                <ItemsControl ItemsSource="{Binding Review.FeeRows}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="6" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="book:PlanFeeRow">
+                      <Grid ColumnDefinitions="*,64,64">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                          <TextBlock FontSize="12.5" Text="{Binding Rule}" />
+                          <TextBlock FontSize="12.5" Opacity="0.45" Text="{Binding Detail}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Classes="marketCell marketMuted" Text="{Binding VirtualBytes}" />
+                        <TextBlock Grid.Column="2" Classes="marketCell" Text="{Binding Sats}" Foreground="{StaticResource MarketSellBrush}"
+                                   Classes.byMakers="{Binding IsPaidByMakers}">
+                          <TextBlock.Styles>
+                            <Style Selector="TextBlock.byMakers">
+                              <Setter Property="Foreground" Value="{StaticResource MarketBuyBrush}" />
+                            </Style>
+                          </TextBlock.Styles>
+                        </TextBlock>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Border Classes="marketDivider" Height="1" Margin="0 4" />
+                <Grid ColumnDefinitions="*,64,64">
+                  <TextBlock Grid.Column="0" FontSize="12.5" Text="Taker fee" />
+                  <TextBlock Grid.Column="1" Classes="marketCell marketMuted" Text="{Binding Review.TakerVirtualBytes}" />
+                  <TextBlock Grid.Column="2" Classes="marketCell" Text="{Binding Review.TakerFee}" Foreground="{StaticResource MarketSellBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,64,64">
+                  <TextBlock Grid.Column="0" FontSize="12.5" Text="Maker fee" />
+                  <TextBlock Grid.Column="1" Classes="marketCell marketMuted" Text="{Binding Review.MakerVirtualBytes}" />
+                  <TextBlock Grid.Column="2" Classes="marketCell" Text="{Binding Review.MakerFee}" Foreground="{StaticResource MarketBuyBrush}" />
+                </Grid>
+                <Border Classes="marketDivider" Height="1" Margin="0 4" />
+                <Grid ColumnDefinitions="*,64,64">
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                    <TextBlock FontSize="12.5" Text="Mining fees" />
+                    <TextBlock FontSize="12.5" Opacity="0.45" Text="{Binding Review.MiningFeeRate}" />
+                    <TextBlock FontSize="12.5" Opacity="0.45" Text="sat/vB" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Classes="marketCell marketMuted" Text="{Binding Review.TotalVirtualBytes}" />
+                  <TextBlock Grid.Column="2" Classes="marketCell" Text="{Binding Review.MiningFee}" />
+                </Grid>
+              </StackPanel>
+
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,64,52,52,64">
+                  <TextBlock Grid.Column="0" Classes="marketLabel small" Text="MAKER" />
+                  <TextBlock Grid.Column="1" Classes="marketLabel small" Text="ORIGIN AP" TextAlignment="Right" />
+                  <TextBlock Grid.Column="2" Classes="marketLabel small" Text="NEW AP" TextAlignment="Right" />
+                  <TextBlock Grid.Column="3" Classes="marketLabel small" Text="RATE" TextAlignment="Right" />
+                  <TextBlock Grid.Column="4" Classes="marketLabel small" Text="SATS" TextAlignment="Right" />
+                </Grid>
+                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding Review.Settlement}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="3" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="book:PlanSettlementRow">
+                        <Grid ColumnDefinitions="*,64,52,52,64">
+                          <TextBlock Grid.Column="0" FontSize="12.5" Text="{Binding Alias}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Classes="marketCell marketMuted" Text="{Binding OriginPoints}" />
+                          <TextBlock Grid.Column="2" Classes="marketCell marketMuted" Text="{Binding Delta}" />
+                          <TextBlock Grid.Column="3" Classes="marketCell marketMuted" Text="{Binding Rate}"
+                                     Classes.buying="{Binding IsBuying}" Classes.selling="{Binding IsSelling}">
+                            <TextBlock.Styles>
+                              <Style Selector="TextBlock.buying">
+                                <Setter Property="Foreground" Value="{StaticResource MarketBuyBrush}" />
+                                <Setter Property="Opacity" Value="1" />
+                              </Style>
+                              <Style Selector="TextBlock.selling">
+                                <Setter Property="Foreground" Value="{StaticResource MarketSellBrush}" />
+                                <Setter Property="Opacity" Value="1" />
+                              </Style>
+                            </TextBlock.Styles>
+                          </TextBlock>
+                          <TextBlock Grid.Column="4" Classes="marketCell" Text="{Binding Sats}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+                <Border Classes="marketDivider" Height="1" Margin="0 4" />
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Grid.Row="0" Grid.Column="0" Classes="marketMuted" FontSize="12.5" Text="Taker pays" />
+                  <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                    <TextBlock Classes="marketCell" Text="{Binding Review.TakerPays}" />
+                    <TextBlock FontSize="12.5" Text="sats" />
+                  </StackPanel>
+                  <TextBlock Grid.Row="1" Grid.Column="0" Classes="marketMuted" FontSize="12.5" Text="Makers pay" Margin="0 5 0 0" />
+                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" Margin="0 5 0 0">
+                    <TextBlock Classes="marketCell" Text="{Binding Review.MakersPay}" />
+                    <TextBlock FontSize="12.5" Text="sats" />
+                  </StackPanel>
+                  <TextBlock Grid.Row="2" Grid.Column="0" Classes="marketMuted" FontSize="12.5" Text="Net settlement" Margin="0 5 0 0" />
+                  <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" Margin="0 5 0 0">
+                    <TextBlock Classes="marketCell" Text="{Binding Review.NetSettlement}" />
+                    <TextBlock FontSize="12.5" Text="sats" />
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+
+              <Border BorderThickness="0 1 0 0" BorderBrush="{DynamicResource MarketDividerBrush}" Padding="0 14 0 0">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" FontSize="12.5" VerticalAlignment="Center" Text="{Binding Review.TotalLabel}" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                    <TextBlock FontSize="17" FontWeight="Medium" Text="{Binding Review.Total}" FontFeatures="+tnum" />
+                    <TextBlock Classes="marketUnit" Text="sats" VerticalAlignment="Bottom" Margin="0 0 0 3" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Panel>
+      </DockPanel>
+    </Grid>
+  </ScrollViewer>
+</UserControl>

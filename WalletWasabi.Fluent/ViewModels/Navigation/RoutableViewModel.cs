@@ -25,6 +25,16 @@ public abstract partial class RoutableViewModel : ViewModelBase, INavigatable
 
 	public abstract string Title { get; protected set; }
 
+	/// <summary>How wide a dialog that shows this page may get.</summary>
+	public virtual double DialogMaxWidth => DefaultDialogMaxWidth;
+
+	/// <summary>How high a dialog that shows this page may get.</summary>
+	public virtual double DialogMaxHeight => DefaultDialogMaxHeight;
+
+	public const double DefaultDialogMaxWidth = 800;
+
+	public const double DefaultDialogMaxHeight = 700;
+
 	public NavigationTarget CurrentTarget { get; internal set; }
 
 	public virtual NavigationTarget DefaultTarget => NavigationTarget.HomeScreen;

@@ -1,0 +1,275 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- What the two sides of the market for anonymity points share: the colours that carry a meaning, and how their
+       rows, tabs, bars and ticks look. The accent of a side is its own: the maker's is blue and the taker's orange. -->
+  <Styles.Resources>
+    <!-- A buy rate, and what the makers pay. -->
+    <SolidColorBrush x:Key="MarketBuyBrush" Color="#3fd68b" />
+    <!-- A sell rate, what the taker pays, a value that one output is alone with, a coin of the same origin as a larger one. -->
+    <SolidColorBrush x:Key="MarketSellBrush" Color="#ff6b6b" />
+    <!-- A value that a pair of outputs has, and a coin that is not private. -->
+    <SolidColorBrush x:Key="MarketWarnBrush" Color="#f5d547" />
+    <!-- A coin beyond the first three of an offer. -->
+    <SolidColorBrush x:Key="MarketExtraBrush" Color="#ff9f43" />
+    <!-- A row that is picked. -->
+    <SolidColorBrush x:Key="MarketSelectedBrush" Color="#12FFFFFF" />
+    <SolidColorBrush x:Key="MarketHoverBrush" Color="#0AFFFFFF" />
+
+    <StreamGeometry x:Key="market_dash">M2,7 H14 V9 H2 Z</StreamGeometry>
+    <StreamGeometry x:Key="market_padlock">M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z</StreamGeometry>
+
+    <!-- The part of a bar that is filled, and the part that is not. -->
+    <ControlTheme x:Key="MarketBarFill" TargetType="RepeatButton">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{DynamicResource MarketAccentFillBrush}" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="MarketBarEmpty" TargetType="RepeatButton">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+    <!-- The edge of the fill, which is what a bar is dragged by. -->
+    <ControlTheme x:Key="MarketBarThumb" TargetType="Thumb">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{DynamicResource MarketAccentBrush}" />
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+    <!-- A bar that is a slider as well: it fills from the left up to where it stands. -->
+    <ControlTheme x:Key="MarketBarSlider" TargetType="Slider">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}">
+            <Track Name="PART_Track"
+                   Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                   Orientation="Horizontal">
+              <Track.DecreaseButton>
+                <RepeatButton Name="PART_DecreaseButton" Focusable="False" Theme="{StaticResource MarketBarFill}" />
+              </Track.DecreaseButton>
+              <Track.IncreaseButton>
+                <RepeatButton Name="PART_IncreaseButton" Focusable="False" Theme="{StaticResource MarketBarEmpty}" />
+              </Track.IncreaseButton>
+              <Thumb Name="thumb" Width="2" Theme="{StaticResource MarketBarThumb}" />
+            </Track>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+
+    <!-- A row of a table, which is a button: a click picks it or lets it go. -->
+    <ControlTheme x:Key="MarketRowButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{StaticResource MarketHoverBrush}" />
+      </Style>
+      <Style Selector="^.selected">
+        <Setter Property="Background" Value="{StaticResource MarketSelectedBrush}" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource MarketAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+      </Style>
+      <Style Selector="^.barred">
+        <Setter Property="Cursor" Value="No" />
+      </Style>
+    </ControlTheme>
+
+    <!-- One of the two tabs above the right column, and a head of a column that sorts. -->
+    <ControlTheme x:Key="MarketTabButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
+      <Setter Property="Opacity" Value="0.6" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0 0 0 2">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Opacity" Value="1" />
+      </Style>
+      <Style Selector="^.active">
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MarketAccentBrush}" />
+      </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="MarketHeaderButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextControlForeground}" />
+      <Setter Property="Opacity" Value="0.6" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Right" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Opacity" Value="1" />
+      </Style>
+      <Style Selector="^.active">
+        <Setter Property="Opacity" Value="1" />
+      </Style>
+    </ControlTheme>
+
+    <!-- The button that a form is sent with: as wide as the form, in the accent of its side. -->
+    <ControlTheme x:Key="MarketPrimaryButton" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource MarketAccentBrush}" />
+      <Setter Property="Foreground" Value="#06070b" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="16 0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Opacity" Value="0.9" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Opacity" Value="0.75" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.38" />
+        <Setter Property="Cursor" Value="No" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <!-- A small name in capitals: of a row under the triangle, of a field of a form, of a figure. -->
+  <Style Selector="TextBlock.marketLabel">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="LetterSpacing" Value="0.9" />
+    <Setter Property="Opacity" Value="0.6" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <!-- The names of the figures and the heads of the lists in the right column: smaller, and set closer. -->
+  <Style Selector="TextBlock.marketLabel.small">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="LetterSpacing" Value="0.5" />
+  </Style>
+  <Style Selector="TextBlock.marketUnit">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Opacity" Value="0.45" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.marketMuted">
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+  <Style Selector="TextBlock.marketCell">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+  <Style Selector="TextBlock.marketFigure">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+  <Style Selector="TextBlock.dim">
+    <Setter Property="Opacity" Value="0.38" />
+  </Style>
+
+  <!-- A box for a typed number. -->
+  <Style Selector="TextBox.marketInput">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="8 0" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <!-- A tick: a small box that is filled when its row is picked. -->
+  <Style Selector="Border.marketTick">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="BorderBrush" Value="#474d5a" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Border.marketTick.ticked">
+    <Setter Property="BorderBrush" Value="{DynamicResource TextControlForeground}" />
+    <Setter Property="Background" Value="{DynamicResource TextControlForeground}" />
+  </Style>
+  <Style Selector="Border.marketTick PathIcon">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Foreground" Value="#06070b" />
+  </Style>
+  <Style Selector="Border.marketTick.dim">
+    <Setter Property="Opacity" Value="0.38" />
+  </Style>
+
+  <Style Selector="Border.marketDivider">
+    <Setter Property="Background" Value="{DynamicResource MarketDividerBrush}" />
+  </Style>
+
+  <!-- A small mark next to a name: "you", "active". -->
+  <Style Selector="Border.marketTag">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="6 1" />
+    <Setter Property="Background" Value="{DynamicResource MarketAccentFillBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.marketTag > TextBlock">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Foreground" Value="{DynamicResource MarketAccentBrush}" />
+  </Style>
+</Styles>

@@ -15,7 +15,7 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets;
 /// <summary>
 /// The wallet, once it is decrypted. It is a set of pages, and the window shows one of them at a time. The title bar
 /// lists them as tabs: the history, which is the one to start with, the coins with all that is done with them, and
-/// the order book of the market makers.
+/// the order book of the makers.
 /// </summary>
 [AppLifetime]
 public partial class WalletViewModel : RoutableViewModel, IWalletViewModel

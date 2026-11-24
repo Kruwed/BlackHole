@@ -1,11 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace WalletWasabi.Fluent.Views.Wallets.Offers;
+namespace WalletWasabi.Fluent.Views.Wallets.Market;
 
-public class MakerOfferView : UserControl
+public class TakerScreenView : UserControl
 {
-	public MakerOfferView()
+	public TakerScreenView()
 	{
 		InitializeComponent();
 	}

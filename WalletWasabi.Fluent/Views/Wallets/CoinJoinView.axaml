@@ -4,6 +4,7 @@
              xmlns:converters="clr-namespace:WalletWasabi.Fluent.Converters"
              xmlns:models="clr-namespace:WalletWasabi.Fluent.Models"
              xmlns:helpers="clr-namespace:WalletWasabi.Fluent.Helpers"
+             xmlns:market="clr-namespace:WalletWasabi.Fluent.Views.Wallets.Market"
              x:DataType="wallets:CoinJoinViewModel"
              x:CompileBindings="True"
              x:Class="WalletWasabi.Fluent.Views.Wallets.CoinJoinView">
@@ -76,7 +77,7 @@
   <!-- What is done with the coins that are ticked on the Coins tab, and receiving. The dialog has a tab for every
        protocol, like the settings have theirs, and the box of the coinjoins below all of them. -->
   <ContentArea Title="{Binding Title}"
-               Caption="Everything here works with the coins that are ticked on the Coins tab."
+               Caption="{Binding Caption}"
                EnableCancel="{Binding EnableCancel}" CancelContent="Close"
                IsBusy="{Binding IsBusy}"
                ScrollViewer.VerticalScrollBarVisibility="Disabled"
@@ -92,7 +93,15 @@
         <TextBlock Text="The wallet is still processing the blocks of the node. Until it is done, Receive is all that works here." TextWrapping="Wrap" />
       </InfoMessage>
 
-      <!-- The protocols. The first tab is the one that the dialog opens with. -->
+      <!-- The protocols. The first tab is the one that the dialog opens with. The two sides of the market can be
+           looked at with the sample data of their design in place of the wallet: the switch for that is in the row of
+           the tabs, while one of the two shows. -->
+      <Panel>
+      <ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0 2 20 0" ZIndex="1"
+                    IsChecked="{Binding Market.IsSample, Mode=TwoWay}"
+                    OnContent="Sample data" OffContent="Sample data"
+                    IsVisible="{Binding IsMarketTab}"
+                    ToolTip.Tip="Shows the 250 Makers and the 16 coins that the market was designed with, in place of your wallet and your relays. Nothing of it is real." />
       <TabControl SelectedIndex="{Binding SelectedTab, Mode=TwoWay}" Classes="Settings">
 
         <!-- The ordinary payment with its Send button, and Receive. Payjoin itself holds its place. -->
@@ -321,53 +330,22 @@
           </DockPanel>
         </TabItem>
 
-        <!-- ZeroLink and Taker have nothing but what they say about themselves: their controls are the box. -->
+        <!-- ZeroLink has nothing but what it says about itself: its controls are the box. -->
         <TabItem Header="ZeroLink">
           <TextBlock Classes="description" VerticalAlignment="Top" Text="{Binding Description}" />
         </TabItem>
 
+        <!-- The taker's side of the market: the strategy and the filters, the order book, and the planned transaction. -->
         <TabItem Header="Taker">
-          <TextBlock Classes="description" VerticalAlignment="Top" Text="{Binding Description}" />
+          <market:TakerScreenView DataContext="{Binding Market.Taker}" Margin="0 0 20 0" />
         </TabItem>
 
-        <!-- The offer of the wallet as a market maker, and the way to its fidelity bonds. -->
+        <!-- The maker's side of the market: the strategy, the coins of the wallet, and what is locked and offered of them. -->
         <TabItem Header="Maker">
-          <DockPanel IsEnabled="{Binding IsWalletLoaded}">
-            <TextBlock DockPanel.Dock="Top" Classes="description" Text="{Binding Description}" />
-
-            <!-- What the coins of the offer hold together, and what is done from here: the bonds, taking the offer
-                 back, and posting it. Post is the button that Enter presses while this tab is selected. -->
-            <DockPanel DockPanel.Dock="Bottom" Margin="0 10 20 0">
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-                <Button Classes="activeHyperLink plain" Content="Withdraw offer" Command="{Binding Maker.WithdrawCommand}"
-                        IsVisible="{Binding Maker.HasOffer}" VerticalAlignment="Center" Margin="0 0 12 0" Cursor="Hand" />
-                <Button Classes="function" Command="{Binding Maker.BondCommand}" VerticalAlignment="Center"
-                        ToolTip.Tip="The fidelity bonds of the wallet. A new one locks the ticked coins.">
-                  <StackPanel Orientation="Horizontal">
-                    <PathIcon Data="{StaticResource wallet_action_bond}" />
-                    <TextBlock Text="Bond" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="function" Command="{Binding Maker.PostCommand}" VerticalAlignment="Center"
-                        IsDefault="{Binding IsActive}"
-                        ToolTip.Tip="Posts the offer to the Nostr relays.">
-                  <StackPanel Orientation="Horizontal">
-                    <PathIcon Data="{StaticResource wallet_action_offer}" />
-                    <TextBlock Text="Post" />
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-              <AmountControl Amount="{Binding Maker.OfferedAmount}" HorizontalAlignment="Left" VerticalAlignment="Center"
-                             IsVisible="{Binding Maker.OfferedAmount, Converter={x:Static ObjectConverters.IsNotNull}}"
-                             ToolTip.Tip="What the coins of the offer hold together." />
-            </DockPanel>
-
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-              <ContentControl Content="{Binding Maker}" Margin="0 0 20 0" />
-            </ScrollViewer>
-          </DockPanel>
+          <market:MakerScreenView DataContext="{Binding Market.Maker}" Margin="0 0 20 0" />
         </TabItem>
       </TabControl>
+      </Panel>
     </DockPanel>
   </ContentArea>
 </UserControl>

@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:market="using:WalletWasabi.Fluent.ViewModels.Wallets.Market"
+             x:DataType="market:ConfirmBondViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Market.ConfirmBondView">
+
+  <!-- The question before coins are locked: how much, for how long, and at what fee. -->
+  <ContentArea Title="{Binding Title}"
+               ScrollViewer.VerticalScrollBarVisibility="Disabled">
+    <QuestionControl YesCommand="{Binding NextCommand}"
+                     NoCommand="{Binding CancelCommand}"
+                     YesContent="Confirm" NoContent="Cancel"
+                     HighlightButton="YesButton">
+      <QuestionControl.IconContent>
+        <Viewbox MaxHeight="90" Margin="30">
+          <PathIcon Data="{StaticResource wallet_action_bond}" Opacity="0.6" />
+        </Viewbox>
+      </QuestionControl.IconContent>
+      <StackPanel Spacing="6">
+        <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding LockText}" />
+        <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding FeeText}" />
+      </StackPanel>
+    </QuestionControl>
+  </ContentArea>
+</UserControl>

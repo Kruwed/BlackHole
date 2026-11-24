@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:market="using:WalletWasabi.Fluent.ViewModels.Wallets.Market"
+             x:DataType="market:BarRowViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Wallets.Market.BarRowView">
+
+  <!-- A row under a strategy triangle: its name, a box for typing an exact value, and a bar that is a slider as well.
+       Enter takes what was typed, and so does leaving the box. Escape gives it up. -->
+  <StackPanel Spacing="4" IsEnabled="{Binding IsEnabled}" Classes.inert="{Binding !IsEnabled}">
+    <StackPanel.Styles>
+      <Style Selector="StackPanel.inert">
+        <Setter Property="Opacity" Value="0.38" />
+      </Style>
+    </StackPanel.Styles>
+
+    <TextBlock Classes="marketLabel" Text="{Binding Label}" />
+
+    <Grid ColumnDefinitions="64,6,*">
+      <TextBox Grid.Column="0" Classes="marketInput" Text="{Binding Text}" MaxLength="20">
+        <Interaction.Behaviors>
+          <KeyDownTrigger Key="Enter" EventRoutingStrategy="Tunnel" MarkAsHandled="True">
+            <InvokeCommandAction Command="{Binding CommitCommand}" />
+          </KeyDownTrigger>
+          <KeyDownTrigger Key="Escape" EventRoutingStrategy="Tunnel" MarkAsHandled="True">
+            <InvokeCommandAction Command="{Binding CancelCommand}" />
+          </KeyDownTrigger>
+          <EventTriggerBehavior EventName="LostFocus">
+            <InvokeCommandAction Command="{Binding CommitCommand}" />
+          </EventTriggerBehavior>
+        </Interaction.Behaviors>
+      </TextBox>
+
+      <Border Grid.Column="2" Height="36" CornerRadius="4" ClipToBounds="True"
+              BorderThickness="1" BorderBrush="{DynamicResource MarketDividerBrush}"
+              Background="{DynamicResource Layer1BackgroundBrush}">
+        <Panel>
+          <Slider Theme="{StaticResource MarketBarSlider}"
+                  Minimum="0" Maximum="{Binding Maximum}" Value="{Binding Position, Mode=TwoWay}"
+                  TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5"
+                  VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+          <DockPanel IsHitTestVisible="False" Margin="10 0">
+            <TextBlock DockPanel.Dock="Right" Text="{Binding ValueText}" FontSize="12.5" VerticalAlignment="Center" FontFeatures="+tnum" />
+            <TextBlock Text="{Binding Caption}" FontSize="10.5" Opacity="0.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 8 0" FontFeatures="+tnum" />
+          </DockPanel>
+        </Panel>
+      </Border>
+    </Grid>
+  </StackPanel>
+</UserControl>

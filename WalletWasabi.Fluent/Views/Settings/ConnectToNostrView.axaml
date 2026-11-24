@@ -44,7 +44,7 @@
           <FocusOnAttachedBehavior />
         </Interaction.Behaviors>
       </TextBox>
-      <TextBlock Text="Your offer as a market maker is posted to these relays, through Tor unless Tor is turned off. Asking a relay sends it nothing: it only finds out whether the relay answers."
+      <TextBlock Text="Your offers as a maker are posted to these relays, and the offers of other makers are read from them, through Tor unless Tor is turned off. Asking a relay here sends it nothing: it only finds out whether the relay answers."
                  TextWrapping="Wrap"
                  Opacity="0.6" />
 
