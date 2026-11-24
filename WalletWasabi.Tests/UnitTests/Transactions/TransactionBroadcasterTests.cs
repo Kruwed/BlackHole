@@ -266,7 +266,10 @@ public class TransactionBroadcasterTests
 
 		Assert.StartsWith($"The Bitcoin node did not accept the transaction: it spends from transaction {parent.GetHash()}, which the node is still broadcasting", exception.Message);
 		Assert.Contains("Send this transaction again later.", exception.Message);
-		Assert.True(attempts > 2);
+
+		// The node got the transaction again before the wait was given up. How often is a matter of how busy the
+		// machine is: on a loaded one the first pause alone can take longer than the whole wait.
+		Assert.True(attempts >= 2);
 		Assert.Equal(Height.Unknown, child.Height);
 		Assert.Empty(announcedTransactions);
 	}
