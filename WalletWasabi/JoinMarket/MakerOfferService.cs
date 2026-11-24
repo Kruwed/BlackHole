@@ -129,7 +129,11 @@ public class MakerOfferService : PeriodicRunner
 			throw new ArgumentException($"An offer has one to {MakerOffer.MaxCoinCount} coins.", nameof(request));
 		}
 
-		if (MakerOffer.ValidateTerms(request.MinFeeRate, request.BuyRate, request.SellRate) is { } reason)
+		// An offer without points has none to sell: it lists a sell rate of 0, whatever was asked for.
+		var hasPoints = request.Points > 0;
+		var sellRate = hasPoints ? request.SellRate : 0m;
+
+		if (MakerOffer.ValidateTerms(request.MinFeeRate, request.BuyRate, sellRate, hasPoints) is { } reason)
 		{
 			throw new ArgumentException(reason, nameof(request));
 		}
@@ -168,7 +172,7 @@ public class MakerOfferService : PeriodicRunner
 				var offer = new MakerOffer(
 					request.MinFeeRate,
 					request.BuyRate,
-					request.SellRate,
+					sellRate,
 					request.Amount,
 					request.Points,
 					request.MatchedInputs,

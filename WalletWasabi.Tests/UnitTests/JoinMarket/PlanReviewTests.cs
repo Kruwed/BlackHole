@@ -132,6 +132,53 @@ public class PlanReviewTests
 		Assert.Equal("Total you pay", Small.TotalLabel);
 	}
 
+	/// <summary>
+	/// A maker without points sells at 0 and has nothing to lose: whatever the transaction is worth, it gains that, and
+	/// pays its buy rate for it.
+	/// </summary>
+	[Fact]
+	public void MakerWithoutPointsPaysForThePointsThatItGains()
+	{
+		var review = PlanReview.Create(
+			TransactionPlanner.Plan(
+				new PlannedTaker(InputCount: 2, Amount: 9_000_000),
+				[new PlannedMaker("plain-otter", MinFeeRate: 1.5m, BuyRate: 120m, SellRate: 0m, Points: 0m, MatchedInputs: 1, ExtraInputs: 0, Liquidity: 4_500_000, Payments: [])]),
+			liquidity: 4_500_000);
+
+		var line = Assert.Single(review.Settlement);
+
+		Assert.Equal("1", review.Points);
+		Assert.Equal(new PlanSettlementRow("plain-otter", "0", "+1", "120", 1, "+120"), line);
+		Assert.True(line.IsBuying);
+		Assert.Equal(("0", "120", "+120"), (review.TakerPays, review.MakersPay, review.NetSettlement));
+	}
+
+	[Theory]
+	[InlineData("0.5", "0.5")]
+	[InlineData("2", "2")]
+	[InlineData("0", "0")]
+	[InlineData("-1.3", "−1.3")]
+	[InlineData("-100", "−100")]
+	[InlineData("-0.04", "0")]
+	public void RateBelowZeroIsWrittenWithItsSign(string rate, string expected)
+	{
+		Assert.Equal(expected, MarketFormat.Rate(decimal.Parse(rate, System.Globalization.CultureInfo.InvariantCulture)));
+	}
+
+	[Theory]
+	[InlineData("-1.3", "-1.3")]
+	[InlineData("−1.3", "-1.3")]
+	[InlineData(" 2.5 ", "2.5")]
+	[InlineData("0", "0")]
+	public void LimitOfTheSpreadCanBeTypedBelowZero(string typed, string expected)
+	{
+		Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), MarketFormat.ParseSignedNumber(typed));
+		Assert.Null(MarketFormat.ParseSignedNumber("cheap"));
+
+		// The other limits are not below zero.
+		Assert.Equal(typed.Contains('-') || typed.Contains('−'), MarketFormat.ParseNumber(typed) is null);
+	}
+
 	[Theory]
 	[InlineData("56", "+56")]
 	[InlineData("-56", "−56")]

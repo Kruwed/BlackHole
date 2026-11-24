@@ -43,13 +43,22 @@ public sealed record MakerOffer(
 	/// <summary>No offer tells more points than this.</summary>
 	public const decimal MaxPoints = 1_000_000m;
 
+	public const string NoPointsSellRateError = "An offer without anonymity points has none to sell: its sell rate is 0.";
+
 	/// <summary>What the maker earns when it sells a point and buys it back.</summary>
 	public decimal Spread => SellRate - BuyRate;
+
+	/// <summary>Whether the offer has anonymity points to sell. Without any it lists a sell rate of 0.</summary>
+	public bool HasPoints => Points > 0;
 
 	public int CoinCount => MatchedInputs + ExtraInputs;
 
 	/// <summary>Tells why these are not the terms of an offer, or null if they are.</summary>
-	public static string? ValidateTerms(decimal minFeeRate, decimal buyRate, decimal sellRate)
+	/// <param name="hasPoints">
+	/// Whether the offer has anonymity points. An offer without any has none to sell: its sell rate is 0, and is not held
+	/// against its buy rate.
+	/// </param>
+	public static string? ValidateTerms(decimal minFeeRate, decimal buyRate, decimal sellRate, bool hasPoints = true)
 	{
 		var lowest = Constants.MinRelayFeeRate.SatoshiPerByte;
 		var highest = Constants.AbsurdlyHighFeeRate.SatoshiPerByte;
@@ -69,6 +78,12 @@ public sealed record MakerOffer(
 			return "The sell rate is zero or more sats.";
 		}
 
+		// Whatever a transaction is worth, a maker without points loses none in it: there is nothing that it could sell.
+		if (!hasPoints)
+		{
+			return sellRate == 0 ? null : NoPointsSellRateError;
+		}
+
 		// A maker that pays more for a point than it sells one for can be emptied by a taker that gives it points and takes them back.
 		if (sellRate < buyRate)
 		{
@@ -81,7 +96,7 @@ public sealed record MakerOffer(
 	/// <summary>Tells why this is not an offer that can be made, or null if it is.</summary>
 	public string? Validate()
 	{
-		if (ValidateTerms(MinFeeRate, BuyRate, SellRate) is { } reason)
+		if (ValidateTerms(MinFeeRate, BuyRate, SellRate, HasPoints) is { } reason)
 		{
 			return reason;
 		}

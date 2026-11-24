@@ -87,9 +87,48 @@ public class MakerOfferEventTests
 		Assert.True(MakerOfferEvent.TryParse(MakerOfferEvent.Create(Offer, Network.Main, Now), Network.Main, out var offer));
 		Assert.Equal(Offer, offer);
 
-		var odd = new MakerOffer(0.123m, 0m, 100_000_000m, 330, 0m, 0, 20);
+		var odd = new MakerOffer(0.123m, 0m, 100_000_000m, 330, 0.5m, 0, 20);
 		Assert.True(MakerOfferEvent.TryParse(MakerOfferEvent.Create(odd, Bitcoin.Instance.Signet, Now), Bitcoin.Instance.Signet, out offer));
 		Assert.Equal(odd, offer);
+	}
+
+	/// <summary>An offer without anonymity points has none to sell: it tells a sell rate of 0, and may still pay for points.</summary>
+	[Fact]
+	public void OfferWithoutPointsTellsASellRateOfZero()
+	{
+		var pointless = Offer with { Points = 0m, SellRate = 0m };
+		var nostrEvent = MakerOfferEvent.Create(pointless, Network.Main, Now);
+
+		Assert.Equal(
+			"""{"minFeeRate":2.5,"buy":100,"sell":0,"liquidity":50000000,"points":0,"inputs":3,"extraInputs":1}""",
+			nostrEvent.Content);
+
+		Assert.True(MakerOfferEvent.TryParse(nostrEvent, Network.Main, out var offer));
+		Assert.Equal(pointless, offer);
+
+		// It is not posted with another sell rate.
+		Assert.Throws<ArgumentException>(() => MakerOfferEvent.Create(Offer with { Points = 0m }, Network.Main, Now));
+	}
+
+	/// <summary>Whatever an offer without points says that it sells a point for, it is listed with a sell rate of 0.</summary>
+	[Theory]
+	[InlineData("150.5")]
+	[InlineData("0")]
+	[InlineData("99")]
+	public void OfferWithoutPointsIsListedWithASellRateOfZero(string sellRate)
+	{
+		var nostrEvent = MakerOfferEvent.Create(Offer, Network.Main, Now);
+		nostrEvent.Content = $"{{\"minFeeRate\":2.5,\"buy\":100,\"sell\":{sellRate},\"liquidity\":50000000,\"points\":0,\"inputs\":2}}";
+
+		Assert.True(MakerOfferEvent.TryParse(nostrEvent, Network.Main, out var offer));
+		Assert.Equal(0m, offer.SellRate);
+		Assert.Equal(100m, offer.BuyRate);
+		Assert.Equal(-100m, offer.Spread);
+		Assert.False(offer.HasPoints);
+
+		// The same offer with points is none: it would sell a point for less than it pays for one.
+		nostrEvent.Content = nostrEvent.Content.Replace("\"points\":0", "\"points\":1");
+		Assert.Equal(sellRate == "150.5", MakerOfferEvent.TryParse(nostrEvent, Network.Main, out _));
 	}
 
 	[Fact]

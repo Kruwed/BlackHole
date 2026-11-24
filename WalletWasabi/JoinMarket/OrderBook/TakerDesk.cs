@@ -58,7 +58,7 @@ public enum SelectAllState
 /// <param name="Bonded">The makers with a fidelity bond, in the order of the table.</param>
 /// <param name="Unbonded">The makers without one. They are listed below all the others.</param>
 /// <param name="Filters">The filters, from top to bottom.</param>
-/// <param name="AvailableCount">How many makers can be picked.</param>
+/// <param name="AvailableCount">How many makers of the book can be picked. The offers of this wallet are not counted.</param>
 /// <param name="BookCount">How many makers the book has, the offers of this wallet not counted.</param>
 /// <param name="AvailableLiquidity">What the makers that can be picked offer together, in sats.</param>
 /// <param name="BookLiquidity">What the makers of the book offer together, in sats.</param>
@@ -303,7 +303,9 @@ public sealed class TakerDesk
 			.ThenBy(row => _ranks[row.Row.Maker.Id])
 			.ToArray();
 
-		var available = rows.Where(row => row.Row.IsAvailable).ToArray();
+		// What is counted under the filters are the makers of the book, on both sides of the stroke. An offer of this
+		// wallet is a row of the table, and no maker that the taker could pick as one: ticking it brings its coins.
+		var available = rows.Where(row => row.Row.IsAvailable && !row.Row.Maker.IsOwn).ToArray();
 		var selectable = rows.Where(row => row.Passes).Select(row => row.Row.Maker.Id).ToArray();
 
 		return new TakerDeskView(

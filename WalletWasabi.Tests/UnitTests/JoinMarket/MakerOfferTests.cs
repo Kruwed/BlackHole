@@ -40,6 +40,38 @@ public class MakerOfferTests
 		Assert.Equal("The sell rate cannot be lower than the buy rate.", MakerOffer.ValidateTerms(1m, buyRate: 100m, sellRate: 99.9m));
 	}
 
+	/// <summary>
+	/// An offer without anonymity points has none to sell. Its sell rate is 0, and what it pays for a point is not held
+	/// against that: whatever a transaction is worth, such a maker loses no points in it.
+	/// </summary>
+	[Fact]
+	public void OfferWithoutPointsSellsAtZeroWhateverItBuysAt()
+	{
+		Assert.Null(MakerOffer.ValidateTerms(1m, buyRate: 100m, sellRate: 0m, hasPoints: false));
+		Assert.Null(MakerOffer.ValidateTerms(1m, buyRate: 0m, sellRate: 0m, hasPoints: false));
+		Assert.Equal(
+			"An offer without anonymity points has none to sell: its sell rate is 0.",
+			MakerOffer.ValidateTerms(1m, buyRate: 100m, sellRate: 150m, hasPoints: false));
+
+		// The other limits are the same for it.
+		Assert.NotNull(MakerOffer.ValidateTerms(0.01m, buyRate: 100m, sellRate: 0m, hasPoints: false));
+		Assert.NotNull(MakerOffer.ValidateTerms(1m, buyRate: -1m, sellRate: 0m, hasPoints: false));
+
+		var pointless = Offer with { Points = 0m, SellRate = 0m };
+
+		Assert.False(pointless.HasPoints);
+		Assert.True(Offer.HasPoints);
+		Assert.True((Offer with { Points = 0.5m }).HasPoints);
+		Assert.Null(pointless.Validate());
+		Assert.NotNull((Offer with { Points = 0m }).Validate());
+
+		// It sells at nothing and buys at 100: its spread is below zero.
+		Assert.Equal(-100m, pointless.Spread);
+
+		// With points, a sell rate below the buy rate is still no offer.
+		Assert.NotNull((Offer with { SellRate = 0m }).Validate());
+	}
+
 	[Theory]
 	[InlineData("0.1", "0", "0", true)]
 	[InlineData("10000", "0", "0", true)]
@@ -96,7 +128,10 @@ public class MakerOfferTests
 	[InlineData("1000000.5", false)]
 	public void PointsOfAnOfferAreZeroOrMore(string points, bool isValid)
 	{
-		Assert.Equal(isValid, (Offer with { Points = Parse(points) }).Validate() is null);
+		var offer = Offer with { Points = Parse(points) };
+
+		// An offer without points sells at 0.
+		Assert.Equal(isValid, (offer.HasPoints ? offer : offer with { SellRate = 0m }).Validate() is null);
 	}
 
 	[Fact]

@@ -191,7 +191,7 @@ public class MakerScreenTests
 		// It comes from the transaction of a larger picked coin: red, and it does not count.
 		Assert.True(second.IsSharedOrigin);
 		Assert.False(second.IsExtra);
-		Assert.False(second.IsNotPrivate);
+		Assert.False(second.HasNoPoints);
 		Assert.Equal("3.23784587", screen.OfferAmount);
 
 		screen.ToggleCommand.Execute(rows[0].Id);
@@ -303,7 +303,7 @@ public class MakerScreenTests
 
 		await screen.PostOfferAsync();
 		Assert.Equal(
-			"Amount exceeds the counted coins: 5.00000000 BTC offered, 3.23784587 BTC across the three largest private coins from distinct origins.",
+			"Amount exceeds the counted coins: 5.00000000 BTC offered, 3.23784587 BTC across the three largest coins from distinct origins.",
 			screen.OfferError);
 
 		screen.OfferAmount = "1";
@@ -525,6 +525,72 @@ public class MakerScreenTests
 		Assert.False(screen.IsBusy);
 	}
 
+	/// <summary>
+	/// A wallet whose coins have no anonymity points can offer them all the same. Such an offer has no points to sell:
+	/// it lists a sell rate of 0, and the box of the sell rate is not the maker's to fill.
+	/// </summary>
+	[Fact]
+	public async Task OfferOfCoinsWithoutPointsListsASellRateOfZeroAsync()
+	{
+		var market = new PlainWalletMarket();
+		var screen = new MakerScreenViewModel(market, _ => Task.FromResult(true), () => Task.FromResult(true));
+
+		// Lock Coins: only the coin with points can be locked.
+		Assert.Equal(["x", "y", "z"], screen.Coins.Select(row => row.Id));
+		Assert.Equal([false, false, true], screen.Coins.Select(row => row.CanToggle));
+
+		screen.ShowOffersCommand.Execute(null);
+
+		// List Offers: the three largest coins are picked, with points or without, and the ones without are yellow.
+		Assert.All(screen.Coins, row => Assert.True(row.CanToggle));
+		Assert.All(screen.Coins, row => Assert.True(row.IsSelected));
+		Assert.Equal([true, true, false], screen.Coins.Select(row => row.HasNoPoints));
+
+		// (0 × 0.5 + 0 × 0.3 + 2 × 0.1) ÷ 0.9 = 0.22
+		Assert.Equal("Offer 0.2 AP", screen.OfferButtonText);
+		Assert.Equal("0.45000000", screen.OfferAmount);
+		Assert.True(screen.IsSellRateEnabled);
+		Assert.Null(screen.SellRateNote);
+		Assert.Equal("2.6", screen.OfferSellRate);
+
+		// Without the coin that has points, the offer has none to sell.
+		screen.ToggleCommand.Execute("z");
+
+		Assert.Equal("Offer 0.0 AP", screen.OfferButtonText);
+		Assert.Equal("0.80000000", screen.OfferAmount);
+		Assert.Equal("0", screen.OfferSellRate);
+		Assert.False(screen.IsSellRateEnabled);
+		Assert.Equal("The picked coins have no anonymity points to sell, so the offer lists a sell rate of 0.", screen.SellRateNote);
+
+		// The bar of the sell rate shows it, and does nothing. The other two rates are the maker's as before.
+		Assert.Equal(("0 sats / AP", "0", false), (screen.RateRows[1].ValueText, screen.RateRows[1].Text, screen.RateRows[1].IsEnabled));
+		Assert.Equal(("0.6", true), (screen.RateRows[0].Text, screen.RateRows[0].IsEnabled));
+		Assert.Equal(("1.3", true), (screen.RateRows[2].Text, screen.RateRows[2].IsEnabled));
+
+		// What is typed into the box is not taken.
+		screen.OfferSellRate = "5";
+		Assert.Equal("0", screen.OfferSellRate);
+
+		// With the coin that has points again, the sell rate is what it was.
+		screen.ToggleCommand.Execute("z");
+		Assert.True(screen.IsSellRateEnabled);
+		Assert.Equal("2.6", screen.OfferSellRate);
+		Assert.True(screen.RateRows[1].IsEnabled);
+
+		screen.ToggleCommand.Execute("z");
+		await screen.PostOfferAsync();
+
+		Assert.False(screen.HasOfferError);
+
+		var draft = Assert.Single(market.Posted);
+		Assert.Equal(["x", "y"], draft.CoinIds.Order());
+		Assert.Equal(80_000_000, draft.Amount);
+		Assert.Equal(0m, draft.Points);
+		Assert.Equal(0m, draft.SellRate);
+		Assert.Equal((0.6m, 1.3m), (draft.FeeRate, draft.BuyRate));
+		Assert.Equal(2, draft.MatchedInputs);
+	}
+
 	/// <summary>The screen follows the market: what another part of the application does with the coins shows without being asked for.</summary>
 	[Fact]
 	public async Task ScreenFollowsTheMarketAsync()
@@ -555,6 +621,52 @@ public class MakerScreenTests
 				return Task.FromResult(_confirms);
 			},
 			() => Task.FromResult(true));
+
+	/// <summary>The sample book, and a wallet of three coins of which the two largest have no anonymity points. It keeps what is posted.</summary>
+	private sealed class PlainWalletMarket : IMarket
+	{
+		private readonly SampleMarketModel _sample = new();
+
+		public List<OfferDraft> Posted { get; } = [];
+
+		public bool IsSample => true;
+		public IObservable<System.Reactive.Unit> Changed => System.Reactive.Linq.Observable.Never<System.Reactive.Unit>();
+		public IReadOnlyList<BookMaker> Book => _sample.Book;
+		public string? BookNotice => null;
+
+		public IReadOnlyList<MarketCoinInfo> Coins { get; } =
+		[
+			new(new MarketCoin("x", "first", 50_000_000, 0m), new string('1', 64), 0, "bc1qfirst"),
+			new(new MarketCoin("y", "second", 30_000_000, 0m), new string('2', 64), 1, "bc1qsecond"),
+			new(new MarketCoin("z", "third", 10_000_000, 2m), new string('3', 64), 0, "bc1qthird")
+		];
+
+		public IReadOnlyList<MarketBondInfo> Bonds => [];
+		public IReadOnlyList<MarketOfferInfo> Offers => [];
+		public long OwnBond => 0;
+		public PlannedTaker? Taker => null;
+		public string TakerNotice => "";
+		public string SignNotice => "";
+		public Task RefreshBookAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+		public Task<string?> PostOfferAsync(OfferDraft draft, CancellationToken cancellationToken)
+		{
+			Posted.Add(draft);
+			return Task.FromResult<string?>(null);
+		}
+
+		public Task CancelOfferAsync(int id, CancellationToken cancellationToken) => Task.CompletedTask;
+
+		public Task<(BondQuote? Quote, string? Error)> QuoteBondAsync(BondDraft draft, CancellationToken cancellationToken) =>
+			_sample.QuoteBondAsync(draft, cancellationToken);
+
+		public Task<string?> LockBondAsync(BondQuote quote, Func<Task<bool>> authorize, CancellationToken cancellationToken) =>
+			Task.FromResult<string?>("no");
+
+		public void RedeemBond(MarketBondInfo bond)
+		{
+		}
+	}
 
 	/// <summary>The sample market, where the relays take no offer and the wallet cannot lock.</summary>
 	private sealed class RefusingMarket : IMarket

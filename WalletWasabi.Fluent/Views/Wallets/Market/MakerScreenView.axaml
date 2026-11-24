@@ -35,8 +35,8 @@
       <Setter Property="FontFeatures" Value="+tnum" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
-    <!-- What marks a picked coin: yellow if it is not private, red if a larger picked coin has the same origin, orange beyond the first three. -->
-    <Style Selector="Grid.notPrivate TextBlock">
+    <!-- What marks a picked coin: yellow if it has no points, red if a larger picked coin has the same origin, orange beyond the first three. -->
+    <Style Selector="Grid.noPoints TextBlock">
       <Setter Property="Foreground" Value="{StaticResource MarketWarnBrush}" />
     </Style>
     <Style Selector="Grid.sharedOrigin TextBlock">
@@ -148,7 +148,7 @@
               <Button Theme="{StaticResource MarketRowButton}" Command="{Binding ToggleCommand}" CommandParameter="{Binding Id}"
                       Classes.selected="{Binding IsSelected}" Classes.barred="{Binding !CanToggle}">
                 <Grid ColumnDefinitions="64,*,150,150" Height="38" Margin="14 0 14 0"
-                      Classes.notPrivate="{Binding IsNotPrivate}" Classes.sharedOrigin="{Binding IsSharedOrigin}" Classes.extra="{Binding IsExtra}"
+                      Classes.noPoints="{Binding HasNoPoints}" Classes.sharedOrigin="{Binding IsSharedOrigin}" Classes.extra="{Binding IsExtra}"
                       Classes.barredRow="{Binding IsBarred}">
                   <Border Grid.Column="0" Classes="marketTick" Classes.ticked="{Binding IsSelected}" Classes.dim="{Binding IsTaken}" IsVisible="{Binding IsFree}">
                     <PathIcon Data="{StaticResource checkmark_filled}" IsVisible="{Binding IsSelected}" />
@@ -260,7 +260,8 @@
               </Grid>
               <Grid Classes="marketField" ColumnDefinitions="72,*,60">
                 <TextBlock Classes="marketLabel" Text="SELL RATE" />
-                <TextBox Grid.Column="1" Classes="marketInput" Text="{Binding OfferSellRate}" MaxLength="12" />
+                <TextBox Grid.Column="1" Classes="marketInput" Text="{Binding OfferSellRate}" MaxLength="12"
+                         IsEnabled="{Binding IsSellRateEnabled}" />
                 <TextBlock Grid.Column="2" Classes="marketUnit" Text="sats/AP" Margin="12 0 0 0" />
               </Grid>
               <Grid Classes="marketField" ColumnDefinitions="72,*,60">
@@ -268,6 +269,10 @@
                 <TextBox Grid.Column="1" Classes="marketInput" Text="{Binding OfferBuyRate}" MaxLength="12" />
                 <TextBlock Grid.Column="2" Classes="marketUnit" Text="sats/AP" Margin="12 0 0 0" />
               </Grid>
+              <!-- Why the sell rate is 0 and cannot be set, while the picked coins have no points to sell. -->
+              <TextBlock Classes="marketMuted" FontSize="11.5" TextWrapping="Wrap"
+                         Text="{Binding SellRateNote}"
+                         IsVisible="{Binding SellRateNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <Button Theme="{StaticResource MarketPrimaryButton}" Content="{Binding OfferButtonText}" HorizontalAlignment="Stretch" Command="{Binding PostOfferCommand}" />
               <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource MarketSellBrush}"
                          Text="{Binding OfferError}" IsVisible="{Binding HasOfferError}" />

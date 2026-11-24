@@ -30,9 +30,10 @@ public static class MarketFormat
 	/// <summary>A rate of an anonymity point or a spread: with one decimal at most, and none where it is a whole number.</summary>
 	public static string Rate(decimal satsPerPoint)
 	{
-		var rounded = Math.Floor(satsPerPoint * 10 + 0.5m) / 10;
+		var rounded = Math.Floor(Math.Abs(satsPerPoint) * 10 + 0.5m) / 10;
 
-		return rounded == 0 ? "0" : rounded.ToString("0.#", CultureInfo.InvariantCulture);
+		// The spread of an offer without points is below zero: it sells at 0 whatever it buys at.
+		return rounded == 0 ? "0" : (satsPerPoint < 0 ? Minus : "") + rounded.ToString("0.#", CultureInfo.InvariantCulture);
 	}
 
 	/// <summary>A number of sats, virtual bytes or blocks: rounded to a whole number, a half up, with commas between the thousands.</summary>
@@ -118,6 +119,13 @@ public static class MarketFormat
 	}
 
 	/// <summary>Reads a number that is not negative as it is typed: digits and one decimal point. Null if it is none.</summary>
+	/// <summary>
+	/// A number that may be below zero, as the limit of the spread can be. The sign is the one of the keyboard or the
+	/// one that the screen writes.
+	/// </summary>
+	public static decimal? ParseSignedNumber(string text) =>
+		decimal.TryParse(text.Trim().Replace(Minus, "-"), NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ? number : null;
+
 	public static decimal? ParseNumber(string text) =>
 		decimal.TryParse(text.Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) && number >= 0 ? number : null;
 }

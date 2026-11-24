@@ -174,6 +174,31 @@ public class MakerOfferServiceTests
 		Assert.Empty(_changes);
 	}
 
+	/// <summary>An offer without anonymity points has none to sell: it is posted with a sell rate of 0, whatever was asked for.</summary>
+	[Fact]
+	public async Task OfferWithoutPointsIsPostedWithASellRateOfZeroAsync()
+	{
+		using var service = CreateService();
+		var coin = AddCoin(0.5m);
+
+		var (posted, _) = await service.PostAsync(Request([coin]) with { Points = 0m }, CancellationToken.None);
+
+		Assert.NotNull(posted);
+		Assert.Equal(0m, posted.Offer.Points);
+		Assert.Equal(0m, posted.Offer.SellRate);
+		Assert.Equal(BuyRate, posted.Offer.BuyRate);
+
+		var sent = Assert.Single(_publisher.Events);
+		Assert.Contains("\"sell\":0,", sent.Content);
+		Assert.Contains("\"buy\":100,", sent.Content);
+		Assert.True(MakerOfferEvent.TryParse(sent, Network.RegTest, out var told));
+		Assert.Equal(posted.Offer, told);
+
+		// With points the offer sells at what was asked for.
+		var (other, _) = await service.PostAsync(Request([AddCoin(0.2m)]) with { Points = 0.5m }, CancellationToken.None);
+		Assert.Equal(SellRate, other!.Offer.SellRate);
+	}
+
 	[Fact]
 	public async Task SeveralOffersStandNextToEachOtherEachWithAKeyOfItsOwnAsync()
 	{

@@ -79,6 +79,18 @@ public class OrderBookTabTests
 		Assert.True(Assert.IsType<BookRowViewModel>(rows[1]).IsOwn);
 	}
 
+	/// <summary>A maker without anonymity points has none to sell: its row has a sell rate of 0, and its spread is below zero.</summary>
+	[Fact]
+	public void MakerWithoutPointsIsListedWithASellRateOfZero()
+	{
+		var pointless = new MakerOffer(2m, BuyRate: 100m, SellRate: 0m, Liquidity: 50_000_000, Points: 0m, MatchedInputs: 2, ExtraInputs: 0);
+		var book = new OrderBookSnapshot([new BookEntry(Key('1'), pointless, Bond: 0, Now)], Now, [], null);
+
+		var row = OrderBookTabViewModel.CreateRows(book, [], ownBond: 0).OfType<BookRowViewModel>().Single();
+
+		Assert.Equal(("0", "100", "−100"), (row.SellRate, row.BuyRate, row.Spread));
+	}
+
 	/// <summary>Two makers that their keys give the same name are told apart by the start of their keys.</summary>
 	[Fact]
 	public void MakersOfOneNameAreToldApart()

@@ -192,9 +192,12 @@ public class MakerDeskTests
 		Assert.Equal(323_784_587, _desk.GetOfferFigures(state).Amount);
 	}
 
-	/// <summary>A coin without points is yellow in an offer, and cannot be locked at all.</summary>
+	/// <summary>
+	/// A coin without anonymity points cannot be locked in a bond. In an offer it counts like any other: it is picked
+	/// with the others, it makes the amount, and it is yellow because it has no points to sell.
+	/// </summary>
 	[Fact]
-	public void CoinThatIsNotPrivateIsMarkedInAnOfferAndBarredFromABond()
+	public void CoinWithoutPointsCountsInAnOfferAndIsBarredFromABond()
 	{
 		MarketCoin[] wallet =
 		[
@@ -218,18 +221,104 @@ public class MakerDeskTests
 
 		Assert.Equal(["a"], desk.ToggleAll(desk.Toggle(state, "a")).Selected);
 
-		// List Offers: every coin can be picked, and the ones that are not private are marked.
+		// List Offers: the three largest coins are picked, with points or without.
 		state = desk.SetTab(state, MakerTab.Offers);
-		state = desk.Toggle(desk.Toggle(desk.Toggle(state, "b"), "c"), "d");
-		rows = desk.GetView(state).Coins.ToDictionary(row => row.Coin.Id);
+		var view = desk.GetView(state);
+		rows = view.Coins.ToDictionary(row => row.Coin.Id);
 
-		Assert.Equal(CoinMark.None, rows["a"].Mark);
-		Assert.All(new[] { "b", "c", "d" }, id => Assert.Equal(CoinMark.NotPrivate, rows[id].Mark));
+		Assert.Equal(["a", "b", "c"], state.Selected.Order());
 		Assert.All(rows.Values, row => Assert.False(row.IsBarred));
+		Assert.All(rows.Values, row => Assert.True(row.CanToggle));
 
-		// Only the private coin counts for what is offered.
-		Assert.Equal(50_000_000, desk.GetOfferFigures(state).Amount);
-		Assert.Equal("3.0", desk.GetView(state).OfferPoints);
+		// The coin without points is yellow. Half a point is points.
+		Assert.Equal(CoinMark.None, rows["a"].Mark);
+		Assert.Equal(CoinMark.NoPoints, rows["b"].Mark);
+		Assert.Equal(CoinMark.None, rows["c"].Mark);
+
+		// All three make the amount, 1.2 BTC, of which the half of the wallet that is for offers is 0.7 BTC.
+		Assert.Equal(120_000_000, desk.GetOfferFigures(state).Amount);
+		Assert.Equal("0.70000000", view.OfferAmount);
+
+		// (3 × 0.5 + 0 × 0.4 + 0.5 × 0.3) ÷ 1.2 = 1.375
+		Assert.Equal("1.4", view.OfferPoints);
+		Assert.False(view.IsSellRateFixed);
+		Assert.Equal("2.6", view.OfferSellRate);
+
+		var (draft, _) = desk.ValidateOffer(state);
+		Assert.NotNull(draft);
+		Assert.Equal(3, draft.MatchedInputs);
+		Assert.Equal(2.6m, draft.SellRate);
+
+		// A fourth coin only adds an input. One whose points are not known yet is taken as one without.
+		state = desk.Toggle(state, "d");
+		Assert.Equal(CoinMark.NoPoints, desk.GetView(state).Coins.Single(row => row.Coin.Id == "d").Mark);
+		Assert.Equal(120_000_000, desk.GetOfferFigures(state).Amount);
+		Assert.Equal(3, desk.ValidateOffer(state).Draft!.MatchedInputs);
+	}
+
+	/// <summary>
+	/// An offer of coins without anonymity points has none to sell. It lists a sell rate of 0, whatever was set before,
+	/// and what it pays for a point is not held against that.
+	/// </summary>
+	[Fact]
+	public void OfferWithoutPointsListsASellRateOfZero()
+	{
+		MarketCoin[] wallet =
+		[
+			new("a", "t1", 50_000_000, 3m),
+			new("b", "t2", 40_000_000, 0m),
+			new("c", "t3", 30_000_000, 0.5m),
+			new("d", "t4", 20_000_000, null)
+		];
+		var desk = new MakerDesk(Book, wallet, new HashSet<string>(), 0);
+		var state = desk.SetTab(desk.Open(), MakerTab.Offers);
+
+		// Only the two coins without points are picked.
+		state = desk.Toggle(desk.Toggle(desk.Toggle(state, "a"), "c"), "d");
+		var view = desk.GetView(state);
+
+		Assert.Equal(["b", "d"], state.Selected.Order());
+		Assert.Equal("0.0", view.OfferPoints);
+		Assert.Equal("0.60000000", view.OfferAmount);
+		Assert.True(view.IsSellRateFixed);
+		Assert.Equal("0", view.OfferSellRate);
+
+		// The rate that the strategy had set is kept for when there are points again, and the other rates are as they were.
+		Assert.Equal(("0.6", "2.6", "1.3"), (state.OfferFeeRate, state.OfferSellRate, state.OfferBuyRate));
+
+		var sell = view.RateRows.Single(row => row.Key == "sell");
+		Assert.Equal(("0 sats / AP", "0"), (sell.ValueText, sell.InputText));
+		Assert.Equal("1.3 sats / AP", view.RateRows.Single(row => row.Key == "buy").ValueText);
+
+		var (draft, checkedState) = desk.ValidateOffer(state);
+
+		Assert.NotNull(draft);
+		Assert.Null(checkedState.OfferError);
+		Assert.Equal(0m, draft.Points);
+		Assert.Equal(0m, draft.SellRate);
+		Assert.Equal(1.3m, draft.BuyRate);
+		Assert.Equal(60_000_000, draft.Amount);
+		Assert.Equal(2, draft.MatchedInputs);
+		Assert.Equal(["b", "d"], draft.CoinIds.Order());
+
+		// Nothing has to stand in the sell rate box for it.
+		Assert.NotNull(desk.ValidateOffer(state with { OfferSellRate = "" }).Draft);
+		Assert.Equal(0m, desk.ValidateOffer(state with { OfferSellRate = "7" }).Draft!.SellRate);
+
+		// With a coin that has points, the sell rate is the maker's again.
+		state = desk.Toggle(state, "c");
+		view = desk.GetView(state);
+
+		Assert.False(view.IsSellRateFixed);
+		Assert.Equal("2.6", view.OfferSellRate);
+		Assert.Equal(2.6m, desk.ValidateOffer(state).Draft!.SellRate);
+		Assert.Equal("Enter a sell rate.", desk.ValidateOffer(state with { OfferSellRate = "" }).State.OfferError);
+
+		// On Lock Coins nothing is offered, and no rate is fixed.
+		Assert.False(desk.GetView(desk.SetTab(state, MakerTab.Bond)).IsSellRateFixed);
+
+		// With nothing picked there is no offer to list.
+		Assert.False(desk.GetView(state with { Selected = [] }).IsSellRateFixed);
 	}
 
 	[Fact]
@@ -341,7 +430,7 @@ public class MakerDeskTests
 		Assert.Equal("Enter an amount to offer.", ErrorOfOffer(open with { OfferAmount = "" }));
 		Assert.Equal("Enter an amount to offer.", ErrorOfOffer(open with { OfferAmount = "0" }));
 		Assert.Equal(
-			"Amount exceeds the counted coins: 5.00000000 BTC offered, 3.23784587 BTC across the three largest private coins from distinct origins.",
+			"Amount exceeds the counted coins: 5.00000000 BTC offered, 3.23784587 BTC across the three largest coins from distinct origins.",
 			ErrorOfOffer(open with { OfferAmount = "5" }));
 		Assert.Equal("Enter a minimum fee rate.", ErrorOfOffer(open with { OfferFeeRate = "" }));
 		Assert.Equal("Enter a minimum fee rate.", ErrorOfOffer(open with { OfferFeeRate = "0" }));

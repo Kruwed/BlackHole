@@ -299,8 +299,13 @@ public class TakerDeskTests
 		var state = desk.Open();
 		var view = desk.GetView(state);
 
-		// The counts are of the makers of the book, and the offers of the wallet are rows among them.
+		// The counts are of the makers of the book, on both sides of the stroke: the offer of the wallet that passes the
+		// filters is a row that can be ticked, and is not counted. The offers of the wallet are rows among the others.
 		Assert.Equal(250, view.BookCount);
+		Assert.Equal(48, view.AvailableCount);
+		Assert.Equal("48/250 Makers", view.CountText);
+		Assert.Equal("76.79/418.91 BTC", view.LiquidityText);
+		Assert.True(view.Bonded.Single(row => row.Maker.Id == bonded.Id).IsAvailable);
 		Assert.Equal(217, view.Bonded.Count);
 		Assert.Equal(35, view.Unbonded.Count);
 		Assert.Contains(view.Bonded, row => row.Maker.Id == bonded.Id);
@@ -352,6 +357,69 @@ public class TakerDeskTests
 		Assert.Equal(0.55m, later.GetCutoffs(rebased)[BookRules.IndexOf(BookCriterion.FeeRate)]);
 		Assert.Equal(bondLimit, later.GetCutoffs(rebased)[BookRules.IndexOf(BookCriterion.Bond)]);
 		Assert.Null(later.GetCutoffs(rebased)[BookRules.IndexOf(BookCriterion.Liquidity)]);
+	}
+
+	/// <summary>
+	/// A maker without anonymity points sells at 0 whatever it buys at, so its spread is below zero. The filter of the
+	/// spread takes a limit below zero, and no limit of the sell rate cuts such a maker.
+	/// </summary>
+	[Fact]
+	public void MakerWithoutPointsHasASpreadBelowZero()
+	{
+		BookMaker[] book =
+		[
+			new(1, "with-points", 1m, BuyRate: 1m, SellRate: 3m, Spread: 2m, Bond: 0, Liquidity: 10_000_000, 1, 0, 4m, []),
+			new(2, "more-points", 1m, BuyRate: 2m, SellRate: 2.5m, Spread: 0.5m, Bond: 0, Liquidity: 20_000_000, 1, 0, 9m, []),
+			new(3, "no-points", 1m, BuyRate: 1.3m, SellRate: 0m, Spread: -1.3m, Bond: 0, Liquidity: 30_000_000, 2, 0, 0m, [])
+		];
+		var desk = new TakerDesk(book, []);
+
+		// Without a limit all three can be picked.
+		var open = new TakerDeskState();
+		Assert.Equal(3, desk.GetView(open).AvailableCount);
+
+		var spread = desk.GetView(open).Filters.Single(row => row.Criterion == BookCriterion.Spread);
+		Assert.Equal("−1.3 sats", spread.BestText);
+		Assert.Equal("≤ 2 sats", spread.CutoffText);
+
+		// A limit of the spread below zero leaves the maker without points.
+		var state = desk.SetCutoff(open, BookCriterion.Spread, -1m);
+		var view = desk.GetView(state);
+
+		Assert.Equal(["no-points"], view.Unbonded.Where(row => row.IsAvailable).Select(row => row.Maker.Alias));
+
+		spread = view.Filters.Single(row => row.Criterion == BookCriterion.Spread);
+		Assert.Equal("≤ −1 sats", spread.CutoffText);
+		Assert.Equal("-1", spread.ValueText);
+
+		// The strictest limit of the sell rate is its sell rate, 0.
+		state = desk.SetTick(open, BookCriterion.SellRate, desk.MaxTick);
+
+		Assert.Equal(0m, desk.GetCutoffs(state)[BookRules.IndexOf(BookCriterion.SellRate)]);
+		Assert.Equal(["no-points"], desk.GetView(state).Unbonded.Where(row => row.IsAvailable).Select(row => row.Maker.Alias));
+	}
+
+	/// <summary>Whoever is the only maker on its relays sees its own offer in the table, and a book of nobody else.</summary>
+	[Fact]
+	public void OfferOfTheWalletAloneIsNoBookOfOthers()
+	{
+		var own = new BookMaker(1_000_001, "jade-ibis", 1.5m, BuyRate: 120m, SellRate: 0m, Spread: -120m, Bond: 0, Liquidity: 150_000_000, 3, 0, 0m, [], IsOwn: true);
+		var desk = new TakerDesk([], [own]);
+		var state = desk.Open();
+		var view = desk.GetView(state);
+
+		Assert.Empty(view.Bonded);
+		Assert.Equal([own], view.Unbonded.Select(row => row.Maker));
+		Assert.True(view.Unbonded[0].IsAvailable);
+		Assert.Equal("0/0 Makers", view.CountText);
+		Assert.Equal("0.00/0.00 BTC", view.LiquidityText);
+
+		// It can be ticked, and then its coins are what the taker brings.
+		state = desk.Toggle(state, own.Id);
+		var selection = desk.GetSelection(state, taker: null);
+
+		Assert.Empty(selection.Makers);
+		Assert.Equal(new PlannedTaker(InputCount: 3, Amount: 150_000_000), selection.Taker);
 	}
 
 	[Fact]

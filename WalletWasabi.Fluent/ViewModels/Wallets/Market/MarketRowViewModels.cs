@@ -93,7 +93,7 @@ public partial class MakerCoinRowViewModel : ReactiveObject
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _reference = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _lockText = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSelected;
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isNotPrivate;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasNoPoints;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isSharedOrigin;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isExtra;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isBarred;
@@ -130,7 +130,7 @@ public partial class MakerCoinRowViewModel : ReactiveObject
 
 	public bool IsFree => !IsBond;
 
-	/// <summary>How the row is marked, if it is: the first that applies of not private, shared origin and extra.</summary>
+	/// <summary>How the row is marked, if it is: the first that applies of no points, shared origin and extra.</summary>
 	public CoinMark Mark { get; private set; }
 
 	public ICommand ToggleCommand { get; }
@@ -142,7 +142,7 @@ public partial class MakerCoinRowViewModel : ReactiveObject
 		LockText = info?.BlocksLeft is { } blocks ? MarketFormat.Whole(blocks) : "";
 		IsSelected = row.IsSelected;
 		Mark = row.Mark;
-		IsNotPrivate = row.Mark == CoinMark.NotPrivate;
+		HasNoPoints = row.Mark == CoinMark.NoPoints;
 		IsSharedOrigin = row.Mark == CoinMark.SharedOrigin;
 		IsExtra = row.Mark == CoinMark.Extra;
 		IsBarred = row.IsBarred;

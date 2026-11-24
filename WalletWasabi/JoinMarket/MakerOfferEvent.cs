@@ -143,6 +143,12 @@ public static class MakerOfferEvent
 			// bond is not found.
 			var read = decoded.Value.Bond is { IsWellFormed: false } ? decoded.Value with { Bond = null } : decoded.Value;
 
+			// An offer without points has none to sell. It is listed with a sell rate of 0, whatever it says.
+			if (!read.HasPoints && read.SellRate != 0)
+			{
+				read = read with { SellRate = 0 };
+			}
+
 			if (read.Validate() is not null)
 			{
 				return false;

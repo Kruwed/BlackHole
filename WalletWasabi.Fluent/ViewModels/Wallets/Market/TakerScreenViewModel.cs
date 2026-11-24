@@ -187,8 +187,9 @@ public partial class TakerScreenViewModel : ReactiveObject
 		{
 			Apply(_desk.SetCutoff(_state, criterion, null));
 		}
-		else if (MarketFormat.ParseNumber(text) is { } value)
+		else if ((criterion == BookCriterion.Spread ? MarketFormat.ParseSignedNumber(text) : MarketFormat.ParseNumber(text)) is { } value)
 		{
+			// The spread of an offer without points is below zero, so the limit of the spread can be.
 			Apply(_desk.SetCutoff(_state, criterion, value));
 		}
 		else

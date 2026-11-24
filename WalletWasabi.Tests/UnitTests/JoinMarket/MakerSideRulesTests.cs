@@ -82,11 +82,11 @@ public class MakerSideRulesTests
 		Assert.Equal(testCase.GetProperty("offerAmountBtc").GetString(), figures.Amount > 0 ? MarketFormat.Btc(figures.Amount) : "");
 
 		// A row takes the first mark that applies: no points, then a shared origin, then beyond the first three.
-		var notPrivate = figures.NotPrivate;
-		var sharedOrigin = figures.SharedOrigin.Except(notPrivate).ToArray();
-		var extra = figures.Extra.Except(notPrivate).Except(sharedOrigin).ToArray();
+		var withoutPoints = figures.WithoutPoints;
+		var sharedOrigin = figures.SharedOrigin.Except(withoutPoints).ToArray();
+		var extra = figures.Extra.Except(withoutPoints).Except(sharedOrigin).ToArray();
 
-		Assert.Equal(ReadIds(testCase.GetProperty("rowsYellowNoPoints")), notPrivate.Order(StringComparer.Ordinal));
+		Assert.Equal(ReadIds(testCase.GetProperty("rowsYellowNoPoints")), withoutPoints.Order(StringComparer.Ordinal));
 		Assert.Equal(ReadIds(testCase.GetProperty("rowsRedSharedOrigin")), sharedOrigin.Order(StringComparer.Ordinal));
 		Assert.Equal(ReadIds(testCase.GetProperty("rowsOrangeBeyondThree")), extra.Order(StringComparer.Ordinal));
 	}
@@ -150,9 +150,12 @@ public class MakerSideRulesTests
 		Assert.Equal(["10", "14", "8"], MakerCoins.GetDefaultOfferCoins(coins, new HashSet<string>(), CoinSortKey.Points, ascending: false));
 	}
 
-	/// <summary>A coin without a whole point is not private: it is never picked, and it adds nothing to an offer.</summary>
+	/// <summary>
+	/// A coin without anonymity points counts in an offer like any other: it is picked, it makes the amount, and it
+	/// counts in the points of the offer with none. A bond takes private coins only.
+	/// </summary>
 	[Fact]
-	public void CoinsThatAreNotPrivateAreNotPickedAndNotCounted()
+	public void CoinsWithoutPointsCountInAnOfferAndNotInABond()
 	{
 		MarketCoin[] coins =
 		[
@@ -163,19 +166,43 @@ public class MakerSideRulesTests
 			new("many", "e", 50_000_000, 7.5m)
 		];
 
-		Assert.Equal(["one", "many"], MakerCoins.GetDefaultOfferCoins(coins, new HashSet<string>(), CoinSortKey.Amount, ascending: false));
+		// The first three of the list, by amount or by points.
+		Assert.Equal(["none", "half", "unknown"], MakerCoins.GetDefaultOfferCoins(coins, new HashSet<string>(), CoinSortKey.Amount, ascending: false));
+		Assert.Equal(["many", "one", "half"], MakerCoins.GetDefaultOfferCoins(coins, new HashSet<string>(), CoinSortKey.Points, ascending: false));
 
 		var figures = MakerCoins.GetOfferFigures(coins, coins.Select(coin => coin.Id).ToHashSet(), CoinSortKey.Amount, ascending: false);
 
-		Assert.Equal(150_000_000, figures.Amount);
-		Assert.Equal(["none", "half", "unknown"], figures.NotPrivate);
-		Assert.Empty(figures.Extra);
+		// The three largest make the amount: 5 + 4 + 3 BTC.
+		Assert.Equal(1_200_000_000, figures.Amount);
 
-		// One point on 1 BTC and seven and a half on half a BTC: (1 + 3.75) / 1.5.
-		Assert.Equal("3.2", figures.PointsText);
+		// A coin whose points are not known yet is taken as one without. Half a point is points.
+		Assert.Equal(["none", "unknown"], figures.WithoutPoints);
+		Assert.Equal(["one", "many"], figures.Extra);
 
-		var allocation = MakerCoins.Allocate(coins, new HashSet<string>(), 0, bondShare: 0.5, MakerTab.Bond, CoinSortKey.Amount, ascending: false);
-		Assert.Equal(["one", "many"], allocation.CoinIds);
+		// No point on 5 BTC, half a point on 4 BTC, none on 3 BTC: 2 / 12.
+		Assert.Equal("0.2", figures.PointsText);
+		Assert.True(figures.HasPoints);
+
+		// An offer of coins without points has none.
+		var pointless = MakerCoins.GetOfferFigures(coins, new HashSet<string> { "none", "unknown" }, CoinSortKey.Amount, ascending: false);
+		Assert.Equal(0m, pointless.Points);
+		Assert.False(pointless.HasPoints);
+		Assert.Equal("0.0", pointless.PointsText);
+		Assert.Equal(800_000_000, pointless.Amount);
+
+		// One coin with points among them is enough: (0 × 5 + 7.5 × 0.5) / 5.5.
+		var mixed = MakerCoins.GetOfferFigures(coins, new HashSet<string> { "none", "many" }, CoinSortKey.Amount, ascending: false);
+		Assert.Equal("0.7", mixed.PointsText);
+		Assert.True(mixed.HasPoints);
+
+		// The strategy picks for an offer among all coins: half of the 13.5 BTC, which the three largest cover.
+		var offer = MakerCoins.Allocate(coins, new HashSet<string>(), 0, bondShare: 0.5, MakerTab.Offers, CoinSortKey.Amount, ascending: false);
+		Assert.Equal(["none", "half", "unknown"], offer.CoinIds);
+		Assert.Equal(675_000_000, offer.Amount);
+
+		// And for a bond among the private ones.
+		var bond = MakerCoins.Allocate(coins, new HashSet<string>(), 0, bondShare: 0.5, MakerTab.Bond, CoinSortKey.Amount, ascending: false);
+		Assert.Equal(["one", "many"], bond.CoinIds);
 	}
 
 	/// <summary>A bond that exists fixes how the wallet is split, whatever the triangle says, and nothing more is to be locked.</summary>

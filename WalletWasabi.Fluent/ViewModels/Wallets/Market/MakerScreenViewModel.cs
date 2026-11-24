@@ -188,11 +188,27 @@ public partial class MakerScreenViewModel : ReactiveObject
 		set => Type(_state with { OfferFeeRate = MakerDesk.CleanNumber(value), OfferError = null }, _state.OfferFeeRate, value);
 	}
 
+	/// <summary>
+	/// The sell rate of the offer. An offer of coins without anonymity points has none to sell: it lists 0, and the box
+	/// cannot be typed into until a coin with points is picked.
+	/// </summary>
 	public string OfferSellRate
 	{
-		get => _state.OfferSellRate;
-		set => Type(_state with { OfferSellRate = MakerDesk.CleanNumber(value, 1), OfferError = null }, _state.OfferSellRate, value);
+		get => _view.OfferSellRate;
+		set
+		{
+			if (!_view.IsSellRateFixed)
+			{
+				Type(_state with { OfferSellRate = MakerDesk.CleanNumber(value, 1), OfferError = null }, _state.OfferSellRate, value);
+			}
+		}
 	}
+
+	/// <summary>Whether the sell rate is the maker's to set: the picked coins have anonymity points to sell.</summary>
+	public bool IsSellRateEnabled => !_view.IsSellRateFixed;
+
+	/// <summary>Why the sell rate cannot be set, while it cannot.</summary>
+	public string? SellRateNote => _view.IsSellRateFixed ? "The picked coins have no anonymity points to sell, so the offer lists a sell rate of 0." : null;
 
 	public string OfferBuyRate
 	{
@@ -403,8 +419,10 @@ public partial class MakerScreenViewModel : ReactiveObject
 		{
 			var row = _view.RateRows.Single(candidate => candidate.Key == key);
 
-			// Without a book there is nothing to place a rate in.
-			_rateRows[rate].Show(row.Percent, 100, row.Caption, row.ValueText, row.InputText, _view.AreRatesEnabled && _desk.Book.Count > 0);
+			// Without a book there is nothing to place a rate in, and an offer without points has no sell rate to place.
+			var isFixed = rate == BookCriterion.SellRate && _view.IsSellRateFixed;
+
+			_rateRows[rate].Show(row.Percent, 100, row.Caption, row.ValueText, row.InputText, _view.AreRatesEnabled && _desk.Book.Count > 0 && !isFixed);
 		}
 
 		IsAllSelected = _view.SelectAll == SelectAllState.All;
@@ -419,7 +437,7 @@ public partial class MakerScreenViewModel : ReactiveObject
 			nameof(IsBondTab), nameof(IsOffersTab), nameof(HasBond), nameof(IsAllocationEnabled), nameof(AreRatesEnabled),
 			nameof(ReferenceHeader), nameof(IsSortedByAmount), nameof(IsSortedByPoints), nameof(IsSortAscending),
 			nameof(OfferButtonText), nameof(OfferError), nameof(HasOfferError), nameof(BondError), nameof(HasBondError),
-			nameof(OfferAmount), nameof(OfferFeeRate), nameof(OfferSellRate), nameof(OfferBuyRate),
+			nameof(OfferAmount), nameof(OfferFeeRate), nameof(OfferSellRate), nameof(OfferBuyRate), nameof(IsSellRateEnabled), nameof(SellRateNote),
 			nameof(BondAmount), nameof(BondBlocks), nameof(BondFeeRate)
 		];
 

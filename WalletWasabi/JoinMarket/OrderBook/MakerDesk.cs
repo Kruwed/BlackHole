@@ -51,13 +51,13 @@ public enum CoinMark
 {
 	None,
 
-	/// <summary>A picked coin that is not private: it pays for its own input and adds nothing to an offer.</summary>
-	NotPrivate,
+	/// <summary>A picked coin without anonymity points. It counts in an offer like any other, and has no points to sell.</summary>
+	NoPoints,
 
 	/// <summary>A picked coin that comes from the same transaction as a larger picked coin. It is not counted.</summary>
 	SharedOrigin,
 
-	/// <summary>A picked private coin beyond the first three. It only adds the cost of its input.</summary>
+	/// <summary>A picked coin beyond the first three. It only adds the cost of its input.</summary>
 	Extra
 }
 
@@ -87,6 +87,11 @@ public sealed record MakerBarRow(string Key, string Label, int Percent, string C
 /// <param name="OfferAmount">What stands in the amount box of the offer.</param>
 /// <param name="BondAmount">What stands in the amount box of the bond.</param>
 /// <param name="OfferPoints">The points of the offer as its button tells them: "Offer 4.3 AP".</param>
+/// <param name="OfferSellRate">What stands in the sell rate box of the offer: what was set, or 0 for an offer without points.</param>
+/// <param name="IsSellRateFixed">
+/// Whether the sell rate is not the maker's to set: the picked coins have no anonymity points, so the offer has none
+/// to sell and lists a sell rate of 0.
+/// </param>
 public sealed record MakerDeskView(
 	IReadOnlyList<MakerCoinRow> Coins,
 	IReadOnlyList<MakerBarRow> AllocationRows,
@@ -96,6 +101,8 @@ public sealed record MakerDeskView(
 	string OfferAmount,
 	string BondAmount,
 	string OfferPoints,
+	string OfferSellRate,
+	bool IsSellRateFixed,
 	SelectAllState SelectAll);
 
 /// <summary>An offer that is ready to be posted.</summary>
@@ -146,6 +153,9 @@ public sealed class MakerDesk
 	public const string BondAmountError = "Enter an amount to lock.";
 	public const string BondBlocksError = "Enter a lock time in blocks.";
 	public const string BondFeeRateError = "Enter a fee rate for the bonding transaction.";
+
+	/// <summary>The sell rate that an offer without anonymity points lists: it has none to sell.</summary>
+	public const string NoPointsSellRate = "0";
 
 	/// <param name="book">The offers of the other makers: the rates of an offer are placed among theirs.</param>
 	/// <param name="coins">The coins of the wallet, the ones that are locked in a bond included.</param>
@@ -424,16 +434,19 @@ public sealed class MakerDesk
 			.ToArray();
 
 		var free = Coins.Where(coin => CanPick(state, coin)).Select(coin => coin.Id).ToArray();
+		var isSellRateFixed = IsSellRateFixed(state, figures);
 
 		return new MakerDeskView(
 			rows,
 			GetAllocationRows(state),
-			GetRateRows(state),
+			GetRateRows(state, isSellRateFixed),
 			IsAllocationEnabled: state.Tab == MakerTab.Bond && !HasBond,
 			AreRatesEnabled: state.Tab == MakerTab.Offers,
 			state.OfferAmount ?? (selected.Length > 0 && figures.Amount > 0 ? MarketFormat.Btc(figures.Amount) : ""),
 			state.BondAmount ?? (selected.Length > 0 ? MarketFormat.Btc(selected.Sum(coin => coin.Amount)) : ""),
 			figures.PointsText,
+			isSellRateFixed ? NoPointsSellRate : state.OfferSellRate,
+			isSellRateFixed,
 			GetSelectAllState(state, free));
 	}
 
@@ -444,6 +457,9 @@ public sealed class MakerDesk
 		var figures = GetOfferFigures(state);
 		var selected = Coins.Where(coin => state.Selected.Contains(coin.Id)).ToArray();
 		var amount = MarketFormat.ParseBtc(view.OfferAmount);
+
+		// An offer without points has none to sell: its sell rate is 0, whatever was set before.
+		var sellRateText = view.OfferSellRate;
 
 		string? error = null;
 
@@ -457,13 +473,13 @@ public sealed class MakerDesk
 		}
 		else if (amount > figures.Amount)
 		{
-			error = $"Amount exceeds the counted coins: {MarketFormat.Btc(amount.Value)} BTC offered, {MarketFormat.Btc(figures.Amount)} BTC across the three largest private coins from distinct origins.";
+			error = $"Amount exceeds the counted coins: {MarketFormat.Btc(amount.Value)} BTC offered, {MarketFormat.Btc(figures.Amount)} BTC across the three largest coins from distinct origins.";
 		}
 		else if (MarketFormat.ParseNumber(state.OfferFeeRate) is not > 0)
 		{
 			error = OfferFeeRateError;
 		}
-		else if (MarketFormat.ParseNumber(state.OfferSellRate) is null)
+		else if (MarketFormat.ParseNumber(sellRateText) is null)
 		{
 			error = OfferSellRateError;
 		}
@@ -478,11 +494,11 @@ public sealed class MakerDesk
 		}
 
 		var feeRate = MarketFormat.ParseNumber(state.OfferFeeRate)!.Value;
-		var sellRate = MarketFormat.ParseNumber(state.OfferSellRate)!.Value;
+		var sellRate = MarketFormat.ParseNumber(sellRateText)!.Value;
 		var buyRate = MarketFormat.ParseNumber(state.OfferBuyRate)!.Value;
 
 		// What the market does not take as the terms of an offer, whatever was typed.
-		if (MakerOffer.ValidateTerms(feeRate, buyRate, sellRate) is { } reason)
+		if (MakerOffer.ValidateTerms(feeRate, buyRate, sellRate, figures.HasPoints) is { } reason)
 		{
 			return (null, state with { OfferError = reason });
 		}
@@ -494,7 +510,7 @@ public sealed class MakerDesk
 			sellRate,
 			buyRate,
 			figures.Points,
-			Math.Min(MakerCoins.CountedCoins, selected.Count(coin => coin.IsPrivate)));
+			Math.Min(MakerCoins.CountedCoins, selected.Length));
 
 		return (draft, state with { OfferError = null });
 	}
@@ -596,9 +612,9 @@ public sealed class MakerDesk
 			return CoinMark.None;
 		}
 
-		if (!coin.IsPrivate)
+		if (!coin.HasPoints)
 		{
-			return CoinMark.NotPrivate;
+			return CoinMark.NoPoints;
 		}
 
 		if (state.Tab != MakerTab.Offers)
@@ -632,7 +648,14 @@ public sealed class MakerDesk
 		return [Row("liq", "Liquidity", 1 - state.BondShare), Row("bond", "Bond", state.BondShare)];
 	}
 
-	private MakerBarRow[] GetRateRows(MakerDeskState state)
+	/// <summary>
+	/// Whether the offer that the state would make has no anonymity points: coins are picked for an offer, and none of
+	/// the ones that count has a point. Such an offer lists a sell rate of 0.
+	/// </summary>
+	private static bool IsSellRateFixed(MakerDeskState state, OfferFigures figures) =>
+		state.Tab == MakerTab.Offers && state.Selected.Count > 0 && !figures.HasPoints;
+
+	private MakerBarRow[] GetRateRows(MakerDeskState state, bool isSellRateFixed)
 	{
 		MakerBarRow Row(string key, string label, BookCriterion rate, string text, string unit, Func<decimal, string> format)
 		{
@@ -649,7 +672,7 @@ public sealed class MakerDesk
 		return
 		[
 			Row("minFee", "Fee rate", BookCriterion.FeeRate, state.OfferFeeRate, "sat/vB", MarketFormat.FeeRate),
-			Row("sell", "Sell rate", BookCriterion.SellRate, state.OfferSellRate, "sats / AP", MarketFormat.Rate),
+			Row("sell", "Sell rate", BookCriterion.SellRate, isSellRateFixed ? NoPointsSellRate : state.OfferSellRate, "sats / AP", MarketFormat.Rate),
 			Row("buy", "Buy rate", BookCriterion.BuyRate, state.OfferBuyRate, "sats / AP", MarketFormat.Rate)
 		];
 	}
