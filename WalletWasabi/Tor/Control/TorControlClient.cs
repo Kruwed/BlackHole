@@ -75,6 +75,13 @@ public class TorControlClient : IAsyncDisposable
 	/// <remarks>Tor control protocol does not provide a foolproof way to recognize that a response belongs to a request.</remarks>
 	private readonly AsyncLock _messageLock = new();
 
+	/// <summary>
+	/// How many answers of Tor are still to come to commands whose callers stopped waiting. They are read and dropped
+	/// before the next command is sent, so that every command gets its own answer.
+	/// </summary>
+	/// <remarks>Guarded by <see cref="_messageLock"/>.</remarks>
+	private int _abandonedReplies;
+
 
 	/// <summary>Number of subscribers that currently listen to Tor's async events.</summary>
 	/// <remarks>Mainly for tests.</remarks>
@@ -207,6 +214,9 @@ public class TorControlClient : IAsyncDisposable
 	{
 		using IDisposable _ = await _messageLock.LockAsync(cancellationToken).ConfigureAwait(false);
 
+		// The reader stops after the next answer, and that has to be the answer to the shutdown.
+		await DropAbandonedRepliesNoLockAsync(cancellationToken).ConfigureAwait(false);
+
 		// This assignment must be done after _messageLock is acquired to prevent the race in calling SendCommand method by someone else.
 		_readLastSyncReply = true;
 
@@ -296,16 +306,50 @@ public class TorControlClient : IAsyncDisposable
 		return await SendCommandNoLockAsync(command, cancellationToken).ConfigureAwait(false);
 	}
 
+	/// <summary>
+	/// Reads the answers that Tor still owes to commands whose callers stopped waiting. These answers come first, and
+	/// none of them is the answer to the command that is sent next.
+	/// </summary>
+	/// <remarks>Lock <see cref="_messageLock"/> must be acquired by the caller.</remarks>
+	private async Task DropAbandonedRepliesNoLockAsync(CancellationToken cancellationToken)
+	{
+		while (_abandonedReplies > 0)
+		{
+			var stale = await _syncChannel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+			_abandonedReplies--;
+			Logger.LogTrace($"Client: Dropped the reply to a command that was given up on: '{stale}'");
+		}
+	}
+
 	/// <remarks>Lock <see cref="_messageLock"/> must be acquired by the caller.</remarks>
 	private async Task<TorControlReply> SendCommandNoLockAsync(string command, CancellationToken cancellationToken)
 	{
 		using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_readerCts.Token, cancellationToken);
 
-		Logger.LogTrace($"Client: About to send command: '{command.TrimEnd()}'");
-		await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(command)), linkedCts.Token).ConfigureAwait(false);
-		await _pipeWriter.FlushAsync(linkedCts.Token).ConfigureAwait(false);
+		await DropAbandonedRepliesNoLockAsync(linkedCts.Token).ConfigureAwait(false);
 
-		var reply = await _syncChannel.Reader.ReadAsync(linkedCts.Token).ConfigureAwait(false);
+		linkedCts.Token.ThrowIfCancellationRequested();
+
+		Logger.LogTrace($"Client: About to send command: '{command.TrimEnd()}'");
+
+		// A command is sent whole or not at all: half a command would be read by Tor together with the next one. So
+		// the caller cannot give up here, only the client itself, which is then done with Tor.
+		await _pipeWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(command)), _readerCts.Token).ConfigureAwait(false);
+		await _pipeWriter.FlushAsync(_readerCts.Token).ConfigureAwait(false);
+
+		TorControlReply reply;
+
+		try
+		{
+			reply = await _syncChannel.Reader.ReadAsync(linkedCts.Token).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (!_readerCts.IsCancellationRequested)
+		{
+			// The caller gave up. Tor answers all the same, and that answer is not for whoever asks next.
+			_abandonedReplies++;
+			throw;
+		}
+
 		Logger.LogTrace($"Client: Reply: '{reply}'");
 
 		return reply;

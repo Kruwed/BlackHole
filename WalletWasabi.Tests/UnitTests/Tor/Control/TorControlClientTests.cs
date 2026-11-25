@@ -309,12 +309,11 @@ public class TorControlClientTests
 	}
 
 	/// <summary>
-	/// Verifies that if <see cref="TorControlClient.SubscribeEventsAsync(IReadOnlyList{string}, CancellationToken)"/> is canceled,
-	/// then the internal message loop IS *corrupted*.
-	/// <para>This tests demonstrates a bug that is documented and accepted as a limitation of the current implementation.</para>
+	/// Whoever stops waiting for the answer to a command leaves that answer behind, and Tor still sends it. It is not
+	/// the answer to the command that comes next: every command gets its own.
 	/// </summary>
 	[Fact(Timeout = 120000)] // 2 minutes
-	public async Task SubscriptionEvents_SubscriptionCancellingCorruptsStateAsync()
+	public async Task AnswerToAbandonedCommandIsNotGivenToTheNextAsync()
 	{
 		using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
 		using var subscribeCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
@@ -332,20 +331,60 @@ public class TorControlClientTests
 		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await subscribeTask);
 		Assert.Equal(0, client.SubscriberCount);
 
+		// The next command waits for the answer that is still to come, and is not sent before it.
+		var getConfTask = client.GetConfAsync("SocksPort", timeoutCts.Token);
+
 		// Tor answers the cancelled command late.
 		await toClient.Writer.WriteAsciiAndFlushAsync("250 OK\r\n", timeoutCts.Token);
 
-		// A different command must get ITS OWN reply, not the stale "250 OK".
-		var getConfTask = client.GetConfAsync("SocksPort", timeoutCts.Token);
 		Assert.Equal("GETCONF SocksPort", await toServer.Reader.ReadLineAsync(timeoutCts.Token));
 		await toClient.Writer.WriteAsciiAndFlushAsync("250 SocksPort=9050\r\n", timeoutCts.Token);
 
 		var reply = await getConfTask;
 
-		// The expected reply is "250 SocksPort=9050", not the stale "250 OK" from the cancelled command!
-		// This is a known issue with the current implementation.
-		Assert.Equal("OK", Assert.Single(reply.ResponseLines));
-		Assert.NotEqual("SocksPort=9050", Assert.Single(reply.ResponseLines));
+		Assert.Equal("SocksPort=9050", Assert.Single(reply.ResponseLines));
+	}
+
+	/// <summary>
+	/// The same holds for an answer that had arrived already when the caller gave up, and for several commands in a
+	/// row that were given up on.
+	/// </summary>
+	[Fact(Timeout = 120000)] // 2 minutes
+	public async Task AnswersToSeveralAbandonedCommandsAreDroppedAsync()
+	{
+		using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+		var toServer = new Pipe();
+		var toClient = new Pipe();
+
+		await using var client = new TorControlClient(pipeReader: toClient.Reader, pipeWriter: toServer.Writer);
+
+		for (var i = 0; i < 2; i++)
+		{
+			using var giveUpCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+
+			var abandoned = client.GetConfAsync($"Abandoned{i}", giveUpCts.Token);
+
+			// The first of them is waited for by nobody: the second command drops its answer before it is sent itself.
+			if (i == 1)
+			{
+				await toClient.Writer.WriteAsciiAndFlushAsync("250 Abandoned0=0\r\n", timeoutCts.Token);
+			}
+
+			Assert.Equal($"GETCONF Abandoned{i}", await toServer.Reader.ReadLineAsync(timeoutCts.Token));
+
+			giveUpCts.Cancel();
+			await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await abandoned);
+		}
+
+		await toClient.Writer.WriteAsciiAndFlushAsync("250 Abandoned1=1\r\n", timeoutCts.Token);
+
+		var getConfTask = client.GetConfAsync("SocksPort", timeoutCts.Token);
+
+		Assert.Equal("GETCONF SocksPort", await toServer.Reader.ReadLineAsync(timeoutCts.Token));
+		await toClient.Writer.WriteAsciiAndFlushAsync("250 SocksPort=9050\r\n", timeoutCts.Token);
+
+		Assert.Equal("SocksPort=9050", Assert.Single((await getConfTask).ResponseLines));
 	}
 
 	/// <summary>
