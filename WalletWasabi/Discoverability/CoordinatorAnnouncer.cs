@@ -11,19 +11,25 @@ using WalletWasabi.Logging;
 namespace WalletWasabi.Discoverability;
 
 public class CoordinatorAnnouncer(AnnouncerConfig config, Network network, TimeSpan? time = null)
-	: PeriodicRunner(time ?? TimeSpan.FromMinutes(15))
+	: PeriodicRunner(time ?? AnnouncementPeriod)
 {
+	/// <summary>What the <c>type</c> tag of an announcement says.</summary>
+	public const string Type = "wabisabi";
+
+	/// <summary>How often a coordinator announces itself, to tell that it is still there.</summary>
+	public static readonly TimeSpan AnnouncementPeriod = TimeSpan.FromMinutes(15);
+
 	protected override async Task ActionAsync(CancellationToken cancellationToken)
 	{
 		using var client = NostrClientFactory.Create(config.RelayUris.Select(x => new Uri(x)).ToArray());
 		var unsignedAnnouncementEvent = new NostrEvent
 		{
-			Kind = 15750,
+			Kind = JoinMarket.MakerOfferEvent.Kind,
 			Content = config.CoordinatorDescription,
 			Tags =
 			[
 				CreateTag("name", config.CoordinatorName),
-				CreateTag("type", "wabisabi"),
+				CreateTag("type", Type),
 				CreateTag("network", network.ChainName.ToString().ToLower()),
 				CreateTag("endpoint", config.CoordinatorUri),
 				CreateTag("absolutemininputcount", config.AbsoluteMinInputCount.ToString(CultureInfo.InvariantCulture)),
