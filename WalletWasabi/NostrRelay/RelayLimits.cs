@@ -80,14 +80,32 @@ public sealed record RelayLimits
 	public TimeSpan MaxClockDifference { get; init; } = TimeSpan.FromMinutes(5);
 
 	/// <summary>
-	/// The limits of a relay that takes the events of Black Hole only: small events that count for minutes. A maker
-	/// posts a few offers every ten minutes, and whoever reads the order book asks once.
+	/// How many fidelity bonds the node is asked about in a row, for all visitors together, before the pace below
+	/// holds. The node is asked when a key shows a bond that the relay does not know of that key.
+	/// </summary>
+	public int BondLookupBurst { get; init; } = 60;
+
+	/// <summary>How many fidelity bonds per second the node is asked about in the long run, for all visitors together.</summary>
+	public double BondLookupsPerSecond { get; init; } = 1;
+
+	/// <summary>How many fidelity bonds one visitor may have the node asked about in a row before the pace below holds.</summary>
+	public int VisitorBondLookupBurst { get; init; } = 5;
+
+	/// <summary>How many fidelity bonds per second one visitor may have the node asked about in the long run: one in twenty seconds.</summary>
+	public double VisitorBondLookupsPerSecond { get; init; } = 0.05;
+
+	/// <summary>How long an event waits for the node to be free for the bond that the event shows. The node is asked about one bond at a time.</summary>
+	public TimeSpan BondLookupPatience { get; init; } = TimeSpan.FromSeconds(10);
+
+	/// <summary>
+	/// The limits of a relay that takes the events of Black Hole only: small events. A maker posts a few offers every
+	/// ten minutes, and whoever reads the order book asks once.
 	/// </summary>
 	public static RelayLimits ForBlackHoleEvents { get; } = new();
 
 	/// <summary>
 	/// The limits of a relay that keeps the kinds of events that its user named: events of any Nostr client, which are
-	/// larger, come in bursts when a client connects, and are kept until the room for them is used up.
+	/// larger and come in bursts when a client connects.
 	/// </summary>
 	public static RelayLimits ForCustomEvents { get; } = new()
 	{

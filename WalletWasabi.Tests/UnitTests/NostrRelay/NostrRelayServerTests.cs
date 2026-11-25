@@ -136,7 +136,9 @@ public class NostrRelayServerTests
 		var root = information.RootElement;
 
 		Assert.Equal("Black Hole relay", root.GetProperty("name").GetString());
-		Assert.Contains("regtest", root.GetProperty("description").GetString(), StringComparison.Ordinal);
+		Assert.Equal(
+			"A relay inside a Black Hole wallet. It takes the offers of makers and the announcements of coordinators for regtest (kind 15750). It takes them from anybody. It keeps an event for 24 hours.",
+			root.GetProperty("description").GetString());
 		Assert.Equal([1, 11], root.GetProperty("supported_nips").EnumerateArray().Select(nip => nip.GetInt32()));
 
 		var limitation = root.GetProperty("limitation");
@@ -147,15 +149,17 @@ public class NostrRelayServerTests
 		Assert.Equal(64, limitation.GetProperty("max_subid_length").GetInt32());
 		Assert.Equal(16, limitation.GetProperty("max_event_tags").GetInt32());
 		Assert.Equal(2_000, limitation.GetProperty("max_content_length").GetInt32());
-		Assert.Equal(30 * 60, limitation.GetProperty("created_at_lower_limit").GetInt32());
 		Assert.Equal(5 * 60, limitation.GetProperty("created_at_upper_limit").GetInt32());
+
+		// For how long the relay keeps what it takes: a day.
+		Assert.Equal(24 * 60 * 60, Assert.Single(root.GetProperty("retention").EnumerateArray()).GetProperty("time").GetInt32());
 		Assert.True(limitation.GetProperty("restricted_writes").GetBoolean());
 		Assert.False(limitation.GetProperty("auth_required").GetBoolean());
 
 		// The relay tells nothing of the computer that it runs on.
 		Assert.DoesNotContain("Server:", head, StringComparison.OrdinalIgnoreCase);
-		Assert.Equal(["auth_required", "created_at_lower_limit", "created_at_upper_limit", "max_content_length", "max_event_tags", "max_limit", "max_message_length", "max_subid_length", "max_subscriptions", "payment_required", "restricted_writes"], limitation.EnumerateObject().Select(x => x.Name).Order());
-		Assert.Equal(["description", "limitation", "name", "supported_nips"], root.EnumerateObject().Select(x => x.Name).Order());
+		Assert.Equal(["auth_required", "created_at_upper_limit", "max_content_length", "max_event_tags", "max_limit", "max_message_length", "max_subid_length", "max_subscriptions", "payment_required", "restricted_writes"], limitation.EnumerateObject().Select(x => x.Name).Order());
+		Assert.Equal(["description", "limitation", "name", "retention", "supported_nips"], root.EnumerateObject().Select(x => x.Name).Order());
 
 		// A browser asks first whether a page may read the answer.
 		var preflight = await RelayTestClient.RequestAsync(server, $"OPTIONS / HTTP/1.1\r\nHost: {host}\r\nOrigin: https://client.example\r\n\r\n", cancellationToken);
@@ -261,7 +265,6 @@ public class NostrRelayServerTests
 		var forOtherNetwork = TestRelayEvent.CreateJson(key, 15750, "{}", [["type", "BlackHoleJoinMarket"], ["network", "mainnet"]]);
 		Assert.Equal((false, "blocked: this relay takes events for regtest only"), await client.PublishAsync(forOtherNetwork, cancellationToken));
 
-		Assert.Equal((false, "invalid: the event is too old to count"), await client.PublishAsync(Offer(key, createdAt: Now - 900), cancellationToken));
 		Assert.Equal((false, "invalid: the event is from further in the future than clocks differ"), await client.PublishAsync(Offer(key, createdAt: Now + 301), cancellationToken));
 
 		var changed = System.Text.Json.Nodes.JsonNode.Parse(Offer(key))!.AsObject();
@@ -405,32 +408,39 @@ public class NostrRelayServerTests
 		Assert.Equal(1, server.EventCount);
 	}
 
-	/// <summary>An offer is handed out for as long as it counts, and forgotten afterwards.</summary>
+	/// <summary>The relay keeps an event for a day from when it took it, whatever time the event has, and drops it then.</summary>
 	[Fact(Timeout = 120000)]
-	public async Task OfferIsForgottenOnceItNoLongerCountsAsync()
+	public async Task EventIsKeptForADayAsync()
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
 		using var key = TestRelayEvent.NewKey();
 		using var coordinatorKey = TestRelayEvent.NewKey();
+		using var lateKey = TestRelayEvent.NewKey();
 		long time = Now;
 
 		await using var server = StartPreset(now: () => DateTimeOffset.FromUnixTimeSeconds(Volatile.Read(ref time)));
 		using var client = await RelayTestClient.ConnectAsync(server, cancellationToken);
 
-		var offer = Offer(key);
+		// An offer that was made an hour ago, and the announcement of a coordinator.
+		var offer = Offer(key, createdAt: Now - 3_600);
 		var announcement = TestRelayEvent.CreateJson(coordinatorKey, 15750, "A coordinator", [["type", "wabisabi"], ["network", "regtest"], ["endpoint", "http://coordinator.example/"]]);
 
 		Assert.True((await client.PublishAsync(offer, cancellationToken)).IsAccepted);
 		Assert.True((await client.PublishAsync(announcement, cancellationToken)).IsAccepted);
 
-		Volatile.Write(ref time, Now + 15 * 60 - 1);
-		Assert.Equal(2, (await client.SubscribeAsync("a", "{}", cancellationToken)).Length);
+		// Twelve hours later another offer comes.
+		Volatile.Write(ref time, Now + 12 * 3_600);
+		var lateOffer = Offer(lateKey, createdAt: Now + 12 * 3_600);
+		Assert.True((await client.PublishAsync(lateOffer, cancellationToken)).IsAccepted);
 
-		// The offer counts for fifteen minutes, the announcement of a coordinator for thirty.
-		Volatile.Write(ref time, Now + 15 * 60);
-		Assert.Equal([GetId(announcement)], await client.SubscribeAsync("b", "{}", cancellationToken));
+		Volatile.Write(ref time, Now + 24 * 3_600 - 1);
+		Assert.Equal(3, (await client.SubscribeAsync("a", "{}", cancellationToken)).Length);
 
-		Volatile.Write(ref time, Now + 30 * 60);
+		// A day after the relay took them, the first two are gone: also the offer, which was an hour old when it came.
+		Volatile.Write(ref time, Now + 24 * 3_600);
+		Assert.Equal([GetId(lateOffer)], await client.SubscribeAsync("b", "{}", cancellationToken));
+
+		Volatile.Write(ref time, Now + 36 * 3_600);
 		Assert.Empty(await client.SubscribeAsync("c", "{}", cancellationToken));
 	}
 
@@ -656,7 +666,7 @@ public class NostrRelayServerTests
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
 		using var key = TestRelayEvent.NewKey();
-		var filePath = Path.Combine(await Common.GetEmptyWorkDirAsync(), "NostrRelay", "Events.sqlite");
+		var folder = Path.Combine(await Common.GetEmptyWorkDirAsync(), "NostrRelay");
 
 		Assert.True(KindList.TryParse("0, 1, 20000-29999", out var kinds, out _));
 
@@ -664,7 +674,7 @@ public class NostrRelayServerTests
 		var profile = TestRelayEvent.CreateJson(key, 0, "{\"name\":\"somebody\"}");
 		var ephemeral = TestRelayEvent.CreateJson(key, 20_001, "for whoever listens now");
 
-		await using (var server = new NostrRelayServer(new CustomEventSet(kinds), filePath, now: Clock))
+		await using (var server = new NostrRelayServer(new CustomEventSet(kinds), folder, now: Clock))
 		{
 			RelayTestClient.Open(server);
 
@@ -688,7 +698,9 @@ public class NostrRelayServerTests
 			Assert.DoesNotContain("Black Hole", information, StringComparison.Ordinal);
 		}
 
-		await using (var server = new NostrRelayServer(new CustomEventSet(kinds), filePath, now: Clock))
+		Assert.True(File.Exists(Path.Combine(folder, "Events.sqlite")));
+
+		await using (var server = new NostrRelayServer(new CustomEventSet(kinds), folder, now: Clock))
 		{
 			RelayTestClient.Open(server);
 
@@ -698,8 +710,29 @@ public class NostrRelayServerTests
 			Assert.Equal([GetId(note)], await client.SubscribeAsync("tagged", "{\"#t\":[\"kept\"]}", cancellationToken));
 		}
 
-		// A set of events that is kept in a file needs the file.
-		Assert.Throws<ArgumentNullException>(() => new NostrRelayServer(new CustomEventSet(kinds)));
+		// The events of Black Hole are kept in a file of their own, so that neither relay hands out what the other took.
+		var offer = Offer(key);
+
+		await using (var server = new NostrRelayServer(new BlackHoleEventSet(Network.RegTest), folder, now: Clock))
+		{
+			RelayTestClient.Open(server);
+
+			using var client = await RelayTestClient.ConnectAsync(server, cancellationToken);
+
+			Assert.Empty(await client.SubscribeAsync("all", "{}", cancellationToken));
+			Assert.Equal((true, ""), await client.PublishAsync(offer, cancellationToken));
+		}
+
+		Assert.True(File.Exists(Path.Combine(folder, "BlackHoleEvents.sqlite")));
+
+		await using (var server = new NostrRelayServer(new BlackHoleEventSet(Network.RegTest), folder, now: Clock))
+		{
+			RelayTestClient.Open(server);
+
+			using var client = await RelayTestClient.ConnectAsync(server, cancellationToken);
+
+			Assert.Equal([GetId(offer)], await client.SubscribeAsync("all", "{}", cancellationToken));
+		}
 	}
 
 	/// <summary>A relay that is stopped disconnects its clients and gives its port back.</summary>

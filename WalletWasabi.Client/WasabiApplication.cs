@@ -256,7 +256,10 @@ public class WasabiApplication
 			ConfiguredConnections: [],
 			RunNostrRelay: false,
 			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
-			NostrRelayKinds: []
+			NostrRelayKinds: [],
+			NostrRelayBondFilter: false,
+			NostrRelayMinBond: "0",
+			NostrRelayWhitelist: []
 		);
 
 		static bool MustMigrate(PersistentConfig_2_6_0 cfg) =>
@@ -293,7 +296,10 @@ public class WasabiApplication
 			ConfiguredConnections: [],
 			RunNostrRelay: false,
 			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
-			NostrRelayKinds: []
+			NostrRelayKinds: [],
+			NostrRelayBondFilter: false,
+			NostrRelayMinBond: "0",
+			NostrRelayWhitelist: []
 		);
 
 		oldConfig = configs260.RegTest;
@@ -307,6 +313,9 @@ public class WasabiApplication
 			RunNostrRelay: false,
 			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
 			NostrRelayKinds: [],
+			NostrRelayBondFilter: false,
+			NostrRelayMinBond: "0",
+			NostrRelayWhitelist: [],
 			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
 			ConfigVersion : 4,
 			CoordinatorUri : oldConfig.CoordinatorUri,

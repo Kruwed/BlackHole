@@ -24,6 +24,9 @@ internal sealed class RelayConnection : IDisposable
 	private static readonly TimeSpan KeepAliveTimeout = TimeSpan.FromSeconds(20);
 	private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(2);
 
+	/// <summary>What the relay answers about an event that it has no room for.</summary>
+	public const string FullMessage = "error: the relay is full, and the events of keys with more of a fidelity bond behind them come first";
+
 	private readonly NostrRelayServer _server;
 	private readonly TcpClient _client;
 	private readonly RelayLimits _limits;
@@ -32,8 +35,9 @@ internal sealed class RelayConnection : IDisposable
 	private readonly Channel<byte[]> _queue = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions { SingleReader = true });
 	private readonly Lock _subscriptionsLock = new();
 	private readonly Dictionary<string, RelayFilter[]> _subscriptions = new(StringComparer.Ordinal);
-	private readonly Pace _messagePace;
-	private readonly Pace _eventPace;
+	private readonly RelayPace _messagePace;
+	private readonly RelayPace _eventPace;
+	private readonly RelayPace _bondLookupPace;
 
 	private long _lastActivity = Environment.TickCount64;
 	private int _queuedMessages;
@@ -47,8 +51,9 @@ internal sealed class RelayConnection : IDisposable
 		_client = client;
 		_limits = server.Limits;
 		_cts = CancellationTokenSource.CreateLinkedTokenSource(serverStopping);
-		_messagePace = new Pace(_limits.MessageBurst, _limits.MessagesPerSecond);
-		_eventPace = new Pace(_limits.EventBurst, _limits.EventsPerSecond);
+		_messagePace = new RelayPace(_limits.MessageBurst, _limits.MessagesPerSecond);
+		_eventPace = new RelayPace(_limits.EventBurst, _limits.EventsPerSecond);
+		_bondLookupPace = new RelayPace(_limits.VisitorBondLookupBurst, _limits.VisitorBondLookupsPerSecond);
 
 		Id = id;
 	}
@@ -464,11 +469,23 @@ internal sealed class RelayConnection : IDisposable
 		}
 
 		StoreOutcome outcome;
+		SenderVerdict sender;
 
 		try
 		{
-			// An ephemeral event is for whoever listens at this moment, and is not kept.
-			outcome = relayEvent.IsEphemeral ? StoreOutcome.Stored : _server.Store.Add(relayEvent, verdict.ExpiresAt, now);
+			// Whether the relay takes events of this key: that is for its user to say, with a fidelity bond or a list.
+			sender = await _server.Senders.AdmitAsync(relayEvent, now, _bondLookupPace, cancellationToken).ConfigureAwait(false);
+
+			if (!sender.IsAccepted)
+			{
+				await SendAsync(webSocket, RelayMessages.Ok(id, false, sender.Message), cancellationToken).ConfigureAwait(false);
+				return;
+			}
+
+			// An ephemeral event is for whoever listens at this moment, and is not kept. Every other event is kept for a day.
+			outcome = relayEvent.IsEphemeral
+				? StoreOutcome.Stored
+				: _server.Store.Add(relayEvent, now + (long)RelayEventSet.Retention.TotalSeconds, now, sender.Rank);
 		}
 		catch (SqliteException ex)
 		{
@@ -483,8 +500,10 @@ internal sealed class RelayConnection : IDisposable
 			StoreOutcome.Stored => RelayMessages.Ok(id, true, ""),
 			StoreOutcome.Duplicate => RelayMessages.Ok(id, true, "duplicate: already have this event"),
 			StoreOutcome.Superseded => RelayMessages.Ok(id, false, "replaced: have newer event"),
-			_ when _server.Events.DropsOldestWhenFull => RelayMessages.Ok(id, false, "error: the relay is full, and has no room for an event this old"),
-			_ => RelayMessages.Ok(id, false, "rate-limited: the relay is full, try again in a few minutes")
+
+			// The event showed a bond that could not be counted, and without one there is no room for it: its key is told about the bond.
+			_ when sender.Message.Length > 0 => RelayMessages.Ok(id, false, sender.Message),
+			_ => RelayMessages.Ok(id, false, FullMessage)
 		};
 
 		await SendAsync(webSocket, answer, cancellationToken).ConfigureAwait(false);
@@ -638,27 +657,6 @@ internal sealed class RelayConnection : IDisposable
 	/// <summary>
 	/// A pace that a visitor is held to: a number of things in a row, and then so many per second.
 	/// </summary>
-	private sealed class Pace(int burst, double perSecond)
-	{
-		private double _available = burst;
-		private long _lastRefill = Environment.TickCount64;
-
-		public bool TryTake()
-		{
-			var now = Environment.TickCount64;
-
-			_available = Math.Min(burst, _available + (now - _lastRefill) / 1000.0 * perSecond);
-			_lastRefill = now;
-
-			if (_available < 1)
-			{
-				return false;
-			}
-
-			_available -= 1;
-			return true;
-		}
-	}
 }
 
 /// <summary>The messages that a relay sends, as the bytes that go over the connection.</summary>

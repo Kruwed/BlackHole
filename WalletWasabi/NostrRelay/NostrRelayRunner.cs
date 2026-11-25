@@ -12,16 +12,13 @@ namespace WalletWasabi.NostrRelay;
 /// when the user chose other events for it, and tells how it stands with it.
 /// </summary>
 /// <remarks>
-/// The relay keeps two files in its folder: the key that its onion address follows from, and the events that it keeps
-/// when it takes the kinds that the user named. The events of Black Hole are kept in memory only.
+/// The relay keeps its files in its folder: the key that its onion address follows from, and a file of events for
+/// each of the two sets of events that it can take, see <see cref="RelayEventSet.StoreFileName"/>.
 /// </remarks>
 public sealed class NostrRelayRunner : IAsyncDisposable
 {
 	/// <summary>The file with the key that the onion address of the relay follows from.</summary>
 	public const string KeyFileName = "OnionServiceKey";
-
-	/// <summary>The file with the events that the relay keeps when it takes the kinds that the user named.</summary>
-	public const string EventsFileName = "Events.sqlite";
 
 	/// <summary>How long the relay is given to have its onion address published when the user turns it on. It goes on trying after that.</summary>
 	public static readonly TimeSpan StartPatience = TimeSpan.FromMinutes(3);
@@ -30,6 +27,8 @@ public sealed class NostrRelayRunner : IAsyncDisposable
 	private readonly string _folder;
 	private readonly WaitForTor _waitForTor;
 	private readonly string? _obstacle;
+	private readonly CheckBond? _checkBond;
+	private readonly Func<uint?>? _getTipHeight;
 	private readonly AsyncLock _lock = new();
 
 	private volatile OnionRelay? _relay;
@@ -40,12 +39,16 @@ public sealed class NostrRelayRunner : IAsyncDisposable
 	/// <param name="network">The network of the wallet, which the events of Black Hole are for.</param>
 	/// <param name="folder">Where the relay keeps its files.</param>
 	/// <param name="obstacle">Why no relay can run in this application as it was started, see <see cref="DescribeObstacle"/>. Null if one can.</param>
-	public NostrRelayRunner(Network network, string folder, WaitForTor waitForTor, string? obstacle)
+	/// <param name="checkBond">Asks the node about a fidelity bond that a key shows to the relay. Without it no bond counts.</param>
+	/// <param name="getTipHeight">Tells the height of the chain, if it is known.</param>
+	public NostrRelayRunner(Network network, string folder, WaitForTor waitForTor, string? obstacle, CheckBond? checkBond = null, Func<uint?>? getTipHeight = null)
 	{
 		_network = network;
 		_folder = folder;
 		_waitForTor = waitForTor;
 		_obstacle = obstacle;
+		_checkBond = checkBond;
+		_getTipHeight = getTipHeight;
 	}
 
 	/// <summary>Tells every change of <see cref="State"/>. It is called from whatever thread the change happens on.</summary>
@@ -154,7 +157,12 @@ public sealed class NostrRelayRunner : IAsyncDisposable
 		{
 			CreateFolder(_folder);
 
-			server = new NostrRelayServer(settings.CreateEventSet(_network), Path.Combine(_folder, EventsFileName));
+			server = new NostrRelayServer(
+				settings.CreateEventSet(_network),
+				_folder,
+				senders: settings.Senders,
+				checkBond: _checkBond,
+				getTipHeight: _getTipHeight);
 
 			var relay = new OnionRelay(server, _waitForTor, new OnionServiceKeyFile(Path.Combine(_folder, KeyFileName)));
 

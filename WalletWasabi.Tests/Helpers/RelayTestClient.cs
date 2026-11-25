@@ -128,6 +128,18 @@ public sealed class RelayTestClient : IDisposable
 		}
 	}
 
+	/// <summary>Asks for the stored events of a filter and ends the subscription, so that no event follows that comes in later.</summary>
+	/// <returns>The ids of the events, in the order in which they came.</returns>
+	public async Task<string[]> QueryAsync(string filters, CancellationToken cancellationToken)
+	{
+		const string SubscriptionId = "query";
+
+		var ids = await SubscribeAsync(SubscriptionId, filters, cancellationToken);
+		await SendAsync($"[\"CLOSE\",\"{SubscriptionId}\"]", cancellationToken);
+
+		return ids;
+	}
+
 	public void Dispose() => _socket.Dispose();
 
 	/// <summary>Sends a request as it is written, over a connection of its own, and reads everything that the relay answers until it closes the connection.</summary>

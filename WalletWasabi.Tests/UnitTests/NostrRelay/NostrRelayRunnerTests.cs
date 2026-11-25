@@ -24,7 +24,10 @@ public class NostrRelayRunnerTests
 {
 	private static readonly string Host = $"{FakeTor.DefaultServiceId}.onion";
 
-	private static readonly NostrRelaySettings Custom = new(RelayEventChoice.Custom, KindList.FromStrings(["1", "30023"]));
+	private static readonly NostrRelaySettings Custom = new(RelayEventChoice.Custom, KindList.FromStrings(["1", "30023"]), RelaySenderRules.Anyone);
+
+	/// <summary>The file with the events of a relay that takes the kinds that its user named.</summary>
+	private const string CustomEventsFileName = "Events.sqlite";
 
 	/// <summary>Reads from the command that asked Tor for the onion address where the relay listens.</summary>
 	private static IPEndPoint GetRelayEndPoint(string addOnionCommand) =>
@@ -43,6 +46,68 @@ public class NostrRelayRunnerTests
 		await stream.CopyToAsync(answer, cancellationToken);
 
 		return Encoding.UTF8.GetString(answer.ToArray());
+	}
+
+	/// <summary>
+	/// The filters for whose events the relay takes are part of what its user chose: asked for the filters that it
+	/// has, the relay goes on as it is, and with other filters it is started again, at the address that it had.
+	/// </summary>
+	[Fact(Timeout = 120000)]
+	public async Task RelayIsStartedAgainWithOtherFiltersAsync()
+	{
+		var cancellationToken = TestContext.Current.CancellationToken;
+		var folder = Path.Combine(await Common.GetEmptyWorkDirAsync(), "NostrRelay", "RegTest");
+		using var key = TestRelayEvent.NewKey();
+		var listed = TestRelayEvent.GetPublicKey(key);
+
+		await using var tor = new FakeTor();
+		await using var runner = new NostrRelayRunner(Network.RegTest, folder, _ => Task.FromResult(tor.Attempt), obstacle: null);
+
+		var filtered = NostrRelaySettings.Default with { Senders = new RelaySenderRules(IsBondRequired: true, MinBond: 50_000_000, Whitelist: [listed]) };
+
+		var running = runner.RunAsync(filtered, TimeSpan.FromSeconds(60), cancellationToken);
+		var firstCommand = await tor.WaitForCommandAsync("ADD_ONION", cancellationToken);
+		await tor.PublishAsync();
+
+		Assert.Equal(NostrRelayStatus.Running, (await running).Status);
+		Assert.Contains(
+			"It takes them from keys that have shown a fidelity bond of 0.5 BTC or more, and from one key that it has on a list.",
+			await AskAboutItselfAsync(GetRelayEndPoint(firstCommand), cancellationToken),
+			StringComparison.Ordinal);
+
+		// The same filters, written anew: nothing is asked of Tor.
+		var same = NostrRelaySettings.Parse("BlackHole", [], isBondRequired: true, minBond: "0.5", whitelist: [RelayKey.ToNpub(listed)]);
+		Assert.Equal(filtered, same);
+		Assert.Equal(NostrRelayStatus.Running, (await runner.RunAsync(same, TimeSpan.FromSeconds(60), cancellationToken)).Status);
+		Assert.Single(tor.Commands, command => command.StartsWith("ADD_ONION", StringComparison.Ordinal));
+
+		// A higher minimum: another relay at the same address.
+		var raised = filtered with { Senders = filtered.Senders with { MinBond = 200_000_000 } };
+		var restarting = runner.RunAsync(raised, TimeSpan.FromSeconds(60), cancellationToken);
+		var secondCommand = await tor.WaitForCommandAsync("ADD_ONION", cancellationToken, occurrence: 2);
+		await tor.PublishAsync();
+
+		Assert.Equal(new NostrRelayState(NostrRelayStatus.Running, new Uri($"ws://{Host}")), await restarting);
+		Assert.Equal(raised, runner.Settings);
+		Assert.StartsWith($"ADD_ONION {FakeTor.DefaultKey} ", secondCommand, StringComparison.Ordinal);
+		Assert.Contains(
+			"a fidelity bond of 2 BTC or more",
+			await AskAboutItselfAsync(GetRelayEndPoint(secondCommand), cancellationToken),
+			StringComparison.Ordinal);
+
+		// Without the list, and without the filter.
+		foreach (var settings in new[] { raised with { Senders = raised.Senders with { Whitelist = [] } }, NostrRelaySettings.Default })
+		{
+			var count = tor.Commands.Count(command => command.StartsWith("ADD_ONION", StringComparison.Ordinal));
+			var again = runner.RunAsync(settings, TimeSpan.FromSeconds(60), cancellationToken);
+			await tor.WaitForCommandAsync("ADD_ONION", cancellationToken, occurrence: count + 1);
+			await tor.PublishAsync();
+
+			Assert.Equal(NostrRelayStatus.Running, (await again).Status);
+			Assert.Equal(settings, runner.Settings);
+		}
+
+		Assert.Contains("It takes them from anybody.", await AskAboutItselfAsync(GetRelayEndPoint(tor.Commands.Last(command => command.StartsWith("ADD_ONION", StringComparison.Ordinal))), cancellationToken), StringComparison.Ordinal);
 	}
 
 	/// <summary>
@@ -83,8 +148,10 @@ public class NostrRelayRunnerTests
 		var firstEndPoint = GetRelayEndPoint(firstCommand);
 		Assert.Contains("\"name\":\"Black Hole relay\"", await AskAboutItselfAsync(firstEndPoint, cancellationToken), StringComparison.Ordinal);
 
-		// The events of Black Hole are kept in memory: the folder has the key of the address, and nothing else.
-		Assert.Equal([NostrRelayRunner.KeyFileName], Directory.GetFiles(folder).Select(Path.GetFileName));
+		// The folder has the key of the address and the events of Black Hole. The events of a list of the user's own are in another file, which is not there yet.
+		Assert.True(File.Exists(Path.Combine(folder, NostrRelayRunner.KeyFileName)));
+		Assert.True(File.Exists(Path.Combine(folder, "BlackHoleEvents.sqlite")));
+		Assert.False(File.Exists(Path.Combine(folder, CustomEventsFileName)));
 
 		// Asked for what it does already, the relay goes on as it is.
 		Assert.Equal(NostrRelayStatus.Running, (await runner.RunAsync(NostrRelaySettings.Default, TimeSpan.FromSeconds(60), cancellationToken)).Status);
@@ -104,7 +171,7 @@ public class NostrRelayRunnerTests
 		var information = await AskAboutItselfAsync(secondEndPoint, cancellationToken);
 		Assert.Contains("\"name\":\"Nostr relay\"", information, StringComparison.Ordinal);
 		Assert.Contains("1, 30023", information, StringComparison.Ordinal);
-		Assert.True(File.Exists(Path.Combine(folder, NostrRelayRunner.EventsFileName)));
+		Assert.True(File.Exists(Path.Combine(folder, CustomEventsFileName)));
 
 		// The relay of before listens no more.
 		if (!firstEndPoint.Equals(secondEndPoint))
@@ -124,9 +191,10 @@ public class NostrRelayRunnerTests
 			await Assert.ThrowsAnyAsync<SocketException>(async () => await probe.ConnectAsync(secondEndPoint, cancellationToken));
 		}
 
-		// What is kept stays for the next time: the key of the address, and the events of the user's list.
+		// What is kept stays for the next time: the key of the address, and the events of both sets, each in a file of its own.
 		Assert.True(File.Exists(Path.Combine(folder, NostrRelayRunner.KeyFileName)));
-		Assert.True(File.Exists(Path.Combine(folder, NostrRelayRunner.EventsFileName)));
+		Assert.True(File.Exists(Path.Combine(folder, CustomEventsFileName)));
+		Assert.True(File.Exists(Path.Combine(folder, "BlackHoleEvents.sqlite")));
 
 		lock (states)
 		{
@@ -200,21 +268,21 @@ public class NostrRelayRunnerTests
 		await using (var runner = new NostrRelayRunner(Network.RegTest, folder, _ => Task.FromResult(tor.Attempt), obstacle: null))
 		{
 			// A list of the user's own without a kind in it.
-			var state = await runner.RunAsync(new NostrRelaySettings(RelayEventChoice.Custom, KindList.Empty), TimeSpan.FromSeconds(60), cancellationToken);
+			var state = await runner.RunAsync(new NostrRelaySettings(RelayEventChoice.Custom, KindList.Empty, RelaySenderRules.Anyone), TimeSpan.FromSeconds(60), cancellationToken);
 
 			Assert.Equal(NostrRelayStatus.NotWorking, state.Status);
 			Assert.Equal("Name one kind of event at least for the relay to keep, like 1.", state.Problem);
 
 			// A file of events that is none.
 			Directory.CreateDirectory(folder);
-			await File.WriteAllTextAsync(Path.Combine(folder, NostrRelayRunner.EventsFileName), "this is no database, and it is long enough to be told from one that is empty", cancellationToken);
+			await File.WriteAllTextAsync(Path.Combine(folder, CustomEventsFileName), "this is no database, and it is long enough to be told from one that is empty", cancellationToken);
 
 			state = await runner.RunAsync(Custom, TimeSpan.FromSeconds(60), cancellationToken);
 
 			Assert.Equal(NostrRelayStatus.NotWorking, state.Status);
 			Assert.StartsWith("The relay could not be started: ", state.Problem, StringComparison.Ordinal);
 
-			// The events of Black Hole need no file, so that relay runs.
+			// The events of Black Hole are in a file of their own, so that relay runs.
 			var running = runner.RunAsync(NostrRelaySettings.Default, TimeSpan.FromSeconds(60), cancellationToken);
 			await tor.WaitForCommandAsync("ADD_ONION", cancellationToken);
 			await tor.PublishAsync();
@@ -261,6 +329,6 @@ public class NostrRelayRunnerTests
 		var custom = Assert.IsType<CustomEventSet>(Custom.CreateEventSet(Network.Main));
 		Assert.Equal(Custom.Kinds, custom.Kinds);
 		Assert.Null(Custom.Problem);
-		Assert.NotNull(new NostrRelaySettings(RelayEventChoice.Custom, KindList.Empty).Problem);
+		Assert.NotNull(new NostrRelaySettings(RelayEventChoice.Custom, KindList.Empty, RelaySenderRules.Anyone).Problem);
 	}
 }

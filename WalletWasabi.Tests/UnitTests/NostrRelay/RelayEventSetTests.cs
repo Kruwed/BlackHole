@@ -13,8 +13,8 @@ using Xunit;
 namespace WalletWasabi.Tests.UnitTests.NostrRelay;
 
 /// <summary>
-/// The user of a relay chooses which events it takes: the events of Black Hole, which are kept for a short time, or
-/// the kinds of events that the user names, which are kept.
+/// The user of a relay chooses which events it takes: the events of Black Hole, or the kinds of events that the
+/// user names.
 /// </summary>
 public class RelayEventSetTests
 {
@@ -22,9 +22,9 @@ public class RelayEventSetTests
 
 	private static readonly string[][] OfferTags = [["type", "BlackHoleJoinMarket"], ["network", "regtest"]];
 
-	/// <summary>The offer that the application posts is one that the relay of another user takes, for as long as the offer counts.</summary>
+	/// <summary>The offer that the application posts is one that the relay of another user takes.</summary>
 	[Fact]
-	public async Task OfferOfTheApplicationIsTakenUntilItNoLongerCountsAsync()
+	public async Task OfferOfTheApplicationIsTakenAsync()
 	{
 		using var key = TestRelayEvent.NewKey();
 		var offer = new MakerOffer(MinFeeRate: 1.5m, BuyRate: 120, SellRate: 150, Liquidity: 150_000_000, Points: 3, MatchedInputs: 3, ExtraInputs: 0, Bond: null);
@@ -36,7 +36,6 @@ public class RelayEventSetTests
 		var verdict = new BlackHoleEventSet(Network.RegTest).Judge(relayEvent, Now);
 
 		Assert.True(verdict.IsAccepted, verdict.Message);
-		Assert.Equal(Now - 60 + 15 * 60, verdict.ExpiresAt);
 
 		// The empty event that takes an offer back is taken the same way: it replaces the offer.
 		var withdrawal = await MakerOfferEvent.CreateWithdrawal(Network.RegTest, DateTimeOffset.FromUnixTimeSeconds(Now)).ComputeIdAndSignAsync(key);
@@ -45,10 +44,7 @@ public class RelayEventSetTests
 		Assert.True(new BlackHoleEventSet(Network.RegTest).Judge(relayWithdrawal, Now).IsAccepted);
 	}
 
-	/// <summary>
-	/// The announcement of a coordinator is kept for twice the time after which a coordinator announces itself again,
-	/// so that the announcement of a coordinator that is still there is never missing.
-	/// </summary>
+	/// <summary>The announcement of a coordinator is taken as well: it is of the same kind, with a type of its own.</summary>
 	[Fact]
 	public void AnnouncementOfACoordinatorIsTaken()
 	{
@@ -63,9 +59,10 @@ public class RelayEventSetTests
 		var verdict = new BlackHoleEventSet(Network.Main).Judge(announcement, Now);
 
 		Assert.True(verdict.IsAccepted, verdict.Message);
-		Assert.Equal(Now + 30 * 60, verdict.ExpiresAt);
-		Assert.Equal(CoordinatorAnnouncer.AnnouncementPeriod * 2, BlackHoleEventSet.CoordinatorLifetime);
-		Assert.Equal(MakerOfferEvent.MaxAge, BlackHoleEventSet.OfferLifetime);
+		Assert.True(BlackHoleEventSet.IsOfBlackHole(CoordinatorAnnouncer.Type));
+		Assert.True(BlackHoleEventSet.IsOfBlackHole(MakerOfferEvent.Type));
+		Assert.False(BlackHoleEventSet.IsOfBlackHole("joinstr"));
+		Assert.False(BlackHoleEventSet.IsOfBlackHole(null));
 	}
 
 	/// <summary>Everything else is refused: other kinds, other types, other networks, and events without these tags.</summary>
@@ -96,9 +93,12 @@ public class RelayEventSetTests
 		Assert.Equal(RelayVerdict.Refuse(OtherNetwork), Judge(15750, [["type", "wabisabi"], ["network", "signet"]]));
 	}
 
-	/// <summary>An event is taken while it counts: not once it is as old as events of its type are kept, and not from further ahead than clocks differ.</summary>
+	/// <summary>
+	/// An event is taken whatever time its maker gives it, but for a time that is further ahead than clocks differ.
+	/// For how long the relay keeps it does not hang on that time: it is a day from when the relay took it.
+	/// </summary>
 	[Fact]
-	public void EventOfBlackHoleIsTakenWhileItCounts()
+	public void EventOfBlackHoleIsTakenUnlessItIsFromTheFuture()
 	{
 		using var key = TestRelayEvent.NewKey();
 		var events = new BlackHoleEventSet(Network.RegTest);
@@ -106,30 +106,29 @@ public class RelayEventSetTests
 		RelayVerdict Judge(long createdAt, string type = "BlackHoleJoinMarket") =>
 			events.Judge(TestRelayEvent.Create(key, 15750, "{}", [["type", type], ["network", "regtest"]], createdAt, RelayLimits.ForBlackHoleEvents), Now);
 
-		Assert.Equal(RelayVerdict.Accept(Now + 1), Judge(Now - 15 * 60 + 1));
-		Assert.Equal(RelayVerdict.Refuse("invalid: the event is too old to count"), Judge(Now - 15 * 60));
-		Assert.Equal(RelayVerdict.Refuse("invalid: the event is too old to count"), Judge(0));
+		Assert.Equal(RelayVerdict.Accept(), Judge(Now));
+		Assert.Equal(RelayVerdict.Accept(), Judge(Now - 15 * 60));
+		Assert.Equal(RelayVerdict.Accept(), Judge(0));
+		Assert.Equal(RelayVerdict.Accept(), Judge(Now - 30 * 60, "wabisabi"));
 
-		// An announcement of a coordinator counts for longer.
-		Assert.Equal(RelayVerdict.Accept(Now + 15 * 60), Judge(Now - 15 * 60, "wabisabi"));
-		Assert.Equal(RelayVerdict.Refuse("invalid: the event is too old to count"), Judge(Now - 30 * 60, "wabisabi"));
-
-		Assert.Equal(RelayVerdict.Accept(Now + 5 * 60 + 15 * 60), Judge(Now + 5 * 60));
+		Assert.Equal(RelayVerdict.Accept(), Judge(Now + 5 * 60));
 		Assert.Equal(RelayVerdict.Refuse("invalid: the event is from further in the future than clocks differ"), Judge(Now + 5 * 60 + 1));
+
+		Assert.Equal(TimeSpan.FromHours(24), RelayEventSet.Retention);
 	}
 
-	/// <summary>The events of Black Hole are kept in memory only, and new ones are refused when the room is used up: what is there stays.</summary>
+	/// <summary>The relay of the events of Black Hole says what it is, and keeps its events in a file of its own.</summary>
 	[Fact]
-	public void EventsOfBlackHoleAreNotWrittenToTheDisk()
+	public void EventsOfBlackHoleHaveAFileOfTheirOwn()
 	{
 		var events = new BlackHoleEventSet(Network.Main);
 
-		Assert.False(events.IsKeptOnDisk);
-		Assert.False(events.DropsOldestWhenFull);
+		Assert.Equal("BlackHoleEvents.sqlite", events.StoreFileName);
+		Assert.NotEqual(events.StoreFileName, new CustomEventSet(KindList.Empty).StoreFileName);
 		Assert.Same(RelayLimits.ForBlackHoleEvents, events.Limits);
 		Assert.Equal("Black Hole relay", events.RelayName);
 		Assert.Equal(
-			"A relay inside a Black Hole wallet. It takes the offers of makers and the announcements of coordinators for mainnet (kind 15750), and forgets them 15 and 30 minutes after they were made.",
+			"A relay inside a Black Hole wallet. It takes the offers of makers and the announcements of coordinators for mainnet (kind 15750).",
 			events.Description);
 	}
 
@@ -153,8 +152,7 @@ public class RelayEventSetTests
 		Assert.Equal(RelayVerdict.Accept(), Judge(1, Now + 15 * 60));
 		Assert.Equal(RelayVerdict.Refuse("invalid: the event is from further in the future than clocks differ"), Judge(1, Now + 15 * 60 + 1));
 
-		Assert.True(events.IsKeptOnDisk);
-		Assert.True(events.DropsOldestWhenFull);
+		Assert.Equal("Events.sqlite", events.StoreFileName);
 		Assert.Same(RelayLimits.ForCustomEvents, events.Limits);
 		Assert.Equal("A relay that takes events of these kinds: 0, 1, 30000-39999.", events.Description);
 

@@ -5,6 +5,7 @@ using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Models;
 using WalletWasabi.NostrRelay;
+using WalletWasabi.Tests.Helpers;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
@@ -412,11 +413,78 @@ public class SettingsScreenTests
 		Assert.Equal("Custom list", RunNostrRelayViewModel.EventOptions[1].ToString());
 
 		Assert.Equal(
-			"The relay keeps offers for 15 minutes and coordinator announcements for 30, in memory only. Nothing else is taken.",
+			"The relay takes offers and coordinator announcements, and keeps each for 24 hours. Nothing else is taken.",
 			RunNostrRelayViewModel.DescribeEvents(RelayEventChoice.BlackHole));
 		Assert.Equal(
-			"The relay keeps every event of these kinds that anybody sends it, in a file on this computer, up to 100 MB. Then the oldest events make way.",
+			"The relay takes every event of these kinds, and keeps each for 24 hours.",
 			RunNostrRelayViewModel.DescribeEvents(RelayEventChoice.Custom));
+	}
+
+	/// <summary>
+	/// The user of a relay sets two filters for whose events it takes: one that asks for a fidelity bond of a size,
+	/// and one that names keys which need none. The page tells what they mean.
+	/// </summary>
+	[Fact]
+	public void RelayPageTellsWhoseEventsTheRelayTakes()
+	{
+		Assert.Equal(
+			"Anybody can post. When the relay is full (5,000 events or 16 MB), the events of the smallest bonds make way first, and the events of the whitelist last.",
+			RunNostrRelayViewModel.DescribeSenders(isBondRequired: false, RelayEventChoice.BlackHole));
+		Assert.Equal(
+			"Only keys with a proven fidelity bond of this size or more can post, and the keys of the whitelist. A bond that several keys prove is divided evenly among them. "
+			+ "Bonds are looked up with your node. When the relay is full (5,000 events or 16 MB), the events of the smallest bonds make way first.",
+			RunNostrRelayViewModel.DescribeSenders(isBondRequired: true, RelayEventChoice.BlackHole));
+		Assert.Contains("(200,000 events or 100 MB)", RunNostrRelayViewModel.DescribeSenders(isBondRequired: false, RelayEventChoice.Custom), StringComparison.Ordinal);
+		Assert.Contains("(200,000 events or 100 MB)", RunNostrRelayViewModel.DescribeSenders(isBondRequired: true, RelayEventChoice.Custom), StringComparison.Ordinal);
+	}
+
+	/// <summary>
+	/// The minimum is an amount of bitcoin, and the whitelist a list of npubs. What cannot be read is told, and is not
+	/// saved. While no bond is asked for, a minimum that cannot be read is not in the way: the one that was saved stays.
+	/// </summary>
+	[Fact]
+	public void RelayPageReadsTheMinimumAndTheWhitelist()
+	{
+		using var key = TestRelayEvent.NewKey();
+		using var otherKey = TestRelayEvent.NewKey();
+		var hex = TestRelayEvent.GetPublicKey(key);
+		var otherHex = TestRelayEvent.GetPublicKey(otherKey);
+		var npub = RelayKey.ToNpub(hex);
+
+		var saved = new RelaySenderRules(IsBondRequired: true, MinBond: 70_000_000, Whitelist: [otherHex]);
+
+		Assert.True(RunNostrRelayViewModel.TryReadSenders(true, "0.5", $"{npub}\n{otherHex}", saved, out var rules, out var minBondProblem, out var whitelistProblem));
+		Assert.Equal(new RelaySenderRules(true, 50_000_000, [hex, otherHex]), rules);
+		Assert.Null(minBondProblem);
+		Assert.Null(whitelistProblem);
+
+		// Without a minimum, and without a list.
+		Assert.True(RunNostrRelayViewModel.TryReadSenders(true, "", "", saved, out rules, out _, out _));
+		Assert.Equal(new RelaySenderRules(true, 0, []), rules);
+		Assert.Equal(1, rules.RequiredShare);
+
+		// An amount that is none is told while a bond is asked for.
+		Assert.False(RunNostrRelayViewModel.TryReadSenders(true, "0,5", npub, saved, out rules, out minBondProblem, out whitelistProblem));
+		Assert.Equal("Write the amount in bitcoin, with a point before the parts of a coin, like 0.5.", minBondProblem);
+		Assert.Null(whitelistProblem);
+
+		// While none is asked for it is not in the way, and the minimum that was saved stays.
+		Assert.True(RunNostrRelayViewModel.TryReadSenders(false, "0,5", npub, saved, out rules, out minBondProblem, out _));
+		Assert.Null(minBondProblem);
+		Assert.Equal(new RelaySenderRules(false, 70_000_000, [hex]), rules);
+
+		// A minimum that can be read is kept for the next time, also while no bond is asked for.
+		Assert.True(RunNostrRelayViewModel.TryReadSenders(false, "2", "", saved, out rules, out _, out _));
+		Assert.Equal(new RelaySenderRules(false, 200_000_000, []), rules);
+
+		// A key that is none is told, whether a bond is asked for or not.
+		Assert.False(RunNostrRelayViewModel.TryReadSenders(false, "1", $"{npub}\nsomebody", saved, out _, out minBondProblem, out whitelistProblem));
+		Assert.Null(minBondProblem);
+		Assert.Equal("'somebody' is not a key: a key is an npub, or 64 characters of hex.", whitelistProblem);
+
+		Assert.False(RunNostrRelayViewModel.TryReadSenders(true, "many", "somebody", saved, out _, out minBondProblem, out whitelistProblem));
+		Assert.NotNull(minBondProblem);
+		Assert.NotNull(whitelistProblem);
 	}
 
 	/// <summary>

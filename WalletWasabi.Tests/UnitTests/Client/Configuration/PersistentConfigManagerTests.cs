@@ -75,6 +75,9 @@ public class PersistentConfigManagerTests
 			  "RunNostrRelay": false,
 			  "NostrRelayEvents": "BlackHole",
 			  "NostrRelayKinds": [],
+			  "NostrRelayBondFilter": false,
+			  "NostrRelayMinBond": "0",
+			  "NostrRelayWhitelist": [],
 			  "ConfigVersion": 4
 			}
 			""";
@@ -260,6 +263,54 @@ public class PersistentConfigManagerTests
 		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
 		Assert.Equal("BlackHole", config.NostrRelayEvents);
 		Assert.Empty(config.NostrRelayKinds);
+	}
+
+	/// <summary>
+	/// The config file says whose events the relay takes: whether a key needs a fidelity bond, the least that the bond
+	/// has to hold, and the keys that need none. A file that does not say stands for a relay that takes events from
+	/// anybody.
+	/// </summary>
+	[Fact]
+	public async Task FiltersOfTheRelayAreKeptInTheConfigFileAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		Assert.False(PersistentConfigManager.DefaultMainNetConfig.NostrRelayBondFilter);
+		Assert.Equal("0", PersistentConfigManager.DefaultMainNetConfig.NostrRelayMinBond);
+		Assert.Empty(PersistentConfigManager.DefaultMainNetConfig.NostrRelayWhitelist);
+		Assert.False(PersistentConfigManager.DefaultSignetConfig.NostrRelayBondFilter);
+		Assert.False(PersistentConfigManager.DefaultRegTestConfig.NostrRelayBondFilter);
+
+		using var key = TestRelayEvent.NewKey();
+		var npub = WalletWasabi.NostrRelay.RelayKey.ToNpub(TestRelayEvent.GetPublicKey(key));
+
+		var filtered = PersistentConfigManager.DefaultMainNetConfig with
+		{
+			NostrRelayBondFilter = true,
+			NostrRelayMinBond = "0.25",
+			NostrRelayWhitelist = new ValueList<string>([npub])
+		};
+		PersistentConfigManager.ToFile(configPath, filtered);
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.True(config.NostrRelayBondFilter);
+		Assert.Equal("0.25", config.NostrRelayMinBond);
+		Assert.Equal([npub], config.NostrRelayWhitelist);
+		Assert.Equal(filtered, config);
+		Assert.NotEqual(config, config with { NostrRelayWhitelist = [] });
+
+		// A file that does not say: the one that the application writes, less the three settings.
+		var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
+		Assert.True(json.Remove("NostrRelayBondFilter"));
+		Assert.True(json.Remove("NostrRelayMinBond"));
+		Assert.True(json.Remove("NostrRelayWhitelist"));
+		File.WriteAllText(configPath, json.ToJsonString());
+
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.False(config.NostrRelayBondFilter);
+		Assert.Equal("0", config.NostrRelayMinBond);
+		Assert.Empty(config.NostrRelayWhitelist);
 	}
 
 	/// <summary>

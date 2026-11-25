@@ -55,7 +55,10 @@ public class Config
 			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", PersistentConfig.NostrRelays.ToArray(), cliArgs),
 			[nameof(RunNostrRelay)] = GetBoolValue("RunNostrRelay", PersistentConfig.RunNostrRelay, cliArgs),
 			[nameof(NostrRelayEvents)] = GetStringValue("NostrRelayEvents", PersistentConfig.NostrRelayEvents, cliArgs),
-			[nameof(NostrRelayKinds)] = GetStringArrayValue("NostrRelayKinds", PersistentConfig.NostrRelayKinds.ToArray(), cliArgs)
+			[nameof(NostrRelayKinds)] = GetStringArrayValue("NostrRelayKinds", PersistentConfig.NostrRelayKinds.ToArray(), cliArgs),
+			[nameof(NostrRelayBondFilter)] = GetBoolValue("NostrRelayBondFilter", PersistentConfig.NostrRelayBondFilter, cliArgs),
+			[nameof(NostrRelayMinBond)] = GetBondAmountValue("NostrRelayMinBond", PersistentConfig.NostrRelayMinBond, cliArgs),
+			[nameof(NostrRelayWhitelist)] = GetKeyArrayValue("NostrRelayWhitelist", PersistentConfig.NostrRelayWhitelist.ToArray(), cliArgs)
 		};
 
 		// Check if any setting is overridden (either by an environment value, or by a CLI argument).
@@ -111,8 +114,11 @@ public class Config
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that Black Hole connects to: the offers of the wallet as a maker are posted to them, and the offers of other makers are read from them. Nothing is sent to them before an offer is posted or the order book is opened",
 			[nameof(RunNostrRelay)] = "Run a Nostr relay of your own, which is reached at an onion address and nowhere else. It takes a Tor that Black Hole starts itself",
-			[nameof(NostrRelayEvents)] = "The events that your Nostr relay takes: BlackHole for the offers and the coordinator announcements of Black Hole, which it keeps for a short time, or Custom for the kinds of events that you name, which it keeps in a file",
+			[nameof(NostrRelayEvents)] = "The events that your Nostr relay takes: BlackHole for the offers and the coordinator announcements of Black Hole, or Custom for the kinds of events that you name. It keeps an event for 24 hours",
 			[nameof(NostrRelayKinds)] = "Semicolon-separated list of the kinds of events that your Nostr relay keeps when it takes custom events: numbers like 1, and spans like 30000-39999",
+			[nameof(NostrRelayBondFilter)] = "Your Nostr relay takes events only from keys (npubs) that have proven a fidelity bond of NostrRelayMinBond or more, and from the keys of NostrRelayWhitelist. Bonds are looked up with your node",
+			[nameof(NostrRelayMinBond)] = "The least that a fidelity bond has to hold for your Nostr relay to take the events of its key, in bitcoin, like 0.5. A bond that several keys prove is divided evenly among them",
+			[nameof(NostrRelayWhitelist)] = "Semicolon-separated list of the keys (npubs) whose events your Nostr relay takes whatever fidelity bond they have",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }
@@ -155,8 +161,18 @@ public class Config
 	/// <summary>The kinds of events that the relay keeps when it takes the events that the user named.</summary>
 	public string[] NostrRelayKinds => GetEffectiveValue<string[]>(nameof(NostrRelayKinds));
 
+	/// <summary>Whether the relay takes events only from keys with a fidelity bond behind them, and from the keys of the list.</summary>
+	public bool NostrRelayBondFilter => GetEffectiveValue<bool>(nameof(NostrRelayBondFilter));
+
+	/// <summary>The least that has to stand behind a key for the relay to take its events, in bitcoin, as a text like 0.5.</summary>
+	public string NostrRelayMinBond => GetEffectiveValue<string>(nameof(NostrRelayMinBond));
+
+	/// <summary>The keys whose events the relay takes whatever stands behind them, as npubs.</summary>
+	public string[] NostrRelayWhitelist => GetEffectiveValue<string[]>(nameof(NostrRelayWhitelist));
+
 	/// <summary>What the user chose for the relay of the application, as far as it can be read.</summary>
-	public NostrRelay.NostrRelaySettings NostrRelaySettings => NostrRelay.NostrRelaySettings.Parse(NostrRelayEvents, NostrRelayKinds);
+	public NostrRelay.NostrRelaySettings NostrRelaySettings =>
+		NostrRelay.NostrRelaySettings.Parse(NostrRelayEvents, NostrRelayKinds, NostrRelayBondFilter, NostrRelayMinBond, NostrRelayWhitelist);
 
 	public ServiceConfiguration ServiceConfiguration { get; }
 
@@ -193,9 +209,10 @@ public class Config
 	/// <summary>The same for the Nostr relays.</summary>
 	public bool IsNostrRelaysOverridden => Data[nameof(NostrRelays)].Overridden;
 
-	/// <summary>The same for the relay that the application runs: whether it runs one, and which events that relay takes.</summary>
+	/// <summary>The same for the relay that the application runs: whether it runs one, which events that relay takes, and from whom.</summary>
 	public bool IsNostrRelayOverridden =>
-		Data[nameof(RunNostrRelay)].Overridden || Data[nameof(NostrRelayEvents)].Overridden || Data[nameof(NostrRelayKinds)].Overridden;
+		Data[nameof(RunNostrRelay)].Overridden || Data[nameof(NostrRelayEvents)].Overridden || Data[nameof(NostrRelayKinds)].Overridden
+		|| Data[nameof(NostrRelayBondFilter)].Overridden || Data[nameof(NostrRelayMinBond)].Overridden || Data[nameof(NostrRelayWhitelist)].Overridden;
 
 	public bool TryGetCoordinatorUri([NotNullWhen(true)] out Uri? coordinatorUri)
 	{
@@ -277,6 +294,32 @@ public class Config
 		}
 
 		return new StringValue(value, value, ValueSource.Disk);
+	}
+
+	/// <summary>An amount of bitcoin that a fidelity bond has to hold. What is given at the start and is no such amount is refused: it would stand for no minimum at all.</summary>
+	private static StringValue GetBondAmountValue(string key, string value, string[] cliArgs)
+	{
+		var amount = GetStringValue(key, value, cliArgs);
+
+		if (amount.ValueSource != ValueSource.Disk && !NostrRelay.NostrRelaySettings.TryParseBond(amount.EffectiveValue, out _, out _))
+		{
+			throw new ArgumentException("must be an amount of bitcoin, like 0.5.", key);
+		}
+
+		return amount;
+	}
+
+	/// <summary>Keys of Nostr. What is given at the start and is no key is refused: the key that was meant would be missing.</summary>
+	private static StringArrayValue GetKeyArrayValue(string key, string[] arrayValues, string[] cliArgs)
+	{
+		var keys = GetStringArrayValue(key, arrayValues, cliArgs);
+
+		if (keys.ValueSource != ValueSource.Disk && keys.EffectiveValue.Any(entry => entry.Length > 0 && !NostrRelay.RelayKey.TryParse(entry, out _)))
+		{
+			throw new ArgumentException("must be npubs, with semicolons between them.", key);
+		}
+
+		return keys;
 	}
 
 	private static StringValue GetUriStringValue(string key, string value, string[] cliArgs)

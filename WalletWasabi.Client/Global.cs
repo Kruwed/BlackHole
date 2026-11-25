@@ -101,11 +101,15 @@ public class Global
 		RegisterMakerOfferService();
 
 		// The relay of the application is there from the start as well. It runs once it is told to: see RunNostrRelayAsync.
+		// The fidelity bonds that keys show to it are looked up with the node, and a bond counts while it is locked.
+		_nostrRelayBondChecker = new NodeBondChecker(_bitcoinRpcClient);
 		NostrRelay = new NostrRelayRunner(
 			Network,
 			Path.Combine(DataDir, "NostrRelay", Network.ToString()),
 			WaitForTorAsync,
-			NostrRelayRunner.DescribeObstacle(Config.UseTor, Network == Network.RegTest));
+			NostrRelayRunner.DescribeObstacle(Config.UseTor, Network == Network.RegTest),
+			_nostrRelayBondChecker.CheckAsync,
+			() => Status.BestNetworkHeight is > 0 and var height ? height : null);
 		NostrRelay.StateChanged += (_, state) => EventBus.Publish(new NostrRelayStateChanged(state));
 
 		_ticker = new Timer(_ => EventBus.Publish(new Tick(DateTime.UtcNow)));
@@ -136,6 +140,7 @@ public class Global
 	private bool _initializeSleepInhibitor;
 	/// <summary>The user's node. Everything that needs the node holds this one client, so that <see cref="ConnectToBitcoinNodeAsync"/> can put another node behind it.</summary>
 	private readonly SwitchableRpcClient _bitcoinRpcClient;
+	private readonly NodeBondChecker _nostrRelayBondChecker;
 	private CoinPrison? _coinPrison;
 	private readonly Timer _ticker;
 	private readonly ComposedDisposable _disposables = new();
@@ -997,6 +1002,7 @@ public class Global
 
 				// The relay goes before Tor does, so that Tor is still there to take the onion address down.
 				await NostrRelay.DisposeAsync().ConfigureAwait(false);
+				_nostrRelayBondChecker.Dispose();
 
 				if (_torManager is not null)
 				{

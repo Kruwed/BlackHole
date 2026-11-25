@@ -33,6 +33,9 @@ public record PersistentConfig(
 	bool RunNostrRelay,
 	string NostrRelayEvents,
 	ValueList<string> NostrRelayKinds,
+	bool NostrRelayBondFilter,
+	string NostrRelayMinBond,
+	ValueList<string> NostrRelayWhitelist,
 	int ConfigVersion
 	) : IPersistentConfig
 {

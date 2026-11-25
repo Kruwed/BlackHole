@@ -36,6 +36,9 @@ public static class PersistentConfigManager
 		RunNostrRelay : false,
 		NostrRelayEvents : nameof(NostrRelay.RelayEventChoice.BlackHole),
 		NostrRelayKinds : [],
+		NostrRelayBondFilter : false,
+		NostrRelayMinBond : "0",
+		NostrRelayWhitelist : [],
 		ConfigVersion : 4);
 
 	public static readonly PersistentConfig DefaultRegTestConfig = DefaultMainNetConfig with

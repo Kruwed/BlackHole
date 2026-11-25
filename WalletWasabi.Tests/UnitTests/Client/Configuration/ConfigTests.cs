@@ -3,6 +3,7 @@ using NBitcoin.RPC;
 using System.IO;
 using System.Linq;
 using WalletWasabi.Client.Configuration;
+using WalletWasabi.Tests.Helpers;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.Client.Configuration;
@@ -160,6 +161,55 @@ public class ConfigTests
 
 		Assert.Contains("NostrRelayEvents", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
 		Assert.Contains("NostrRelayKinds", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+	}
+
+	/// <summary>
+	/// Whose events the relay takes is a setting as well: from anybody unless the config file says otherwise, or from
+	/// keys with a fidelity bond of a size behind them and from the keys of a list.
+	/// </summary>
+	[Fact]
+	public void RelayTakesEventsFromTheKeysOfTheSettings()
+	{
+		using var key = TestRelayEvent.NewKey();
+		var hex = TestRelayEvent.GetPublicKey(key);
+		var npub = WalletWasabi.NostrRelay.RelayKey.ToNpub(hex);
+
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.Equal(WalletWasabi.NostrRelay.RelaySenderRules.Anyone, config.NostrRelaySettings.Senders);
+		Assert.False(config.NostrRelayBondFilter);
+
+		var filtered = PersistentConfigManager.DefaultMainNetConfig with { NostrRelayBondFilter = true, NostrRelayMinBond = "0.25", NostrRelayWhitelist = new([npub]) };
+		config = new Config(filtered, []);
+		Assert.Equal(new WalletWasabi.NostrRelay.RelaySenderRules(true, 25_000_000, [hex]), config.NostrRelaySettings.Senders);
+		Assert.False(config.IsNostrRelayOverridden);
+
+		// Given at the start, they go before what the file says, and cannot be changed in the application.
+		config = new Config(filtered, ["--nostrrelayminbond=1.5"]);
+		Assert.Equal(150_000_000, config.NostrRelaySettings.Senders.MinBond);
+		Assert.True(config.IsNostrRelayOverridden);
+
+		config = new Config(filtered, ["--nostrrelaybondfilter=false"]);
+		Assert.False(config.NostrRelaySettings.Senders.IsBondRequired);
+		Assert.Equal(0, config.NostrRelaySettings.Senders.RequiredShare);
+		Assert.True(config.IsNostrRelayOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig, [$"--nostrrelaywhitelist={hex};{npub}"]);
+		Assert.Equal([hex], config.NostrRelaySettings.Senders.Whitelist.ToArray());
+		Assert.True(config.IsNostrRelayOverridden);
+
+		// What is given at the start and cannot be read is refused: a minimum that is none would let everybody with any bond in.
+		Assert.Throws<System.ArgumentException>(() => new Config(filtered, ["--nostrrelayminbond=0,5"]));
+		Assert.Throws<System.ArgumentException>(() => new Config(filtered, ["--nostrrelayminbond=a quarter"]));
+		Assert.Throws<System.ArgumentException>(() => new Config(filtered, [$"--nostrrelaywhitelist={npub};nobody"]));
+
+		// In the file, an amount that cannot be read is no minimum, and a key that is none is left out.
+		config = new Config(filtered with { NostrRelayMinBond = "a quarter", NostrRelayWhitelist = new([npub, "nobody"]) }, []);
+		Assert.Equal(new WalletWasabi.NostrRelay.RelaySenderRules(true, 0, [hex]), config.NostrRelaySettings.Senders);
+
+		foreach (var option in new[] { "NostrRelayBondFilter", "NostrRelayMinBond", "NostrRelayWhitelist" })
+		{
+			Assert.Contains(option, Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+		}
 	}
 
 	/// <summary>

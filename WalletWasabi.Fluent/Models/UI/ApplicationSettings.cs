@@ -64,6 +64,9 @@ public partial class ApplicationSettings : ReactiveObject
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _runNostrRelay;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _nostrRelayEvents;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _nostrRelayKinds;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _nostrRelayBondFilter;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _nostrRelayMinBond;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _nostrRelayWhitelist;
 
 	// What the user has connected the application to: see SetConnectionConfigured.
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _configuredConnections;
@@ -103,6 +106,9 @@ public partial class ApplicationSettings : ReactiveObject
 		_runNostrRelay = persistentConfig.RunNostrRelay;
 		_nostrRelayEvents = persistentConfig.NostrRelayEvents;
 		_nostrRelayKinds = persistentConfig.NostrRelayKinds.ToArray();
+		_nostrRelayBondFilter = persistentConfig.NostrRelayBondFilter;
+		_nostrRelayMinBond = persistentConfig.NostrRelayMinBond;
+		_nostrRelayWhitelist = persistentConfig.NostrRelayWhitelist.ToArray();
 
 		_configuredConnections = persistentConfig.ConfiguredConnections.ToArray();
 
@@ -138,8 +144,16 @@ public partial class ApplicationSettings : ReactiveObject
 					(_, _, _, _, _, _, _, _) => Unit.Default)
 				.Skip(1);
 
+		var configSaveTrigger3 =
+			this.WhenAnyValue(
+					x => x.NostrRelayBondFilter,
+					x => x.NostrRelayMinBond,
+					x => x.NostrRelayWhitelist,
+					(_, _, _) => Unit.Default)
+				.Skip(1);
+
 		Observable
-			.Merge(configSaveTrigger1, configSaveTrigger2)
+			.Merge(configSaveTrigger1, configSaveTrigger2, configSaveTrigger3)
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Throttle(TimeSpan.FromMilliseconds(ThrottleTime))
 			.Do(_ => Save())
@@ -211,20 +225,39 @@ public partial class ApplicationSettings : ReactiveObject
 	}
 
 	/// <summary>
-	/// Stores whether the application runs a Nostr relay of its own and which events that relay takes, after the relay
-	/// was started or stopped. Like <see cref="SetConnectedBitcoinNode"/>, this asks for no restart: the relay runs
-	/// that way, or does not run, already.
+	/// Stores whether the application runs a Nostr relay of its own, which events that relay takes and from whom,
+	/// after the relay was started or stopped. Like <see cref="SetConnectedBitcoinNode"/>, this asks for no restart:
+	/// the relay runs that way, or does not run, already.
 	/// </summary>
-	/// <param name="events">Which events the relay takes, see <see cref="WalletWasabi.NostrRelay.RelayEventChoice"/>.</param>
-	/// <param name="kinds">The kinds of events that the user named for the relay to keep.</param>
-	public void SetNostrRelay(bool isRun, string events, string[] kinds)
+	/// <param name="settings">What the user chose for the relay.</param>
+	public void SetNostrRelay(bool isRun, WalletWasabi.NostrRelay.NostrRelaySettings settings)
 	{
-		_runningConfig = _runningConfig with { RunNostrRelay = isRun, NostrRelayEvents = events, NostrRelayKinds = new ValueList<string>(kinds) };
+		var events = settings.Events.ToString();
+		var kinds = settings.Kinds.ToStrings();
+		var minBond = WalletWasabi.NostrRelay.NostrRelaySettings.FormatBond(settings.Senders.MinBond);
+		var whitelist = settings.Senders.WhitelistToNpubs();
+
+		_runningConfig = _runningConfig with
+		{
+			RunNostrRelay = isRun,
+			NostrRelayEvents = events,
+			NostrRelayKinds = new ValueList<string>(kinds),
+			NostrRelayBondFilter = settings.Senders.IsBondRequired,
+			NostrRelayMinBond = minBond,
+			NostrRelayWhitelist = new ValueList<string>(whitelist)
+		};
 
 		RunNostrRelay = isRun;
 		NostrRelayEvents = events;
 		NostrRelayKinds = kinds;
+		NostrRelayBondFilter = settings.Senders.IsBondRequired;
+		NostrRelayMinBond = minBond;
+		NostrRelayWhitelist = whitelist;
 	}
+
+	/// <summary>What is saved for the relay that the application runs, as far as it can be read.</summary>
+	public WalletWasabi.NostrRelay.NostrRelaySettings NostrRelaySettings =>
+		WalletWasabi.NostrRelay.NostrRelaySettings.Parse(NostrRelayEvents, NostrRelayKinds, NostrRelayBondFilter, NostrRelayMinBond, NostrRelayWhitelist);
 
 	/// <summary>
 	/// Stores the coordinator that the application has just been connected to. Like <see cref="SetConnectedBitcoinNode"/>,
@@ -325,7 +358,10 @@ public partial class ApplicationSettings : ReactiveObject
 			NostrRelays = new ValueList<string>(NostrRelays),
 			RunNostrRelay = RunNostrRelay,
 			NostrRelayEvents = NostrRelayEvents,
-			NostrRelayKinds = new ValueList<string>(NostrRelayKinds)
+			NostrRelayKinds = new ValueList<string>(NostrRelayKinds),
+			NostrRelayBondFilter = NostrRelayBondFilter,
+			NostrRelayMinBond = NostrRelayMinBond,
+			NostrRelayWhitelist = new ValueList<string>(NostrRelayWhitelist)
 		};
 
 		result = result with { ConfiguredConnections = new ValueList<string>(ConfiguredConnections) };

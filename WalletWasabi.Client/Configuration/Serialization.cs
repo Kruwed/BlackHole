@@ -39,6 +39,9 @@ public static class PersistentConfigEncode
 			("RunNostrRelay", Bool(cfg.RunNostrRelay)),
 			("NostrRelayEvents", String(cfg.NostrRelayEvents)),
 			("NostrRelayKinds", Array(cfg.NostrRelayKinds.Select(String))),
+			("NostrRelayBondFilter", Bool(cfg.NostrRelayBondFilter)),
+			("NostrRelayMinBond", String(cfg.NostrRelayMinBond)),
+			("NostrRelayWhitelist", Array(cfg.NostrRelayWhitelist.Select(String))),
 			("ConfigVersion", Int(4))
 		]);
 }
@@ -95,6 +98,11 @@ public static class PersistentConfigDecode
 					RunNostrRelay: get.Optional("RunNostrRelay", Decode.Bool, false),
 					NostrRelayEvents: get.Optional("NostrRelayEvents", Decode.String) ?? nameof(NostrRelay.RelayEventChoice.BlackHole),
 					NostrRelayKinds: get.Optional("NostrRelayKinds", ValueList(Decode.String)) ?? Helpers.ValueList<string>.Empty,
+
+					// A file from before the relay had filters for whose events it takes has none: it takes them from anybody.
+					NostrRelayBondFilter: get.Optional("NostrRelayBondFilter", Decode.Bool, false),
+					NostrRelayMinBond: get.Optional("NostrRelayMinBond", Decode.String) ?? "0",
+					NostrRelayWhitelist: get.Optional("NostrRelayWhitelist", ValueList(Decode.String)) ?? Helpers.ValueList<string>.Empty,
 					ConfigVersion: get.Required("ConfigVersion", Decode.Int)
 				);
 			}

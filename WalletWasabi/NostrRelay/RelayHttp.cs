@@ -139,16 +139,35 @@ public static class RelayInformation
 	/// <summary>The parts of the protocol that the relay speaks: the basic one, and the one that this answer is.</summary>
 	public static readonly ImmutableArray<int> SupportedNips = [1, 11];
 
-	public static string Create(RelayEventSet events)
+	/// <summary>Tells in a sentence whose events a relay takes.</summary>
+	public static string DescribeSenders(RelaySenderRules senders)
+	{
+		if (!senders.IsBondRequired)
+		{
+			return "It takes them from anybody.";
+		}
+
+		var bond = $"It takes them from keys that have shown a fidelity bond of {RelaySenders.FormatAmount(senders.RequiredShare)} or more";
+
+		return senders.Whitelist.Count switch
+		{
+			0 => $"{bond}.",
+			1 => $"{bond}, and from one key that it has on a list.",
+			var count => string.Create(CultureInfo.InvariantCulture, $"{bond}, and from {count} keys that it has on a list.")
+		};
+	}
+
+	public static string Create(RelayEventSet events, RelaySenderRules senders)
 	{
 		var limits = events.Limits;
 		var buffer = new ArrayBufferWriter<byte>();
+		var retention = (long)RelayEventSet.Retention.TotalSeconds;
 
-		using (var writer = new Utf8JsonWriter(buffer))
+		using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
 		{
 			writer.WriteStartObject();
 			writer.WriteString("name", events.RelayName);
-			writer.WriteString("description", events.Description);
+			writer.WriteString("description", $"{events.Description} {DescribeSenders(senders)} It keeps an event for {RelayEventSet.Retention.TotalHours:0} hours.");
 			writer.WriteStartArray("supported_nips");
 
 			foreach (var nip in SupportedNips)
@@ -165,11 +184,6 @@ public static class RelayInformation
 			writer.WriteNumber("max_event_tags", limits.MaxEventTags);
 			writer.WriteNumber("max_content_length", limits.MaxContentLength);
 
-			if (events.MaxEventAge is { } maxAge)
-			{
-				writer.WriteNumber("created_at_lower_limit", (long)maxAge.TotalSeconds);
-			}
-
 			writer.WriteNumber("created_at_upper_limit", (long)limits.MaxClockDifference.TotalSeconds);
 			writer.WriteBoolean("auth_required", false);
 			writer.WriteBoolean("payment_required", false);
@@ -177,6 +191,13 @@ public static class RelayInformation
 			// The relay takes certain kinds of events only, which is for a client to know before it sends others.
 			writer.WriteBoolean("restricted_writes", true);
 			writer.WriteEndObject();
+
+			// For how long the relay keeps what it takes, whatever its kind.
+			writer.WriteStartArray("retention");
+			writer.WriteStartObject();
+			writer.WriteNumber("time", retention);
+			writer.WriteEndObject();
+			writer.WriteEndArray();
 			writer.WriteEndObject();
 		}
 

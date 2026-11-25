@@ -34,7 +34,7 @@
                  IsVisible="{Binding Obstacle, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- Every name has what it names to its right, in one column. What explains a row is below the row, as wide as the page. -->
-      <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,10,Auto,10,Auto,4,Auto,20,Auto">
+      <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,10,Auto,10,Auto,4,Auto,16,Auto,10,Auto,10,Auto,4,Auto,16,Auto">
         <!-- Whether the relay runs. It can be switched on where a relay can run, and off anywhere. -->
         <Label Grid.Row="0" Grid.Column="0" Classes="beside" Content="Nostr relay:" Target="TsRelay" />
         <ToggleSwitch Grid.Row="0" Grid.Column="2" Name="TsRelay"
@@ -63,9 +63,47 @@
                    TextWrapping="Wrap"
                    Opacity="0.6" />
 
+        <!-- Whose events the relay takes. With the filter on, a key needs a fidelity bond of the size below, or a place on the list. -->
+        <Label Grid.Row="8" Grid.Column="0" Classes="beside" Content="Bond filter:" Target="TsBondFilter" />
+        <ToggleSwitch Grid.Row="8" Grid.Column="2" Name="TsBondFilter"
+                      IsChecked="{Binding IsBondFilterOn}"
+                      IsEnabled="{Binding CanChooseEvents}"
+                      OnContent="On" OffContent="Off"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" />
+
+        <!-- The least that a bond has to hold. Raising it keeps out whoever has fewer coins locked. -->
+        <Label Grid.Row="10" Grid.Column="0" Classes="besideBox" Content="Minimum bond:" Target="TbRelayMinBond" />
+        <DockPanel Grid.Row="10" Grid.Column="2">
+          <TextBlock DockPanel.Dock="Right" Text="BTC" Margin="8 10 0 0" VerticalAlignment="Top" />
+          <TextBox Name="TbRelayMinBond"
+                   Text="{Binding MinBond}"
+                   Watermark="0.5"
+                   IsReadOnly="{Binding IsAsking}"
+                   IsEnabled="{Binding CanSetMinBond}" />
+        </DockPanel>
+
+        <!-- The keys that need no bond, one on a line. -->
+        <Label Grid.Row="12" Grid.Column="0" Classes="besideBox" Content="Whitelist:" Target="TbRelayWhitelist" />
+        <TextBox Grid.Row="12" Grid.Column="2" Name="TbRelayWhitelist"
+                 Text="{Binding Whitelist}"
+                 Watermark="npub1…, one on a line"
+                 Classes="monoSpaced"
+                 FontSize="12.5"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 Height="80"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 IsReadOnly="{Binding IsAsking}"
+                 IsEnabled="{Binding CanChooseEvents}" />
+        <TextBlock Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="3"
+                   Text="{Binding SendersDescription}"
+                   TextWrapping="Wrap"
+                   Opacity="0.6" />
+
         <!-- Where the relay is reached, while it runs. Whoever is to use the relay is given this address. -->
-        <Label Grid.Row="8" Grid.Column="0" Classes="besideBox" Content="Relay address:" Target="TbRelayAddress" />
-        <DockPanel Grid.Row="8" Grid.Column="2">
+        <Label Grid.Row="16" Grid.Column="0" Classes="besideBox" Content="Relay address:" Target="TbRelayAddress" />
+        <DockPanel Grid.Row="16" Grid.Column="2">
           <ClipboardCopyButton DockPanel.Dock="Right" Text="{Binding Address}" ToolTip.Tip="Copy"
                                Margin="8 4 0 0" VerticalAlignment="Top"
                                IsVisible="{Binding Address, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
