@@ -108,10 +108,5 @@ public static class RelayBondClaim
 	}
 
 	private static BondProof? Create(string txid, string vout, string unlockHeight, string key, string signature) =>
-		txid.Length == 64
-		&& uint256.TryParse(txid, out var hash)
-		&& uint.TryParse(vout, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
-		&& uint.TryParse(unlockHeight, NumberStyles.None, CultureInfo.InvariantCulture, out var height)
-			? new BondProof(new OutPoint(hash, index), height, key, signature)
-			: null;
+		BondProof.TryCreate(txid, vout, unlockHeight, key, signature, out var proof) ? proof : null;
 }

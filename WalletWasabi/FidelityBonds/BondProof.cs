@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text;
 using NBitcoin.DataEncoders;
 using NBitcoin.Secp256k1;
@@ -48,6 +49,45 @@ public sealed record BondProof(OutPoint OutPoint, uint UnlockHeight, string Key,
 
 		return new BondProof(outPoint, unlockHeight, Encoders.Hex.EncodeData(xOnlyKey), Encoders.Hex.EncodeData(signature));
 	}
+
+	/// <summary>
+	/// Makes a proof of its five parts as texts carry them: the transaction and the number of the output, the unlock
+	/// height, the key and the signature. Whether the signature is one for a given key is another question, see
+	/// <see cref="IsSignedFor"/>.
+	/// </summary>
+	/// <returns>False if the parts are not those of a proof.</returns>
+	public static bool TryCreate(string txid, string vout, string unlockHeight, string key, string signature, [NotNullWhen(true)] out BondProof? proof)
+	{
+		proof = txid.Length == 64
+			&& uint256.TryParse(txid, out var hash)
+			&& uint.TryParse(vout, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
+			&& uint.TryParse(unlockHeight, NumberStyles.None, CultureInfo.InvariantCulture, out var height)
+				? new BondProof(new OutPoint(hash, index), height, key, signature)
+				: null;
+
+		if (proof is { IsWellFormed: false })
+		{
+			proof = null;
+		}
+
+		return proof is not null;
+	}
+
+	/// <summary>
+	/// Reads a proof that is written as one text, see <see cref="ToText"/>. That is how a proof is handed from the
+	/// wallet that made it to whoever shows it, like a coordinator in its config file.
+	/// </summary>
+	public static bool TryParse(string text, [NotNullWhen(true)] out BondProof? proof)
+	{
+		proof = null;
+
+		return text.Trim().Split(':') is [var txid, var vout, var unlockHeight, var key, var signature]
+			&& TryCreate(txid, vout, unlockHeight, key, signature, out proof);
+	}
+
+	/// <summary>Writes the proof as one text: its transaction, the number of its output, its unlock height, its key and its signature, with colons between them.</summary>
+	public string ToText() =>
+		string.Create(CultureInfo.InvariantCulture, $"{OutPoint.Hash}:{OutPoint.N}:{UnlockHeight}:{Key}:{Signature}");
 
 	/// <summary>What the key of the bond signs: the key of the offer, and the bond that the proof names.</summary>
 	public static byte[] GetHash(ReadOnlySpan<byte> offerKey, OutPoint outPoint, uint unlockHeight)

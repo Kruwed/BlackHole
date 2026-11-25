@@ -16,6 +16,13 @@ public record AnnouncerConfig
 	public string[] RelayUris { get; init;  } = ["wss://relay.primal.net"];
 	public string Key { get; init; } = InitKey();
 
+	/// <summary>
+	/// The proof of a fidelity bond that stands behind this coordinator, or nothing. A wallet that has a bond makes the
+	/// proof for the key of the coordinator, and writes it as one text, see <see cref="FidelityBonds.BondProof.ToText"/>.
+	/// The announcement shows it, so that the relays which ask for a bond take the announcement.
+	/// </summary>
+	public string BondProof { get; init; } = "";
+
 	private static string InitKey()
 	{
 		using var key = new Key();

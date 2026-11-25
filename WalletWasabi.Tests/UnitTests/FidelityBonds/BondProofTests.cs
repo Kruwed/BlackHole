@@ -125,6 +125,53 @@ public class BondProofTests
 		Assert.False(malformed.IsSignedFor(OfferKey));
 	}
 
+	/// <summary>
+	/// A proof is handed on as one text: its transaction, the number of its output, its unlock height, its key and its
+	/// signature, with colons between them. That is how the config of a coordinator carries the proof that a wallet made.
+	/// </summary>
+	[Fact]
+	public void ProofIsWrittenAsOneTextAndReadBack()
+	{
+		using var bondKey = new Key();
+		var proof = BondProof.Create(bondKey, BondOutPoint, UnlockHeight, OfferKey);
+		var text = proof.ToText();
+
+		Assert.Equal($"{BondOutPoint.Hash}:7:900000:{proof.Key}:{proof.Signature}", text);
+
+		Assert.True(BondProof.TryParse(text, out var read));
+		Assert.Equal(proof, read);
+		Assert.True(read.IsSignedFor(OfferKey));
+
+		Assert.True(BondProof.TryParse($"  {text}\n", out read));
+		Assert.Equal(proof, read);
+
+		// The same from the five parts, which is how a tag of an event carries it.
+		Assert.True(BondProof.TryCreate(BondOutPoint.Hash.ToString(), "7", "900000", proof.Key, proof.Signature, out read));
+		Assert.Equal(proof, read);
+
+		string[] parts = text.Split(':');
+
+		foreach (var wrong in new[]
+		{
+			"",
+			"a proof",
+			string.Join(':', parts[..4]),
+			text + ":more",
+			string.Join(':', parts[0][..^1], parts[1], parts[2], parts[3], parts[4]),
+			string.Join(':', parts[0], "-1", parts[2], parts[3], parts[4]),
+			string.Join(':', parts[0], "seven", parts[2], parts[3], parts[4]),
+			string.Join(':', parts[0], parts[1], "0", parts[3], parts[4]),
+			string.Join(':', parts[0], parts[1], "500000000", parts[3], parts[4]),
+			string.Join(':', parts[0], parts[1], parts[2], parts[3][..^2], parts[4]),
+			string.Join(':', parts[0], parts[1], parts[2], parts[3], parts[4] + "00"),
+			text.Replace(':', ' ')
+		})
+		{
+			Assert.False(BondProof.TryParse(wrong, out read), wrong);
+			Assert.Null(read);
+		}
+	}
+
 	[Fact]
 	public void ProofWithoutAKeyOrAHeightTellsNoScript()
 	{

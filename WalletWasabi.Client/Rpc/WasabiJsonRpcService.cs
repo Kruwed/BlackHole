@@ -207,6 +207,45 @@ public class WasabiJsonRpcService : IJsonRpcService
 	}
 
 	/// <summary>
+	/// Makes the proof that the fidelity bond of the wallet stands behind a key of Nostr that is not one of the wallet's
+	/// own: the key of a coordinator. The announcement of the coordinator shows the proof, the way the offers of the
+	/// wallet show theirs, so that relays which ask for a bond take it. The proof names the bond and is signed by the
+	/// key of the bond for that one key: it is of no use to anybody else, and it gives nobody the coins.
+	/// </summary>
+	/// <param name="key">The key that the proof is for, as an npub or in hex.</param>
+	/// <returns>The proof as the config of a coordinator takes it, with what the bond holds and how long it is locked.</returns>
+	[JsonRpcMethod("getbondproof")]
+	public JsonRpcResult GetBondProof(string key, string? password = null)
+	{
+		var activeWallet = Guard.NotNull(nameof(ActiveWallet), ActiveWallet);
+
+		AssertWalletIsLoaded();
+
+		if (!WalletWasabi.NostrRelay.RelayKey.TryParse(key, out var publicKey))
+		{
+			throw new ArgumentException("The key is an npub, or 64 characters of hex.", nameof(key));
+		}
+
+		if (!activeWallet.IsLoggedIn && !activeWallet.TryLogin(password ?? ""))
+		{
+			throw new InvalidOperationException("The wallet requires the password to sign with the key of the fidelity bond.");
+		}
+
+		var backing = activeWallet.GetBondBacking(Convert.FromHexString(publicKey))
+			?? throw new InvalidOperationException("The wallet has no fidelity bond that is in a block and still locked.");
+
+		return new JsonRpcResult
+		{
+			["proof"] = backing.Proof.ToText(),
+			["key"] = WalletWasabi.NostrRelay.RelayKey.ToNpub(publicKey),
+			["amount"] = backing.Amount,
+			["unlockHeight"] = (long)backing.Proof.UnlockHeight,
+			["txid"] = backing.Proof.OutPoint.Hash.ToString(),
+			["vout"] = (long)backing.Proof.OutPoint.N
+		};
+	}
+
+	/// <summary>
 	/// Gives out a receive address that was not given out before.
 	/// </summary>
 	[JsonRpcMethod("getnewaddress")]

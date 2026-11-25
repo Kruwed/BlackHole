@@ -120,7 +120,14 @@ public class Startup(IConfiguration configuration)
 		if (config.AnnouncerConfig.IsEnabled)
 		{
 			services.AddSingleton<AnnouncerConfig>(_ => config.AnnouncerConfig);
-			services.AddBackgroundService<CoordinatorAnnouncer>();
+
+			// The announcer asks the node about the fidelity bond that the announcement shows. A coordinator that is
+			// published as an onion service runs Tor, and reaches relays at onion addresses through it.
+			services.AddBackgroundService(s => new CoordinatorAnnouncer(
+				config.AnnouncerConfig,
+				network,
+				rpcClient: s.GetRequiredService<IRPCClient>(),
+				torSocksEndPoint: config.PublishAsOnionService ? torSetting.SocksEndpoint : null));
 		}
 
 		services.AddSingleton<FeeRateProvider>(s => FeeRateProviders.RpcAsync(s.GetRequiredService<IRPCClient>()));

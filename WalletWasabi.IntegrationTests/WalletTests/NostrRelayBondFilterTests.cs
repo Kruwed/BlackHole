@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 using NBitcoin;
 using NBitcoin.Secp256k1;
 using NNostr.Client;
+using NNostr.Client.Protocols;
 using WalletWasabi.Blockchain.Keys;
+using WalletWasabi.Discoverability;
 using WalletWasabi.FidelityBonds;
 using WalletWasabi.IntegrationTests.Infrastructure;
 using WalletWasabi.JoinMarket;
@@ -21,7 +23,8 @@ namespace WalletWasabi.IntegrationTests.WalletTests;
 
 /// <summary>
 /// The Nostr relay of the application with its bond filter, against a real node: the offers of a wallet prove the
-/// bond of the wallet, and it is the node that says whether the chain has that bond.
+/// bond of the wallet, the announcement of a coordinator shows a proof that a wallet made for it, and it is the node
+/// that says whether the chain has that bond.
 /// </summary>
 [Collection("Integration tests")]
 public class NostrRelayBondFilterTests
@@ -184,6 +187,136 @@ public class NostrRelayBondFilterTests
 			{
 				key.Dispose();
 			}
+		}
+	}
+
+	/// <summary>
+	/// The announcement of a coordinator is filtered by its bond like the offer of a maker. The coordinator has no
+	/// wallet: a wallet with a bond makes the proof for the key of the coordinator, the config of the announcer
+	/// carries it, the announcement shows it, and the node of the relay finds the bond.
+	/// </summary>
+	[Fact(Timeout = 180_000)]
+	public async Task Relay_TakesTheAnnouncementOfACoordinatorByTheBondThatAWalletProvesForIt()
+	{
+		var cancellationToken = TestContext.Current.CancellationToken;
+
+		await using var env = await RegTestEnvironment.CreateAsync(_fixture);
+		var keyManager = env.CreateKeyManager();
+		var wallet = env.CreateWallet(keyManager);
+
+		var tip = (uint)await env.RpcClient.GetBlockCountAsync(cancellationToken);
+		var unlockHeight = tip + 6;
+
+		await env.FundAddressAsync(keyManager.GetFidelityBondAddress(unlockHeight), Money.Coins(0.3m), confirmations: 1);
+
+		using var coordinatorKey = ECPrivKey.Create(RandomUtils.GetBytes(32));
+		using var offerKey = ECPrivKey.Create(RandomUtils.GetBytes(32));
+		var coordinator = Convert.ToHexStringLower(coordinatorKey.CreateXOnlyPubKey().ToBytes());
+
+		await wallet.StartAsync(cancellationToken);
+
+		try
+		{
+			await env.WaitForConditionAsync(() => wallet.GetFidelityBonds().Count(bond => bond.IsConfirmed) == 1, TimeSpan.FromSeconds(30));
+			await env.WaitForWalletToCatchUpAsync(wallet, TimeSpan.FromSeconds(60));
+			Assert.True(wallet.TryLogin(RegTestEnvironment.DefaultPassword));
+
+			long time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+			uint? heightThatTheNodeTold = null;
+			DateTimeOffset Clock() => DateTimeOffset.FromUnixTimeSeconds(Volatile.Read(ref time));
+
+			using var checker = new NodeBondChecker(env.RpcClient);
+
+			NostrRelayServer StartRelay(long minBond)
+			{
+				var relay = new NostrRelayServer(
+					new BlackHoleEventSet(env.Network),
+					now: Clock,
+					senders: new RelaySenderRules(IsBondRequired: true, MinBond: minBond, Whitelist: []),
+					checkBond: checker.CheckAsync,
+					getTipHeight: () => heightThatTheNodeTold);
+
+				relay.OnionHost = $"127.0.0.1:{relay.EndPoint.Port}";
+				return relay;
+			}
+
+			await using var relay = StartRelay(10_000_000);
+			await using var strictRelay = StartRelay(50_000_000);
+			var address = new Uri($"ws://127.0.0.1:{relay.EndPoint.Port}/");
+			var strictAddress = new Uri($"ws://127.0.0.1:{strictRelay.EndPoint.Port}/");
+
+			// The wallet makes the proof of its bond for the key of the coordinator, as one text. That text goes into the config of the announcer.
+			var proof = wallet.GetBondBacking(coordinatorKey.CreateXOnlyPubKey().ToBytes())?.Proof.ToText();
+			Assert.NotNull(proof);
+
+			var config = new AnnouncerConfig
+			{
+				IsEnabled = true,
+				CoordinatorUri = "http://coordinator.example/",
+				ReadMoreUri = "http://coordinator.example/",
+				Key = coordinatorKey.ToNIP19(),
+				RelayUris = [address.ToString(), strictAddress.ToString()]
+			};
+
+			async Task<IReadOnlyList<RelayAnswer>> AnnounceAsync(AnnouncerConfig announcerConfig)
+			{
+				using var announcer = new CoordinatorAnnouncer(announcerConfig, env.Network, rpcClient: env.RpcClient, now: Clock);
+				return await announcer.AnnounceAsync(cancellationToken);
+			}
+
+			const string NeedsABond = "restricted: this relay takes events from keys with a fidelity bond of 0.1 BTC or more behind them";
+
+			// Without the proof, neither relay takes the announcement.
+			var answers = await AnnounceAsync(config);
+			Assert.Equal(
+				[new RelayAnswer(address, false, NeedsABond), new RelayAnswer(strictAddress, false, "restricted: this relay takes events from keys with a fidelity bond of 0.5 BTC or more behind them")],
+				answers);
+
+			// With it, the relay that asks for 0.1 BTC takes it: its node finds the bond of 0.3 BTC. The relay that asks for 0.5 BTC does not.
+			Volatile.Write(ref time, time + 60);
+			answers = await AnnounceAsync(config with { BondProof = proof });
+			Assert.Equal(
+				[
+					new RelayAnswer(address, true, ""),
+					new RelayAnswer(strictAddress, false, "restricted: the fidelity bond holds 0.3 BTC, and this relay takes events from keys with 0.5 BTC or more behind them")
+				],
+				answers);
+			Assert.Equal(30_000_000, relay.Store.GetSender(coordinator)?.Share);
+			Assert.Equal(1, relay.EventCount);
+
+			// An offer of the same wallet shows the same bond: the coordinator and the offer have half of it each.
+			using var socket = new ClientWebSocket();
+			await socket.ConnectAsync(address, cancellationToken);
+
+			Volatile.Write(ref time, time + 60);
+			var offer = new MakerOffer(MinFeeRate: 1.5m, BuyRate: 120, SellRate: 150, Liquidity: 100_000_000, Points: 3, MatchedInputs: 1, ExtraInputs: 0,
+				Bond: wallet.GetBondBacking(offerKey.CreateXOnlyPubKey().ToBytes())!.Proof);
+			var signedOffer = JsonSerializer.Serialize(await MakerOfferEvent.Create(offer, env.Network, Clock()).ComputeIdAndSignAsync(offerKey));
+
+			Assert.Equal((true, ""), await PublishAsync(socket, signedOffer, cancellationToken));
+			Assert.Equal(15_000_000, relay.Store.GetSender(coordinator)?.Share);
+			Assert.Equal(2, (await QueryAsync(socket, cancellationToken)).Length);
+
+			// The proof of another key is not one for this coordinator: the announcer does not show it, and says why.
+			using var otherKey = ECPrivKey.Create(RandomUtils.GetBytes(32));
+			var foreign = config with { BondProof = wallet.GetBondBacking(otherKey.CreateXOnlyPubKey().ToBytes())!.Proof.ToText() };
+			Assert.Null(CoordinatorAnnouncer.ReadBond(foreign, out var problem));
+			Assert.Contains(coordinatorKey.CreateXOnlyPubKey().ToNIP19(), problem, StringComparison.Ordinal);
+
+			// The chain reaches the height of the bond. It stands behind nothing any more, and the relay drops what it kept.
+			var height = (uint)await env.RpcClient.GetBlockCountAsync(cancellationToken);
+			await env.RpcClient.GenerateAsync((int)(unlockHeight - height));
+			heightThatTheNodeTold = unlockHeight;
+
+			Volatile.Write(ref time, time + 15 * 60);
+			answers = await AnnounceAsync(config with { BondProof = proof, RelayUris = [address.ToString()] });
+			Assert.Equal([new RelayAnswer(address, false, "restricted: the chain has no fidelity bond that is locked and is the one that the event shows")], answers);
+			Assert.Null(relay.Store.GetSender(coordinator));
+			Assert.Empty(await QueryAsync(socket, cancellationToken));
+		}
+		finally
+		{
+			await wallet.StopAsync(CancellationToken.None);
 		}
 	}
 

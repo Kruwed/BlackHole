@@ -24,7 +24,8 @@ public static partial class Encode
 			("AbsoluteMinInputCount", UInt(cfg.AbsoluteMinInputCount)),
 			("ReadMoreUri", String(cfg.ReadMoreUri)),
 			("RelayUris", Array(cfg.RelayUris.Select(String))),
-			("Key", String(cfg.Key))
+			("Key", String(cfg.Key)),
+			("BondProof", String(cfg.BondProof))
 		]);
 
 	public static JsonNode WabiSabiConfig(WabiSabiConfig cfg) =>
@@ -99,7 +100,10 @@ public static partial class Decode
 			AbsoluteMinInputCount = get.Required("AbsoluteMinInputCount", UInt),
 			ReadMoreUri = get.Required("ReadMoreUri", String),
 			RelayUris = get.Required("RelayUris", Array(String)),
-			Key = get.Required("Key", String)
+			Key = get.Required("Key", String),
+
+			// A file from before a coordinator could show a fidelity bond has none.
+			BondProof = get.Optional("BondProof", String) ?? ""
 		});
 
 	/// <summary>
