@@ -281,6 +281,19 @@ public class TorControlClient : IAsyncDisposable
 		return reply;
 	}
 
+	/// <summary>
+	/// Asks Tor for an onion service that leads to a port of this computer. Tor keeps the service for as long as this
+	/// connection to its control port is open, and takes it down when the connection closes.
+	/// </summary>
+	/// <returns>The service, with the key that gives it the same address the next time.</returns>
+	/// <exception cref="TorControlException">Tor did not make the service, or what it answered cannot be read.</exception>
+	public async Task<OnionService> CreateOnionServiceAsync(OnionServiceOptions options, CancellationToken cancellationToken)
+	{
+		var reply = await SendCommandAsync(options.ToCommand(), cancellationToken).ConfigureAwait(false);
+
+		return OnionService.FromReply(reply, options.PrivateKey);
+	}
+
 	public async Task<bool> DestroyOnionServiceAsync(string serviceId, CancellationToken cancellationToken)
 	{
 		var reply = await SendCommandAsync($"DEL_ONION {serviceId}\r\n", cancellationToken).ConfigureAwait(false);
