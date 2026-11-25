@@ -88,6 +88,29 @@ public interface IServices
 	/// <summary>The Nostr relays that the offers of the wallet are posted to now.</summary>
 	IReadOnlyList<Uri> GetNostrRelays();
 
+	/// <summary>How it stands with the Nostr relay that the application runs itself: whether it runs, and at which onion address.</summary>
+	WalletWasabi.NostrRelay.NostrRelayState GetNostrRelayState();
+
+	/// <summary>What the relay runs with at the moment. Null if none runs.</summary>
+	WalletWasabi.NostrRelay.NostrRelaySettings? GetNostrRelaySettings();
+
+	/// <summary>Why the application cannot run a relay as it was started: a relay takes a Tor that the application started. Null if it can.</summary>
+	string? GetNostrRelayObstacle();
+
+	/// <summary>
+	/// Sees to it that the application runs its Nostr relay with the given choice of events, without a restart, and
+	/// waits for the onion address of the relay to be published.
+	/// </summary>
+	/// <returns>How it stands with the relay: it runs, or it does not yet, or it cannot, and then why.</returns>
+	Task<WalletWasabi.NostrRelay.NostrRelayState> RunNostrRelayAsync(WalletWasabi.NostrRelay.NostrRelaySettings settings, CancellationToken cancellationToken);
+
+	/// <summary>Stops the Nostr relay of the application.</summary>
+	Task StopNostrRelayAsync();
+
+	/// <summary>Asks the relay of the application at its onion address, through Tor, the way anybody else reaches it. Nothing is sent to it.</summary>
+	/// <returns>Nothing if the relay answers, otherwise the reason why it does not, in words for the user.</returns>
+	Task<Result<string>> VerifyNostrRelayAsync(CancellationToken cancellationToken);
+
 	/// <summary>
 	/// Makes the application coinjoin with the coordinator at the given address from now on, without a restart, provided
 	/// that the coordinator answers. Otherwise the application keeps the coordinator that it has, or none.

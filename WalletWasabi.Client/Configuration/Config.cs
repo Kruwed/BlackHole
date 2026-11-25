@@ -52,7 +52,10 @@ public class Config
 			[nameof(AbsoluteMinInputCount)] = GetLongValue("AbsoluteMinInputCount", PersistentConfig.AbsoluteMinInputCount, cliArgs),
 			[nameof(DropUnconfirmedTransactionsAfterDays)] = GetLongValue("MaxDaysInMempool", PersistentConfig.MaxDaysInMempool, cliArgs),
 			[nameof(ExperimentalFeatures)] = GetStringArrayValue("ExperimentalFeatures", PersistentConfig.ExperimentalFeatures.ToArray(), cliArgs),
-			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", PersistentConfig.NostrRelays.ToArray(), cliArgs)
+			[nameof(NostrRelays)] = GetStringArrayValue("NostrRelays", PersistentConfig.NostrRelays.ToArray(), cliArgs),
+			[nameof(RunNostrRelay)] = GetBoolValue("RunNostrRelay", PersistentConfig.RunNostrRelay, cliArgs),
+			[nameof(NostrRelayEvents)] = GetStringValue("NostrRelayEvents", PersistentConfig.NostrRelayEvents, cliArgs),
+			[nameof(NostrRelayKinds)] = GetStringArrayValue("NostrRelayKinds", PersistentConfig.NostrRelayKinds.ToArray(), cliArgs)
 		};
 
 		// Check if any setting is overridden (either by an environment value, or by a CLI argument).
@@ -107,6 +110,9 @@ public class Config
 			["MaxDaysInMempool"] = "The number of days that unconfirmed wallet transactions will be remembered by Black Hole before dropping them",
 			[nameof(ExperimentalFeatures)] = "Semicolon-separated list of experimental features to enable. (none are available at the moment)",
 			[nameof(NostrRelays)] = "Semicolon-separated list of the Nostr relays that Black Hole connects to: the offers of the wallet as a maker are posted to them, and the offers of other makers are read from them. Nothing is sent to them before an offer is posted or the order book is opened",
+			[nameof(RunNostrRelay)] = "Run a Nostr relay of your own, which is reached at an onion address and nowhere else. It takes a Tor that Black Hole starts itself",
+			[nameof(NostrRelayEvents)] = "The events that your Nostr relay takes: BlackHole for the offers and the coordinator announcements of Black Hole, which it keeps for a short time, or Custom for the kinds of events that you name, which it keeps in a file",
+			[nameof(NostrRelayKinds)] = "Semicolon-separated list of the kinds of events that your Nostr relay keeps when it takes custom events: numbers like 1, and spans like 30000-39999",
 		};
 	private Dictionary<string, IValue> Data { get; }
 	public PersistentConfig PersistentConfig { get; }
@@ -139,6 +145,18 @@ public class Config
 
 	/// <summary>The Nostr relays that the application connects to: the offers of a maker are posted to them, and the order book is read from them. A setting, like the coordinator.</summary>
 	public string[] NostrRelays => GetEffectiveValue<string[]>(nameof(NostrRelays));
+
+	/// <summary>Whether the application runs a Nostr relay of its own, which is reached at an onion address and nowhere else. A setting as well.</summary>
+	public bool RunNostrRelay => GetEffectiveValue<bool>(nameof(RunNostrRelay));
+
+	/// <summary>Which events the relay of the application takes, see <see cref="NostrRelay.RelayEventChoice"/>.</summary>
+	public string NostrRelayEvents => GetEffectiveValue<string>(nameof(NostrRelayEvents));
+
+	/// <summary>The kinds of events that the relay keeps when it takes the events that the user named.</summary>
+	public string[] NostrRelayKinds => GetEffectiveValue<string[]>(nameof(NostrRelayKinds));
+
+	/// <summary>What the user chose for the relay of the application, as far as it can be read.</summary>
+	public NostrRelay.NostrRelaySettings NostrRelaySettings => NostrRelay.NostrRelaySettings.Parse(NostrRelayEvents, NostrRelayKinds);
 
 	public ServiceConfiguration ServiceConfiguration { get; }
 
@@ -174,6 +192,10 @@ public class Config
 
 	/// <summary>The same for the Nostr relays.</summary>
 	public bool IsNostrRelaysOverridden => Data[nameof(NostrRelays)].Overridden;
+
+	/// <summary>The same for the relay that the application runs: whether it runs one, and which events that relay takes.</summary>
+	public bool IsNostrRelayOverridden =>
+		Data[nameof(RunNostrRelay)].Overridden || Data[nameof(NostrRelayEvents)].Overridden || Data[nameof(NostrRelayKinds)].Overridden;
 
 	public bool TryGetCoordinatorUri([NotNullWhen(true)] out Uri? coordinatorUri)
 	{

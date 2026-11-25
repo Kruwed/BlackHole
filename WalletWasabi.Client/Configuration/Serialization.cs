@@ -36,6 +36,9 @@ public static class PersistentConfigEncode
 			("ExperimentalFeatures", Array(cfg.ExperimentalFeatures.Select(String))),
 			("NostrRelays", Array(cfg.NostrRelays.Select(String))),
 			("ConfiguredConnections", Array(cfg.ConfiguredConnections.Select(String))),
+			("RunNostrRelay", Bool(cfg.RunNostrRelay)),
+			("NostrRelayEvents", String(cfg.NostrRelayEvents)),
+			("NostrRelayKinds", Array(cfg.NostrRelayKinds.Select(String))),
 			("ConfigVersion", Int(4))
 		]);
 }
@@ -87,6 +90,11 @@ public static class PersistentConfigDecode
 					// A file from before the application took note of it names none.
 					ConfiguredConnections: get.Optional("ConfiguredConnections", ValueList(Decode.String)) ??
 					                       Helpers.ValueList<string>.Empty,
+
+					// A file from before the application could run a relay does not say: no relay is run.
+					RunNostrRelay: get.Optional("RunNostrRelay", Decode.Bool, false),
+					NostrRelayEvents: get.Optional("NostrRelayEvents", Decode.String) ?? nameof(NostrRelay.RelayEventChoice.BlackHole),
+					NostrRelayKinds: get.Optional("NostrRelayKinds", ValueList(Decode.String)) ?? Helpers.ValueList<string>.Empty,
 					ConfigVersion: get.Required("ConfigVersion", Decode.Int)
 				);
 			}

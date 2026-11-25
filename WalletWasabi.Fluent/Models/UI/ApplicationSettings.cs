@@ -60,6 +60,11 @@ public partial class ApplicationSettings : ReactiveObject
 	// Nostr
 	[AutoNotify] private string[] _nostrRelays;
 
+	// The Nostr relay that the application runs, if it runs one: see SetNostrRelay.
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _runNostrRelay;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _nostrRelayEvents;
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _nostrRelayKinds;
+
 	// What the user has connected the application to: see SetConnectionConfigured.
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string[] _configuredConnections;
 
@@ -95,6 +100,9 @@ public partial class ApplicationSettings : ReactiveObject
 
 		// Nostr
 		_nostrRelays = persistentConfig.NostrRelays.ToArray();
+		_runNostrRelay = persistentConfig.RunNostrRelay;
+		_nostrRelayEvents = persistentConfig.NostrRelayEvents;
+		_nostrRelayKinds = persistentConfig.NostrRelayKinds.ToArray();
 
 		_configuredConnections = persistentConfig.ConfiguredConnections.ToArray();
 
@@ -124,7 +132,10 @@ public partial class ApplicationSettings : ReactiveObject
 					x => x.CoordinatorUri,
 					x => x.NostrRelays,
 					x => x.ConfiguredConnections,
-					(_, _, _, _, _) => Unit.Default)
+					x => x.RunNostrRelay,
+					x => x.NostrRelayEvents,
+					x => x.NostrRelayKinds,
+					(_, _, _, _, _, _, _, _) => Unit.Default)
 				.Skip(1);
 
 		Observable
@@ -158,6 +169,9 @@ public partial class ApplicationSettings : ReactiveObject
 
 	/// <summary>The same for the Nostr relays.</summary>
 	public bool IsNostrRelaysOverridden => _config.IsNostrRelaysOverridden;
+
+	/// <summary>The same for the relay that the application runs: whether it runs one, and which events that relay takes.</summary>
+	public bool IsNostrRelayOverridden => _config.IsNostrRelayOverridden;
 
 	/// <summary>
 	/// Whether the saved settings differ from what the application runs with, so that it takes a restart to apply them.
@@ -194,6 +208,22 @@ public partial class ApplicationSettings : ReactiveObject
 		_runningConfig = _runningConfig with { NostrRelays = new ValueList<string>(relays) };
 
 		NostrRelays = relays;
+	}
+
+	/// <summary>
+	/// Stores whether the application runs a Nostr relay of its own and which events that relay takes, after the relay
+	/// was started or stopped. Like <see cref="SetConnectedBitcoinNode"/>, this asks for no restart: the relay runs
+	/// that way, or does not run, already.
+	/// </summary>
+	/// <param name="events">Which events the relay takes, see <see cref="WalletWasabi.NostrRelay.RelayEventChoice"/>.</param>
+	/// <param name="kinds">The kinds of events that the user named for the relay to keep.</param>
+	public void SetNostrRelay(bool isRun, string events, string[] kinds)
+	{
+		_runningConfig = _runningConfig with { RunNostrRelay = isRun, NostrRelayEvents = events, NostrRelayKinds = new ValueList<string>(kinds) };
+
+		RunNostrRelay = isRun;
+		NostrRelayEvents = events;
+		NostrRelayKinds = kinds;
 	}
 
 	/// <summary>
@@ -290,7 +320,13 @@ public partial class ApplicationSettings : ReactiveObject
 		};
 
 		// Nostr
-		result = result with { NostrRelays = new ValueList<string>(NostrRelays) };
+		result = result with
+		{
+			NostrRelays = new ValueList<string>(NostrRelays),
+			RunNostrRelay = RunNostrRelay,
+			NostrRelayEvents = NostrRelayEvents,
+			NostrRelayKinds = new ValueList<string>(NostrRelayKinds)
+		};
 
 		result = result with { ConfiguredConnections = new ValueList<string>(ConfiguredConnections) };
 

@@ -100,6 +100,69 @@ public class ConfigTests
 	}
 
 	/// <summary>
+	/// Whether the application runs a Nostr relay of its own is a setting: it runs none unless the config file says
+	/// so. Like every setting it can be given at the start instead, and then it cannot be changed in the application.
+	/// </summary>
+	[Fact]
+	public void RelayOfItsOwnIsRunIfTheSettingsSaySo()
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.False(config.RunNostrRelay);
+		Assert.False(config.IsNostrRelayOverridden);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig with { RunNostrRelay = true }, []);
+		Assert.True(config.RunNostrRelay);
+		Assert.False(config.IsOverridden);
+		Assert.False(config.IsNostrRelayOverridden);
+
+		// Given at the start, it goes before what the file says.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig with { RunNostrRelay = true }, ["--runnostrrelay=false"]);
+		Assert.False(config.RunNostrRelay);
+		Assert.True(config.IsOverridden);
+		Assert.True(config.IsNostrRelayOverridden);
+		Assert.False(config.IsNostrRelaysOverridden);
+
+		Assert.Contains("RunNostrRelay", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+	}
+
+	/// <summary>
+	/// Which events the relay takes is a setting too: the events of Black Hole unless the config file says otherwise,
+	/// or the kinds of events that the user named.
+	/// </summary>
+	[Fact]
+	public void RelayTakesTheEventsOfTheSettings()
+	{
+		var config = new Config(PersistentConfigManager.DefaultMainNetConfig, []);
+		Assert.Equal(WalletWasabi.NostrRelay.NostrRelaySettings.Default, config.NostrRelaySettings);
+
+		var custom = PersistentConfigManager.DefaultMainNetConfig with { NostrRelayEvents = "Custom", NostrRelayKinds = new(["1", "30000-39999"]) };
+		config = new Config(custom, []);
+		Assert.Equal(WalletWasabi.NostrRelay.RelayEventChoice.Custom, config.NostrRelaySettings.Events);
+		Assert.Equal("1, 30000-39999", config.NostrRelaySettings.Kinds.ToString());
+		Assert.Null(config.NostrRelaySettings.Problem);
+		Assert.False(config.IsNostrRelayOverridden);
+
+		// Given at the start, they go before what the file says, and cannot be changed in the application.
+		config = new Config(custom, ["--nostrrelaykinds=0;3"]);
+		Assert.Equal("0, 3", config.NostrRelaySettings.Kinds.ToString());
+		Assert.True(config.IsNostrRelayOverridden);
+
+		config = new Config(custom, ["--nostrrelayevents=blackhole"]);
+		Assert.Equal(WalletWasabi.NostrRelay.RelayEventChoice.BlackHole, config.NostrRelaySettings.Events);
+		Assert.True(config.IsNostrRelayOverridden);
+
+		// What cannot be read is the choice of a new installation, and a list without a kind is none to run a relay with.
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig with { NostrRelayEvents = "Everything", NostrRelayKinds = new(["note"]) }, []);
+		Assert.Equal(WalletWasabi.NostrRelay.NostrRelaySettings.Default, config.NostrRelaySettings);
+
+		config = new Config(PersistentConfigManager.DefaultMainNetConfig with { NostrRelayEvents = "Custom" }, []);
+		Assert.NotNull(config.NostrRelaySettings.Problem);
+
+		Assert.Contains("NostrRelayEvents", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+		Assert.Contains("NostrRelayKinds", Config.GetConfigOptionsMetadata().Select(x => x.ParameterName));
+	}
+
+	/// <summary>
 	/// Settings can only be changed in the application while none of them was given on the command line or in the environment.
 	/// Options that are not settings, like the log level, do not get in the way.
 	/// </summary>

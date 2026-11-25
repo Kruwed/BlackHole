@@ -72,6 +72,9 @@ public class PersistentConfigManagerTests
 			    "wss://nos.lol"
 			  ],
 			  "ConfiguredConnections": [],
+			  "RunNostrRelay": false,
+			  "NostrRelayEvents": "BlackHole",
+			  "NostrRelayKinds": [],
 			  "ConfigVersion": 4
 			}
 			""";
@@ -194,6 +197,69 @@ public class PersistentConfigManagerTests
 		// Two configurations that differ in it differ, and two that agree in it are the same.
 		Assert.NotEqual(config, config with { ConfiguredConnections = new ValueList<string>(["Tor", "Node", "Nostr"]) });
 		Assert.Equal(config, config with { ConfiguredConnections = new ValueList<string>(["Tor", "Node"]) });
+	}
+
+	/// <summary>
+	/// The config file says whether the application runs a Nostr relay of its own. A new installation runs none, and
+	/// neither does one whose file is from before the application could.
+	/// </summary>
+	[Fact]
+	public async Task RunningARelayIsKeptInTheConfigFileAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		Assert.False(PersistentConfigManager.DefaultMainNetConfig.RunNostrRelay);
+		Assert.False(PersistentConfigManager.DefaultSignetConfig.RunNostrRelay);
+		Assert.False(PersistentConfigManager.DefaultRegTestConfig.RunNostrRelay);
+
+		// A file that does not say: the one that the application writes, less the setting.
+		var json = System.Text.Json.Nodes.JsonNode.Parse(PersistentConfigManager.ToFile(configPath, PersistentConfigManager.DefaultMainNetConfig with { RunNostrRelay = true }))!.AsObject();
+		Assert.True(json.Remove("RunNostrRelay"));
+		File.WriteAllText(configPath, json.ToJsonString());
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.False(config.RunNostrRelay);
+
+		PersistentConfigManager.ToFile(configPath, config with { RunNostrRelay = true });
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.True(config.RunNostrRelay);
+
+		// A change of it is a change of the configuration.
+		Assert.NotEqual(config, config with { RunNostrRelay = false });
+	}
+
+	/// <summary>
+	/// The config file says which events the relay takes: the events of Black Hole, or the kinds that the user named,
+	/// and it keeps those kinds also while the relay takes the others. A file that does not say stands for the events
+	/// of Black Hole.
+	/// </summary>
+	[Fact]
+	public async Task EventsOfTheRelayAreKeptInTheConfigFileAsync()
+	{
+		string workDirectory = await Common.GetEmptyWorkDirAsync();
+		string configPath = Path.Combine(workDirectory, "Config.json");
+
+		Assert.Equal("BlackHole", PersistentConfigManager.DefaultMainNetConfig.NostrRelayEvents);
+		Assert.Empty(PersistentConfigManager.DefaultMainNetConfig.NostrRelayKinds);
+
+		var custom = PersistentConfigManager.DefaultMainNetConfig with { NostrRelayEvents = "Custom", NostrRelayKinds = new ValueList<string>(["1", "30000-39999"]) };
+		PersistentConfigManager.ToFile(configPath, custom);
+
+		var config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Equal("Custom", config.NostrRelayEvents);
+		Assert.Equal(["1", "30000-39999"], config.NostrRelayKinds);
+		Assert.Equal(custom, config);
+
+		// A file that does not say: the one that the application writes, less the two settings.
+		var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
+		Assert.True(json.Remove("NostrRelayEvents"));
+		Assert.True(json.Remove("NostrRelayKinds"));
+		File.WriteAllText(configPath, json.ToJsonString());
+
+		config = Assert.IsType<PersistentConfig>(PersistentConfigManager.LoadFile(configPath));
+		Assert.Equal("BlackHole", config.NostrRelayEvents);
+		Assert.Empty(config.NostrRelayKinds);
 	}
 
 	/// <summary>

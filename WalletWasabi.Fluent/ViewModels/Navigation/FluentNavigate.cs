@@ -108,6 +108,11 @@ public partial class FluentNavigate
 		UiContext.Navigate(navigationTarget).To(new ConnectToCoordinatorViewModel(UiContext), navigationMode);
 	}
 
+	public void RunNostrRelay(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	{
+		UiContext.Navigate(navigationTarget).To(new RunNostrRelayViewModel(UiContext), navigationMode);
+	}
+
 	public void ConfigureWallet(IWalletModel wallet, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		UiContext.Navigate(navigationTarget).To(new ConfigureWalletViewModel(UiContext, wallet), navigationMode);

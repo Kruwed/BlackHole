@@ -30,6 +30,9 @@ public record PersistentConfig(
 	ValueList<string> ExperimentalFeatures,
 	ValueList<string> NostrRelays,
 	ValueList<string> ConfiguredConnections,
+	bool RunNostrRelay,
+	string NostrRelayEvents,
+	ValueList<string> NostrRelayKinds,
 	int ConfigVersion
 	) : IPersistentConfig
 {

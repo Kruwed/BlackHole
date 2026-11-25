@@ -4,6 +4,7 @@ using WalletWasabi.Discoverability;
 using WalletWasabi.Fluent.Models.UI;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Models;
+using WalletWasabi.NostrRelay;
 using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.ViewModels;
@@ -383,5 +384,115 @@ public class SettingsScreenTests
 		// Elsewhere there is no coordinator to point at: the example is a made-up one.
 		Assert.Equal("https://coordinator.example/", ConnectToCoordinatorViewModel.GetExampleUri(Network.Main));
 		Assert.Equal("https://coordinator.example/", ConnectToCoordinatorViewModel.GetExampleUri(Bitcoin.Instance.Signet));
+	}
+
+	/// <summary>
+	/// The box "Run a Nostr Relay" has the marks of the boxes that connect: nothing while the relay is off or on its
+	/// way, a check mark while it runs, and an X while it is on and does not run.
+	/// </summary>
+	[Fact]
+	public void BoxOfTheRelayHasTheMarkOfHowItStandsWithTheRelay()
+	{
+		var address = new Uri("ws://relayaddress.onion");
+
+		Assert.Equal(ConnectionState.NotConfigured, ConnectionsModel.GetState(NostrRelayState.Off));
+		Assert.Equal(ConnectionState.Unknown, ConnectionsModel.GetState(new NostrRelayState(NostrRelayStatus.Starting)));
+		Assert.Equal(ConnectionState.Unknown, ConnectionsModel.GetState(new NostrRelayState(NostrRelayStatus.Publishing, address)));
+		Assert.Equal(ConnectionState.Working, ConnectionsModel.GetState(new NostrRelayState(NostrRelayStatus.Running, address)));
+		Assert.Equal(ConnectionState.NotWorking, ConnectionsModel.GetState(new NostrRelayState(NostrRelayStatus.NotWorking, Problem: "Tor is turned off.")));
+	}
+
+	/// <summary>The user of a relay switches between two sets of events: the events of Black Hole, and a list of their own.</summary>
+	[Fact]
+	public void RelayPageOffersTheEventsOfBlackHoleAndACustomList()
+	{
+		Assert.Equal(
+			[(RelayEventChoice.BlackHole, "Black Hole offers and coordinators"), (RelayEventChoice.Custom, "Custom list")],
+			RunNostrRelayViewModel.EventOptions.Select(option => (option.Choice, option.Name)));
+		Assert.Equal("Custom list", RunNostrRelayViewModel.EventOptions[1].ToString());
+
+		Assert.Equal(
+			"The relay keeps offers for 15 minutes and coordinator announcements for 30, in memory only. Nothing else is taken.",
+			RunNostrRelayViewModel.DescribeEvents(RelayEventChoice.BlackHole));
+		Assert.Equal(
+			"The relay keeps every event of these kinds that anybody sends it, in a file on this computer, up to 100 MB. Then the oldest events make way.",
+			RunNostrRelayViewModel.DescribeEvents(RelayEventChoice.Custom));
+	}
+
+	/// <summary>
+	/// A custom list names one kind of event at least. While the relay takes the events of Black Hole the list is kept
+	/// as far as it can be read, and nothing that is wrong with it is in the way.
+	/// </summary>
+	[Fact]
+	public void RelayPageWantsAKindOfEventForACustomList()
+	{
+		Assert.True(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.Custom, "30023, 1 7", out var settings, out var problem));
+		Assert.Null(problem);
+		Assert.Equal(RelayEventChoice.Custom, settings.Events);
+		Assert.Equal("1, 7, 30023", settings.Kinds.ToString());
+
+		Assert.False(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.Custom, "", out _, out problem));
+		Assert.Equal("Name one kind of event at least for the relay to keep, like 1.", problem);
+
+		Assert.False(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.Custom, "notes", out _, out problem));
+		Assert.Contains("'notes' is not a kind of event", problem, StringComparison.Ordinal);
+
+		Assert.True(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.BlackHole, "", out settings, out problem));
+		Assert.Null(problem);
+		Assert.Equal(NostrRelaySettings.Default, settings);
+
+		Assert.True(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.BlackHole, "1, 30023", out settings, out _));
+		Assert.Equal("1, 30023", settings.Kinds.ToString());
+
+		Assert.True(RunNostrRelayViewModel.TryReadSettings(RelayEventChoice.BlackHole, "notes", out settings, out problem));
+		Assert.Null(problem);
+		Assert.True(settings.Kinds.IsEmpty);
+	}
+
+	/// <summary>
+	/// "Done" makes the relay run and closes the page once it does. A relay that does not run yet stays on and goes
+	/// on trying, and the page stays open and tells how far it is, or why it cannot run.
+	/// </summary>
+	[Fact]
+	public void RelayPageTellsHowItWentWhenTheRelayWasMadeToRun()
+	{
+		var address = new Uri("ws://relayaddress.onion");
+
+		Assert.Equal(new ConnectionAnswer(true, "The relay runs."), RunNostrRelayViewModel.DescribeRun(new NostrRelayState(NostrRelayStatus.Running, address)));
+
+		var publishing = RunNostrRelayViewModel.DescribeRun(new NostrRelayState(NostrRelayStatus.Publishing, address));
+		Assert.False(publishing.IsGood);
+		Assert.Equal("The relay is on, and Tor has not published its onion address yet. That can take a few minutes: the relay goes on trying.", publishing.Message);
+
+		var starting = RunNostrRelayViewModel.DescribeRun(new NostrRelayState(NostrRelayStatus.Starting));
+		Assert.False(starting.IsGood);
+		Assert.Equal("The relay is on, and Tor has not given it its onion address yet. The relay goes on trying.", starting.Message);
+
+		Assert.Equal(
+			new ConnectionAnswer(false, "Tor did not make the onion service (550 Onion address collision)."),
+			RunNostrRelayViewModel.DescribeRun(new NostrRelayState(NostrRelayStatus.NotWorking, Problem: "Tor did not make the onion service (550 Onion address collision).")));
+		Assert.Equal(new ConnectionAnswer(false, "The relay is off."), RunNostrRelayViewModel.DescribeRun(NostrRelayState.Off));
+	}
+
+	/// <summary>
+	/// The page tells how it stands with the relay also when nobody asked: in the colour of good news while it runs,
+	/// of bad news while it cannot, and of the other words while it is on its way. About a relay that is off it tells
+	/// nothing. The address shows while there is one.
+	/// </summary>
+	[Fact]
+	public void RelayPageTellsHowItStandsWithTheRelay()
+	{
+		var address = new Uri("ws://relayaddress.onion");
+
+		Assert.Equal(("The relay runs.", true), RunNostrRelayViewModel.DescribeState(new NostrRelayState(NostrRelayStatus.Running, address)));
+		Assert.Equal(("Tor is publishing the onion address of the relay…", null), RunNostrRelayViewModel.DescribeState(new NostrRelayState(NostrRelayStatus.Publishing, address)));
+		Assert.Equal(("The relay waits for Tor to give it its onion address…", null), RunNostrRelayViewModel.DescribeState(new NostrRelayState(NostrRelayStatus.Starting)));
+		Assert.Equal(("Tor is turned off.", false), RunNostrRelayViewModel.DescribeState(new NostrRelayState(NostrRelayStatus.NotWorking, Problem: "Tor is turned off.")));
+		Assert.Equal((null, null), RunNostrRelayViewModel.DescribeState(NostrRelayState.Off));
+
+		Assert.Equal("ws://relayaddress.onion", RunNostrRelayViewModel.FormatAddress(new NostrRelayState(NostrRelayStatus.Running, address)));
+		Assert.Equal("ws://relayaddress.onion", RunNostrRelayViewModel.FormatAddress(new NostrRelayState(NostrRelayStatus.Publishing, address)));
+		Assert.Equal("", RunNostrRelayViewModel.FormatAddress(new NostrRelayState(NostrRelayStatus.Starting)));
+		Assert.Equal("", RunNostrRelayViewModel.FormatAddress(NostrRelayState.Off));
 	}
 }

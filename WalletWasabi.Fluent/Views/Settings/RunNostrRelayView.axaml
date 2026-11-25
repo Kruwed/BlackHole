@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:v="using:WalletWasabi.Fluent.Views.Settings"
+             xmlns:vm="using:WalletWasabi.Fluent.ViewModels.Settings"
+             mc:Ignorable="d" d:DesignWidth="698" d:DesignHeight="371"
+             x:DataType="vm:RunNostrRelayViewModel"
+             x:CompileBindings="True"
+             x:Class="WalletWasabi.Fluent.Views.Settings.RunNostrRelayView">
+  <UserControl.Styles>
+    <Style Selector="TextBox /template/ DataValidationErrors">
+      <Setter Property="MinHeight" Value="25" />
+    </Style>
+    <!-- The button that only asks stands next to the one that makes the relay what the page says and closes the page. -->
+    <Style Selector="ContentArea /template/ ContentPresenter#PART_BottomContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Margin" Value="0 0 12 0" />
+    </Style>
+  </UserControl.Styles>
+  <ContentArea Title="{Binding Title}"
+               EnableCancel="{Binding EnableCancel}"
+               EnableBack="{Binding EnableBack}"
+               EnableNext="True" NextContent="{Binding NextLabel}"
+               IsBusy="{Binding IsBusy}">
+    <ContentArea.BottomContent>
+      <!-- It asks the relay at its onion address, through Tor, the way anybody else reaches it. -->
+      <Button Content="Verify Connection" Command="{Binding VerifyCommand}" />
+    </ContentArea.BottomContent>
+    <!-- The page is as wide as it takes for the address of the relay to show whole, on one line. -->
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Width="690">
+      <!-- Why no relay can run here, where none can: a relay takes a Tor that Black Hole started itself. -->
+      <TextBlock Text="{Binding Obstacle}" TextWrapping="Wrap"
+                 IsVisible="{Binding Obstacle, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+      <!-- Every name has what it names to its right, in one column. What explains a row is below the row, as wide as the page. -->
+      <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,10,Auto,10,Auto,4,Auto,20,Auto">
+        <!-- Whether the relay runs. It can be switched on where a relay can run, and off anywhere. -->
+        <Label Grid.Row="0" Grid.Column="0" Classes="beside" Content="Nostr relay:" Target="TsRelay" />
+        <ToggleSwitch Grid.Row="0" Grid.Column="2" Name="TsRelay"
+                      IsChecked="{Binding IsRelayOn}"
+                      IsEnabled="{Binding CanSwitch}"
+                      OnContent="On" OffContent="Off"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" />
+
+        <!-- The two sets of events that the relay takes. The user switches between them. -->
+        <Label Grid.Row="2" Grid.Column="0" Classes="beside" Content="Events:" Target="CbRelayEvents" />
+        <ComboBox Grid.Row="2" Grid.Column="2" Name="CbRelayEvents"
+                  ItemsSource="{x:Static vm:RunNostrRelayViewModel.EventOptions}"
+                  SelectedItem="{Binding SelectedEvents}"
+                  IsEnabled="{Binding CanChooseEvents}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+
+        <!-- The list of the user's own. It is kept while the relay takes the other events, and cannot be changed then. -->
+        <Label Grid.Row="4" Grid.Column="0" Classes="besideBox" Content="Event kinds:" Target="TbRelayKinds" />
+        <TextBox Grid.Row="4" Grid.Column="2" Name="TbRelayKinds"
+                 Text="{Binding Kinds}"
+                 Watermark="1, 7, 30000-39999"
+                 IsReadOnly="{Binding IsAsking}"
+                 IsEnabled="{Binding IsCustomListChosen}" />
+        <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3"
+                   Text="{Binding EventsDescription}"
+                   TextWrapping="Wrap"
+                   Opacity="0.6" />
+
+        <!-- Where the relay is reached, while it runs. Whoever is to use the relay is given this address. -->
+        <Label Grid.Row="8" Grid.Column="0" Classes="besideBox" Content="Relay address:" Target="TbRelayAddress" />
+        <DockPanel Grid.Row="8" Grid.Column="2">
+          <ClipboardCopyButton DockPanel.Dock="Right" Text="{Binding Address}" ToolTip.Tip="Copy"
+                               Margin="8 4 0 0" VerticalAlignment="Top"
+                               IsVisible="{Binding Address, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBox Name="TbRelayAddress"
+                   Text="{Binding Address, Mode=OneWay}"
+                   Watermark="The relay has an address while it runs"
+                   Classes="monoSpaced"
+                   FontSize="12.5"
+                   IsReadOnly="True" />
+        </DockPanel>
+      </Grid>
+
+      <!-- How it stands with the relay, or what it answered the last time. The room for it is always there, so that nothing moves when it appears. -->
+      <v:ConnectionStatus MinHeight="60" Margin="0 10 0 0" />
+
+      <InfoMessage Foreground="{StaticResource WarningMessageForeground}"
+                   IsVisible="{Binding IsReadOnly}">
+        <TextBlock Text="The relay was given on the command line or in the environment when Black Hole was started, so it cannot be changed here."
+                   TextWrapping="Wrap" />
+      </InfoMessage>
+    </StackPanel>
+  </ContentArea>
+</UserControl>

@@ -27,8 +27,9 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 /// </para>
 /// <para>
 /// The "Connect to" box of a connection that the user has configured tells whether it works at the moment: it has a
-/// check mark if it does and an X if it does not, see <see cref="ConnectionsModel"/>. Running a Tor relay, a Bitcoin
-/// node, a Nostr relay or a coordinator holds its place and does nothing yet, so these four boxes cannot be used.
+/// check mark if it does and an X if it does not, see <see cref="ConnectionsModel"/>. The box "Run a Nostr Relay"
+/// has the same marks for the relay that the application runs itself, once the user turned that on. Running a Tor
+/// relay, a Bitcoin node or a coordinator holds its place and does nothing yet, so these three boxes cannot be used.
 /// </para>
 /// </remarks>
 public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISettingsPage
@@ -58,6 +59,12 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 	/// <summary>Whether the lower box of the Wallet column configures the wallet: the wallet was created.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConfigureTileLower;
 
+	/// <summary>Whether the relay that the application runs itself is on and works at the moment. Its box has a check mark then.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isNostrRelayWorking;
+
+	/// <summary>Whether the relay that the application runs itself is on and does not work at the moment. Its box has an X then.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isNostrRelayNotWorking;
+
 	public SettingsPageViewModel(UiContext uiContext) : base(uiContext)
 	{
 		Settings = uiContext.ApplicationSettings;
@@ -74,6 +81,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 		ConnectToNodeCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToNode(), Node.WhenAnyValue(x => x.IsOpen));
 		ConnectToNostrCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToNostr(), Nostr.WhenAnyValue(x => x.IsOpen));
 		ConnectToCoordinatorCommand = ReactiveCommand.Create(() => Navigate().To().ConnectToCoordinator(), Coordinator.WhenAnyValue(x => x.IsOpen));
+
+		// The relay of one's own is part of the Nostr column, and can be used when that column can.
+		RunNostrRelayCommand = ReactiveCommand.Create(() => Navigate().To().RunNostrRelay(), Nostr.WhenAnyValue(x => x.IsOpen));
 
 		var canAddWallet = this.WhenAnyValue(x => x.CanAddWallet);
 
@@ -115,6 +125,8 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 
 	public ICommand ConnectToCoordinatorCommand { get; }
 
+	public ICommand RunNostrRelayCommand { get; }
+
 	public ICommand RecoverWalletCommand { get; }
 
 	public ICommand CreateWalletCommand { get; }
@@ -138,6 +150,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 				isOpen: SettingsOrder.IsOpen(column.Connection, hasWallet, connections.IsDone),
 				isCurrent: current == column.Connection);
 		}
+
+		IsNostrRelayWorking = connections.NostrRelay == ConnectionState.Working;
+		IsNostrRelayNotWorking = connections.NostrRelay == ConnectionState.NotWorking;
 
 		var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet, isRecovered: wallet?.IsRecovered ?? false);
 
@@ -203,7 +218,7 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 
 		// The pages of the connections report to the model, and the wallet appears when it is created or recovered.
 		// Both are looked at while this screen shows, also when it comes back from one of its pages.
-		connections.WhenAnyValue(x => x.Tor, x => x.Node, x => x.Nostr, x => x.Coordinator, (_, _, _, _) => Unit.Default)
+		connections.WhenAnyValue(x => x.Tor, x => x.Node, x => x.Nostr, x => x.Coordinator, x => x.NostrRelay, (_, _, _, _, _) => Unit.Default)
 			.Merge(UiContext.WalletRepository.WhenAnyValue(x => x.Wallet).Select(_ => Unit.Default))
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => Update())

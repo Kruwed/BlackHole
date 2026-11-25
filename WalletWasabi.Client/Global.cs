@@ -25,6 +25,7 @@ using WalletWasabi.FidelityBonds;
 using WalletWasabi.JoinMarket;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
+using WalletWasabi.NostrRelay;
 using WalletWasabi.Rpc;
 using WalletWasabi.Services;
 using WalletWasabi.Services.Terminate;
@@ -99,6 +100,14 @@ public class Global
 		_nostrPublisher = new SwitchableNostrPublisher(CreateNostrPublisher(Config, TorSettings));
 		RegisterMakerOfferService();
 
+		// The relay of the application is there from the start as well. It runs once it is told to: see RunNostrRelayAsync.
+		NostrRelay = new NostrRelayRunner(
+			Network,
+			Path.Combine(DataDir, "NostrRelay", Network.ToString()),
+			WaitForTorAsync,
+			NostrRelayRunner.DescribeObstacle(Config.UseTor, Network == Network.RegTest));
+		NostrRelay.StateChanged += (_, state) => EventBus.Publish(new NostrRelayStateChanged(state));
+
 		_ticker = new Timer(_ => EventBus.Publish(new Tick(DateTime.UtcNow)));
 		_ticker.DisposeUsing(_disposables);
 
@@ -151,6 +160,9 @@ public class Global
 
 	/// <summary>The Nostr relays that the offers of the wallet are posted to now.</summary>
 	public IReadOnlyList<Uri> NostrRelays => _nostrPublisher.Relays;
+
+	/// <summary>The Nostr relay that the application runs itself, if its user turned it on. It is reached at an onion address and nowhere else.</summary>
+	public NostrRelayRunner NostrRelay { get; }
 
 	/// <summary>The coordinator that the application coinjoins with now, if there is one.</summary>
 	public Uri? CoordinatorUri => _coordinatorUri ?? (Config.TryGetCoordinatorUri(out var coordinatorUri) ? coordinatorUri : null);
@@ -437,6 +449,56 @@ public class Global
 		}
 	}
 
+	/// <summary>How long the relay of the application is given to answer at its onion address when the user asks whether it does.</summary>
+	private static readonly TimeSpan NostrRelayAnswerTimeout = TimeSpan.FromSeconds(90);
+
+	/// <summary>
+	/// Sees to it that the application runs its Nostr relay with the given choice of events, and waits for the onion
+	/// address of the relay to be published. A relay that could not be reached yet goes on trying.
+	/// </summary>
+	/// <returns>How it stands with the relay: it runs, or it does not yet, or it cannot, and then why.</returns>
+	public Task<NostrRelayState> RunNostrRelayAsync(NostrRelaySettings settings, CancellationToken cancellationToken) =>
+		NostrRelay.RunAsync(settings, NostrRelayRunner.StartPatience, cancellationToken);
+
+	/// <summary>Stops the Nostr relay of the application.</summary>
+	public Task StopNostrRelayAsync() => NostrRelay.StopAsync();
+
+	/// <summary>
+	/// Asks the Nostr relay of the application at its onion address, through Tor, the way anybody else reaches it. A
+	/// connection is opened and closed again: nothing is sent.
+	/// </summary>
+	/// <returns>Nothing if the relay answers, otherwise the reason why it does not, in words for the user.</returns>
+	public async Task<Result<string>> VerifyNostrRelayAsync(CancellationToken cancellationToken)
+	{
+		var state = NostrRelay.State;
+
+		if (state.Address is not { } address)
+		{
+			return Result<string>.Fail(state.Problem ?? (state.IsOn ? "The relay has no onion address yet." : "The relay is off."));
+		}
+
+		var publisher = new NostrRelayPublisher([address], TorSettings.SocksEndpoint, NostrRelayAnswerTimeout);
+		var reachability = (await publisher.CheckAsync(cancellationToken).ConfigureAwait(false))[0];
+
+		return reachability.IsReachable
+			? Result<string>.Ok()
+			: Result<string>.Fail($"The relay cannot be reached at its onion address ({reachability.Problem})");
+	}
+
+	/// <summary>Waits for the Tor that the application starts: the relay asks it for its onion address.</summary>
+	private async Task<(CancellationToken TorStopped, TorControlClient? Client)> WaitForTorAsync(CancellationToken cancellationToken)
+	{
+		TorManager? torManager;
+
+		// The application may still be about to start Tor.
+		while ((torManager = _torManager) is null)
+		{
+			await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
+		}
+
+		return await torManager.WaitForNextAttemptAsync(cancellationToken).ConfigureAwait(false);
+	}
+
 	/// <summary>
 	/// Makes the application post to the given Nostr relays from now on, without a restart, provided that at least one
 	/// of them can be reached. Otherwise the application keeps the relays that it has. A connection is opened to every
@@ -704,6 +766,12 @@ public class Global
 				await HostedServices.StartAllAsync(linkedCtsToken).ConfigureAwait(false);
 
 				await StartRpcServerAsync(terminateService, linkedCtsToken).ConfigureAwait(false);
+
+				// The relay starts with the application if its user turned it on. Its onion address is not waited for here.
+				if (Config.RunNostrRelay)
+				{
+					await NostrRelay.RunAsync(Config.NostrRelaySettings, patience: TimeSpan.Zero, linkedCtsToken).ConfigureAwait(false);
+				}
 			}
 			finally
 			{
@@ -926,6 +994,9 @@ public class Global
 					await backgroundServices.StopAllAsync(cts.Token).ConfigureAwait(false);
 					Logger.LogInfo("Stopped background services.");
 				}
+
+				// The relay goes before Tor does, so that Tor is still there to take the onion address down.
+				await NostrRelay.DisposeAsync().ConfigureAwait(false);
 
 				if (_torManager is not null)
 				{

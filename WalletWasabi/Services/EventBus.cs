@@ -139,5 +139,8 @@ public record MakerOffersChanged(IReadOnlyList<PostedOffer> Offers);
 
 /// <summary>The relays were asked for the offers of the makers again, and this is what the order book holds now.</summary>
 public record OrderBookChanged(OrderBookSnapshot Book);
+
+/// <summary>It stands otherwise than before with the Nostr relay that the application runs.</summary>
+public record NostrRelayStateChanged(WalletWasabi.NostrRelay.NostrRelayState State);
 public record PaymentBatchChanged(IReadOnlyList<Payment> Payments);
 public record CoinjoinCostsAdded(uint256 TransactionId, CoinjoinCosts Costs);

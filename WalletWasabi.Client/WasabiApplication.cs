@@ -253,7 +253,10 @@ public class WasabiApplication
 			MaxDaysInMempool: oldConfig.MaxDaysInMempool,
 			ExperimentalFeatures: [],
 			NostrRelays: new(Constants.DefaultNostrRelays),
-			ConfiguredConnections: []
+			ConfiguredConnections: [],
+			RunNostrRelay: false,
+			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
+			NostrRelayKinds: []
 		);
 
 		static bool MustMigrate(PersistentConfig_2_6_0 cfg) =>
@@ -287,7 +290,10 @@ public class WasabiApplication
 			MaxDaysInMempool: oldConfig.MaxDaysInMempool,
 			ExperimentalFeatures: [],
 			NostrRelays: new(Constants.DefaultNostrRelays),
-			ConfiguredConnections: []
+			ConfiguredConnections: [],
+			RunNostrRelay: false,
+			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
+			NostrRelayKinds: []
 		);
 
 		oldConfig = configs260.RegTest;
@@ -298,6 +304,9 @@ public class WasabiApplication
 			ExperimentalFeatures: [],
 			NostrRelays: new(Constants.DefaultNostrRelays),
 			ConfiguredConnections: [],
+			RunNostrRelay: false,
+			NostrRelayEvents: nameof(NostrRelay.RelayEventChoice.BlackHole),
+			NostrRelayKinds: [],
 			AbsoluteMinInputCount : oldConfig.AbsoluteMinInputCount,
 			ConfigVersion : 4,
 			CoordinatorUri : oldConfig.CoordinatorUri,

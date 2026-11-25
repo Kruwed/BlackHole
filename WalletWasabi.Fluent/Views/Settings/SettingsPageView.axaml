@@ -126,7 +126,7 @@
             <PathIcon Classes="mark notWorking" IsVisible="{Binding Tor.IsNotWorking}" />
           </Panel>
         </TileButton>
-        <!-- A placeholder: it does nothing yet, so it cannot be used. The same goes for the three after it. -->
+        <!-- A placeholder: it does nothing yet, so it cannot be used. The same goes for the ones of the node and of the coordinator. -->
         <TileButton Grid.Row="2" Grid.Column="0" Text="Run a Tor Relay"
                     Classes="bottomtext"
                     Icon="{StaticResource cube_multiple_regular}"
@@ -163,10 +163,17 @@
             <PathIcon Classes="mark notWorking" IsVisible="{Binding Nostr.IsNotWorking}" />
           </Panel>
         </TileButton>
+        <!-- The relay that the application runs itself. Its box has the marks of the boxes that connect: a check mark
+             while the relay is on and works, an X while it is on and does not. -->
         <TileButton Grid.Row="2" Grid.Column="2" Text="Run a Nostr Relay"
                     Classes="bottomtext"
                     Icon="{StaticResource cube_multiple_regular}"
-                    IsEnabled="False" />
+                    Command="{Binding RunNostrRelayCommand}">
+          <Panel>
+            <PathIcon Classes="mark working" IsVisible="{Binding IsNostrRelayWorking}" />
+            <PathIcon Classes="mark notWorking" IsVisible="{Binding IsNostrRelayNotWorking}" />
+          </Panel>
+        </TileButton>
 
         <!-- Coordinator -->
         <TextBlock Grid.Row="0" Grid.Column="3" Classes="header" Text="{Binding Coordinator.Title}" />

@@ -87,6 +87,14 @@ public class Services : IServices
 	public Task<IReadOnlyList<RelayReachability>> VerifyNostrRelaysAsync(IReadOnlyList<Uri> relays, CancellationToken cancellationToken) =>
 		_global.VerifyNostrRelaysAsync(relays, cancellationToken);
 	public IReadOnlyList<Uri> GetNostrRelays() => _global.NostrRelays;
+	public WalletWasabi.NostrRelay.NostrRelayState GetNostrRelayState() => _global.NostrRelay.State;
+	public WalletWasabi.NostrRelay.NostrRelaySettings? GetNostrRelaySettings() => _global.NostrRelay.Settings;
+	public string? GetNostrRelayObstacle() => _global.NostrRelay.Obstacle;
+	public Task<WalletWasabi.NostrRelay.NostrRelayState> RunNostrRelayAsync(WalletWasabi.NostrRelay.NostrRelaySettings settings, CancellationToken cancellationToken) =>
+		_global.RunNostrRelayAsync(settings, cancellationToken);
+	public Task StopNostrRelayAsync() => _global.StopNostrRelayAsync();
+	public Task<Result<string>> VerifyNostrRelayAsync(CancellationToken cancellationToken) =>
+		_global.VerifyNostrRelayAsync(cancellationToken);
 	public Task<Result<string>> ConnectToCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken) =>
 		_global.ConnectToCoordinatorAsync(coordinatorUri, cancellationToken);
 	public Task<Result<string>> VerifyCoordinatorAsync(string coordinatorUri, CancellationToken cancellationToken) =>

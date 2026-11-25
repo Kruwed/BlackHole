@@ -30,18 +30,26 @@ public record ConnectionAnswer(bool IsGood, string Message);
 /// and, if it answers, makes the application work with it from then on, without a restart, saves it, and closes the
 /// page. If it does not answer, the page stays open and tells why.
 /// </summary>
+/// <remarks>The page where the user runs something of their own, a Nostr relay, is such a page as well: it has the same two buttons.</remarks>
 public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISettingsPage
 {
 	/// <summary>What the button says that connects the application and closes the page.</summary>
 	public const string DoneLabel = "Done";
 
-	private readonly Connection _connection;
+	/// <summary>What the page connects the application to. Null on a page that runs something instead.</summary>
+	private readonly Connection? _connection;
 
 	/// <summary>What was answered the last time, or what the page is waiting for.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _statusMessage;
 
 	/// <summary>Whether the last answer was a good one. The words have the colour of it.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isStatusGood;
+
+	/// <summary>
+	/// Whether what the page tells is neither a good answer nor a bad one, and has the colour of the other words: the
+	/// page is waiting for an answer, or it tells that something is on its way.
+	/// </summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isStatusPlain;
 
 	/// <summary>Whether the application was connected to what the page names. The page closes then.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConnected;
@@ -58,7 +66,7 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 	/// <summary>Whether there is something that the page connects the application to. See <see cref="SetUpCommands"/>.</summary>
 	private bool _hasSomethingToConnectTo = true;
 
-	protected ConnectionPageViewModel(UiContext uiContext, Connection connection) : base(uiContext)
+	protected ConnectionPageViewModel(UiContext uiContext, Connection? connection) : base(uiContext)
 	{
 		_connection = connection;
 
@@ -111,7 +119,8 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 	/// False if the application does not use what the page names, Tor that is turned off for example. There is nothing
 	/// to connect to then, and "Done" closes the page.
 	/// </param>
-	protected void SetUpCommands(IObservable<bool> canAsk, bool hasSomethingToConnectTo = true)
+	/// <param name="canConnect">Whether "Done" has what it takes, where that is not the same as what "Verify Connection" takes. Null if it is the same.</param>
+	protected void SetUpCommands(IObservable<bool> canAsk, bool hasSomethingToConnectTo = true, IObservable<bool>? canConnect = null)
 	{
 		_hasSomethingToConnectTo = hasSomethingToConnectTo;
 
@@ -125,7 +134,7 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 		// The button connects, and closes the page once the application is connected.
 		NextCommand = ReactiveCommand.CreateFromTask(
 			OnNextAsync,
-			canAsk.CombineLatest(isAsking, isConnected, (can, asking, connected) => CanBeDone(can, asking, connected, hasSomethingToConnectTo)));
+			(canConnect ?? canAsk).CombineLatest(isAsking, isConnected, (can, asking, connected) => CanBeDone(can, asking, connected, hasSomethingToConnectTo)));
 	}
 
 	/// <summary>Asks what the page names whether it answers.</summary>
@@ -147,6 +156,23 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 	{
 		IsConnected = false;
 		StatusMessage = null;
+	}
+
+	/// <summary>
+	/// Tells how it stands with what the page names, where the answer line is. A page does that for something that
+	/// changes by itself, unless an answer is being waited for: then the answer is what is told.
+	/// </summary>
+	/// <param name="isGood">Whether it is good news or bad. Null for what is neither: the words have the colour of the other words then.</param>
+	protected void ShowState(string? message, bool? isGood)
+	{
+		if (IsAsking)
+		{
+			return;
+		}
+
+		IsStatusGood = isGood ?? false;
+		IsStatusPlain = isGood is null;
+		StatusMessage = message;
 	}
 
 	/// <summary>
@@ -177,6 +203,7 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 
 		IsAsking = true;
 		IsStatusGood = false;
+		IsStatusPlain = true;
 		StatusMessage = GetWaitingMessage(isConnecting);
 
 		try
@@ -186,10 +213,15 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 			if (isConnecting && answer.IsGood)
 			{
 				IsConnected = true;
-				UiContext.Connections.SetConnected(_connection);
+
+				if (_connection is { } connection)
+				{
+					UiContext.Connections.SetConnected(connection);
+				}
 			}
 
 			IsStatusGood = answer.IsGood;
+			IsStatusPlain = false;
 			StatusMessage = answer.Message;
 		}
 		catch (OperationCanceledException)
@@ -201,6 +233,7 @@ public abstract partial class ConnectionPageViewModel : RoutableViewModel, ISett
 		{
 			Logger.LogError(ex);
 			IsStatusGood = false;
+			IsStatusPlain = false;
 			StatusMessage = ex.ToUserFriendlyString();
 		}
 		finally

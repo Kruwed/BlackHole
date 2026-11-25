@@ -11,13 +11,13 @@
                                                FailureBrush="{StaticResource DismissColor}" />
   </UserControl.Resources>
   <!-- What was answered the last time, or what the page is waiting for. While it waits the words have the colour of
-       the others; afterwards they tell by their colour how it went. -->
+       the others, and so they have when they tell that something is on its way; an answer tells by its colour how it went. -->
   <Panel>
     <TextBlock Text="{Binding StatusMessage}"
-               IsVisible="{Binding IsAsking}"
+               IsVisible="{Binding IsStatusPlain}"
                TextWrapping="Wrap" />
     <TextBlock Text="{Binding StatusMessage}"
-               IsVisible="{Binding !IsAsking}"
+               IsVisible="{Binding !IsStatusPlain}"
                Foreground="{Binding IsStatusGood, Converter={StaticResource BoolToConnectionStatusBrush}}"
                TextWrapping="Wrap" />
   </Panel>

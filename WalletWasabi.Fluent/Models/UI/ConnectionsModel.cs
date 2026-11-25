@@ -76,6 +76,9 @@ public partial class ConnectionsModel : ReactiveObject
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private ConnectionState _nostr;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private ConnectionState _coordinator;
 
+	/// <summary>How it stands with the Nostr relay that the application runs itself, see <see cref="GetState(WalletWasabi.NostrRelay.NostrRelayState)"/>.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private ConnectionState _nostrRelay;
+
 	public ConnectionsModel(IServices services, ApplicationSettings settings, WalletRepository walletRepository)
 	{
 		_services = services;
@@ -134,6 +137,20 @@ public partial class ConnectionsModel : ReactiveObject
 			(true, null) => ConnectionState.Unknown,
 			(true, true) => ConnectionState.Working,
 			(true, false) => ConnectionState.NotWorking
+		};
+
+	/// <summary>
+	/// Tells how it stands with the relay that the application runs, in the words of the connections: a relay that is
+	/// off is not configured, one that is on its way is not known to work yet, and one that is on either works or
+	/// does not. Its box in the settings has the mark of that.
+	/// </summary>
+	public static ConnectionState GetState(WalletWasabi.NostrRelay.NostrRelayState relay) =>
+		relay.Status switch
+		{
+			WalletWasabi.NostrRelay.NostrRelayStatus.Off => ConnectionState.NotConfigured,
+			WalletWasabi.NostrRelay.NostrRelayStatus.Running => ConnectionState.Working,
+			WalletWasabi.NostrRelay.NostrRelayStatus.NotWorking => ConnectionState.NotWorking,
+			_ => ConnectionState.Unknown
 		};
 
 	/// <summary>
@@ -237,6 +254,9 @@ public partial class ConnectionsModel : ReactiveObject
 
 		// The application asks the node every few seconds anyway.
 		Apply(Connection.Node, _probes[Connection.Node].Version, _services.IsNodeAnswering());
+
+		// And it knows how it stands with its own relay.
+		NostrRelay = GetState(_services.GetNostrRelayState());
 
 		return doesTorWork;
 	}
@@ -359,6 +379,7 @@ public partial class ConnectionsModel : ReactiveObject
 
 	private void Update()
 	{
+		NostrRelay = GetState(_services.GetNostrRelayState());
 		Tor = GetCurrentState(Connection.Tor);
 		Node = GetCurrentState(Connection.Node);
 		Nostr = GetCurrentState(Connection.Nostr);
