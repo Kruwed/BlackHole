@@ -34,7 +34,12 @@
       </Button>
     </ContentArea.TopContent>
 
-    <Panel>
+    <DockPanel>
+      <!-- A wallet that came back from its backup generates no address before it has gone through the chain. -->
+      <InfoMessage DockPanel.Dock="Top" Margin="0 0 0 12" IsVisible="{Binding !CanGenerate}">
+        <TextBlock Text="{Binding WaitMessage}" TextWrapping="Wrap" />
+      </InfoMessage>
+      <Panel>
       <TreeDataGrid Source="{Binding Source}" VerticalAlignment="Stretch" IsVisible="{Binding HasAddresses}">
         <Interaction.Behaviors>
           <TreeDataGridMissingCellsWorkaroundBehavior />
@@ -49,6 +54,7 @@
       <TextBlock Text="No address is awaiting a payment."
                  IsVisible="{Binding !HasAddresses}" Opacity="0.6" TextWrapping="Wrap"
                  HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0 60 0 0" />
-    </Panel>
+      </Panel>
+    </DockPanel>
   </ContentArea>
 </UserControl>

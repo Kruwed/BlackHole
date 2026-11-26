@@ -584,11 +584,208 @@ public class KeyManagerTests
 		var manager = KeyManager.Recover(WalletGenerator.GenerateShares(), "", Network.Main, filePath: null, minGapLimit: 550);
 		Assert.Equal(550, manager.MinGapLimit);
 
-		var givenOutOnce = Enumerable.Range(0, 20).SelectMany(_ => manager.GetNextCoinJoinKeys(10)).ToArray();
-		Assert.Equal(Enumerable.Range(0, 200), givenOutOnce.Select(key => key.Index));
+		// The wallet went through the chain and found nothing: it goes on at position 104, like every wallet that comes
+		// back from its backup.
+		Assert.Equal((104, 104), manager.EndAddressSearch());
+
+		var givenOutOnce = Enumerable.Range(0, 9).SelectMany(_ => manager.GetNextCoinJoinKeys(10)).ToArray();
+		Assert.Equal(Enumerable.Range(104, 90), givenOutOnce.Select(key => key.Index));
+
+		// The tenth round gets the last keys that are given out once, and the first of the ones that rounds share.
+		Assert.Equal(Enumerable.Range(194, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
 
 		Assert.Equal(Enumerable.Range(200, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
 		Assert.Equal(Enumerable.Range(200, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+	}
+
+	/// <summary>
+	/// A wallet that comes back from its backup does not know which unused addresses the lost wallet had given out
+	/// already, to people who have not paid yet and to coinjoin rounds that failed. They are the ones right after the
+	/// last address that was paid to. So the wallet goes on 105 positions after that address, on the chain of its receive
+	/// addresses and on the chain of its change addresses. It finds out which address that is by going through the
+	/// chain, and gives out no receive address before.
+	/// </summary>
+	[Fact]
+	public void RecoveredWalletGoesOn105PositionsAfterTheLastAddressThatWasPaidTo()
+	{
+		var filePath = "wallet-recovered-addresses.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.Recover(WalletGenerator.GenerateShares(), "", Network.Main, filePath);
+
+		Assert.Equal(105, KeyManager.RecoveryAddressSkip);
+		Assert.True(manager.IsSearchingForAddresses);
+
+		// Until it has gone through the chain the wallet gives out no receive address, and says why.
+		var refusal = Assert.Throws<InvalidOperationException>(() => manager.GetNextReceiveKey());
+		Assert.Equal("The wallet gives out new addresses once it has gone through the chain: until then it does not know which of its addresses were used.", refusal.Message);
+		Assert.Throws<InvalidOperationException>(() => manager.GetNextReceiveKey(KeyPurpose.Loud, handOut: false));
+		Assert.DoesNotContain(manager.GetKeys(), key => key.IsHandedOut);
+
+		// On its way it finds what was paid to: the receive addresses 0, 3 and 7, and the change addresses 0 and 12.
+		var receiveKeys = manager.GetKeys(isInternal: false);
+		var changeKeys = manager.GetKeys(isInternal: true);
+
+		foreach (var key in new[] { receiveKeys[0], receiveKeys[3], receiveKeys[7], changeKeys[0], changeKeys[12] })
+		{
+			manager.SetKeyState(KeyState.Used, key);
+		}
+
+		manager.ToFile();
+		Assert.Equal((112, 117), manager.GetFirstAddressPositions());
+
+		// The wallet file knows that the wallet is still on its way, so closing the application changes nothing.
+		var interrupted = KeyManager.FromFile(filePath);
+		Assert.True(interrupted.IsSearchingForAddresses);
+		Assert.Throws<InvalidOperationException>(() => interrupted.GetNextReceiveKey());
+		Assert.Equal((112, 117), interrupted.GetFirstAddressPositions());
+
+		// It has gone through the chain.
+		Assert.Equal((112, 117), manager.EndAddressSearch());
+		Assert.False(manager.IsSearchingForAddresses);
+		Assert.Null(manager.EndAddressSearch());
+
+		// Receive addresses go on at position 112, the next one after it follows as always.
+		Assert.Equal([112, 113], new[] { manager.GetNextReceiveKey().Index, manager.GetNextReceiveKey().Index });
+
+		// Change addresses and the addresses of coinjoin rounds go on at position 117.
+		Assert.Equal(117, manager.GetNextChangeKey().Index);
+		Assert.Equal(Enumerable.Range(117, 10), manager.GetNextCoinJoinKeys(10).Select(key => key.Index));
+		Assert.Equal(127, manager.GetNextChangeKey().Index);
+
+		// The addresses before are watched like the others: the lost wallet gave some of them out, and a payment to one
+		// of them is found. It changes nothing about where the wallet goes on.
+		Assert.Equal(Enumerable.Range(0, 8 + 210), manager.GetKeys(isInternal: false).Select(key => key.Index));
+		Assert.True(manager.TryGetKeyForScriptPubKey(receiveKeys[9].P2Taproot, out var lateKey));
+		manager.SetKeyState(KeyState.Used, lateKey);
+		Assert.Equal(114, manager.GetNextReceiveKey().Index);
+		Assert.Equal(127, manager.GetNextChangeKey().Index);
+
+		// The wallet file remembers where the wallet goes on.
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.False(sameManager.IsSearchingForAddresses);
+		Assert.Equal((112, 117), sameManager.GetFirstAddressPositions());
+		Assert.Equal(115, sameManager.GetNextReceiveKey().Index);
+		Assert.Equal(127, sameManager.GetNextChangeKey().Index);
+
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!;
+		Assert.Null(json["AddressSearch"]);
+		Assert.Equal(112, json["FirstReceiveIndex"]!.GetValue<int>());
+		Assert.Equal(117, json["FirstChangeIndex"]!.GetValue<int>());
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// The lost wallet may have given out addresses although nothing was ever paid to it. So a wallet that comes back
+	/// from its backup and finds nothing goes on at the 105th address of each chain, which is position 104: that is still
+	/// well within the 210 addresses that a wallet watches when it comes back another time.
+	/// </summary>
+	[Fact]
+	public void RecoveredWalletThatFindsNothingGoesOnAtThe105thAddress()
+	{
+		var manager = KeyManager.Recover(WalletGenerator.GenerateShares(), "", Network.Main);
+
+		Assert.Equal((104, 104), manager.GetFirstAddressPositions());
+		Assert.Equal((104, 104), manager.EndAddressSearch());
+
+		Assert.Equal(104, manager.GetNextReceiveKey().Index);
+		Assert.Equal(104, manager.GetNextChangeKey().Index);
+		Assert.Equal(Enumerable.Range(104, 3), manager.GetNextCoinJoinKeys(3).Select(key => key.Index));
+		Assert.True(104 + KeyManager.RecoveryAddressSkip < KeyManager.AbsoluteMinGapLimit);
+	}
+
+	/// <summary>A wallet that was created knows every address that it gave out: it starts with the first one, and waits for nothing.</summary>
+	[Fact]
+	public void CreatedWalletStartsWithItsFirstAddress()
+	{
+		var filePath = "wallet-created-addresses.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.CreateNew(out _, "", Network.Main, filePath);
+
+		Assert.False(manager.IsSearchingForAddresses);
+		Assert.Null(manager.EndAddressSearch());
+		Assert.Equal((0, 0), manager.GetFirstAddressPositions());
+		Assert.Equal(0, manager.GetNextReceiveKey().Index);
+		Assert.Equal(0, manager.GetNextChangeKey().Index);
+
+		// Looking for its transactions again does not make it forget what it gave out.
+		manager.SetResyncParameters(new Height.ChainHeight(100), newMinGapLimit: 550);
+		Assert.False(manager.IsSearchingForAddresses);
+		Assert.Equal(1, manager.GetNextReceiveKey().Index);
+
+		// A wallet file from before wallets went on after a distance says nothing about it, and neither does a file
+		// with numbers that are no positions.
+		var json = JsonNode.Parse(File.ReadAllText(filePath))!.AsObject();
+		Assert.True(json.Remove("AddressSearch"));
+		Assert.True(json.Remove("FirstReceiveIndex"));
+		json["FirstChangeIndex"] = -5;
+		File.WriteAllText(filePath, json.ToJsonString());
+
+		var sameManager = KeyManager.FromFile(filePath);
+		Assert.False(sameManager.IsSearchingForAddresses);
+		Assert.Equal((0, 0), sameManager.GetFirstAddressPositions());
+		Assert.Equal(2, sameManager.GetNextReceiveKey().Index);
+
+		DeleteFileAndDirectoryIfExists(filePath);
+	}
+
+	/// <summary>
+	/// A wallet that came back from its backup and looks for its transactions again, with a wider gap limit for example,
+	/// is on its way through the chain once more. If it finds a payment to an address that it had not given out, another
+	/// copy of the wallet gave that address out, and maybe the ones after it: the wallet goes on 105 positions after the
+	/// last address that was paid to. A payment to an address that it gave out itself tells nothing new.
+	/// </summary>
+	[Fact]
+	public void RecoveredWalletThatLooksAgainGoesOnAfterWhatAnotherCopyWasPaidTo()
+	{
+		var filePath = "wallet-recovered-resync.json";
+		DeleteFileAndDirectoryIfExists(filePath);
+
+		var manager = KeyManager.Recover(WalletGenerator.GenerateShares(), "", Network.Main, filePath);
+		manager.SetKeyState(KeyState.Used, manager.GetKeys(isInternal: false)[2]);
+		manager.SetKeyState(KeyState.Used, manager.GetKeys(isInternal: true)[1]);
+		Assert.Equal((107, 106), manager.EndAddressSearch());
+
+		// The wallet is used: it gives out two receive addresses, and a coinjoin round gets three change addresses.
+		var firstReceiveKey = manager.GetNextReceiveKey();
+		var secondReceiveKey = manager.GetNextReceiveKey();
+		var roundKeys = manager.GetNextCoinJoinKeys(3);
+		Assert.Equal([107, 108], new[] { firstReceiveKey.Index, secondReceiveKey.Index });
+		Assert.Equal([106, 107, 108], roundKeys.Select(key => key.Index));
+
+		// It looks again, and gives out no receive address until it has gone through the chain. The file knows.
+		manager.SetResyncParameters(new Height.ChainHeight(100), KeyManager.AbsoluteMinGapLimit);
+		Assert.True(manager.IsSearchingForAddresses);
+		Assert.Throws<InvalidOperationException>(() => manager.GetNextReceiveKey());
+		Assert.True(KeyManager.FromFile(filePath).IsSearchingForAddresses);
+
+		// It finds payments to addresses that it gave out itself: nothing new, and it goes on where it was.
+		manager.SetKeyState(KeyState.Used, firstReceiveKey);
+		manager.SetKeyState(KeyState.Used, roundKeys[0]);
+		Assert.Equal((107, 106), manager.EndAddressSearch());
+		Assert.Equal(109, manager.GetNextReceiveKey().Index);
+		Assert.Equal(109, manager.GetNextChangeKey().Index);
+
+		// It looks again, and this time finds payments to addresses that it never gave out: the receive address 300 and
+		// the change address 250. Another copy of the wallet got that far.
+		manager.SetResyncParameters(new Height.ChainHeight(100), newMinGapLimit: 550);
+		manager.SetKeyState(KeyState.Used, manager.GetKeys(isInternal: false).Single(key => key.Index == 300));
+		manager.SetKeyState(KeyState.Used, manager.GetKeys(isInternal: true).Single(key => key.Index == 250));
+		Assert.Equal((405, 355), manager.GetFirstAddressPositions());
+		Assert.Equal((405, 355), manager.EndAddressSearch());
+
+		Assert.Equal(405, manager.GetNextReceiveKey().Index);
+		Assert.Equal(355, manager.GetNextChangeKey().Index);
+		Assert.Equal([355, 356], manager.GetNextCoinJoinKeys(2).Select(key => key.Index));
+
+		// Only one of the two chains may have something new.
+		manager.SetResyncParameters(new Height.ChainHeight(100), newMinGapLimit: 550);
+		manager.SetKeyState(KeyState.Used, manager.GetKeys(isInternal: false).Single(key => key.Index == 500));
+		Assert.Equal((605, 355), manager.EndAddressSearch());
+
+		DeleteFileAndDirectoryIfExists(filePath);
 	}
 
 	/// <summary>

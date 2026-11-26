@@ -32,8 +32,8 @@ public class OutputDescriptorTests
 
 		// What "tr(xpub/<0;1>/*)" stands for: receive addresses on chain 0 and change addresses on chain 1,
 		// each one the BIP86 Taproot address of the derived key.
-		var receiveKey = keyManager.GetNextReceiveKey();
-		var changeKey = keyManager.GetNextChangeKey();
+		var receiveKey = keyManager.GetKeys(isInternal: false)[5];
+		var changeKey = keyManager.GetKeys(isInternal: true)[7];
 
 		Assert.Equal(
 			accountKey.Derive(0).Derive((uint)receiveKey.Index).PubKey.GetAddress(ScriptPubKeyType.TaprootBIP86, Network.Main),

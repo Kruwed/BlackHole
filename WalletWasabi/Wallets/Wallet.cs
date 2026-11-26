@@ -291,6 +291,13 @@ public class Wallet : BackgroundService
 			Logger.LogInfo(FormatLog($"Nothing was paid to {unpaid} change addresses that the wallet file had as paid to. They count as given out.", this));
 		}
 
+		// For the same reason the wallet knows now where its addresses go on, if it came back from its backup and did not
+		// know: a distance after the last ones that were paid to, see KeyManager.RecoveryAddressSkip.
+		if (KeyManager.EndAddressSearch() is { } first)
+		{
+			Logger.LogInfo(FormatLog($"went through the chain. It gives out receive addresses from position {first.Receive} on and change addresses from position {first.Change} on.", this));
+		}
+
 		await base.StartAsync(cancellationToken).ConfigureAwait(false);
 
 		Loaded = true;

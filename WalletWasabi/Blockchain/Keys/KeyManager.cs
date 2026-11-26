@@ -36,6 +36,22 @@ public class KeyManager
 	public const int MaxGapLimit = 10_000;
 
 	/// <summary>
+	/// How far after the last address that was paid to a wallet goes on when it comes back from its backup: the first
+	/// address that it gives out is this many positions after that one, on the chain of its receive addresses and on the
+	/// chain of its change addresses, which coinjoin rounds take their addresses from as well.
+	/// </summary>
+	/// <remarks>
+	/// The backup does not tell which unused addresses the lost wallet had given out already: to people who have not paid
+	/// yet, and to coinjoin rounds that failed. They are the ones right after the last address that was paid to, and a
+	/// wallet that started there would give them out a second time. The distance is half of
+	/// <see cref="AbsoluteMinGapLimit"/>, so that as many watched addresses lie behind the first new one as before it.
+	/// </remarks>
+	public const int RecoveryAddressSkip = AbsoluteMinGapLimit / 2;
+
+	/// <summary>What is told when an address is asked for while the wallet does not know yet where its addresses go on.</summary>
+	public const string AddressSearchMessage = "The wallet gives out new addresses once it has gone through the chain: until then it does not know which of its addresses were used.";
+
+	/// <summary>
 	/// The gap limit of the generators of the silent payment keys. Those keys are not addresses that are given out one after
 	/// the other, so the gap limit of the wallet means nothing to them.
 	/// </summary>
@@ -157,6 +173,19 @@ public class KeyManager
 
 	/// <summary>See <see cref="GetFidelityBondSearchStart"/>.</summary>
 	private uint? _fidelityBondSearchStart;
+
+	/// <summary>
+	/// Set while the wallet goes through the chain to find out where its addresses go on: after it came back from its
+	/// backup, and when a wallet that once came back from its backup looks for its transactions again. See
+	/// <see cref="IsSearchingForAddresses"/>.
+	/// </summary>
+	private AddressSearch? _addressSearch;
+
+	/// <summary>The first position of the chain of receive addresses that the wallet gives out. See <see cref="RecoveryAddressSkip"/>.</summary>
+	private int _firstReceiveIndex;
+
+	/// <summary>The same for the chain of change addresses.</summary>
+	private int _firstChangeIndex;
 
 	public ExtPubKey? SilentPaymentScanExtPubKey { get; private set; }
 
@@ -289,6 +318,9 @@ public class KeyManager
 
 		// The backup does not tell the unlock heights of the bonds of the wallet.
 		km.SearchFidelityBondsFromNoLock(birthHeight);
+
+		// Nor does it tell which addresses were paid to, and which were given out and are still waiting.
+		km._addressSearch = new AddressSearch(IsAfterRecovery: true, FoundReceive: false, FoundChange: false);
 		km.ToFile();
 		return km;
 	}
@@ -359,7 +391,20 @@ public class KeyManager
 				throw new NotSupportedException("Silent payment keys are not available in this wallet.");
 			}
 
-			var (newKey, newlyGeneratedKeySet, newHdPubKeyGenerator) = GetNextReceiveKey(generator);
+			var firstIndex = 0;
+
+			if (purpose is KeyPurpose.LoudPaymentKey)
+			{
+				// What the wallet finds on its way through the chain decides where its addresses go on.
+				if (_addressSearch is not null)
+				{
+					throw new InvalidOperationException(AddressSearchMessage);
+				}
+
+				firstIndex = _firstReceiveIndex;
+			}
+
+			var (newKey, newlyGeneratedKeySet, newHdPubKeyGenerator) = GetNextReceiveKey(generator, firstIndex);
 			generatorSetter(newHdPubKeyGenerator);
 			_hdPubKeyCache.AddRangeKeys(newlyGeneratedKeySet);
 			if (handOut)
@@ -372,7 +417,8 @@ public class KeyManager
 		}
 	}
 
-	private (HdPubKey, HdPubKey[], HdPubKeyGenerator) GetNextReceiveKey(HdPubKeyGenerator hdPubKeyGenerator)
+	/// <param name="firstIndex">The first position that is given out. The keys before it are watched like the others.</param>
+	private (HdPubKey, HdPubKey[], HdPubKeyGenerator) GetNextReceiveKey(HdPubKeyGenerator hdPubKeyGenerator, int firstIndex)
 	{
 		// Find the next clean external key that was not given out yet.
 		HdPubKeyPathView externalView;
@@ -382,7 +428,7 @@ public class KeyManager
 			externalView = _hdPubKeyCache.GetView(hdPubKeyGenerator.KeyPath);
 		}
 
-		if (externalView.CleanKeys.FirstOrDefault(x => !x.IsHandedOut) is { } cachedKey)
+		if (externalView.CleanKeys.Where(x => !x.IsHandedOut && x.Index >= firstIndex).MinBy(x => x.Index) is { } cachedKey)
 		{
 			return (cachedKey, [], hdPubKeyGenerator);
 		}
@@ -409,7 +455,8 @@ public class KeyManager
 		{
 			var keys = GetChangeKeysNoLock();
 			var lastIndexOfGap = GetLastPaidIndex(keys) + AbsoluteMinGapLimit;
-			var firstCleanKey = keys.First(key => key.KeyState == KeyState.Clean);
+			var firstIndex = GetFirstIndexNoLock(isInternal: true);
+			var firstCleanKey = keys.First(key => key.KeyState == KeyState.Clean && key.Index >= firstIndex);
 
 			return firstCleanKey.Index <= lastIndexOfGap
 				? firstCleanKey
@@ -444,9 +491,10 @@ public class KeyManager
 			var keys = GetChangeKeysNoLock();
 			var lastIndexOfGap = GetLastPaidIndex(keys) + AbsoluteMinGapLimit;
 			var firstSharedIndex = lastIndexOfGap - MaxCoinJoinKeysPerRound + 1;
+			var firstIndex = GetFirstIndexNoLock(isInternal: true);
 
 			var newKeys = keys
-				.Where(key => key.KeyState == KeyState.Clean && key.Index < firstSharedIndex)
+				.Where(key => key.KeyState == KeyState.Clean && key.Index >= firstIndex && key.Index < firstSharedIndex)
 				.Take(count)
 				.ToArray();
 
@@ -550,8 +598,104 @@ public class KeyManager
 	}
 
 	/// <returns>The index of the last key that was paid to, or -1 if none was.</returns>
-	private static int GetLastPaidIndex(HdPubKey[] keys) =>
+	private static int GetLastPaidIndex(IEnumerable<HdPubKey> keys) =>
 		keys.Where(key => key.KeyState == KeyState.Used).Select(key => key.Index).DefaultIfEmpty(-1).Max();
+
+	/// <summary>
+	/// Whether the wallet is going through the chain to find out where its addresses go on. Until that is over it gives
+	/// out no receive address: it does not know yet which of its addresses were used, and an address that it gave out
+	/// now could be one that was paid to long ago.
+	/// </summary>
+	/// <remarks>
+	/// That is so from the moment a wallet comes back from its backup until it has processed every block of the node for
+	/// the first time, and again whenever such a wallet looks for its transactions again, see
+	/// <see cref="SetResyncParameters"/>.
+	/// </remarks>
+	public bool IsSearchingForAddresses
+	{
+		get
+		{
+			lock (_criticalStateLock)
+			{
+				return _addressSearch is not null;
+			}
+		}
+	}
+
+	/// <summary>The first positions that the wallet gives out, on the chain of its receive addresses and on the chain of its change addresses.</summary>
+	public (int Receive, int Change) GetFirstAddressPositions()
+	{
+		lock (_criticalStateLock)
+		{
+			return (GetFirstIndexNoLock(isInternal: false), GetFirstIndexNoLock(isInternal: true));
+		}
+	}
+
+	/// <summary>
+	/// The wallet went through the chain: it knows now which of its addresses were paid to, and so where it goes on. A
+	/// wallet that came back from its backup goes on <see cref="RecoveryAddressSkip"/> positions after the last address
+	/// that was paid to, on each of the two chains. A wallet that looked for its transactions again does so on a chain
+	/// where it found a payment to an address that it had not given out: another copy of the wallet gave that one out,
+	/// and maybe the ones after it.
+	/// </summary>
+	/// <returns>The first positions that the wallet gives out from now on, or null if the wallet was not searching.</returns>
+	public (int Receive, int Change)? EndAddressSearch()
+	{
+		lock (_criticalStateLock)
+		{
+			if (_addressSearch is null)
+			{
+				return null;
+			}
+
+			_firstReceiveIndex = GetFirstIndexNoLock(isInternal: false);
+			_firstChangeIndex = GetFirstIndexNoLock(isInternal: true);
+			_addressSearch = null;
+			ToFileNoLock();
+
+			return (_firstReceiveIndex, _firstChangeIndex);
+		}
+	}
+
+	/// <summary>
+	/// The first position of a chain that the wallet gives out. While the wallet goes through the chain, that is as far
+	/// as what it found so far tells.
+	/// </summary>
+	private int GetFirstIndexNoLock(bool isInternal)
+	{
+		var firstIndex = isInternal ? _firstChangeIndex : _firstReceiveIndex;
+
+		if (_addressSearch is { } search && (search.IsAfterRecovery || (isInternal ? search.FoundChange : search.FoundReceive)))
+		{
+			var chain = isInternal ? _taprootInternalKeyGenerator.KeyPath : TaprootExternalKeyGenerator.KeyPath;
+			firstIndex = Math.Max(firstIndex, GetLastPaidIndex(_hdPubKeyCache.GetView(chain)) + RecoveryAddressSkip);
+		}
+
+		return firstIndex;
+	}
+
+	/// <summary>
+	/// While the wallet goes through the chain: takes note of a payment to an address that this wallet file had not
+	/// given out. Somebody was given that address all the same, by a copy of the wallet that this one knows nothing of.
+	/// </summary>
+	private void NoteAddressOfAnotherCopyNoLock(HdPubKey hdPubKey)
+	{
+		if (_addressSearch is not { } search || hdPubKey.KeyState != KeyState.Clean || hdPubKey.IsHandedOut)
+		{
+			return;
+		}
+
+		var chain = hdPubKey.FullKeyPath.Parent;
+
+		if (chain == TaprootExternalKeyGenerator.KeyPath)
+		{
+			_addressSearch = search with { FoundReceive = true };
+		}
+		else if (chain == _taprootInternalKeyGenerator.KeyPath)
+		{
+			_addressSearch = search with { FoundChange = true };
+		}
+	}
 
 	public ImmutableArray<HdPubKey> GetKeys(Func<HdPubKey, bool>? wherePredicate)
 	{
@@ -715,6 +859,14 @@ public class KeyManager
 			return;
 		}
 
+		if (newKeyState == KeyState.Used)
+		{
+			lock (_criticalStateLock)
+			{
+				NoteAddressOfAnotherCopyNoLock(hdPubKey);
+			}
+		}
+
 		hdPubKey.SetKeyState(newKeyState);
 		if (newKeyState is KeyState.Locked or KeyState.Used)
 		{
@@ -873,6 +1025,15 @@ public class KeyManager
 
 			// A bond that this wallet file does not remember may come up too: one of another copy of the wallet, for example.
 			SearchFidelityBondsFromNoLock(newStartingHeight);
+
+			// So may a payment to an address that this wallet file has not given out. A wallet that came back from its
+			// backup looks again with a wider gap limit because it misses payments: the wallet that it is a copy of got
+			// further than it knows.
+			if (IsRecovered)
+			{
+				_addressSearch ??= new AddressSearch(IsAfterRecovery: false, FoundReceive: false, FoundChange: false);
+			}
+
 			ToFileNoLock();
 		}
 	}
@@ -981,6 +1142,9 @@ public class KeyManager
 			(AnonymityPointsFieldName, Encode.Array(keyManager.AnonymityPoints.Select(Encode.AnonymityPoints))),
 			("FidelityBondHeights", Encode.Array(keyManager.FidelityBonds.KnownHeights.Select(Encode.UInt))),
 			("FidelityBondSearchStart", keyManager._fidelityBondSearchStart is { } searchStart ? Encode.UInt(searchStart) : null),
+			("AddressSearch", keyManager._addressSearch is { } addressSearch ? EncodeAddressSearch(addressSearch) : null),
+			("FirstReceiveIndex", Encode.Int(keyManager._firstReceiveIndex)),
+			("FirstChangeIndex", Encode.Int(keyManager._firstChangeIndex)),
 			("HdPubKeys", Encode.Array(keyManager._hdPubKeyCache.HdPubKeys.Select(Encode.HdPubKey)))
 		]);
 
@@ -1020,8 +1184,34 @@ public class KeyManager
 
 			// The field is missing unless a search is on. A search never starts below the first block.
 			km._fidelityBondSearchStart = get.Optional("FidelityBondSearchStart", Decode.UInt, 0u) is var searchStart and > 0 ? searchStart : null;
+
+			// A file from before a wallet looked for the place where its addresses go on is not looking, and gives out
+			// its addresses from the first one on. A position is never below that.
+			km._addressSearch = get.Optional("AddressSearch", AddressSearchDecoder);
+			km._firstReceiveIndex = Math.Max(0, get.Optional("FirstReceiveIndex", Decode.Int, 0));
+			km._firstChangeIndex = Math.Max(0, get.Optional("FirstChangeIndex", Decode.Int, 0));
 			return km;
 		});
+
+	private static JsonNode EncodeAddressSearch(AddressSearch search) =>
+		Encode.Object([
+			("IsAfterRecovery", Encode.Bool(search.IsAfterRecovery)),
+			("FoundReceive", Encode.Bool(search.FoundReceive)),
+			("FoundChange", Encode.Bool(search.FoundChange))
+		]);
+
+	/// <remarks>The fields are required, so that a file which says nothing here, or says null, is the file of a wallet that is not searching.</remarks>
+	private static Decoder<AddressSearch> AddressSearchDecoder =>
+		Decode.Object(get => new AddressSearch(
+			get.Required("IsAfterRecovery", Decode.Bool),
+			get.Required("FoundReceive", Decode.Bool),
+			get.Required("FoundChange", Decode.Bool)));
+
+	/// <summary>What a wallet that goes through the chain to find out where its addresses go on has found so far.</summary>
+	/// <param name="IsAfterRecovery">The wallet came back from its backup and knows nothing of its addresses: it goes on after a distance whatever it finds.</param>
+	/// <param name="FoundReceive">A receive address that this wallet file had not given out was paid to.</param>
+	/// <param name="FoundChange">The same for a change address.</param>
+	private sealed record AddressSearch(bool IsAfterRecovery, bool FoundReceive, bool FoundChange);
 
 	/// <summary>
 	/// Every key is turned into a Taproot address, so a wallet file may only hold keys of the wallet's own BIP86

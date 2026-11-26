@@ -83,17 +83,17 @@ public class WalletSynchronizerTests
 	public async Task ProcessesTheBlocksThatTheWalletDidNotSeeAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 
 		// A payment to the wallet in block 12, which is spent in block 20. Another payment in block 25.
 		node.MineBlocks(11);
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlock(CreateForeignTransaction(), payment, CreateForeignTransaction());
 		node.MineBlocks(7);
 		var spending = CreateSpending(payment, 0, CreateForeignScript());
 		node.MineBlock(spending);
 		node.MineBlocks(4);
-		var secondPayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(2));
+		var secondPayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(2));
 		node.MineBlock(secondPayment);
 		node.MineBlocks(5);
 
@@ -143,14 +143,14 @@ public class WalletSynchronizerTests
 	public async Task FollowsAReorganizationOfTheChainAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 
 		node.MineBlocks(10);
-		var oldPayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var oldPayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlock(oldPayment);
 		node.MineBlocks(3);
-		var reorganizedPayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(2));
-		var droppedPayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(3));
+		var reorganizedPayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(2));
+		var droppedPayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(3));
 		node.MineBlock(reorganizedPayment);
 		node.MineBlock(droppedPayment);
 
@@ -200,12 +200,12 @@ public class WalletSynchronizerTests
 	public async Task UndoesTheSpentCoinsOfReorganizedBlocksTooAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 
 		// A payment to the wallet, which the wallet spends to itself in the next block.
 		node.MineBlocks(10);
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
-		var spending = CreateSpending(payment, 0, keyManager.GetNextReceiveKey().GetAssumedScriptPubKey());
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
+		var spending = CreateSpending(payment, 0, lost.GetNextReceiveKey().GetAssumedScriptPubKey());
 		node.MineBlock(payment);
 		node.MineBlock(spending);
 
@@ -242,10 +242,10 @@ public class WalletSynchronizerTests
 	public async Task FollowsAReorganizationThatHappenedWhileTheWalletWasNotRunningAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 
 		node.MineBlocks(10);
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlock(payment);
 		node.MineBlocks(2);
 
@@ -279,10 +279,10 @@ public class WalletSynchronizerTests
 	public async Task GoesBackToTheNodeThatIsBehindOnTheSameChainAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 
 		node.MineBlocks(10);
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlock(payment);
 
 		using var wallet = await TestWallet.CreateAsync(node, keyManager);
@@ -483,8 +483,8 @@ public class WalletSynchronizerTests
 	{
 		// The node knows about 100 blocks and has 20 of them.
 		var node = new FakeBitcoinNode(Network) { Headers = 100 };
-		var keyManager = RecoverWallet();
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var keyManager = RecoverWallet(out var lost);
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlocks(9);
 		node.MineBlock(payment);
 		node.MineBlocks(10);
@@ -510,7 +510,7 @@ public class WalletSynchronizerTests
 	public async Task RefusesANodeOfAnotherNetworkAsync()
 	{
 		var node = new FakeBitcoinNode(Network.Main);
-		var payment = CreatePayment(RecoverWallet().GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(KeyManager.CreateNew(out _, "", Network).GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlock(payment);
 
 		using var wallet = await TestWallet.CreateAsync(node, RecoverWallet());
@@ -662,11 +662,11 @@ public class WalletSynchronizerTests
 	public async Task WatchesTheMempoolOfTheNodeAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 		node.MineBlocks(5);
 
 		// These are in the mempool before the wallet starts.
-		var earlyPayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var earlyPayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.AddToMempool(earlyPayment);
 		node.AddToMempool(CreateForeignTransaction());
 		node.AddToMempool(CreateForeignTransaction());
@@ -688,7 +688,7 @@ public class WalletSynchronizerTests
 		Assert.Equal(3, node.RequestedMempoolTransactionCount);
 
 		// New arrivals are noticed.
-		var latePayment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(2));
+		var latePayment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(2));
 		node.AddToMempool(latePayment);
 		node.AddToMempool(CreateForeignTransaction());
 		wallet.Synchronizer.ForceMempoolPoll();
@@ -711,13 +711,13 @@ public class WalletSynchronizerTests
 	public async Task NoticesWhenAnUnconfirmedPaymentIsReplacedAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 		node.MineBlocks(5);
 
 		using var wallet = await TestWallet.CreateAsync(node, keyManager);
 		await SynchronizeFullyAsync(wallet);
 
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.AddToMempool(payment);
 		wallet.Synchronizer.ForceMempoolPoll();
 		await wallet.Synchronizer.SynchronizeAsync(CancellationToken.None);
@@ -740,14 +740,14 @@ public class WalletSynchronizerTests
 	public async Task NoticesWhenABlockSpendsWhatAnUnconfirmedPaymentSpendsAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 		node.MineBlocks(5);
 
 		using var wallet = await TestWallet.CreateAsync(node, keyManager, watchMempool: false);
 		await SynchronizeFullyAsync(wallet);
 
 		// The wallet knows about an unconfirmed payment.
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		wallet.Processor.Process(new SmartTransaction(payment, Height.Mempool));
 		Assert.Single(wallet.Coins);
 
@@ -765,9 +765,9 @@ public class WalletSynchronizerTests
 	public async Task DoesNotLookAtTheMempoolWhenToldSoAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
+		var keyManager = RecoverWallet(out var lost);
 		node.MineBlocks(5);
-		node.AddToMempool(CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1)));
+		node.AddToMempool(CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1)));
 
 		using var wallet = await TestWallet.CreateAsync(node, keyManager, watchMempool: false);
 		await SynchronizeFullyAsync(wallet);
@@ -808,8 +808,8 @@ public class WalletSynchronizerTests
 	public async Task KeepsTryingInTheBackgroundAsync()
 	{
 		var node = new FakeBitcoinNode(Network) { Failure = new HttpRequestException("Connection refused") };
-		var keyManager = RecoverWallet();
-		var payment = CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1));
+		var keyManager = RecoverWallet(out var lost);
+		var payment = CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1));
 		node.MineBlocks(3);
 		node.MineBlock(payment);
 
@@ -843,8 +843,8 @@ public class WalletSynchronizerTests
 	public async Task TellsFailuresOfTheWalletFromFailuresOfTheNodeAsync()
 	{
 		var node = new FakeBitcoinNode(Network);
-		var keyManager = RecoverWallet();
-		node.MineBlock(CreatePayment(keyManager.GetNextReceiveKey(), Money.Coins(1)));
+		var keyManager = RecoverWallet(out var lost);
+		node.MineBlock(CreatePayment(lost.GetNextReceiveKey(), Money.Coins(1)));
 
 		// Something of the wallet fails when the blocks are processed, and it works the next time.
 		var attempts = 0;
@@ -992,9 +992,19 @@ public class WalletSynchronizerTests
 	}
 
 	/// <summary>A wallet that looks for its transactions from the first block of the chain on.</summary>
-	private static KeyManager RecoverWallet()
+	private static KeyManager RecoverWallet() => RecoverWallet(out _);
+
+	/// <summary>
+	/// A wallet that looks for its transactions from the first block of the chain on: it came back from its backup.
+	/// </summary>
+	/// <param name="lost">
+	/// The wallet that it is a copy of. That one gave out the addresses that were paid to: a wallet that came back from
+	/// its backup gives out none before it has gone through the chain.
+	/// </param>
+	private static KeyManager RecoverWallet(out KeyManager lost)
 	{
 		var shares = WalletGenerator.GenerateShares().Take(WalletGenerator.DefaultShamirThreshold).ToArray();
+		lost = KeyManager.CreateNew(shares, "", Network);
 		return KeyManager.Recover(shares, "", Network);
 	}
 
