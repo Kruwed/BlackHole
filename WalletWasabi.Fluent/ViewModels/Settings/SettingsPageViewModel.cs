@@ -16,14 +16,18 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 
 /// <summary>
 /// The settings of the application, which are also its welcome. They have five columns: Tor, Node, Nostr, Coordinator
-/// and Wallet, each with two boxes. The upper one connects to something that exists, or recovers the wallet; the
-/// lower one is for running, or creating, one's own.
+/// and Wallet, each with two boxes. In the first four the upper one connects to something that exists and the lower
+/// one is for running one's own. In the last the upper one creates the wallet and the lower one recovers one.
 /// </summary>
 /// <remarks>
 /// <para>
 /// As long as there is no wallet this is the welcome: it cannot be closed, and the user sets the columns up from left
 /// to right, see <see cref="SettingsOrder"/>. Once there is a wallet it is what the gear of the title bar opens, every
-/// box can be used, and the Wallet column configures the wallet.
+/// box can be used, and the Wallet column configures the wallet and creates a fidelity bond.
+/// </para>
+/// <para>
+/// A bond is created where coins are locked, which is not a page of the settings: the settings close for it, and
+/// tell whoever opened them where the user wants to go, see <see cref="SettingsExit"/>.
 /// </para>
 /// <para>
 /// The "Connect to" box of a connection that the user has configured tells whether it works at the moment: it has a
@@ -32,7 +36,7 @@ namespace WalletWasabi.Fluent.ViewModels.Settings;
 /// relay, a Bitcoin node or a coordinator holds its place and does nothing yet, so these three boxes cannot be used.
 /// </para>
 /// </remarks>
-public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISettingsPage
+public partial class SettingsPageViewModel : DialogViewModelBase<SettingsExit>, ISettingsPage
 {
 	public const string SettingsTitle = "Settings";
 	public const string SettingsCaption = "Tor, your node, Nostr, the coordinator and the wallet";
@@ -53,11 +57,17 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 	/// <summary>Whether the wallet exists. Its box has a check mark then.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _hasWallet;
 
-	/// <summary>Whether the upper box of the Wallet column configures the wallet: the wallet was recovered.</summary>
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConfigureTileUpper;
+	/// <summary>What the upper box of the Wallet column is, see <see cref="SettingsOrder.GetWalletTiles"/>.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private WalletTile _upperWalletTile = WalletTile.Create;
 
-	/// <summary>Whether the lower box of the Wallet column configures the wallet: the wallet was created.</summary>
-	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isConfigureTileLower;
+	/// <summary>What the lower box of the Wallet column is.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private WalletTile _lowerWalletTile = WalletTile.Recover;
+
+	/// <summary>Whether a fidelity bond can be created: there is a wallet, and it is decrypted.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _canCreateBond;
+
+	/// <summary>What the box that creates a bond says while it cannot be pressed. Null while it can.</summary>
+	[AutoNotify(SetterModifier = AccessModifier.Private)] private string? _createBondHint;
 
 	/// <summary>Whether the relay that the application runs itself is on and works at the moment. Its box has a check mark then.</summary>
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private bool _isNostrRelayWorking;
@@ -90,6 +100,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 		RecoverWalletCommand = ReactiveCommand.Create(OnRecoverWallet, canAddWallet);
 		CreateWalletCommand = ReactiveCommand.Create(OnCreateWallet, canAddWallet);
 		ConfigureWalletCommand = ReactiveCommand.Create(OnConfigureWallet, this.WhenAnyValue(x => x.HasWallet));
+
+		// A bond is created where coins are locked. The settings make way for that.
+		CreateBondCommand = ReactiveCommand.Create(() => Close(result: SettingsExit.CreateBond), this.WhenAnyValue(x => x.CanCreateBond));
 
 		RestartCommand = ReactiveCommand.Create(() => AppLifetimeHelper.Shutdown(withShutdownPrevention: true, restart: true));
 		NextCommand = ReactiveCommand.Create(() => Close());
@@ -133,6 +146,9 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 
 	public ICommand ConfigureWalletCommand { get; }
 
+	/// <summary>Closes the settings and tells that the user wants to create a fidelity bond.</summary>
+	public ICommand CreateBondCommand { get; }
+
 	public ICommand RestartCommand { get; }
 
 	/// <summary>Brings the screen up to date with the connections and the wallet.</summary>
@@ -156,9 +172,14 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 
 		var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet, isRecovered: wallet?.IsRecovered ?? false);
 
-		IsConfigureTileUpper = upper == WalletTile.Configure;
-		IsConfigureTileLower = lower == WalletTile.Configure;
+		UpperWalletTile = upper;
+		LowerWalletTile = lower;
 		HasWallet = hasWallet;
+
+		var isWalletDecrypted = wallet?.IsLoggedIn ?? false;
+
+		CanCreateBond = SettingsOrder.CanCreateBond(hasWallet, isWalletDecrypted);
+		CreateBondHint = SettingsOrder.DescribeBondTile(isWalletDecrypted);
 		CanAddWallet = SettingsOrder.CanAddWallet(hasWallet, connections.IsDone);
 
 		IsWelcome = !hasWallet;
@@ -216,10 +237,16 @@ public partial class SettingsPageViewModel : DialogViewModelBase<Unit>, ISetting
 
 		var connections = UiContext.Connections;
 
-		// The pages of the connections report to the model, and the wallet appears when it is created or recovered.
-		// Both are looked at while this screen shows, also when it comes back from one of its pages.
+		// The pages of the connections report to the model, the wallet appears when it is created or recovered, and it
+		// is decrypted at some point. All of that is looked at while this screen shows, also when it comes back from
+		// one of its pages.
+		var wallet = UiContext.WalletRepository
+			.WhenAnyValue(x => x.Wallet)
+			.Select(wallet => wallet?.WhenAnyValue(x => x.IsLoggedIn).Select(_ => Unit.Default) ?? Observable.Return(Unit.Default))
+			.Switch();
+
 		connections.WhenAnyValue(x => x.Tor, x => x.Node, x => x.Nostr, x => x.Coordinator, x => x.NostrRelay, (_, _, _, _, _) => Unit.Default)
-			.Merge(UiContext.WalletRepository.WhenAnyValue(x => x.Wallet).Select(_ => Unit.Default))
+			.Merge(wallet)
 			.ObserveOn(RxApp.MainThreadScheduler)
 			.Subscribe(_ => Update())
 			.DisposeWith(disposables);

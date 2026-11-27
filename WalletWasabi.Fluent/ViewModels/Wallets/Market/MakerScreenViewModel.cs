@@ -93,7 +93,7 @@ public partial class MakerScreenViewModel : ReactiveObject
 		ToggleAddressesCommand = ReactiveCommand.Create(() => Apply(_desk.ToggleAddresses(_state)));
 		SortByPointsCommand = ReactiveCommand.Create(() => Apply(_desk.SortBy(_state, CoinSortKey.Points)));
 		SortByAmountCommand = ReactiveCommand.Create(() => Apply(_desk.SortBy(_state, CoinSortKey.Amount)));
-		ShowBondCommand = ReactiveCommand.Create(() => Apply(_desk.SetTab(_state, MakerTab.Bond)));
+		ShowBondCommand = ReactiveCommand.Create(ShowLockCoins);
 		ShowOffersCommand = ReactiveCommand.Create(() => Apply(_desk.SetTab(_state, MakerTab.Offers)));
 
 		var notBusy = this.WhenAnyValue(x => x.IsBusy).Select(isBusy => !isBusy);
@@ -240,6 +240,12 @@ public partial class MakerScreenViewModel : ReactiveObject
 		get => _state.BondFeeRate;
 		set => Type(_state with { BondFeeRate = MakerDesk.CleanNumber(value), BondError = null }, _state.BondFeeRate, value);
 	}
+
+	/// <summary>
+	/// Shows Lock Coins: the form that locks a fidelity bond, or the bond while there is one. What was set there
+	/// stays as it was if it shows already.
+	/// </summary>
+	public void ShowLockCoins() => Apply(_desk.SetTab(_state, MakerTab.Bond));
 
 	/// <summary>Follows the market for as long as the screen shows: the coins, the bonds, the offers and the book.</summary>
 	public void Activate(CompositeDisposable disposables)

@@ -49,15 +49,7 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 
 		// The dialog is to be had at any time: an address can be generated while the wallet still processes blocks. What
 		// takes coins waits for the wallet inside the dialog.
-		CoinJoinCommand = ReactiveCommand.Create(
-			() =>
-			{
-				// The dialog is not opened twice: it may be open already, behind a page that it led to.
-				if (CoinJoin.CurrentTarget == NavigationTarget.Default)
-				{
-					UiContext.Navigate(NavigationTarget.DialogScreen).To(CoinJoin);
-				}
-			});
+		CoinJoinCommand = ReactiveCommand.Create(OpenCoinJoin);
 
 		ToggleSelectionCommand = ReactiveCommand.Create(() => CoinList.SelectAll(!CoinList.Selection.Any()));
 	}
@@ -80,4 +72,27 @@ public partial class CoinsTabViewModel : WalletTabViewModel
 
 	/// <summary>Ticks every coin, or none if some are ticked.</summary>
 	public ICommand ToggleSelectionCommand { get; }
+
+	/// <summary>
+	/// Opens the dialog where a fidelity bond is created: on its Maker tab, with the coins of the wallet and with Lock
+	/// Coins showing. The settings lead here.
+	/// </summary>
+	public void ShowLockCoins()
+	{
+		CoinJoin.SelectedTab = CoinJoinViewModel.GetTabIndex(CoinJoinTab.Maker);
+
+		OpenCoinJoin();
+
+		// The maker's side takes the coins as they are now when it shows, so it is set after that.
+		CoinJoin.Market.ShowLockCoins();
+	}
+
+	private void OpenCoinJoin()
+	{
+		// The dialog is not opened twice: it may be open already, behind a page that it led to.
+		if (CoinJoin.CurrentTarget == NavigationTarget.Default)
+		{
+			UiContext.Navigate(NavigationTarget.DialogScreen).To(CoinJoin);
+		}
+	}
 }

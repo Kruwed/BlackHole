@@ -69,6 +69,12 @@ public partial class WalletViewModel : RoutableViewModel, IWalletViewModel
 		protected set => this.RaiseAndSetIfChanged(ref _title, value);
 	}
 
+	/// <summary>
+	/// Shows where coins of the wallet are locked in a fidelity bond: Lock Coins, on the Maker tab of the dialog that the
+	/// Coinjoin button of the Coins tab opens.
+	/// </summary>
+	public void ShowLockCoins() => Coins.ShowLockCoins();
+
 	/// <inheritdoc />
 	public void SelectTransaction(uint256 txid, bool showHistory)
 	{

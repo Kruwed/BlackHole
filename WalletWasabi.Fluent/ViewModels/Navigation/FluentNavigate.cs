@@ -197,14 +197,17 @@ public partial class FluentNavigate
 		return new FluentDialog<ResyncWalletDialogResult?>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
-	/// <summary>Shows the settings. As long as there is no wallet they are the welcome.</summary>
-	public FluentDialog<System.Reactive.Unit> SettingsPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
+	/// <summary>
+	/// Shows the settings. As long as there is no wallet they are the welcome. The result tells how they were left:
+	/// they close for what is not one of their pages.
+	/// </summary>
+	public FluentDialog<SettingsExit> SettingsPage(NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)
 	{
 		var dialog = new SettingsPageViewModel(UiContext);
 		var target = UiContext.Navigate(navigationTarget);
 		target.To(dialog, navigationMode);
 
-		return new FluentDialog<System.Reactive.Unit>(target.NavigateDialogAsync(dialog, navigationMode));
+		return new FluentDialog<SettingsExit>(target.NavigateDialogAsync(dialog, navigationMode));
 	}
 
 	public void ConfirmMultiShare(WalletCreationOptions.AddNewWallet options, Dictionary<int, List<RecoveryWordViewModel>> wordsDictionary, NavigationTarget navigationTarget = NavigationTarget.DialogScreen, NavigationMode navigationMode = NavigationMode.Normal)

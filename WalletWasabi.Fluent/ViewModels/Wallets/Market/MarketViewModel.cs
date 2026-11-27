@@ -103,6 +103,16 @@ public partial class MarketViewModel : ViewModelBase
 		_activation.Disposable = null;
 	}
 
+	/// <summary>
+	/// Sets the maker's side to where coins of the wallet are locked in a fidelity bond: the wallet in place of the
+	/// sample data, and Lock Coins in place of List Offers. A wallet with a bond is told about its bond there.
+	/// </summary>
+	public void ShowLockCoins()
+	{
+		IsSample = false;
+		_liveMaker.ShowLockCoins();
+	}
+
 	private void SwitchData()
 	{
 		if (IsSample)

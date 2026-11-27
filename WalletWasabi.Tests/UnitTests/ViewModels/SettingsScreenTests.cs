@@ -110,10 +110,61 @@ public class SettingsScreenTests
 	public void BoxThatMadeTheWalletConfiguresIt()
 	{
 		// A wallet that was created: the upper box, where "Create a Wallet" was.
-		Assert.Equal((WalletTile.Configure, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false));
+		Assert.Equal(WalletTile.Configure, SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false).Upper);
 
 		// A wallet that was recovered: the lower box, where "Recover a Wallet" was.
-		Assert.Equal((WalletTile.Create, WalletTile.Configure), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true));
+		Assert.Equal(WalletTile.Configure, SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true).Lower);
+	}
+
+	/// <summary>
+	/// There is one wallet at most, so once it is there the other box has no wallet to make. It creates a fidelity
+	/// bond: for a wallet that was created that is the lower box, where "Recover a Wallet" was.
+	/// </summary>
+	[Fact]
+	public void OtherBoxCreatesABondOnceThereIsAWallet()
+	{
+		Assert.Equal((WalletTile.Configure, WalletTile.CreateBond), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false));
+
+		// A wallet that was recovered has it where "Create a Wallet" was.
+		Assert.Equal((WalletTile.CreateBond, WalletTile.Configure), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true));
+	}
+
+	/// <summary>A bond locks coins of a wallet, so it takes a wallet: the welcome has no box for it.</summary>
+	[Fact]
+	public void BondCannotBeCreatedBeforeThereIsAWallet()
+	{
+		foreach (var isRecovered in new[] { false, true })
+		{
+			var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered);
+
+			Assert.NotEqual(WalletTile.CreateBond, upper);
+			Assert.NotEqual(WalletTile.CreateBond, lower);
+		}
+
+		Assert.False(SettingsOrder.CanCreateBond(hasWallet: false, isWalletDecrypted: false));
+		Assert.False(SettingsOrder.CanCreateBond(hasWallet: false, isWalletDecrypted: true));
+	}
+
+	/// <summary>The box of the bond waits for the password of the wallet, and says so while it waits.</summary>
+	[Fact]
+	public void BondIsCreatedOnceTheWalletIsDecrypted()
+	{
+		Assert.False(SettingsOrder.CanCreateBond(hasWallet: true, isWalletDecrypted: false));
+		Assert.Equal("Decrypt the wallet to create a bond.", SettingsOrder.DescribeBondTile(isWalletDecrypted: false));
+
+		Assert.True(SettingsOrder.CanCreateBond(hasWallet: true, isWalletDecrypted: true));
+		Assert.Null(SettingsOrder.DescribeBondTile(isWalletDecrypted: true));
+	}
+
+	/// <summary>
+	/// A bond is created where coins are locked, which is no page of the settings: they close for it and tell so.
+	/// Put away in any other way, with "Done", Escape or a click beside them, they tell nothing of the kind.
+	/// </summary>
+	[Fact]
+	public void SettingsThatWerePutAwayDoNotAskForABond()
+	{
+		Assert.Equal(SettingsExit.Closed, default(SettingsExit));
+		Assert.NotEqual(SettingsExit.Closed, SettingsExit.CreateBond);
 	}
 
 	[Fact]

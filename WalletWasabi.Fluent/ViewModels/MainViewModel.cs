@@ -341,7 +341,8 @@ public partial class MainViewModel : ViewModelBase
 
 	/// <summary>
 	/// As long as there is no wallet, the welcome is the settings: the gear brings the user back to it from the pages
-	/// that lie on top of it.
+	/// that lie on top of it. With a wallet the settings open, and when they close for something that is not one of
+	/// their pages, the user is led on to it from here: by then the settings are gone, and nothing of them is in the way.
 	/// </summary>
 	private async Task OpenSettingsAsync()
 	{
@@ -356,7 +357,13 @@ public partial class MainViewModel : ViewModelBase
 			return;
 		}
 
-		await UiContext.Navigate().To().SettingsPage().GetResultAsync();
+		var exit = await UiContext.Navigate().To().SettingsPage().GetResultAsync();
+
+		if (exit == SettingsExit.CreateBond)
+		{
+			// The box cannot be pressed before the wallet is decrypted, so the wallet is there.
+			WalletPage?.WalletViewModel?.ShowLockCoins();
+		}
 	}
 
 	private async Task OpenDataFolderAsync()

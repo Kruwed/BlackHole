@@ -86,6 +86,51 @@ public class MakerScreenTests
 		Assert.All(screen.RateRows, row => Assert.False(row.IsEnabled));
 	}
 
+	/// <summary>
+	/// "Create a Bond" in the settings leads to Lock Coins, whatever the screen showed last. If Lock Coins shows
+	/// already, what was set on it stays.
+	/// </summary>
+	[Fact]
+	public void LockCoinsIsShownForWhoeverComesToCreateABond()
+	{
+		var screen = CreateScreen();
+
+		screen.ShowOffersCommand.Execute(null);
+		Assert.True(screen.IsOffersTab);
+
+		screen.ShowLockCoins();
+
+		Assert.True(screen.IsBondTab);
+		Assert.False(screen.IsOffersTab);
+		Assert.Equal(("2.91270593", "2016", "1"), (screen.BondAmount, screen.BondBlocks, screen.BondFeeRate));
+		Assert.All(screen.AllocationRows, row => Assert.True(row.IsEnabled));
+
+		// A lock time and an amount of the user's own are not set back by coming again.
+		screen.BondBlocks = "4032";
+		screen.BondAmount = "1.5";
+
+		screen.ShowLockCoins();
+
+		Assert.True(screen.IsBondTab);
+		Assert.Equal(("1.5", "4032", "1"), (screen.BondAmount, screen.BondBlocks, screen.BondFeeRate));
+	}
+
+	/// <summary>A wallet that has a bond is told about that bond on Lock Coins, in place of the form.</summary>
+	[Fact]
+	public async Task LockCoinsTellsTheBondToWhoeverComesWhileThereIsOneAsync()
+	{
+		var screen = CreateScreen();
+
+		await screen.LockBondAsync();
+		Assert.True(screen.IsOffersTab);
+
+		screen.ShowLockCoins();
+
+		Assert.True(screen.IsBondTab);
+		Assert.True(screen.HasBond);
+		Assert.Equal("2.91270593 BTC", Assert.Single(screen.Bonds).Amount);
+	}
+
 	[Fact]
 	public void ListOffersOpensWithThreeCoinsAndTheRatesOfTheStrategy()
 	{

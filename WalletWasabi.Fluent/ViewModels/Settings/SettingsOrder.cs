@@ -9,7 +9,20 @@ public enum WalletTile
 {
 	Recover,
 	Create,
-	Configure
+	Configure,
+
+	/// <summary>Leads to where coins of the wallet are locked in a fidelity bond.</summary>
+	CreateBond
+}
+
+/// <summary>How the settings were left.</summary>
+public enum SettingsExit
+{
+	/// <summary>They were put away.</summary>
+	Closed,
+
+	/// <summary>The user asked for a fidelity bond. The settings made way for the place where coins are locked.</summary>
+	CreateBond
 }
 
 /// <summary>
@@ -58,13 +71,27 @@ public static class SettingsOrder
 	/// <summary>
 	/// Tells what the two boxes of the Wallet column are. Without a wallet the upper one creates a wallet and the
 	/// lower one recovers one. Once there is a wallet, the box that made it configures it: the upper one if the wallet
-	/// was created, the lower one if it was recovered. The other box stays what it was, and can no longer be used.
+	/// was created, the lower one if it was recovered. There is one wallet at most, so the other box has nothing left
+	/// to do for a wallet: it creates a fidelity bond, which takes a wallet.
 	/// </summary>
 	public static (WalletTile Upper, WalletTile Lower) GetWalletTiles(bool hasWallet, bool isRecovered) =>
 		(hasWallet, isRecovered) switch
 		{
 			(false, _) => (WalletTile.Create, WalletTile.Recover),
-			(true, false) => (WalletTile.Configure, WalletTile.Recover),
-			(true, true) => (WalletTile.Create, WalletTile.Configure)
+			(true, false) => (WalletTile.Configure, WalletTile.CreateBond),
+			(true, true) => (WalletTile.CreateBond, WalletTile.Configure)
 		};
+
+	/// <summary>
+	/// Whether a fidelity bond can be created: there is a wallet, created or recovered, and it is decrypted. A bond
+	/// locks coins of the wallet, and a wallet shows its coins once its password was given.
+	/// </summary>
+	public static bool CanCreateBond(bool hasWallet, bool isWalletDecrypted) => hasWallet && isWalletDecrypted;
+
+	/// <summary>
+	/// What the box that creates a bond says while it cannot be pressed: the wallet is there, and is not decrypted
+	/// yet. Nothing while it can be pressed.
+	/// </summary>
+	public static string? DescribeBondTile(bool isWalletDecrypted) =>
+		isWalletDecrypted ? null : "Decrypt the wallet to create a bond.";
 }
