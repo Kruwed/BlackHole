@@ -98,7 +98,8 @@
             <Setter Property="Margin" Value="0 0 0 8" />
           </Style>
           <!-- What a box tells about what it stands for: a check mark if it is configured and works at the moment,
-               an X if it is configured and does not. Both are orange. -->
+               an X if it is configured and does not. Both are orange. The box of the bond has the check mark while
+               a bond is locked. -->
           <Style Selector="PathIcon.mark">
             <Setter Property="Foreground" Value="{DynamicResource SystemAccentColor}" />
             <Setter Property="Width" Value="18" />
@@ -195,9 +196,8 @@
                     Icon="{StaticResource cube_multiple_regular}"
                     IsEnabled="False" />
 
-        <!-- Wallet. There is one wallet at most, so it is either created or recovered: once it is there, the box
-             that made it configures it. The other one has nothing left to do for a wallet, and creates a fidelity
-             bond, which takes a wallet. Creating a wallet comes first. -->
+        <!-- Wallet. There is one wallet at most, so it is either created or recovered. Once it is there, the upper
+             box configures it, and the lower one creates a fidelity bond, which takes a wallet. -->
         <TextBlock Grid.Row="0" Grid.Column="4" Classes="header" Text="Wallet" />
 
         <TileButton Grid.Row="1" Grid.Column="4" Text="Create a Wallet"
@@ -214,13 +214,6 @@
                     Command="{Binding ConfigureWalletCommand}">
           <PathIcon Classes="mark working" />
         </TileButton>
-        <!-- The box of the bond leads to where coins are locked. It waits for the wallet to be decrypted, and says so. -->
-        <TileButton Grid.Row="1" Grid.Column="4" Text="Create a Bond"
-                    Classes="bottomtext"
-                    Icon="{StaticResource wallet_action_bond}"
-                    IsVisible="{Binding UpperWalletTile, ConverterParameter={x:Static settings:WalletTile.CreateBond}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                    ToolTip.Tip="{Binding CreateBondHint}" ToolTip.ShowOnDisabled="True"
-                    Command="{Binding CreateBondCommand}" />
 
         <TileButton Grid.Row="2" Grid.Column="4" Text="Recover a Wallet"
                     Classes="bottomtext"
@@ -228,19 +221,16 @@
                     Icon="{StaticResource recover_arrow_right_regular}"
                     IsVisible="{Binding LowerWalletTile, ConverterParameter={x:Static settings:WalletTile.Recover}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
                     Command="{Binding RecoverWalletCommand}" />
-        <TileButton Grid.Row="2" Grid.Column="4" Text="Configure Wallet"
-                    Classes="bottomtext"
-                    Icon="{StaticResource nav_wallet_24_regular}"
-                    IsVisible="{Binding LowerWalletTile, ConverterParameter={x:Static settings:WalletTile.Configure}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
-                    Command="{Binding ConfigureWalletCommand}">
-          <PathIcon Classes="mark working" />
-        </TileButton>
+        <!-- The box of the bond leads to where coins are locked. It waits for the wallet to be decrypted, and says
+             so. It has the check mark of the other boxes while a bond of the wallet is locked. -->
         <TileButton Grid.Row="2" Grid.Column="4" Text="Create a Bond"
                     Classes="bottomtext"
                     Icon="{StaticResource wallet_action_bond}"
                     IsVisible="{Binding LowerWalletTile, ConverterParameter={x:Static settings:WalletTile.CreateBond}, Converter={x:Static converters:EnumToBoolConverter.Instance}}"
                     ToolTip.Tip="{Binding CreateBondHint}" ToolTip.ShowOnDisabled="True"
-                    Command="{Binding CreateBondCommand}" />
+                    Command="{Binding CreateBondCommand}">
+          <PathIcon Classes="mark working" IsVisible="{Binding HasLockedBond}" />
+        </TileButton>
       </Grid>
     </DockPanel>
   </ContentArea>

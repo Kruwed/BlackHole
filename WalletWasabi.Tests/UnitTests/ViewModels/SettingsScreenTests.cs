@@ -2,6 +2,7 @@ using System.Linq;
 using NBitcoin;
 using WalletWasabi.Discoverability;
 using WalletWasabi.Fluent.Models.UI;
+using WalletWasabi.Fluent.Models.Wallets;
 using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Models;
 using WalletWasabi.NostrRelay;
@@ -102,44 +103,27 @@ public class SettingsScreenTests
 	[Fact]
 	public void WalletColumnCreatesAndRecoversUntilThereIsAWallet()
 	{
-		Assert.Equal((WalletTile.Create, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: false));
-		Assert.Equal((WalletTile.Create, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered: true));
-	}
-
-	[Fact]
-	public void BoxThatMadeTheWalletConfiguresIt()
-	{
-		// A wallet that was created: the upper box, where "Create a Wallet" was.
-		Assert.Equal(WalletTile.Configure, SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false).Upper);
-
-		// A wallet that was recovered: the lower box, where "Recover a Wallet" was.
-		Assert.Equal(WalletTile.Configure, SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true).Lower);
+		Assert.Equal((WalletTile.Create, WalletTile.Recover), SettingsOrder.GetWalletTiles(hasWallet: false));
 	}
 
 	/// <summary>
-	/// There is one wallet at most, so once it is there the other box has no wallet to make. It creates a fidelity
-	/// bond: for a wallet that was created that is the lower box, where "Recover a Wallet" was.
+	/// There is one wallet at most, so once it is there the two boxes have no wallet left to make. The upper one
+	/// configures the wallet and the lower one creates a fidelity bond, however the wallet was made.
 	/// </summary>
 	[Fact]
-	public void OtherBoxCreatesABondOnceThereIsAWallet()
+	public void WalletIsConfiguredAboveAndABondIsCreatedBelow()
 	{
-		Assert.Equal((WalletTile.Configure, WalletTile.CreateBond), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: false));
-
-		// A wallet that was recovered has it where "Create a Wallet" was.
-		Assert.Equal((WalletTile.CreateBond, WalletTile.Configure), SettingsOrder.GetWalletTiles(hasWallet: true, isRecovered: true));
+		Assert.Equal((WalletTile.Configure, WalletTile.CreateBond), SettingsOrder.GetWalletTiles(hasWallet: true));
 	}
 
 	/// <summary>A bond locks coins of a wallet, so it takes a wallet: the welcome has no box for it.</summary>
 	[Fact]
 	public void BondCannotBeCreatedBeforeThereIsAWallet()
 	{
-		foreach (var isRecovered in new[] { false, true })
-		{
-			var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet: false, isRecovered);
+		var (upper, lower) = SettingsOrder.GetWalletTiles(hasWallet: false);
 
-			Assert.NotEqual(WalletTile.CreateBond, upper);
-			Assert.NotEqual(WalletTile.CreateBond, lower);
-		}
+		Assert.NotEqual(WalletTile.CreateBond, upper);
+		Assert.NotEqual(WalletTile.CreateBond, lower);
 
 		Assert.False(SettingsOrder.CanCreateBond(hasWallet: false, isWalletDecrypted: false));
 		Assert.False(SettingsOrder.CanCreateBond(hasWallet: false, isWalletDecrypted: true));
@@ -154,6 +138,37 @@ public class SettingsScreenTests
 
 		Assert.True(SettingsOrder.CanCreateBond(hasWallet: true, isWalletDecrypted: true));
 		Assert.Null(SettingsOrder.DescribeBondTile(isWalletDecrypted: true));
+	}
+
+	/// <summary>
+	/// The box of the bond has the orange check mark of the other boxes while a fidelity bond of the wallet is locked:
+	/// from the confirmation of the bond until the chain reaches the height at which it unlocks.
+	/// </summary>
+	[Fact]
+	public void BoxOfTheBondHasItsMarkWhileABondIsLocked()
+	{
+		Assert.True(SettingsOrder.HasLockedBond(isWalletDecrypted: true, [FidelityBondState.Locked]));
+
+		// One locked bond is enough, whatever became of the others.
+		Assert.True(SettingsOrder.HasLockedBond(isWalletDecrypted: true, [FidelityBondState.Redeemed, FidelityBondState.Unlocked, FidelityBondState.Locked]));
+
+		// No bond, and no mark.
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: true, []));
+
+		// A bond that waits for its confirmation is not locked yet.
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: true, [FidelityBondState.Unconfirmed]));
+
+		// A bond that has unlocked is not locked any more, and neither is one that is paid back or on its way back.
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: true, [FidelityBondState.Unlocked]));
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: true, [FidelityBondState.Redeeming, FidelityBondState.Redeemed]));
+	}
+
+	/// <summary>A wallet tells nothing about its coins before its password was given: its box has no mark.</summary>
+	[Fact]
+	public void BoxOfTheBondHasNoMarkBeforeTheWalletIsDecrypted()
+	{
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: false, [FidelityBondState.Locked]));
+		Assert.False(SettingsOrder.HasLockedBond(isWalletDecrypted: false, []));
 	}
 
 	/// <summary>

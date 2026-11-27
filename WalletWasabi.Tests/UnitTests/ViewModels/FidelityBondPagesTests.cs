@@ -4,6 +4,7 @@ using WalletWasabi.Blockchain.Transactions;
 using WalletWasabi.FidelityBonds;
 using WalletWasabi.Fluent.Helpers;
 using WalletWasabi.Fluent.Models.Wallets;
+using WalletWasabi.Fluent.ViewModels.Settings;
 using WalletWasabi.Fluent.ViewModels.Wallets.Bonds;
 using WalletWasabi.Fluent.ViewModels.Wallets.Home.History.Details;
 using WalletWasabi.Fluent.ViewModels.Wallets.Send;
@@ -72,6 +73,38 @@ public class FidelityBondPagesTests
 		var redeemed = confirmed with { SpenderTransaction = new SmartTransaction(Network.CreateTransaction(), new Height.ChainHeight(1_030_000)) };
 		Assert.Equal(FidelityBondState.Redeemed, WalletBondsModel.GetState(redeemed, UnlockHeight));
 		Assert.Equal(FidelityBondState.Redeemed, WalletBondsModel.GetState(redeemed, nodeHeight: null));
+	}
+
+	/// <summary>
+	/// The box "Create a Bond" of the settings has its check mark while a bond is locked: from the block that confirms
+	/// the bond until the block of its unlock height. What is locked there is what is locked everywhere else.
+	/// </summary>
+	[Fact]
+	public void SettingsMarkABondFromItsConfirmationUntilItUnlocks()
+	{
+		static bool HasMark(FidelityBond bond, uint? nodeHeight) =>
+			SettingsOrder.HasLockedBond(isWalletDecrypted: true, [WalletBondsModel.GetState(bond, nodeHeight)]);
+
+		var unconfirmed = CreateBond(confirmed: false);
+		var confirmed = CreateBond(confirmed: true);
+
+		Assert.False(HasMark(unconfirmed, UnlockHeight - 10));
+
+		Assert.True(HasMark(confirmed, 100));
+		Assert.True(HasMark(confirmed, UnlockHeight - 1));
+
+		Assert.False(HasMark(confirmed, UnlockHeight));
+		Assert.False(HasMark(confirmed, UnlockHeight + 1));
+
+		// While the node does not tell how far the chain is, a confirmed bond counts as locked here too.
+		Assert.True(HasMark(confirmed, nodeHeight: null));
+
+		// A bond that is on its way back to the wallet, or back, is no bond any more.
+		var redeeming = confirmed with { SpenderTransaction = new SmartTransaction(Network.CreateTransaction(), Height.Mempool) };
+		var redeemed = confirmed with { SpenderTransaction = new SmartTransaction(Network.CreateTransaction(), new Height.ChainHeight(1_030_000)) };
+
+		Assert.False(HasMark(redeeming, UnlockHeight));
+		Assert.False(HasMark(redeemed, UnlockHeight));
 	}
 
 	[Fact]

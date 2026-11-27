@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using WalletWasabi.Fluent.Models.UI;
+using WalletWasabi.Fluent.Models.Wallets;
 
 namespace WalletWasabi.Fluent.ViewModels.Settings;
 
@@ -70,17 +71,14 @@ public static class SettingsOrder
 
 	/// <summary>
 	/// Tells what the two boxes of the Wallet column are. Without a wallet the upper one creates a wallet and the
-	/// lower one recovers one. Once there is a wallet, the box that made it configures it: the upper one if the wallet
-	/// was created, the lower one if it was recovered. There is one wallet at most, so the other box has nothing left
-	/// to do for a wallet: it creates a fidelity bond, which takes a wallet.
+	/// lower one recovers one. There is one wallet at most, so once it is there the boxes have no wallet left to make:
+	/// the upper one configures the wallet, and the lower one creates a fidelity bond, which takes a wallet. That is so
+	/// for a wallet that was created and for one that was recovered.
 	/// </summary>
-	public static (WalletTile Upper, WalletTile Lower) GetWalletTiles(bool hasWallet, bool isRecovered) =>
-		(hasWallet, isRecovered) switch
-		{
-			(false, _) => (WalletTile.Create, WalletTile.Recover),
-			(true, false) => (WalletTile.Configure, WalletTile.CreateBond),
-			(true, true) => (WalletTile.CreateBond, WalletTile.Configure)
-		};
+	public static (WalletTile Upper, WalletTile Lower) GetWalletTiles(bool hasWallet) =>
+		hasWallet
+			? (WalletTile.Configure, WalletTile.CreateBond)
+			: (WalletTile.Create, WalletTile.Recover);
 
 	/// <summary>
 	/// Whether a fidelity bond can be created: there is a wallet, created or recovered, and it is decrypted. A bond
@@ -94,4 +92,14 @@ public static class SettingsOrder
 	/// </summary>
 	public static string? DescribeBondTile(bool isWalletDecrypted) =>
 		isWalletDecrypted ? null : "Decrypt the wallet to create a bond.";
+
+	/// <summary>
+	/// Whether the box that creates a bond has its mark: a fidelity bond of the wallet is locked at the moment. A bond
+	/// is locked from the confirmation of the transaction that pays to it until the chain reaches its unlock height:
+	/// one that waits for its confirmation is not locked yet, and one that has unlocked is not locked any more. A
+	/// wallet that is not decrypted tells nothing about its coins, so its box has no mark.
+	/// </summary>
+	/// <param name="bonds">Where each bond of the wallet stands.</param>
+	public static bool HasLockedBond(bool isWalletDecrypted, IEnumerable<FidelityBondState> bonds) =>
+		isWalletDecrypted && bonds.Any(state => state == FidelityBondState.Locked);
 }

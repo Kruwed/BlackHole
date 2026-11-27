@@ -68,9 +68,6 @@ public partial interface IWalletModel : INotifyPropertyChanged
 	/// </summary>
 	bool IsHeightKnown { get; }
 
-	/// <summary>Whether the wallet was recovered from its backup, and not created.</summary>
-	bool IsRecovered { get; }
-
 	/// <summary>Whether <see cref="Resync"/> was called: the wallet waits for the restart of the application and does not follow the node until then.</summary>
 	bool IsResyncRequested { get; }
 
@@ -199,8 +196,6 @@ public partial class WalletModel : ReactiveObject, IWalletModel
 	public IObservable<bool> Loaded { get; }
 
 	public bool IsHeightKnown => Wallet.KeyManager.GetBestHeight() is not null;
-
-	public bool IsRecovered => Wallet.KeyManager.IsRecovered;
 
 	public bool IsResyncRequested => Wallet.Synchronizer.IsResyncRequested;
 
