@@ -34,6 +34,12 @@ public partial class MakerScreenViewModel : ReactiveObject
 	private MakerDeskState _state;
 	private MakerDeskView _view;
 
+	/// <summary>
+	/// The state that the screen opened with, for as long as nothing was set on it: no coin ticked, nothing typed, no
+	/// tab chosen, the marker of the triangle where it was. See <see cref="Rebase"/>.
+	/// </summary>
+	private MakerDeskState? _opening;
+
 	[AutoNotify] private TriangleWeights? _strategy;
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private string _strategyText = "";
 	[AutoNotify(SetterModifier = AccessModifier.Private)] private IReadOnlyList<MakerCoinRowViewModel> _coins = [];
@@ -53,6 +59,7 @@ public partial class MakerScreenViewModel : ReactiveObject
 		_authorize = authorize;
 		_desk = CreateDesk();
 		_state = _desk.Open();
+		_opening = _state;
 		_view = _desk.GetView(_state);
 
 		_liquidityRow = new BarRowViewModel(
@@ -362,11 +369,26 @@ public partial class MakerScreenViewModel : ReactiveObject
 			offers.Sum(offer => offer.Amount));
 	}
 
-	/// <summary>Takes the coins, the offers and the book as they are now, and carries over what was set.</summary>
+	/// <summary>
+	/// Takes the coins, the offers and the book as they are now, and carries over what was set. A screen on which
+	/// nothing was set yet opens anew with them instead. The screen of a wallet is made when the wallet is opened: the
+	/// wallet has not told its coins then, nor the relays their offers, and the screen would stay as empty as it was
+	/// made, with nothing picked and no amount to lock.
+	/// </summary>
 	private void Rebase()
 	{
 		_desk = CreateDesk();
-		Apply(_desk.Rebase(_state));
+
+		if (ReferenceEquals(_state, _opening))
+		{
+			_opening = _desk.Open();
+			Apply(_opening);
+		}
+		else
+		{
+			_opening = null;
+			Apply(_desk.Rebase(_state));
+		}
 	}
 
 	/// <summary>What was typed into a box of a form is the state of the form, cleaned of what no number has.</summary>

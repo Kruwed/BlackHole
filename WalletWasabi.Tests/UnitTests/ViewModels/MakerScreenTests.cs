@@ -612,6 +612,87 @@ public class MakerScreenTests
 		Assert.Equal(["1", "3", "9"], screen.Coins.Where(row => row.IsSelected).Select(row => row.Id).Order());
 	}
 
+	/// <summary>
+	/// The screen of a wallet is made when the wallet is opened, before the wallet has told its coins and the relays
+	/// their offers. As long as nothing was set on it, it opens anew with what there is when it shows: the strategy
+	/// proposes how much to lock and picks the coins for it, as on a screen that had its coins from the start.
+	/// </summary>
+	[Fact]
+	public void ScreenThatWasMadeBeforeTheWalletToldItsCoinsOpensWithThem()
+	{
+		var market = new LateWalletMarket();
+		var screen = new MakerScreenViewModel(market, _ => Task.FromResult(true), () => Task.FromResult(true));
+
+		Assert.Empty(screen.Coins);
+		Assert.Equal("", screen.BondAmount);
+		Assert.Equal("", screen.OfferFeeRate);
+
+		market.Tell(
+			book: true,
+			new MarketCoin("p", "first", 50_000_000, 3m),
+			new MarketCoin("q", "second", 20_000_000, 0m));
+
+		using var disposables = new CompositeDisposable();
+		screen.Activate(disposables);
+
+		// Half of the 0.7 BTC of the wallet, out of the coin that has anonymity points. The other one cannot be locked.
+		Assert.True(screen.IsBondTab);
+		Assert.Equal(TriangleWeights.Centre, screen.Strategy);
+		Assert.Equal(("0.35000000", "2016", "1"), (screen.BondAmount, screen.BondBlocks, screen.BondFeeRate));
+		Assert.Equal([("p", true, true), ("q", false, false)], screen.Coins.Select(row => (row.Id, row.IsSelected, row.CanToggle)));
+		Assert.False(screen.HasBondError);
+
+		// The rates of the offer are those of the strategy too, now that there is a book to place them in.
+		Assert.Equal(("0.6", "2.6", "1.3"), (screen.OfferFeeRate, screen.OfferSellRate, screen.OfferBuyRate));
+
+		// A coin that arrives while the screen shows is part of what the strategy splits.
+		market.Tell(
+			book: true,
+			new MarketCoin("p", "first", 50_000_000, 3m),
+			new MarketCoin("q", "second", 20_000_000, 0m),
+			new MarketCoin("r", "third", 30_000_000, 1m));
+
+		Assert.Equal("0.50000000", screen.BondAmount);
+		Assert.Equal(["p"], screen.Coins.Where(row => row.IsSelected).Select(row => row.Id));
+	}
+
+	/// <summary>What the user set on the screen is theirs: the wallet and the relays may tell what they like, it stays.</summary>
+	[Fact]
+	public void ScreenThatTheUserSetStaysAsTheySetIt()
+	{
+		var market = new LateWalletMarket();
+		var screen = new MakerScreenViewModel(market, _ => Task.FromResult(true), () => Task.FromResult(true));
+
+		market.Tell(
+			book: false,
+			new MarketCoin("p", "first", 50_000_000, 3m),
+			new MarketCoin("r", "third", 30_000_000, 1m));
+
+		using var disposables = new CompositeDisposable();
+		screen.Activate(disposables);
+
+		Assert.Equal("0.40000000", screen.BondAmount);
+		Assert.Equal(["p"], screen.Coins.Where(row => row.IsSelected).Select(row => row.Id));
+
+		// The other coin instead, and a lock time of the user's own.
+		screen.ToggleCommand.Execute("p");
+		screen.ToggleCommand.Execute("r");
+		screen.BondBlocks = "4032";
+
+		Assert.Equal("0.30000000", screen.BondAmount);
+
+		// Another coin arrives, and the book: neither picks coins anew, nor sets the amount or the lock time back.
+		market.Tell(
+			book: true,
+			new MarketCoin("p", "first", 50_000_000, 3m),
+			new MarketCoin("r", "third", 30_000_000, 1m),
+			new MarketCoin("s", "fourth", 90_000_000, 2m));
+
+		Assert.Equal(("0.30000000", "4032"), (screen.BondAmount, screen.BondBlocks));
+		Assert.Equal(["r"], screen.Coins.Where(row => row.IsSelected).Select(row => row.Id));
+		Assert.Equal(3, screen.Coins.Count);
+	}
+
 	private MakerScreenViewModel CreateScreen() =>
 		new(
 			_market,
@@ -654,6 +735,52 @@ public class MakerScreenTests
 			Posted.Add(draft);
 			return Task.FromResult<string?>(null);
 		}
+
+		public Task CancelOfferAsync(int id, CancellationToken cancellationToken) => Task.CompletedTask;
+
+		public Task<(BondQuote? Quote, string? Error)> QuoteBondAsync(BondDraft draft, CancellationToken cancellationToken) =>
+			_sample.QuoteBondAsync(draft, cancellationToken);
+
+		public Task<string?> LockBondAsync(BondQuote quote, Func<Task<bool>> authorize, CancellationToken cancellationToken) =>
+			Task.FromResult<string?>("no");
+
+		public void RedeemBond(MarketBondInfo bond)
+		{
+		}
+	}
+
+	/// <summary>
+	/// A wallet as the application has it right after it was opened: no coin and no book yet. Both are told later.
+	/// </summary>
+	private sealed class LateWalletMarket : IMarket
+	{
+		private readonly SampleMarketModel _sample = new();
+		private readonly System.Reactive.Subjects.Subject<System.Reactive.Unit> _changed = new();
+		private bool _hasBook;
+
+		public bool IsSample => false;
+		public IObservable<System.Reactive.Unit> Changed => _changed;
+		public IReadOnlyList<BookMaker> Book => _hasBook ? _sample.Book : [];
+		public string? BookNotice => null;
+		public IReadOnlyList<MarketCoinInfo> Coins { get; private set; } = [];
+		public IReadOnlyList<MarketBondInfo> Bonds => [];
+		public IReadOnlyList<MarketOfferInfo> Offers => [];
+		public long OwnBond => 0;
+		public PlannedTaker? Taker => null;
+		public string TakerNotice => "";
+		public string SignNotice => "";
+
+		/// <summary>The wallet tells its coins, and the relays their offers or none.</summary>
+		public void Tell(bool book, params MarketCoin[] coins)
+		{
+			_hasBook = book;
+			Coins = [.. coins.Select((coin, index) => new MarketCoinInfo(coin, new string((char)('1' + index), 64), 0, $"bc1q{coin.Id}"))];
+			_changed.OnNext(System.Reactive.Unit.Default);
+		}
+
+		public Task RefreshBookAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+		public Task<string?> PostOfferAsync(OfferDraft draft, CancellationToken cancellationToken) => Task.FromResult<string?>("no");
 
 		public Task CancelOfferAsync(int id, CancellationToken cancellationToken) => Task.CompletedTask;
 
